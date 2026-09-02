@@ -28,6 +28,12 @@ progressivamente stickerprint.it (SvelteKit su Cloudflare Pages). Lingua del pro
 
 ## Convenzioni di lavoro a più persone
 
+- Repository: github.com/Stickerprint/stickerprint-26-stickerprint-web. Il branch `main` va su Vercel in produzione.
+- Commit con autore `Claude <noreply@anthropic.com>` (`git -c user.name=Claude -c user.email=noreply@anthropic.com commit`):
+  con altre email Vercel lascia il deploy in *Blocked* senza avvisare.
+- Chi lavora dal browser e non dal terminale: quando serve un'azione su Supabase, Vercel o GitHub, un passaggio alla volta con il nome esatto del pulsante.
+- `docs/mappa-sito-attuale.md` è la mappa delle pagine del sito attuale da rifare: riferimento per copy, listini e flussi.
+
 - Un branch per attività (`nome/cosa`), pull request verso `main`, mai push diretto su `main`.
 - File condivisi da toccare con attenzione: `src/app.css`, `Header.svelte`, `hooks.server.ts`, `app.d.ts`.
 - Testi in italiano, tono diretto (vedi copy della home). Nomi di tabelle e colonne in inglese, snake_case.
