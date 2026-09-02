@@ -202,10 +202,6 @@
 			{:else}
 				<div class="stage__busy"><span class="spinner spinner--dark"></span> Genero l’anteprima…</div>
 			{/if}
-			<div class="stage__bar">
-				<span class="stage__file"><span class="verified" aria-hidden="true">✓</span> {file.name}</span>
-				<button class="link-btn" type="button" onclick={reset}>Cambia file</button>
-			</div>
 		</div>
 	{/if}
 
@@ -216,27 +212,34 @@
 	</div>
 
 	{#if product !== 'fogli'}
-		<div class="cfg-row" role="radiogroup" aria-labelledby="cfg-forma">
-			<span class="cfg-row__label" id="cfg-forma">Sagoma</span>
-			{#each FORME as f (f.id)}
-				<button type="button" class="chip-opt" class:is-active={forma === f.id} role="radio" aria-checked={forma === f.id} onclick={() => setForma(f.id)}>
-					<span class="cfg-shape cfg-shape--{f.id}" aria-hidden="true"></span>{f.label}
-				</button>
-			{/each}
-		</div>
-		<div class="cfg-row" role="radiogroup" aria-labelledby="cfg-mat">
-			<span class="cfg-row__label" id="cfg-mat">Materiale</span>
-			{#each MATERIALI as m (m.id)}
-				<button type="button" class="chip-opt" class:is-active={materiale === m.id} role="radio" aria-checked={materiale === m.id} onclick={() => setMateriale(m.id)}>
-					<span class="cfg-swatch" style="background:{m.swatch}" aria-hidden="true"></span>{m.label}
-				</button>
-			{/each}
+		<div class="cfg-selects">
+			<label class="cfg-select">
+				<span class="cfg-select__label">Sagoma</span>
+				<span class="cfg-select__box">
+					<select value={forma} onchange={(e) => setForma((e.currentTarget as HTMLSelectElement).value)}>
+						{#each FORME as f (f.id)}<option value={f.id}>{f.label}</option>{/each}
+					</select>
+				</span>
+			</label>
+			<label class="cfg-select">
+				<span class="cfg-select__label">Materiale</span>
+				<span class="cfg-select__box">
+					<select value={materiale} onchange={(e) => setMateriale((e.currentTarget as HTMLSelectElement).value)}>
+						{#each MATERIALI as m (m.id)}<option value={m.id}>{m.label}</option>{/each}
+					</select>
+				</span>
+			</label>
 		</div>
 	{/if}
 
-	<button class="btn btn--blue btn--xl" type="button" disabled={!file || saving || (usesEngine && engineBusy)} onclick={continua}>
-		{saving ? 'Un attimo…' : 'Continua la configurazione'}
-	</button>
+	<div class="cta-split">
+		<button class="btn btn--blue btn--xl" type="button" disabled={!file || saving || (usesEngine && engineBusy)} onclick={continua}>
+			{saving ? 'Un attimo…' : 'Continua la configurazione'}
+		</button>
+		{#if file}
+			<button class="btn btn--ghost btn--xl" type="button" onclick={reset}>Cambia file</button>
+		{/if}
+	</div>
 </div>
 
 {#if file && usesEngine}
