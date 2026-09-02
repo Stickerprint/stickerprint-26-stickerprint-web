@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { HomeReview } from '../../routes/+page.server';
+	import type { HomeReview } from '$lib/server/reviews';
 
 	let { reviews }: { reviews: HomeReview[] } = $props();
 	let open: HomeReview | null = $state(null);
