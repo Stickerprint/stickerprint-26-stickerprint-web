@@ -84,3 +84,5 @@ Quando si vorrà spostare il dominio: su Vercel → Project → Domains aggiungi
 - Dashboard cliente completa (ordini, prove di stampa, fatture, credito 5%)
 - Dashboard interna di produzione (/admin)
 - Checkout con Stripe/PayPal e spedizioni Qapla (già in uso nel sito attuale)
+
+<!-- deploy automatico da GitHub attivo -->
