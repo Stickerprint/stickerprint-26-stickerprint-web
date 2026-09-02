@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Creator: CorelDRAW -->
+<svg xmlns="http://www.w3.org/2000/svg" xml:space="preserve" width="20mm" height="15mm" version="1.1" style="shape-rendering:geometricPrecision; text-rendering:geometricPrecision; image-rendering:optimizeQuality; fill-rule:evenodd; clip-rule:evenodd"
+viewBox="0 0 2000 1500"
+ xmlns:xlink="http://www.w3.org/1999/xlink"
+ xmlns:xodm="http://www.corel.com/coreldraw/odm/2003">
+ <defs>
+  <style type="text/css">
+   <![CDATA[
+    .str0 {stroke:white;stroke-width:105.83;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:22.9256}
+    .fil0 {fill:none}
+   ]]>
+  </style>
+ </defs>
+ <g id="Livello_x0020_1">
+  <metadata id="CorelCorpID_0Corel-Layer"/>
+  <g id="_105553205801600">
+   <path class="fil0 str0" d="M1089.24 125.26l0 446.25c0,49.28 39.97,89.26 89.25,89.26l544.62 0c23.85,0 46.75,9.58 63.52,26.58l80.15 81.23c16.49,16.66 25.74,39.19 25.74,62.64l-0.04 275.8c0.04,49.25 -39.94,89.22 -89.22,89.22l-267.77 0.03"/>
+   <path class="fil0 str0" d="M375.22 1196.27l-178.52 0c-49.25,-0.03 -89.22,-40 -89.22,-89.29l0 -803.21c0,-98.57 79.95,-178.51 178.51,-178.51l1070.98 0c98.17,0 187.42,71.41 214.21,160.67l104.97 374.87"/>
+   <line class="fil0 str0" x1="732.21" y1="1196.27" x2="1178.49" y2= "1196.27" />
+   <circle class="fil0 str0" cx="1356.97" cy="1196.27" r="178.48"/>
+   <circle class="fil0 str0" cx="553.73" cy="1196.27" r="178.48"/>
+  </g>
+ </g>
+</svg>

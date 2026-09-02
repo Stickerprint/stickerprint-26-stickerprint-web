@@ -64,6 +64,17 @@ npm run dev
 curl -X POST http://localhost:5173/api/send-email -H 'Content-Type: application/json' -H "x-internal-key: $INTERNAL_API_KEY" -d '{"type":"owner-notify","title":"Test Postmark","lines":["Funziona"]}'
 ```
 
+## Instagram (feed e follower in tempo reale)
+
+Il feed usa l'Instagram Graph API: servono un account Instagram **Business o Creator** (stickerprint.it) collegato a una Pagina Facebook e un token.
+
+1. https://developers.facebook.com → crea un'app di tipo "Business" → aggiungi il prodotto **Instagram** → "API setup with Instagram login".
+2. Genera un token per l'account @stickerprint.it con i permessi `instagram_business_basic` (profilo e media).
+3. Converti il token in **long-lived** (60 giorni) e mettilo in `INSTAGRAM_ACCESS_TOKEN`; l'ID account in `INSTAGRAM_USER_ID` (oppure lascia vuoto per usare `me`).
+4. Il sito tiene i dati in cache 10 minuti. Senza token mostra le foto statiche in `static/images/ig-*.jpg` e il numero 6455.
+
+Il token va rinnovato prima della scadenza (endpoint `refresh_access_token`); si può automatizzare con un cron su Vercel.
+
 ## Deploy su Vercel
 
 Opzione A (consigliata): collega il repository Git su https://vercel.com/new, framework "SvelteKit", aggiungi le variabili d'ambiente, deploy automatico a ogni push.

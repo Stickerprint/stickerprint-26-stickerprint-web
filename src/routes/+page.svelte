@@ -1,5 +1,6 @@
 <script lang="ts">
 	import UploadPreview from '$lib/components/UploadPreview.svelte';
+	import ReviewsCarousel from '$lib/components/ReviewsCarousel.svelte';
 
 	let { data } = $props();
 
@@ -11,8 +12,8 @@
 	];
 
 	const brands = ['SEPHORA', 'NETFLIX', 'LEGO', 'RED BULL', 'SMASHBURGER', 'GRAVELLAND', 'TEMPLE STORE', 'SAUCE'];
-	const ig = [1, 2, 3, 4, 5, 6, 7, 8];
 	const IG_URL = 'https://www.instagram.com/stickerprint.it/';
+	const followers = $derived(data.instagram.followers ?? 6455);
 </script>
 
 <svelte:head>
@@ -113,16 +114,7 @@
 			<div class="stat stat--yellow"><b>{data.stats.average.toLocaleString('it-IT', { minimumFractionDigits: 1 })} ★</b><span>Valutazione media</span></div>
 			<div class="stat stat--pink"><b>5 gg</b><span>Media di produzione</span></div>
 		</div>
-		<div class="reviews" style="text-align:left">
-			{#each data.reviews as r}
-				<article class="review">
-					<div class="review__stars" aria-label="{r.rating} stelle su 5">{'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)}</div>
-					<div class="review__title">{r.title}</div>
-					<p class="review__text">{r.comment}</p>
-					<div class="review__meta">Ordine verificato · {r.product}</div>
-				</article>
-			{/each}
-		</div>
+		<ReviewsCarousel reviews={data.reviews} />
 	</div>
 </section>
 
@@ -181,12 +173,15 @@
 <!-- INSTAGRAM -->
 <section class="section container center">
 	<span class="tag tag--pink">@Stickerprint.it</span>
-	<h2 style="margin-top:14px"><span class="hl hl--pink">Più di 6455 creativi sono già con noi.</span></h2>
+	<h2 style="margin-top:14px"><span class="hl hl--pink">Più di {followers} creativi sono già con noi.</span></h2>
 	<p class="lead" style="margin-top:18px">Lavorazioni, novità e progetti reali <strong>LIVE</strong> direttamente dal nostro laboratorio.</p>
 	<p style="margin-top:24px"><a class="btn btn--pink btn--lg" href={IG_URL} target="_blank" rel="noopener">Seguici su Instagram</a></p>
 	<div class="ig-grid">
-		{#each ig as i}
-			<a href={IG_URL} target="_blank" rel="noopener"><img src="/images/ig-{i}.jpg" alt="" width="600" height="600" loading="lazy" /></a>
+		{#each data.instagram.media as m (m.id)}
+			<a href={m.permalink} target="_blank" rel="noopener" title={m.caption || 'Apri su Instagram'}>
+				<img src={m.image} alt={m.caption || 'Post Instagram di Stickerprint'} width="600" height="600" loading="lazy" />
+				{#if m.isVideo}<span class="ig-play" aria-hidden="true">▶</span>{/if}
+			</a>
 		{/each}
 	</div>
 </section>
