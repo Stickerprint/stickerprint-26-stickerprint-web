@@ -90,6 +90,7 @@
 	function loadEngine() {
 		engineReady = false;
 		engineBusy = true;
+		snapshot = null;
 		sentFor = null;
 		const q = new URLSearchParams({ embed: '1', forma, materiale, prodotto: product === 'resinati' ? 'resinati' : 'sticker' });
 		engineSrc = `/preprint/index.html?${q.toString()}`;
@@ -197,10 +198,10 @@
 						<img src={url} alt={i === 1 ? 'Anteprima della tua etichetta' : ''} />
 					{/each}
 				</div>
-			{:else if snapshot?.png}
-				<img class="stage__img" src={snapshot.png} alt="Anteprima del tuo adesivo" />
 			{:else}
-				<div class="stage__busy"><span class="spinner spinner--dark"></span> Genero l’anteprima…</div>
+				<!-- canvas vivo del motore: bagliore e linea di taglio animati come nel motore -->
+				<iframe bind:this={frame} class="engine engine--live" class:is-ready={!!snapshot} src={engineSrc} title="Anteprima del tuo adesivo" tabindex="-1" onload={() => sendFile()}></iframe>
+				{#if engineBusy}<div class="stage__busy"><span class="spinner spinner--dark"></span> Genero l’anteprima…</div>{/if}
 			{/if}
 		</div>
 	{/if}
@@ -242,9 +243,3 @@
 	</div>
 </div>
 
-{#if file && usesEngine}
-	<!-- Motore preprint: lavora nascosto e ci manda solo l'immagine finita -->
-	<div class="engine-hidden" aria-hidden="true">
-		<iframe bind:this={frame} class="engine" src={engineSrc} title="Generatore anteprima" tabindex="-1" onload={() => sendFile()}></iframe>
-	</div>
-{/if}

@@ -4272,8 +4272,14 @@ document.querySelectorAll('#cLam .chip').forEach(el=>{
 (function ponteSito(){
   const q=new URLSearchParams(location.search); if(q.get('embed')!=='1')return;
   const st=document.createElement('style');
-  st.textContent='.pp-top,#ppOk,#ppNo,#ppDropHost,#ppMatSec,#ppLamSec,.pp-badge,.pp-info{display:none!important}'+
-    'html,body{background:transparent!important}';
+  st.textContent='.pp-top,#ppOk,#ppNo,#ppDropHost,#ppMatSec,#ppLamSec,.pp-badge,.pp-info,.pp-right,#ppFoot,#ppNota{display:none!important}'+
+    'html,body{background:transparent!important;overflow:hidden!important}'+
+    '.pp-app{grid-template-columns:1fr!important;height:100vh!important}'+
+    '.pp-left{padding:0!important;background:transparent!important}'+
+    '#ppStage>.stage{display:flex!important;align-items:center;justify-content:center;background:transparent!important;border:0!important;padding:0!important}'+
+    '#ppStage>.stage{overflow:visible!important}'+
+    /* il canvas ha un margine trasparente attorno alla sagoma: lo ingrandiamo e lasciamo che il margine esca dal riquadro */
+    '#ppStage canvas{height:128%!important;width:auto!important;max-height:none!important;max-width:none!important}';
   document.head.appendChild(st);
   const origin=location.origin;
   const send=(type,detail)=>{try{parent.postMessage({source:'preprint',type,detail:detail||null},origin);}catch(e){}};

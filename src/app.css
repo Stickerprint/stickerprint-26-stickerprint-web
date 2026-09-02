@@ -286,7 +286,7 @@ body { overflow-x: clip; }
 .dropzone--compact { min-height: 300px; padding: 20px; }
 .stage { position: relative; height: 380px; display: grid; place-items: center; overflow: visible; }
 .stage__img { max-height: 370px; max-width: 100%; object-fit: contain; filter: drop-shadow(0 18px 26px rgba(11,11,59,.28)); }
-.stage__busy { display: flex; gap: 10px; align-items: center; font-weight: 700; color: var(--ink-soft); }
+.stage__busy { position: absolute; display: flex; gap: 10px; align-items: center; font-weight: 700; color: var(--ink-soft); background: rgba(255,255,255,.85); padding: 10px 16px; border-radius: 999px; }
 .spinner { width: 14px; height: 14px; border: 2px solid rgba(255,255,255,.35); border-top-color: #fff; border-radius: 50%; animation: spin .8s linear infinite; }
 .spinner--dark { border-color: rgba(11,11,59,.2); border-top-color: var(--navy); width: 18px; height: 18px; }
 @keyframes spin { to { transform: rotate(360deg); } }
@@ -324,8 +324,8 @@ body { overflow-x: clip; }
 .cfg-shape--rettangolare { border-radius: 3px; }
 .cfg-shape--ovale { border-radius: 50%; }
 .btn--xl { width: 100%; margin-top: 4px; padding: 18px 14px; font-size: 18px; }
-.engine-hidden { position: absolute; left: -10000px; top: 0; width: 900px; height: 700px; opacity: 0; pointer-events: none; overflow: hidden; }
-.engine { display: block; width: 100%; height: 100%; border: 0; }
+.engine--live { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; pointer-events: none; opacity: 0; transition: opacity .35s ease; }
+.engine--live.is-ready { opacity: 1; }
 
 /* Stats & recensioni */
 .social-proof { padding: clamp(40px, 5vw, 64px) clamp(20px, 4vw, 56px); }
