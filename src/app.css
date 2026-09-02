@@ -116,8 +116,8 @@ body { overflow-x: clip; }
 /* Bottoni */
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-  font-family: var(--font-body); font-weight: 700; font-size: 15px; letter-spacing: 0.01em; text-transform: uppercase;
-  padding: 16px 28px; border-radius: 6px; border: 0; cursor: pointer; text-decoration: none;
+  font-family: var(--font-display); font-weight: 800; font-size: 16px; letter-spacing: -0.01em; text-transform: uppercase;
+  padding: 15px 28px; border-radius: 6px; border: 0; cursor: pointer; text-decoration: none;
   transition: transform .15s ease, box-shadow .15s ease, filter .15s ease;
   white-space: nowrap;
 }
@@ -130,14 +130,14 @@ body { overflow-x: clip; }
 .btn--pink { background: var(--pink); color: #fff; }
 .btn--white { background: #fff; color: var(--ink); }
 .btn--ghost { background: transparent; color: var(--ink); border: 2px solid var(--ink); }
-.btn--lg { padding: 18px 34px; font-size: 16px; }
-.btn--sm { padding: 10px 16px; font-size: 13px; }
+.btn--lg { padding: 17px 34px; font-size: 18px; }
+.btn--sm { padding: 10px 16px; font-size: 14px; }
 .link { font-weight: 700; color: var(--ink); text-decoration: none; }
 .link:hover { text-decoration: underline; }
 
 /* Sezioni */
-.section { padding-block: clamp(32px, 4.5vw, 60px); }
-.section--tight { padding-block: clamp(20px, 3vw, 40px); }
+.section { padding-block: clamp(18px, 2.6vw, 36px); }
+.section--tight { padding-block: clamp(12px, 1.8vw, 24px); }
 .panel { border-radius: var(--radius); overflow: hidden; }
 .panel--navy { background: var(--navy); color: #fff; }
 .panel--navy .lead, .panel--navy .note { color: #d9dcf2; }
@@ -194,7 +194,7 @@ body { overflow-x: clip; }
 /* --------------------------------------------------------------------------
    Homepage
    -------------------------------------------------------------------------- */
-.hero { padding-top: clamp(72px, 7vw, 96px); padding-bottom: clamp(28px, 4vw, 48px); }
+.hero { padding-top: clamp(56px, 5vw, 66px); padding-bottom: clamp(20px, 3vw, 36px); }
 .hero__grid { display: grid; grid-template-columns: 1.05fr 1fr; gap: clamp(28px, 5vw, 72px); align-items: center; }
 .hero__ctas { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 34px; }
 .hero__perks { display: flex; flex-wrap: wrap; gap: 22px 38px; margin: 30px 0 0; padding: 0; font-weight: 700; font-size: 15px; }
@@ -266,6 +266,19 @@ body { overflow-x: clip; }
 .preview-result__meta span { background: var(--sky); padding: 6px 12px; border-radius: 999px; }
 .preview-result__ctas { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
 
+/* Selettore prodotto sotto l'anteprima */
+.product-pills { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 16px; }
+.pill-btn { border: 2px solid var(--line); background: #fff; color: var(--ink); font-family: var(--font-display); font-weight: 800; font-size: 14px; letter-spacing: -0.01em; padding: 10px 18px; border-radius: 999px; cursor: pointer; transition: all .15s ease; }
+.pill-btn:hover { border-color: var(--blue); }
+.pill-btn.is-active { background: var(--navy); border-color: var(--navy); color: #fff; }
+.sticker-wrap { position: relative; display: inline-block; }
+.sticker-stage--resin .sticker-img { filter: drop-shadow(3px 0 0 #fff) drop-shadow(-3px 0 0 #fff) drop-shadow(0 3px 0 #fff) drop-shadow(0 -3px 0 #fff) drop-shadow(0 14px 18px rgba(0,0,0,.35)); }
+.sticker-stage--resin .sticker-wrap::after { content: ""; position: absolute; inset: 0; border-radius: 18px; background: linear-gradient(160deg, rgba(255,255,255,.55) 0%, rgba(255,255,255,.12) 38%, rgba(255,255,255,0) 60%, rgba(0,0,0,.08) 100%); pointer-events: none; mix-blend-mode: screen; }
+.sticker-stage--sheet { background: #f5f6fa; }
+.sticker-stage--sheet .sheet { background: #fff; padding: 18px; border-radius: 6px; box-shadow: 0 8px 24px rgba(11,11,59,.12); display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+.sticker-stage--sheet .sheet img { max-height: 120px; max-width: 100%; border-radius: 10px; border: 2px solid #eee; background: #fff; filter: none; }
+.preview-result__hint { font-size: 12.5px; color: var(--muted); }
+
 /* Stats & recensioni */
 .social-proof { padding: clamp(40px, 5vw, 64px) clamp(20px, 4vw, 56px); }
 .stats { display: flex; justify-content: center; gap: 22px; flex-wrap: wrap; margin-top: 34px; }
@@ -275,8 +288,8 @@ body { overflow-x: clip; }
 .stat--blue b { color: var(--blue); }
 .stat--yellow b { color: var(--yellow); }
 .stat--pink b { color: var(--magenta); }
-.rv-marquee { overflow: hidden; margin-top: 34px; mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent); }
-.rv-track { display: flex; gap: 20px; width: max-content; animation: marquee 60s linear infinite; padding: 6px 0; }
+.rv-marquee { overflow: hidden; margin-top: 30px; mask-image: linear-gradient(90deg, transparent 0, rgba(0,0,0,.35) 5%, #000 16%, #000 84%, rgba(0,0,0,.35) 95%, transparent 100%); }
+.rv-track { display: flex; gap: 20px; width: max-content; animation: marquee 40s linear infinite; padding: 6px 0; }
 .rv-marquee:hover .rv-track, .rv-marquee:focus-within .rv-track { animation-play-state: paused; }
 .rv-track .review { width: 300px; flex: 0 0 auto; cursor: pointer; text-align: left; transition: transform .2s ease, box-shadow .2s ease; }
 .rv-track .review:hover { transform: translateY(-4px); box-shadow: 0 16px 34px rgba(0,0,0,.35); }
@@ -285,7 +298,9 @@ body { overflow-x: clip; }
 .review__stars { color: var(--yellow); font-size: 16px; letter-spacing: 2px; }
 .review__title { font-weight: 800; font-size: 16px; letter-spacing: -0.01em; }
 .review__text { font-size: 14px; color: var(--ink-soft); flex: 1; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
-.review__meta { font-size: 12.5px; color: var(--muted); font-weight: 600; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.review__meta { font-size: 13px; color: var(--muted); font-weight: 600; display: grid; gap: 4px; }
+.review__meta > span { display: flex; align-items: center; gap: 6px; }
+.review__author { color: var(--ink); font-weight: 700; }
 .verified { width: 16px; height: 16px; border-radius: 50%; background: var(--ok); color: #fff; display: inline-grid; place-items: center; font-size: 10px; font-weight: 800; }
 .review__product { color: var(--blue); font-weight: 700; text-decoration: none; white-space: nowrap; }
 .review__product:hover { text-decoration: underline; }
@@ -348,7 +363,7 @@ body { overflow-x: clip; }
 .final__date b { color: var(--green); }
 
 /* Footer (identico al sito attuale, font aggiornati) */
-.footer { background: #040140; color: #fff; padding: 44px 0 28px; margin-top: clamp(24px, 4vw, 48px); font-size: 14px; }
+.footer { background: #040140; color: #fff; padding: 44px 0 28px; margin-top: clamp(16px, 2.5vw, 30px); font-size: 14px; }
 .footer a { color: #fff; }
 .footer__grid { display: grid; grid-template-columns: 1fr 1fr 1.2fr; gap: 32px; align-items: start; }
 .footer__col { display: grid; gap: 22px; justify-items: center; text-align: center; }
@@ -365,7 +380,7 @@ body { overflow-x: clip; }
 .newsletter h4 { margin: 0; font-family: var(--font-display); font-weight: 800; font-size: 20px; letter-spacing: -0.02em; text-align: center; }
 .newsletter form { display: grid; gap: 12px; width: 100%; }
 .newsletter input { width: 100%; padding: 10px 14px; border: 0; border-radius: 4px; font: inherit; font-size: 15px; text-align: center; color: var(--ink); }
-.newsletter button { width: 100%; padding: 11px; border: 0; border-radius: 4px; background: linear-gradient(180deg, #ffb703, #f59e0b); color: var(--ink); font-family: var(--font-body); font-weight: 700; font-size: 16px; cursor: pointer; }
+.newsletter button { width: 100%; padding: 11px; border: 0; border-radius: 4px; background: linear-gradient(180deg, #ffb703, #f59e0b); color: var(--ink); font-family: var(--font-display); font-weight: 800; font-size: 17px; letter-spacing: -0.01em; cursor: pointer; }
 .newsletter button:hover { filter: brightness(1.05); }
 .newsletter .msg { font-size: 13px; color: #d9dcf2; text-align: center; }
 .newsletter .msg.ok { color: var(--green); }

@@ -1,8 +1,10 @@
 import { getInstagram } from '$lib/server/instagram';
+import { shortName } from '$lib/utils/names';
 import { estimatedShipDate, formatItDate } from '$lib/utils/shipping';
 import type { PageServerLoad } from './$types';
 
 export interface HomeReview {
+	author: string;
 	title: string;
 	comment: string;
 	rating: number;
@@ -22,12 +24,12 @@ const PRODUCTS: Record<string, { label: string; href: string }> = {
 };
 
 const FALLBACK: HomeReview[] = [
-	{ title: 'Effetto WOW!!!', comment: 'Devo essere sincero: mi sono servito spesso di servizi di stampa online, ma mai per gli adesivi. Ero un po’ prevenuto e invece… qualità incredibile, colori pieni e taglio perfetto.', rating: 5, product: 'Adesivi personalizzati', href: '/adesivi-personalizzati' },
-	{ title: 'Impeccabile', comment: 'Tutto impeccabile, ordinare su questo sito è davvero molto semplice, prima della conferma stampa ti inviano anche l’anteprima.', rating: 5, product: 'Etichette', href: '/etichette' },
-	{ title: 'FOTONICI', comment: 'Processo di acquisto semplicissimo, assistenza impeccabile e prodotto FOTONICO! Assolutamente consigliati.', rating: 5, product: 'Adesivi resinati', href: '/adesivi-resinati' },
-	{ title: 'Fantastici!', comment: 'Potessi metterei 1000 stelle! Son stata seguita con pazienza fin dal momento dell’ordine, ho ricevuto il pacco in pochissimi giorni.', rating: 5, product: 'Adesivi personalizzati', href: '/adesivi-personalizzati' },
-	{ title: 'Esperienza e serietà', comment: 'Seri, puntuali e con esperienza. Ho effettuato il mio ordine, mi hanno mandato velocemente la bozza e ho subito dato l’ok.', rating: 5, product: 'Etichette', href: '/etichette' },
-	{ title: 'Adesivi 🔝', comment: 'Adesivi fatti veramente bene, stupendi, top. Super qualità di stampa e materiale resistente.', rating: 5, product: 'Adesivi personalizzati', href: '/adesivi-personalizzati' }
+	{ author: 'Mattia B.', title: 'Effetto WOW!!!', comment: 'Devo essere sincero: mi sono servito spesso di servizi di stampa online, ma mai per gli adesivi. Ero un po’ prevenuto e invece… qualità incredibile, colori pieni e taglio perfetto.', rating: 5, product: 'Adesivi personalizzati', href: '/adesivi-personalizzati' },
+	{ author: 'Giulia R.', title: 'Impeccabile', comment: 'Tutto impeccabile, ordinare su questo sito è davvero molto semplice, prima della conferma stampa ti inviano anche l’anteprima.', rating: 5, product: 'Etichette', href: '/etichette' },
+	{ author: 'Luca F.', title: 'FOTONICI', comment: 'Processo di acquisto semplicissimo, assistenza impeccabile e prodotto FOTONICO! Assolutamente consigliati.', rating: 5, product: 'Adesivi resinati', href: '/adesivi-resinati' },
+	{ author: 'Sara M.', title: 'Fantastici!', comment: 'Potessi metterei 1000 stelle! Son stata seguita con pazienza fin dal momento dell’ordine, ho ricevuto il pacco in pochissimi giorni.', rating: 5, product: 'Adesivi personalizzati', href: '/adesivi-personalizzati' },
+	{ author: 'Andrea C.', title: 'Esperienza e serietà', comment: 'Seri, puntuali e con esperienza. Ho effettuato il mio ordine, mi hanno mandato velocemente la bozza e ho subito dato l’ok.', rating: 5, product: 'Etichette', href: '/etichette' },
+	{ author: 'Elena P.', title: 'Adesivi 🔝', comment: 'Adesivi fatti veramente bene, stupendi, top. Super qualità di stampa e materiale resistente.', rating: 5, product: 'Adesivi personalizzati', href: '/adesivi-personalizzati' }
 ];
 
 export const load: PageServerLoad = async ({ locals: { supabase } }) => {
@@ -38,7 +40,7 @@ export const load: PageServerLoad = async ({ locals: { supabase } }) => {
 		const [{ data: rows }, { count, data: all }] = await Promise.all([
 			supabase
 				.from('reviews')
-				.select('title, comment, rating, created_at, order_item:order_items(product_type)')
+				.select('title, comment, rating, created_at, guest_name, customer_name, order_item:order_items(product_type)')
 				.eq('is_public', true)
 				.gte('rating', 4)
 				.order('created_at', { ascending: false })
@@ -54,6 +56,7 @@ export const load: PageServerLoad = async ({ locals: { supabase } }) => {
 					const item = Array.isArray(r.order_item) ? r.order_item[0] : r.order_item;
 					const p = PRODUCTS[item?.product_type ?? ''] ?? { label: 'Adesivi personalizzati', href: '/adesivi-personalizzati' };
 					return {
+						author: shortName(r.customer_name ?? r.guest_name),
 						title: r.title ?? 'Recensione',
 						comment: r.comment ?? '',
 						rating: r.rating ?? 5,
