@@ -7,5 +7,3 @@ node_modules
 .env.*
 !.env.example
 vite.config.ts.timestamp-*
-.vercel
-.env*
