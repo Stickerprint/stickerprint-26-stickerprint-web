@@ -52,7 +52,7 @@
 	let saving = $state(false);
 
 	const current = $derived(PRODUCTS.find((p) => p.id === product)!);
-	const usesEngine = $derived(product === 'personalizzati');
+	const usesEngine = $derived(product === 'personalizzati' || product === 'resinati');
 	const ACCEPT = ['image/png', 'image/jpeg', 'image/svg+xml', 'application/pdf'];
 
 	function pick(f: File | undefined) {
@@ -63,7 +63,7 @@
 			return;
 		}
 		if (f.type === 'application/pdf' && !usesEngine) {
-			error = 'Per l’anteprima istantanea di resinati ed etichette usa PNG, JPG o SVG.';
+			error = 'Per le etichette in fogli usa PNG, JPG o SVG.';
 			return;
 		}
 		if (f.size > 25 * 1024 * 1024) {
@@ -75,11 +75,6 @@
 		url = URL.createObjectURL(f);
 		snapshot = null;
 		if (usesEngine) loadEngine();
-	}
-
-	function onLoad(e: Event) {
-		const img = e.currentTarget as HTMLImageElement;
-		heightMm = Math.round((widthMm * img.naturalHeight) / img.naturalWidth);
 	}
 
 	function reset() {
@@ -96,7 +91,7 @@
 		engineReady = false;
 		engineBusy = true;
 		sentFor = null;
-		const q = new URLSearchParams({ embed: '1', forma, materiale, prodotto: 'sticker' });
+		const q = new URLSearchParams({ embed: '1', forma, materiale, prodotto: product === 'resinati' ? 'resinati' : 'sticker' });
 		engineSrc = `/preprint/index.html?${q.toString()}`;
 	}
 
@@ -109,8 +104,6 @@
 		if (sentFor === file && !force) return;
 		sentFor = file;
 		frame.contentWindow.postMessage({ source: 'sito', type: 'file', file }, location.origin);
-		// porta l'anteprima in vista: il motore lavora solo se l'iframe è visibile
-		frame.closest('.engine-box')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 		clearTimeout(retryTimer);
 		retryTimer = setTimeout(() => {
 			if (engineBusy && sentFor === file) sendFile(true);
@@ -146,9 +139,9 @@
 		if (file && usesEngine) loadEngine();
 	}
 	function setProduct(id: Product) {
-		const was = product;
 		product = id;
-		if (file && id === 'personalizzati' && was !== 'personalizzati') loadEngine();
+		snapshot = null;
+		if (file && (id === 'personalizzati' || id === 'resinati')) loadEngine();
 	}
 
 	async function continua() {
@@ -176,105 +169,79 @@
 <svelte:window onmessage={onMessage} />
 
 <div class="cfg-col">
-{#if !file}
-	<label
-		class="dropzone"
-		class:is-over={over}
-		ondragenter={(e) => { e.preventDefault(); over = true; }}
-		ondragover={(e) => { e.preventDefault(); over = true; }}
-		ondragleave={() => (over = false)}
-		ondrop={(e) => { e.preventDefault(); over = false; pick(e.dataTransfer?.files[0]); }}
-	>
-		<input type="file" accept={ACCEPT.join(',')} onchange={(e) => pick((e.currentTarget as HTMLInputElement).files?.[0])} />
-		<div>
-			<div class="dropzone__icon">
-				<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 16V4m0 0l-4 4m4-4l4 4" /><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" /></svg>
+	<!-- Palco compatto: dropzone oppure anteprima generata -->
+	{#if !file}
+		<label
+			class="dropzone dropzone--compact"
+			class:is-over={over}
+			ondragenter={(e) => { e.preventDefault(); over = true; }}
+			ondragover={(e) => { e.preventDefault(); over = true; }}
+			ondragleave={() => (over = false)}
+			ondrop={(e) => { e.preventDefault(); over = false; pick(e.dataTransfer?.files[0]); }}
+		>
+			<input type="file" accept={ACCEPT.join(',')} onchange={(e) => pick((e.currentTarget as HTMLInputElement).files?.[0])} />
+			<div>
+				<div class="dropzone__icon">
+					<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 16V4m0 0l-4 4m4-4l4 4" /><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" /></svg>
+				</div>
+				<div class="dropzone__title">Trascina qui il tuo file</div>
+				<div class="dropzone__sub">oppure clicca per sceglierlo · PNG, JPG, SVG, PDF</div>
+				{#if error}<p class="error" style="margin-top:14px">{error}</p>{/if}
 			</div>
-			<div class="dropzone__title">Trascina qui il tuo file</div>
-			<div class="dropzone__sub">oppure clicca per sceglierlo · PNG, JPG, SVG{usesEngine ? ', PDF' : ''}</div>
-			{#if error}<p class="error" style="margin-top:14px">{error}</p>{/if}
-		</div>
-	</label>
-{:else if usesEngine}
-	<div class="engine-file">
-		<div class="engine-file__ok"><span class="verified" aria-hidden="true">✓</span> File caricato: <b>{file.name}</b></div>
-		<div class="preview-result__meta">
-			{#if snapshot?.w}<span>{snapshot.w} × {snapshot.h} mm</span>{/if}
-			<span>{current.label}</span>
-			<button class="link-btn" type="button" onclick={reset}>Carica un altro file</button>
-		</div>
-		<p class="preview-result__hint">L’anteprima completa è qui sotto: scegli bordo e sfondo, poi continua.</p>
-	</div>
-{:else}
-	<div class="preview-result">
-		<div class="sticker-stage" class:sticker-stage--resin={product === 'resinati'} class:sticker-stage--sheet={product === 'fogli'}>
+		</label>
+	{:else}
+		<div class="stage" class:stage--sheet={product === 'fogli'}>
 			{#if product === 'fogli'}
 				<div class="sheet" aria-label="Anteprima etichette in foglio">
 					{#each [1, 2, 3, 4] as i (i)}
-						<img src={url} alt={i === 1 ? 'Anteprima della tua etichetta' : ''} onload={i === 1 ? onLoad : undefined} />
+						<img src={url} alt={i === 1 ? 'Anteprima della tua etichetta' : ''} />
 					{/each}
 				</div>
+			{:else if snapshot?.png}
+				<img class="stage__img" src={snapshot.png} alt="Anteprima del tuo adesivo" />
 			{:else}
-				<div class="sticker-wrap">
-					<img class="sticker-img" src={url} alt="Anteprima del tuo adesivo" onload={onLoad} />
-				</div>
+				<div class="stage__busy"><span class="spinner spinner--dark"></span> Genero l’anteprima…</div>
 			{/if}
+			<div class="stage__bar">
+				<span class="stage__file"><span class="verified" aria-hidden="true">✓</span> {file.name}</span>
+				<button class="link-btn" type="button" onclick={reset}>Cambia file</button>
+			</div>
 		</div>
-		<div class="preview-result__meta">
-			<span>{file.name}</span>
-			<span>{widthMm} × {heightMm || '…'} mm</span>
-			<span>{current.label}</span>
-			<button class="link-btn" type="button" onclick={reset}>Carica un altro file</button>
-		</div>
-		<p class="preview-result__hint">{current.hint}</p>
+	{/if}
+
+	<div class="product-pills" role="radiogroup" aria-label="Prodotto">
+		{#each PRODUCTS as p (p.id)}
+			<button type="button" class="pill-btn" class:is-active={product === p.id} role="radio" aria-checked={product === p.id} onclick={() => setProduct(p.id)}>{p.label}</button>
+		{/each}
 	</div>
-{/if}
 
-<div class="product-pills" role="radiogroup" aria-label="Scegli il prodotto per l’anteprima">
-	{#each PRODUCTS as p (p.id)}
-		<button type="button" class="pill-btn" class:is-active={product === p.id} role="radio" aria-checked={product === p.id} onclick={() => setProduct(p.id)}>
-			{p.label}
-		</button>
-	{/each}
-</div>
-
-{#if usesEngine}
-	<div class="cfg-menus">
-		<div class="cfg-menu" role="radiogroup" aria-labelledby="cfg-forma">
-			<h4 id="cfg-forma">Sagoma</h4>
+	{#if product !== 'fogli'}
+		<div class="cfg-row" role="radiogroup" aria-labelledby="cfg-forma">
+			<span class="cfg-row__label" id="cfg-forma">Sagoma</span>
 			{#each FORME as f (f.id)}
-				<button type="button" class="cfg-opt" class:is-active={forma === f.id} role="radio" aria-checked={forma === f.id} onclick={() => setForma(f.id)}>
+				<button type="button" class="chip-opt" class:is-active={forma === f.id} role="radio" aria-checked={forma === f.id} onclick={() => setForma(f.id)}>
 					<span class="cfg-shape cfg-shape--{f.id}" aria-hidden="true"></span>{f.label}
 				</button>
 			{/each}
 		</div>
-		<div class="cfg-menu" role="radiogroup" aria-labelledby="cfg-mat">
-			<h4 id="cfg-mat">Materiale</h4>
+		<div class="cfg-row" role="radiogroup" aria-labelledby="cfg-mat">
+			<span class="cfg-row__label" id="cfg-mat">Materiale</span>
 			{#each MATERIALI as m (m.id)}
-				<button type="button" class="cfg-opt" class:is-active={materiale === m.id} role="radio" aria-checked={materiale === m.id} onclick={() => setMateriale(m.id)}>
+				<button type="button" class="chip-opt" class:is-active={materiale === m.id} role="radio" aria-checked={materiale === m.id} onclick={() => setMateriale(m.id)}>
 					<span class="cfg-swatch" style="background:{m.swatch}" aria-hidden="true"></span>{m.label}
 				</button>
 			{/each}
 		</div>
-	</div>
-{/if}
+	{/if}
 
-{#if !(file && usesEngine)}
-	<button class="btn btn--blue btn--xl" type="button" disabled={!file || saving} onclick={continua}>
+	<button class="btn btn--blue btn--xl" type="button" disabled={!file || saving || (usesEngine && engineBusy)} onclick={continua}>
 		{saving ? 'Un attimo…' : 'Continua la configurazione'}
 	</button>
-	{#if !file}<p class="preview-result__hint" style="text-align:center;margin-top:8px">Carica un file per continuare</p>{/if}
-{/if}
 </div>
 
 {#if file && usesEngine}
-	<div class="engine-box" id="engine">
-		{#if engineBusy}
-			<div class="engine-busy" aria-live="polite"><span class="spinner"></span> Calcolo sagoma e linea di taglio…</div>
-		{/if}
-		<iframe bind:this={frame} class="engine" src={engineSrc} title="Anteprima automatica del tuo adesivo" onload={() => sendFile()}></iframe>
+	<!-- Motore preprint: lavora nascosto e ci manda solo l'immagine finita -->
+	<div class="engine-hidden" aria-hidden="true">
+		<iframe bind:this={frame} class="engine" src={engineSrc} title="Generatore anteprima" tabindex="-1" onload={() => sendFile()}></iframe>
 	</div>
-	<button class="btn btn--blue btn--xl btn--full" type="button" disabled={saving || engineBusy} onclick={continua}>
-		{saving ? 'Un attimo…' : 'Continua la configurazione'}
-	</button>
 {/if}

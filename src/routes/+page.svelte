@@ -98,7 +98,7 @@
 			</ol>
 			<p class="note preview__beta">Il sistema è attualmente in fase beta solo per Adesivi personalizzati e Adesivi resinati.</p>
 		</div>
-		<div style="display:contents"><UploadPreview /></div>
+		<div class="preview__right"><UploadPreview /></div>
 	</div>
 </section>
 
