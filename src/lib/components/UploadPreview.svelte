@@ -238,7 +238,7 @@
 			{saving ? 'Un attimo…' : 'Continua la configurazione'}
 		</button>
 		{#if file}
-			<button class="btn btn--ghost btn--xl" type="button" onclick={reset}>Cambia file</button>
+			<button class="btn btn--yellow btn--xl" type="button" onclick={reset}>Cambia file</button>
 		{/if}
 	</div>
 </div>

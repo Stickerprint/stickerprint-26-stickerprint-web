@@ -2182,8 +2182,10 @@ function buildCut(){
       xi:parts.reduce((a,p)=>a+p.xi,0),pieces:sel.filter(L=>L.area>0).length,
       neck:neckMM,neckCapped,R:Rmm,Rsafe:RsafeMM};
   } else {
-    const W=targetW,H=(sh==='circle'||sh==='square')?targetW:targetH;
-    if(sh==='circle'||sh==='square')$('hmm').value=W.toFixed(1);
+    /* [sito] il quadrato resta quadrato anche quando il tracciato è 'rounded' (angoli arrotondati) */
+    const isSq=(sh==='circle'||sh==='square'||CL.shape==='square'||CL.shape==='circle');
+    const W=targetW,H=isSq?targetW:targetH;
+    if(isSq)$('hmm').value=W.toFixed(1);
     let d='',poly=[];const N=240;
     if(sh==='circle'||sh==='ellipse'){const a=W/2,b=H/2;
       d='M'+fmt(W)+' '+fmt(b)+'A'+fmt(a)+' '+fmt(b)+' 0 1 1 0 '+fmt(b)+'A'+fmt(a)+' '+fmt(b)+' 0 1 1 '+fmt(W)+' '+fmt(b)+'Z';
@@ -2202,7 +2204,12 @@ function buildCut(){
     /* Il disegno si adatta alla forma, poi lo scali e lo sposti a mano.
        100% = il disegno tocca il bordo interno lasciando il bordo scelto. */
     const aw=Math.max(1,W-2*off),ah=Math.max(1,H-2*off);
-    const fit=Math.min(aw/bb.w,ah/bb.h);
+    /* [sito] dentro un tondo o un ovale il disegno deve stare INSCRITTO nell'ellisse:
+       adattarlo al rettangolo che la contiene fa uscire gli angoli dal cerchio.
+       Un rettangolo w×h sta in un'ellisse di assi aw×ah se (w/aw)²+(h/ah)² ≤ 1. */
+    const fit=(sh==='circle'||sh==='ellipse')
+      ? 1/Math.hypot(bb.w/aw,bb.h/ah)
+      : Math.min(aw/bb.w,ah/bb.h);
     const k=fit*(+$('gsc').value/100);
     const cw=bb.w*k,ch=bb.h*k;
     const dx=+$('gdx').value||0, dy=+$('gdy').value||0;
@@ -4278,12 +4285,25 @@ document.querySelectorAll('#cLam .chip').forEach(el=>{
     '.pp-left{padding:0!important;background:transparent!important}'+
     '#ppStage>.stage{display:flex!important;align-items:center;justify-content:center;background:transparent!important;border:0!important;padding:0!important}'+
     '#ppStage>.stage{overflow:visible!important}'+
-    /* il canvas ha un margine trasparente attorno alla sagoma: lo ingrandiamo e lasciamo che il margine esca dal riquadro */
-    '#ppStage canvas{height:128%!important;width:auto!important;max-height:none!important;max-width:none!important}';
+    '#ppStage canvas{max-height:none!important;max-width:none!important}';
   document.head.appendChild(st);
   const origin=location.origin;
   const send=(type,detail)=>{try{parent.postMessage({source:'preprint',type,detail:detail||null},origin);}catch(e){}};
+  /* Il canvas ha un margine trasparente attorno alla sagoma (pad): si adatta la
+     scala in modo che sia la SAGOMA a riempire il palco, mai tagliata. */
+  const fitEmbed=()=>{
+    try{
+      const a=S._an; if(!a||!a.cv||!a.tile)return;
+      const st=document.getElementById('ppStage'); if(!st)return;
+      const W=st.clientWidth, H=st.clientHeight; if(!W||!H)return;
+      const k=Math.min(0.94*W/a.tile.width, 0.92*H/a.tile.height);
+      const w=Math.round(a.cv.width*k), h=Math.round(a.cv.height*k);
+      if(a.cv.style.width!==w+'px'||a.cv.style.height!==h+'px'){a.cv.style.width=w+'px';a.cv.style.height=h+'px';}
+    }catch(e){}
+  };
+  setInterval(fitEmbed,300); addEventListener('resize',fitEmbed);
   const snapshot=()=>{
+    fitEmbed();
     try{
       const cv=document.getElementById('preview');
       send('render',{name:S.name||null,w:+((S.cutW||0)).toFixed(1),h:+((S.cutH||0)).toFixed(1),
