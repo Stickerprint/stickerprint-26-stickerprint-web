@@ -1,6 +1,7 @@
 -- ============================================================================
 -- Stickerprint — schema base per il nuovo progetto Supabase (stickerprint26)
--- Eseguire in: Supabase Dashboard → SQL Editor → New query → Run
+-- Eseguita a mano il 2/9/2026 nel SQL Editor. È idempotente: può essere rilanciata
+-- dall'integrazione GitHub di Supabase senza errori.
 -- Copre: profili utente (creati automaticamente alla registrazione),
 --        indirizzi, credito Stickerprint (5%), ruoli per la dashboard interna.
 -- Ordini, prove di stampa e fatture arrivano nella migrazione successiva.
@@ -37,6 +38,7 @@ create table if not exists public.profiles (
   updated_at    timestamptz not null default now()
 );
 
+drop trigger if exists profiles_set_updated_at on public.profiles;
 create trigger profiles_set_updated_at
   before update on public.profiles
   for each row execute function public.set_updated_at();
@@ -87,6 +89,7 @@ create table if not exists public.addresses (
   updated_at  timestamptz not null default now()
 );
 create index if not exists addresses_user_idx on public.addresses(user_id);
+drop trigger if exists addresses_set_updated_at on public.addresses;
 create trigger addresses_set_updated_at
   before update on public.addresses
   for each row execute function public.set_updated_at();
@@ -125,16 +128,21 @@ alter table public.credit_transactions enable row level security;
 
 -- profiles: ognuno vede/aggiorna il proprio; lo staff vede tutti
 create policy "profiles: own read"   on public.profiles for select using (auth.uid() = id or public.is_staff());
+drop policy if exists "profiles: own update" on public.profiles;
 create policy "profiles: own update" on public.profiles for update using (auth.uid() = id)
   with check (auth.uid() = id and role = (select role from public.profiles where id = auth.uid()));  -- il ruolo non è auto-modificabile
+drop policy if exists "profiles: staff update" on public.profiles;
 create policy "profiles: staff update" on public.profiles for update using (public.is_staff());
 
 -- addresses: CRUD solo sui propri; staff in lettura
+drop policy if exists "addresses: own all" on public.addresses;
 create policy "addresses: own all" on public.addresses for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+drop policy if exists "addresses: staff read" on public.addresses;
 create policy "addresses: staff read" on public.addresses for select using (public.is_staff());
 
 -- credito: l'utente legge i propri movimenti; solo staff/funzioni server scrivono
 create policy "credit: own read"   on public.credit_transactions for select using (auth.uid() = user_id or public.is_staff());
+drop policy if exists "credit: staff write" on public.credit_transactions;
 create policy "credit: staff write" on public.credit_transactions for insert with check (public.is_staff());
 
 -- ---------------------------------------------------------------------------
