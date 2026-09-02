@@ -2972,7 +2972,13 @@ function renderCore(ppm,withMat){
   if(m==='white')return withMat&&res?resinDome(ink,ppm):ink;
   const c=document.createElement('canvas');c.width=ink.width;c.height=ink.height;
   const g=c.getContext('2d');
-  if(m==='clear'){g.globalAlpha=0.82;g.drawImage(ink,0,0);
+  if(m==='clear'){
+    /* [sito] trasparente: i colori si vedono sbiaditi, come inchiostro su vinile
+       trasparente senza fondo bianco. Opacità ridotta e un velo chiaro sopra. */
+    g.globalAlpha=0.62;g.drawImage(ink,0,0);
+    g.globalAlpha=1;g.globalCompositeOperation='source-atop';
+    g.fillStyle='rgba(255,255,255,0.22)';g.fillRect(0,0,c.width,c.height);
+    g.globalCompositeOperation='source-over';
     return (withMat&&res)?resinDome(c,ppm):c;}
   let tex=materialTexture(ink.width,ink.height,m);
   /* La lamina opaca spegne il supporto: oro e argento diventano metalli
@@ -4296,7 +4302,9 @@ document.querySelectorAll('#cLam .chip').forEach(el=>{
       const a=S._an; if(!a||!a.cv||!a.tile)return;
       const st=document.getElementById('ppStage'); if(!st)return;
       const W=st.clientWidth, H=st.clientHeight; if(!W||!H)return;
-      const k=Math.min(0.94*W/a.tile.width, 0.92*H/a.tile.height);
+      /* margine per ombra e bagliore, che sporgono dalla sagoma: mai tagliati */
+      const m=7*(a.ppm||4);
+      const k=Math.min(0.96*W/(a.tile.width+2*m), 0.96*H/(a.tile.height+2*m));
       const w=Math.round(a.cv.width*k), h=Math.round(a.cv.height*k);
       if(a.cv.style.width!==w+'px'||a.cv.style.height!==h+'px'){a.cv.style.width=w+'px';a.cv.style.height=h+'px';}
     }catch(e){}
