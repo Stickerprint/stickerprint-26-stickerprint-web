@@ -127,6 +127,7 @@ alter table public.addresses           enable row level security;
 alter table public.credit_transactions enable row level security;
 
 -- profiles: ognuno vede/aggiorna il proprio; lo staff vede tutti
+drop policy if exists "profiles: own read" on public.profiles;
 create policy "profiles: own read"   on public.profiles for select using (auth.uid() = id or public.is_staff());
 drop policy if exists "profiles: own update" on public.profiles;
 create policy "profiles: own update" on public.profiles for update using (auth.uid() = id)
@@ -141,6 +142,7 @@ drop policy if exists "addresses: staff read" on public.addresses;
 create policy "addresses: staff read" on public.addresses for select using (public.is_staff());
 
 -- credito: l'utente legge i propri movimenti; solo staff/funzioni server scrivono
+drop policy if exists "credit: own read" on public.credit_transactions;
 create policy "credit: own read"   on public.credit_transactions for select using (auth.uid() = user_id or public.is_staff());
 drop policy if exists "credit: staff write" on public.credit_transactions;
 create policy "credit: staff write" on public.credit_transactions for insert with check (public.is_staff());
