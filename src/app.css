@@ -123,6 +123,7 @@ body { overflow-x: clip; }
 }
 .btn:hover { transform: translateY(-2px); filter: brightness(1.05); }
 .btn:active { transform: translateY(0); }
+.btn:disabled { opacity: .4; cursor: not-allowed; transform: none; filter: none; }
 .btn--blue { background: var(--blue); color: #fff; }
 .btn--yellow { background: var(--yellow); color: var(--ink); }
 .btn--green { background: var(--green); color: var(--ink); }
@@ -278,6 +279,33 @@ body { overflow-x: clip; }
 .sticker-stage--sheet .sheet { background: #fff; padding: 18px; border-radius: 6px; box-shadow: 0 8px 24px rgba(11,11,59,.12); display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
 .sticker-stage--sheet .sheet img { max-height: 120px; max-width: 100%; border-radius: 10px; border: 2px solid #eee; background: #fff; filter: none; }
 .preview-result__hint { font-size: 12.5px; color: var(--muted); }
+
+/* Motore preprint incorporato + menù sagoma/materiale */
+.engine-box { position: relative; border-radius: 22px; overflow: hidden; background: #fff; border: 2px solid var(--line); grid-column: 1 / -1; margin-top: 20px; }
+.engine-file { background: #fff; border: 2px solid var(--line); border-radius: 22px; padding: 22px; display: grid; gap: 10px; }
+.engine-file__ok { display: flex; align-items: center; gap: 8px; font-size: 15px; }
+.engine { display: block; width: 100%; height: 660px; border: 0; }
+.engine-busy { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); background: var(--navy); color: #fff; font-weight: 700; font-size: 13px; padding: 8px 14px; border-radius: 999px; display: flex; gap: 8px; align-items: center; z-index: 2; }
+.spinner { width: 14px; height: 14px; border: 2px solid rgba(255,255,255,.35); border-top-color: #fff; border-radius: 50%; animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.link-btn { background: none; border: 0; color: var(--blue); font-weight: 700; cursor: pointer; font: inherit; text-decoration: underline; }
+.cfg-menus { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 18px; }
+.cfg-menu { background: #fff; border: 2px solid var(--line); border-radius: 18px; padding: 14px; display: grid; gap: 6px; align-content: start; }
+.cfg-menu h4 { margin: 0 0 6px; font-family: var(--font-display); font-weight: 800; font-size: 15px; letter-spacing: -0.02em; text-transform: uppercase; }
+.cfg-opt { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; background: none; border: 2px solid transparent; border-radius: 12px; padding: 8px 10px; font: inherit; font-weight: 600; font-size: 14px; color: var(--ink); cursor: pointer; }
+.cfg-opt:hover { background: var(--sky); }
+.cfg-opt.is-active { border-color: var(--blue); background: var(--sky); }
+.cfg-swatch { width: 22px; height: 22px; border-radius: 50%; border: 1px solid rgba(0,0,0,.15); flex: 0 0 auto; }
+.cfg-shape { width: 22px; height: 16px; border: 2px solid var(--ink); flex: 0 0 auto; }
+.cfg-shape--sagomato { border-radius: 40% 60% 55% 45% / 50% 40% 60% 50%; }
+.cfg-shape--tondo { width: 18px; height: 18px; border-radius: 50%; }
+.cfg-shape--quadrato { width: 18px; height: 18px; border-radius: 3px; }
+.cfg-shape--rettangolare { border-radius: 3px; }
+.cfg-shape--ovale { border-radius: 50%; }
+.btn--xl { width: 100%; margin-top: 16px; padding: 20px; font-size: 20px; }
+.btn--full { grid-column: 1 / -1; margin-top: 16px; }
+.cfg-col { display: grid; align-content: start; }
+@media (max-width: 520px) { .cfg-menus { grid-template-columns: 1fr; } .engine { height: 560px; } }
 
 /* Stats & recensioni */
 .social-proof { padding: clamp(40px, 5vw, 64px) clamp(20px, 4vw, 56px); }

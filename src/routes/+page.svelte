@@ -82,7 +82,7 @@
 </section>
 
 <!-- ANTEPRIMA AUTOMATICA -->
-<section class="section container">
+<section class="section container" id="anteprima">
 	<div class="preview">
 		<div class="preview__panel">
 			<span class="tag tag--blue">Anteprima automatica</span>
@@ -98,7 +98,7 @@
 			</ol>
 			<p class="note preview__beta">Il sistema è attualmente in fase beta solo per Adesivi personalizzati e Adesivi resinati.</p>
 		</div>
-		<div><UploadPreview /></div>
+		<div style="display:contents"><UploadPreview /></div>
 	</div>
 </section>
 
