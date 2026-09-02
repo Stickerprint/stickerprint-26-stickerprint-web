@@ -27,7 +27,7 @@
 	<div>
 		<h1>Adesivi personalizzati</h1>
 		<p class="ph__sub">Fatti bene. Punto.</p>
-		<div class="ph__stars"><span class="stars">{'★'.repeat(Math.round(data.stats.average))}</span> {data.stats.total} recensioni</div>
+		<div class="ph__stars"><span class="stars">★★★★★</span> {data.stats.average.toLocaleString('it-IT', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} su 5</div>
 		<p class="ph__desc">Materiali premium. Stampa di alta qualità. Taglio preciso.<br />Carichi il file, al resto pensiamo noi.</p>
 		<p class="ph__label">Su ogni ordine:</p>
 		<ul class="ph__list">
@@ -90,7 +90,7 @@
 <section class="section container">
 	<div class="panel panel--navy social-proof center">
 		<h2>Cosa dicono di questi <span class="hl hl--yellow">adesivi.</span></h2>
-		<p class="lead" style="margin-top:18px">{data.stats.total} recensioni verificate sugli Adesivi personalizzati, valutazione media {data.stats.average.toLocaleString('it-IT')} su 5.</p>
+		<p class="lead" style="margin-top:18px">Recensioni verificate sugli Adesivi personalizzati · valutazione media {data.stats.average.toLocaleString('it-IT', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} su 5.</p>
 		<ReviewsCarousel reviews={data.reviews} />
 	</div>
 </section>

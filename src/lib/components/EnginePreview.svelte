@@ -16,6 +16,7 @@
 		h = 0,
 		panel = false,
 		stage = 380,
+		showCut = true,
 		onrender
 	}: {
 		file: File | null;
@@ -27,7 +28,8 @@
 		h?: number;
 		panel?: boolean;
 		stage?: number;
-		onrender?: (s: { png: string | null; w: number; h: number }) => void;
+		showCut?: boolean;
+		onrender?: (s: { png: string | null; w: number; h: number; srcMM: { w: number; h: number } | null }) => void;
 	} = $props();
 
 	let frame = $state<HTMLIFrameElement | undefined>();
@@ -89,6 +91,12 @@
 		});
 	});
 
+	// occhio: mostra/nasconde la linea di taglio senza ricaricare
+	$effect(() => {
+		const on = showCut;
+		untrack(() => frame?.contentWindow?.postMessage({ source: 'sito', type: 'cut', on }, location.origin));
+	});
+
 	function onMessage(e: MessageEvent) {
 		if (e.origin !== location.origin) return;
 		const d = e.data ?? {};
@@ -99,7 +107,8 @@
 			busy = false;
 			ready = true;
 			clearTimeout(retry);
-			onrender?.({ png: d.detail.png, w: d.detail.w ?? 0, h: d.detail.h ?? 0 });
+			onrender?.({ png: d.detail.png, w: d.detail.w ?? 0, h: d.detail.h ?? 0, srcMM: d.detail.srcMM ?? null });
+			frame?.contentWindow?.postMessage({ source: 'sito', type: 'cut', on: showCut }, location.origin);
 		}
 	}
 </script>
