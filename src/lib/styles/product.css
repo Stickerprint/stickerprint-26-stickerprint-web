@@ -31,6 +31,10 @@
 /* Preventivatore */
 .cfg { display: grid; grid-template-columns: 1fr 1fr; gap: 0; border: 2px solid var(--line); border-radius: 26px; overflow: hidden; background: #fff; margin-top: 20px; }
 .cfg__preview { padding: clamp(20px, 3vw, 36px); background: #f6f9ff; border-right: 2px solid var(--line); display: grid; gap: 16px; align-content: start; }
+.engine-panel { position: relative; width: 100%; transition: height .25s ease; }
+.engine--panel { width: 100%; height: 100%; border: 0; display: block; opacity: 0; transition: opacity .35s ease; }
+.engine--panel.is-ready { opacity: 1; }
+.cfg__stage--empty { border: 0; background: transparent; }
 .cfg__steps { padding: clamp(20px, 3vw, 36px); display: grid; gap: 14px; align-content: start; }
 .cfg__head { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; }
 .eyebrow { font-family: var(--font-display); font-weight: 800; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--blue); }
@@ -61,6 +65,19 @@
 .step__hint--box { background: var(--sky); border-radius: 10px; padding: 12px 14px; color: var(--ink-soft); }
 .step__lock { font-size: 12.5px; color: var(--muted); font-weight: 600; }
 .step__continue { background: var(--sky); border: 0; border-radius: 10px; padding: 14px; font-family: var(--font-display); font-weight: 800; color: var(--blue); cursor: pointer; font-size: 15px; }
+
+/* card con immagine (sagome, materiali, finiture) */
+.pic-grid { display: grid; gap: 10px; }
+.pic-grid--3 { grid-template-columns: repeat(3, 1fr); }
+.pic { position: relative; display: grid; justify-items: center; gap: 6px; background: #fff; border: 2px solid var(--line); border-radius: 16px; padding: 12px 8px 10px; cursor: pointer; font: inherit; color: var(--ink); transition: border-color .15s ease, box-shadow .15s ease, background .15s ease; }
+.pic img { width: 100%; max-width: 120px; aspect-ratio: 1; object-fit: contain; }
+.pic b { font-size: 14px; }
+.pic small { font-size: 11.5px; color: var(--muted); }
+.pic:hover { border-color: var(--blue); }
+.pic.is-active { border-color: var(--navy-2); background: linear-gradient(160deg, #2d7dd2, #0c1f6b); color: #fff; box-shadow: 0 8px 20px rgba(12,31,107,.25); }
+.pic.is-active small { color: #d9dcf2; }
+.pic__tag { position: absolute; top: 8px; right: 8px; font-size: 9.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--blue); background: #fff; border-radius: 999px; padding: 2px 7px; }
+@media (max-width: 520px) { .pic-grid--3 { grid-template-columns: repeat(2, 1fr); } }
 
 .opt-grid { display: grid; gap: 10px; }
 .opt-grid--3 { grid-template-columns: repeat(3, 1fr); }
@@ -103,10 +120,9 @@
 .sum-ship span:last-child, .sum-credit span:last-child { display: grid; }
 .sum-ship small, .sum-credit small { color: var(--muted); font-size: 12px; }
 .sum-ico { width: 38px; height: 38px; border-radius: 10px; background: var(--sky); display: grid; place-items: center; font-size: 18px; }
-.sum-coin { width: 38px; height: 38px; border-radius: 50%; background: linear-gradient(135deg,#f6df8c,#b9862a); color: #fff; display: grid; place-items: center; font-weight: 800; font-size: 12px; }
-.sum-price small { font-size: 12px; color: var(--muted); }
-.sum-price strong { font-family: var(--font-display); font-weight: 800; font-size: 30px; letter-spacing: -0.03em; }
-.sum-per { margin-left: 8px; background: var(--sky); color: var(--blue); font-weight: 700; font-size: 12px; padding: 3px 8px; border-radius: 6px; }
+.sum-coin { width: 44px; height: auto; flex: 0 0 auto; filter: drop-shadow(0 3px 5px rgba(0,0,0,.2)); }
+.total-box { display: inline-flex; align-items: center; gap: 12px; background: linear-gradient(90deg, #f7941d, #f9c94a 70%, #fbe36b); border-radius: 14px; padding: 12px 18px; font-family: var(--font-display); font-weight: 800; font-size: 24px; letter-spacing: -0.02em; color: var(--ink); box-shadow: 0 6px 16px rgba(247,148,29,.25); }
+.total-box__per { background: var(--blue); color: #fff; font-family: var(--font-body); font-weight: 700; font-size: 14px; padding: 5px 12px; border-radius: 999px; }
 .vat-toggle { display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: var(--muted); margin-top: 4px; }
 .vat-toggle .active { color: var(--ink); font-weight: 700; }
 .switch { width: 36px; height: 20px; border-radius: 999px; border: 0; background: #c9cfdb; position: relative; cursor: pointer; padding: 0; }

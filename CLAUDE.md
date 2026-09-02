@@ -21,7 +21,9 @@ progressivamente stickerprint.it (SvelteKit su Cloudflare Pages). Lingua del pro
 - `src/routes/+page.svelte` homepage (design da HOME_V4.pdf), dati in `+page.server.ts`
 - `src/routes/login|signup|reset-password|logout|auth/callback` flusso auth
 - `src/routes/account/` dashboard cliente (in sviluppo)
-- `src/routes/admin/` dashboard interna produzione (da fare)
+- `src/routes/dashboard/` area amministratore (login dedicato in `/dashboard/login`, accesso solo a profili con role admin/staff)
+- `src/lib/components/Configurator.svelte` preventivatore adesivi (5 passi), listino in `src/lib/pricing/adesivi.ts`
+- `src/lib/components/EnginePreview.svelte` motore preprint in iframe; con `panel` mostra i comandi del motore sotto l'anteprima
 - `src/lib/components/` Header (logo centrato e ruotato), Footer, UploadPreview
 - `static/preprint/index.html` motore preprint (anteprima automatica): file unico, documentato in `docs/motore-preprint/`.
   Regola: il motore resta uno solo; nel sito è incluso in iframe con `?embed=1` e parla via postMessage (vedi il blocco "ponte per il sito" in fondo al file).

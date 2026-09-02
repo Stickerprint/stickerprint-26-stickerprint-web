@@ -48,6 +48,7 @@ const supabase: Handle = async ({ event, resolve }) => {
  */
 const PROTECTED_PREFIXES = ['/account', '/admin'];
 const GUEST_ONLY = ['/login', '/signup'];
+const DASHBOARD_LOGIN = '/dashboard/login';
 
 const authGuard: Handle = async ({ event, resolve }) => {
 	const { session, user } = await event.locals.safeGetSession();
@@ -58,6 +59,10 @@ const authGuard: Handle = async ({ event, resolve }) => {
 
 	if (!session && PROTECTED_PREFIXES.some((p) => path.startsWith(p))) {
 		redirect(303, `/login?next=${encodeURIComponent(path)}`);
+	}
+	// area amministratore: login dedicato
+	if (!session && path.startsWith('/dashboard') && path !== DASHBOARD_LOGIN) {
+		redirect(303, DASHBOARD_LOGIN);
 	}
 	if (session && GUEST_ONLY.includes(path)) {
 		redirect(303, '/account');

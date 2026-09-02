@@ -5,26 +5,32 @@
  * Il prezzo netto è prezzo/1.22; il credito Stickerprint è il 5% del netto.
  */
 
-export interface ShapeOption { id: string; label: string; mini: string }
-export interface MaterialOption { id: string; label: string; description: string; multiplier: number; tag?: string; swatch: string }
+export interface ShapeOption { id: string; label: string; mini: string; img: string; equal?: boolean }
+export interface MaterialOption { id: string; label: string; description: string; multiplier: number; tag?: string; swatch: string; img: string }
+export interface FinishOption { id: string; label: string; description: string; multiplier: number; img: string }
 export interface QtyTier { qty: number; base: number; tag?: string }
 
 export const SHAPES: ShapeOption[] = [
-	{ id: 'sagomato', label: 'Sagomato', mini: 'Forma libera' },
-	{ id: 'tondo', label: 'Rotondo', mini: 'Cerchio' },
-	{ id: 'quadrato', label: 'Quadrato', mini: 'Angoli morbidi' },
-	{ id: 'ovale', label: 'Ovale', mini: 'Ellisse' },
-	{ id: 'rettangolare', label: 'Rettangolo', mini: 'Orizzontale' }
+	{ id: 'sagomato', label: 'Sagomato', mini: 'Forma libera', img: '/images/estimator/custom_stickers.webp' },
+	{ id: 'tondo', label: 'Rotondo', mini: 'Cerchio', img: '/images/estimator/round_stickers.webp', equal: true },
+	{ id: 'quadrato', label: 'Quadrato', mini: 'Angoli morbidi', img: '/images/estimator/square_stickers.webp', equal: true },
+	{ id: 'ovale', label: 'Ovale', mini: 'Ellisse', img: '/images/estimator/oval_stickers.webp' },
+	{ id: 'rettangolare', label: 'Rettangolo', mini: 'Orizzontale', img: '/images/estimator/rect_stickers.webp' }
 ];
 
 export const MATERIALS: MaterialOption[] = [
-	{ id: 'bianco', label: 'Vinile bianco', description: 'Colori pieni e brillanti', multiplier: 1, tag: 'Più scelto', swatch: '#fff' },
-	{ id: 'super', label: 'Super adesivo', description: 'Per superfici difficili', multiplier: 1.22, swatch: 'linear-gradient(135deg,#eef2ff,#c7d2fe)' },
-	{ id: 'trasparente', label: 'Trasparente', description: 'Effetto senza fondo', multiplier: 1.15, swatch: 'repeating-conic-gradient(#cfd6dd 0 25%,#fff 0 50%) 0 0/8px 8px' },
-	{ id: 'olografico', label: 'Olografico', description: 'Riflessi arcobaleno', multiplier: 1.38, swatch: 'conic-gradient(from 210deg,#ff8ad6,#ffe37a,#8ef7c8,#8ad4ff,#c9a6ff,#ff8ad6)' },
-	{ id: 'glitterato', label: 'Glitterato', description: 'Brillantini in superficie', multiplier: 1.35, swatch: 'radial-gradient(circle at 30% 30%,#fff,#cfd6de)' },
-	{ id: 'oro', label: 'Oro', description: 'Finitura metallizzata', multiplier: 1.42, swatch: 'linear-gradient(135deg,#f6df8c,#b9862a,#fff0b8,#8a5f16)' },
-	{ id: 'argento', label: 'Argento', description: 'Finitura metallizzata', multiplier: 1.4, swatch: 'linear-gradient(135deg,#eef2f6,#9aa3ad,#fff,#8d949d)' }
+	{ id: 'bianco', label: 'Vinile bianco', description: 'Colori pieni e brillanti', multiplier: 1, tag: 'Più scelto', swatch: '#fff', img: '/images/estimator/white.webp' },
+	{ id: 'trasparente', label: 'Trasparente', description: 'Effetto senza fondo', multiplier: 1.15, swatch: 'repeating-conic-gradient(#cfd6dd 0 25%,#fff 0 50%) 0 0/8px 8px', img: '/images/estimator/transparent.webp' },
+	{ id: 'olografico', label: 'Olografico', description: 'Riflessi arcobaleno', multiplier: 1.38, swatch: 'conic-gradient(from 210deg,#ff8ad6,#ffe37a,#8ef7c8,#8ad4ff,#c9a6ff,#ff8ad6)', img: '/images/estimator/olo.webp' },
+	{ id: 'glitterato', label: 'Glitterato', description: 'Brillantini in superficie', multiplier: 1.35, swatch: 'radial-gradient(circle at 30% 30%,#fff,#cfd6de)', img: '/images/estimator/glitter.webp' },
+	{ id: 'oro', label: 'Oro', description: 'Finitura metallizzata', multiplier: 1.42, swatch: 'linear-gradient(135deg,#f6df8c,#b9862a,#fff0b8,#8a5f16)', img: '/images/estimator/gold.webp' },
+	{ id: 'argento', label: 'Argento', description: 'Finitura metallizzata', multiplier: 1.4, swatch: 'linear-gradient(135deg,#eef2f6,#9aa3ad,#fff,#8d949d)', img: '/images/estimator/silver.webp' }
+];
+
+export const FINISHES: FinishOption[] = [
+	{ id: 'nessuna', label: 'Nessuna', description: 'Stampa a vista', multiplier: 1, img: '/images/estimator/lamina_nessuna.webp' },
+	{ id: 'lucida', label: 'Lucida', description: 'Brillante, riflette la luce', multiplier: 1, img: '/images/estimator/lamina_lucida.webp' },
+	{ id: 'opaca', label: 'Opaca', description: 'Elegante, senza riflessi', multiplier: 1, img: '/images/estimator/lamina_opaca.webp' }
 ];
 
 export const QTY_TIERS: QtyTier[] = [
@@ -45,9 +51,15 @@ export const CREDIT_RATE = 0.05;
 export const MIN_MM = 10;
 export const MAX_MM = 500;
 
-export function sizeFactor(w: number, h: number, materiale: string, forma: string): number {
+export function sizeFactor(w: number, h: number, materiale: string, forma: string, finitura = 'lucida'): number {
 	const m = MATERIALS.find((x) => x.id === materiale)?.multiplier ?? 1;
-	return Math.max(0.68, Math.pow((w * h) / 2500, 0.46)) * m * (forma === 'sagomato' ? 1.08 : 1);
+	const f = FINISHES.find((x) => x.id === finitura)?.multiplier ?? 1;
+	return Math.max(0.68, Math.pow((w * h) / 2500, 0.46)) * m * f * (forma === 'sagomato' ? 1.08 : 1);
+}
+
+/** Arrotonda al mezzo millimetro (50, 50,5, 51…) */
+export function roundHalf(v: number): number {
+	return Math.round(v * 2) / 2;
 }
 
 /** Prezzo IVA inclusa (intero, in euro) per una fascia di quantità */
@@ -63,8 +75,8 @@ export interface Quote {
 	discountPct: number; // rispetto al prezzo/pezzo della fascia minima
 }
 
-export function quote(opts: { w: number; h: number; materiale: string; forma: string; qty: number; vatIncluded: boolean }): Quote {
-	const factor = sizeFactor(opts.w, opts.h, opts.materiale, opts.forma);
+export function quote(opts: { w: number; h: number; materiale: string; forma: string; finitura?: string; qty: number; vatIncluded: boolean }): Quote {
+	const factor = sizeFactor(opts.w, opts.h, opts.materiale, opts.forma, opts.finitura);
 	const tier = QTY_TIERS.find((t) => t.qty === opts.qty) ?? QTY_TIERS[0];
 	const gross = tierPrice(tier, factor);
 	const net = gross / VAT;

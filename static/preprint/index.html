@@ -2963,7 +2963,16 @@ function resinDome(core,ppm){
   go.putImageData(oid,0,0);
   return out;}
 
+/* [sito] lamina opaca: colori un filo più scuri e spenti, su ogni materiale */
 function renderCore(ppm,withMat){
+  const c=renderCoreRaw(ppm,withMat);
+  if(withMat&&S.lamina==='opaca'&&S.prod!=='resin'){
+    const o=document.createElement('canvas');o.width=c.width;o.height=c.height;
+    const g=o.getContext('2d');g.drawImage(c,0,0);
+    g.globalCompositeOperation='source-atop';g.fillStyle='rgba(18,18,28,0.08)';g.fillRect(0,0,o.width,o.height);
+    return o;}
+  return c;}
+function renderCoreRaw(ppm,withMat){
   const ink=inkLayer(ppm);
   const m=withMat?matKind():'white';
   /* con l'effetto resina spento il pezzo si mostra piatto, come un adesivo
@@ -3847,7 +3856,7 @@ function uBloccaCombinazione(){
   }
   if(c.qta)S.qta=+c.qta||null;
   if(c.lamina){
-    S.lamina=String(c.lamina).toLowerCase().indexOf('op')>=0?'opaca':'lucida';
+    { const L=String(c.lamina).toLowerCase(); S.lamina=L.indexOf('op')>=0?'opaca':(L.indexOf('ness')>=0?'nessuna':'lucida'); } /* [sito] */
     document.querySelectorAll('#cLam .chip').forEach(e=>
       e.classList.toggle('on',e.dataset.l===S.lamina));
     const L=document.getElementById('ppLamSec'); if(L)L.classList.add('hidden');
@@ -4180,7 +4189,8 @@ function bagliore(tile,fase){
   const gr=g.createLinearGradient(mx,my,mx+cx*D,my+cy*D);
   const sig=0.20;
   const olo=(matKind()==='holo');
-  const P=lucida?(olo?0.62:0.55):0.10;          // altezza del picco
+  let P=lucida?(olo?0.62:0.55):0.10;          // altezza del picco
+  if(S.lamina==='nessuna')P*=0.55;              /* [sito] senza lamina: riflesso più discreto */
   const cl=v=>Math.max(0,Math.min(1,v));
   const add=(t,a,c)=>gr.addColorStop(cl(t),'rgba('+(c||'255,255,255')+','+a.toFixed(3)+')');
   const p=fase;
@@ -4284,7 +4294,22 @@ document.querySelectorAll('#cLam .chip').forEach(el=>{
    ========================================================================== */
 (function ponteSito(){
   const q=new URLSearchParams(location.search); if(q.get('embed')!=='1')return;
+  const panel=q.get('panel')==='1';
   const st=document.createElement('style');
+  if(panel){
+    /* pannello comandi sotto l'anteprima: bordo, angoli, zoom/centratura, sfondo, rimuovi sfondo */
+    st.textContent='@import url("https://fonts.googleapis.com/css2?family=Montserrat:wght@500;700&display=swap");'+
+      '.pp-top,#ppOk,#ppNo,#ppDropHost,#ppMatSec,#ppLamSec,.pp-badge,.pp-info,#ppFoot,#ppNota,.pp-sec:has(.pp-badge){display:none!important}'+
+      'html,body{background:transparent!important;overflow:hidden!important}'+
+      '.pp-app{display:flex!important;flex-direction:column!important;height:auto!important;overflow:visible!important}'+
+      '.pp-left{flex:0 0 auto!important;height:'+(q.get('stage')||'380')+'px;padding:0!important;background:transparent!important}'+
+      '#ppStage{display:block!important}'+
+      '#ppStage>.stage{display:flex!important;align-items:center;justify-content:center;background:transparent!important;border:0!important;padding:0!important;overflow:visible!important}'+
+      '#ppStage canvas{max-height:none!important;max-width:none!important}'+
+      '.pp-right{border:0!important;padding:8px 2px 0!important;overflow:visible!important;font-family:Montserrat,system-ui,sans-serif!important;background:transparent!important}'+
+      '.pp-h{font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:#6b6e8c}'+
+      '.pp-sec{padding:12px 0;border-bottom:1px solid #e6e7f0}.pp-sec:last-of-type{border-bottom:0}';
+  } else
   st.textContent='.pp-top,#ppOk,#ppNo,#ppDropHost,#ppMatSec,#ppLamSec,.pp-badge,.pp-info,.pp-right,#ppFoot,#ppNota{display:none!important}'+
     'html,body{background:transparent!important;overflow:hidden!important}'+
     '.pp-app{grid-template-columns:1fr!important;height:100vh!important}'+
@@ -4310,6 +4335,9 @@ document.querySelectorAll('#cLam .chip').forEach(el=>{
     }catch(e){}
   };
   setInterval(fitEmbed,300); addEventListener('resize',fitEmbed);
+  /* altezza reale del contenuto, così il sito dimensiona l'iframe */
+  let lastH=0; const sendSize=()=>{const app=document.querySelector('.pp-app'); const h=Math.ceil(app?app.getBoundingClientRect().height+8:document.documentElement.scrollHeight); if(h!==lastH){lastH=h;send('size',{h});}};
+  setInterval(sendSize,400); addEventListener('load',sendSize);
   const snapshot=()=>{
     fitEmbed();
     try{
