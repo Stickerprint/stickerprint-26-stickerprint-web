@@ -439,12 +439,12 @@ body { overflow-x: clip; }
 .footer__head img { width: 26px; height: 26px; object-fit: contain; }
 .footer__logos { display: flex; align-items: center; justify-content: center; gap: 16px; flex-wrap: wrap; }
 .footer__logos img { height: 22px; width: auto; object-fit: contain; }
-.footer__logos--ship img { height: 30px; }
-.newsletter { width: 100%; max-width: 340px; border: 1px solid rgba(255,255,255,.35); border-radius: 8px; padding: 14px 18px; display: grid; gap: 8px; text-align: center; }
-.newsletter h4 { font-family: var(--font-display); font-weight: 800; font-size: 15.5px; letter-spacing: -0.02em; }
-.newsletter form { display: grid; gap: 8px; }
-.newsletter input { padding: 8px 12px; border: 0; border-radius: 6px; font: inherit; font-size: 14px; text-align: center; background: #fff; color: var(--ink); }
-.newsletter button { padding: 8px 12px; border: 0; border-radius: 6px; font-family: var(--font-display); font-weight: 800; font-size: 14px; color: var(--ink); background: linear-gradient(90deg, #ff9700, #ffe200); cursor: pointer; }
+.footer__logos--ship img { height: 28px; }
+.newsletter { width: 100%; max-width: 340px; border: 1px solid rgba(255,255,255,.35); border-radius: 8px; padding: 14px 16px; display: grid; gap: 10px; text-align: center; }
+.newsletter h4 { font-family: var(--font-display); font-weight: 800; font-size: 15px; letter-spacing: -0.02em; }
+.newsletter form { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+.newsletter input { padding: 9px 12px; border: 0; border-radius: 6px; font: inherit; font-size: 13.5px; background: #fff; color: var(--ink); min-width: 0; }
+.newsletter button { padding: 9px 16px; border: 0; border-radius: 6px; font-family: var(--font-display); font-weight: 800; font-size: 14px; color: var(--ink); background: linear-gradient(90deg, #ff9700, #ffe200); cursor: pointer; }
 .newsletter .msg { font-size: 12.5px; color: #ffb3ad; } .newsletter .msg.ok { color: #9be7b5; }
 .footer__bottom { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 28px; align-items: center; margin-top: 34px; }
 .footer__nav { display: flex; gap: 22px; flex-wrap: wrap; justify-content: flex-start; }

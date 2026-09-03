@@ -32,7 +32,7 @@
 	<meta name="description" content="Scopri materiali e finiture dei nostri adesivi personalizzati, resinati e in rilievo: pacchetto campioni a 10 € con spedizione gratuita." />
 </svelte:head>
 
-<section class="container hero2">
+<section class="container hero2 hero2--about">
 	<div>
 		<span class="tag tag--yellow">Offerta speciale</span>
 		<h1 style="margin-top:14px"><span class="hl hl--yellow">Ordina un pacchetto di campioni</span></h1>
