@@ -1,9 +1,13 @@
 <script lang="ts">
 	import '$lib/styles/pages.css';
 	import { enhance } from '$app/forms';
+	import Carousel from '$lib/components/Carousel.svelte';
 	let { form } = $props();
+	// Reel: inserire qui i link YouTube (anche Shorts). Finché è vuoto compaiono i segnaposto.
+	const REELS: string[] = [];
+	const ytId = (u: string) => u.match(/(?:v=|youtu\.be\/|shorts\/|embed\/)([\w-]{6,})/)?.[1] ?? u;
 	let sending = $state(false);
-	const gallery = ['1.jpg', '2.webp', '3.jpg', '4.jpg', '5.jpg', '6.jpg', '7.jpg', '8.jpg', '9.jpg'];
+	const gallery = ['1.jpg', '2.webp', '3.jpg', '4.jpg', '5.jpg', '6.jpg', '7.jpg', '8.jpg', '9.jpg'].map((g) => `/images/aziende/gallery/${g}`);
 </script>
 
 <svelte:head>
@@ -20,7 +24,7 @@
 			<a class="btn btn--ghost btn--lg" href="#processo">Vedi come lavoriamo</a>
 		</div>
 	</div>
-	<img src="/images/aziende/hero.webp" alt="Produzione Stickerprint per aziende" />
+	<img class="photo" src="/images/aziende/hero.webp" alt="Produzione Stickerprint per aziende" />
 </section>
 
 <section class="section container">
@@ -44,7 +48,7 @@
 			</ul>
 			<p class="note" style="margin-top:16px">Per ordini spot, piccole quantità e file regolari puoi usare i preventivatori del sito.</p>
 		</div>
-		<img src="/images/aziende/gallery/1.jpg" alt="Adesivi prodotti per aziende" loading="lazy" />
+		<Carousel images={gallery} alt="Produzioni Stickerprint per aziende" />
 	</div>
 </section>
 
@@ -69,11 +73,15 @@
 <section class="section container center">
 	<h2>Produzioni vere. <span class="hl hl--blue">Non mockup.</span></h2>
 	<p class="lead" style="margin-top:12px;max-width:720px;margin-inline:auto">Brand, agenzie e team che ci hanno scelto per progetti strutturati e produzioni che non ammettono improvvisazioni.</p>
-	<div class="gallery9" style="margin-top:28px">
-		{#each gallery as g (g)}<img src="/images/aziende/gallery/{g}" alt="" loading="lazy" />{/each}
-	</div>
 	<div class="logos">
 		{#each [1, 2, 3, 4, 5, 6, 7] as n (n)}<img src="/images/aziende/logo/{n}.png" alt="" loading="lazy" />{/each}
+	</div>
+	<div class="reels">
+		{#if REELS.length}
+			{#each REELS as r (r)}<iframe class="reel" src="https://www.youtube.com/embed/{ytId(r)}" title="Reel Stickerprint" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe>{/each}
+		{:else}
+			{#each [1, 2, 3] as n (n)}<div class="reel reel--soon"><span>▶</span><small>Reel in arrivo</small></div>{/each}
+		{/if}
 	</div>
 </section>
 

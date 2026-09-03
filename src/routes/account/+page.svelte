@@ -15,7 +15,6 @@
 		<h1>Ciao, {first}!</h1>
 		<p class="lead">Qui trovi tutto quello che riguarda il tuo account Stickerprint.</p>
 	</div>
-	<a class="btn btn--green" href="/prodotti">+ Nuovo ordine</a>
 </div>
 
 <div class="credit-hero">

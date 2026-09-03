@@ -23,7 +23,7 @@
 <!-- HERO -->
 <section class="container ph">
 	<div>
-		<h1>{p.title}</h1>
+		<h1><span class="hl hl--yellow">{p.title}</span></h1>
 		<p class="ph__sub">{p.sub}</p>
 		<div class="ph__stars"><span class="stars">★★★★★</span> {avg} su 5</div>
 		<p class="ph__desc">{p.desc}</p>

@@ -1,8 +1,9 @@
 /* ==========================================================================
    Area personale cliente (stessi colori dell'area amministratore)
    ========================================================================== */
-.acc { display: grid; grid-template-columns: 260px 1fr; gap: 28px; align-items: start; padding-top: 22px; padding-bottom: 60px; }
-.acc__side { background: var(--navy); color: #fff; border-radius: 22px; padding: 22px 14px 16px; position: sticky; top: calc(var(--header-h) + 16px); display: grid; gap: 16px; }
+.acc { display: grid; grid-template-columns: 260px 1fr; align-items: stretch; min-height: calc(100vh - var(--header-h)); background: #f4f5fa; }
+.acc__side { background: var(--navy); color: #fff; padding: 26px 14px 20px; display: grid; gap: 16px; align-content: start; }
+.acc__side > * { position: sticky; top: calc(var(--header-h) + 16px); }
 .acc__who { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: center; padding: 0 8px 16px; border-bottom: 1px solid rgba(255,255,255,.12); }
 .acc__who b { display: block; font-size: 14.5px; }
 .acc__who small { color: #9aa0c6; font-size: 12px; }
@@ -14,7 +15,8 @@
 .acc__nav .cnt { margin-left: auto; background: var(--yellow); color: var(--ink); font-size: 11px; font-weight: 800; min-width: 20px; height: 20px; border-radius: 999px; display: grid; place-items: center; padding: 0 6px; }
 .acc__side form { padding: 8px 12px 0; border-top: 1px solid rgba(255,255,255,.12); }
 .acc__side .link-btn { color: #d9dcf2; font-size: 13px; padding: 6px 0; }
-.acc__main { min-width: 0; display: grid; gap: 20px; align-content: start; }
+.acc__main { min-width: 0; padding: 26px clamp(16px, 3vw, 40px) 60px; }
+.acc__inner { max-width: 1100px; display: grid; gap: 20px; align-content: start; }
 .acc__head { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
 .acc__head h1 { font-size: clamp(28px, 3.4vw, 40px); }
 .acc__head .lead { margin-top: 4px; font-size: 15px; }
@@ -66,31 +68,29 @@
 .stars-in input { display: none; }
 .stars-in label.on { color: #f5b301; }
 .empty { text-align: center; padding: 36px 18px; color: var(--muted); }
-/* popup riordino */
-.modal-bg { position: fixed; inset: 0; background: rgba(10, 12, 40, .55); z-index: 100; display: grid; place-items: center; padding: 20px; }
-.modal { background: #fff; border-radius: 24px; width: min(920px, 100%); max-height: 92vh; overflow: auto; padding: 26px; display: grid; gap: 18px; }
+/* popup riordino: tutto visibile senza scorrere */
+.modal-bg { position: fixed; inset: 0; background: rgba(10, 12, 40, .55); z-index: 100; display: grid; place-items: center; padding: 16px; }
+.modal { background: #fff; border-radius: 24px; width: min(760px, 100%); max-height: 96vh; overflow: auto; padding: 22px 26px; display: grid; gap: 14px; }
 .modal__head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 .modal__close { background: #f1f3f8; border: 0; width: 36px; height: 36px; border-radius: 50%; font-size: 18px; cursor: pointer; }
-.modal__preview { background: #f4f5fa; border-radius: 18px; display: grid; place-items: center; min-height: 320px; overflow: hidden; }
-.modal__preview img { max-width: 100%; max-height: 420px; object-fit: contain; }
-.modal__grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: stretch; }
-.qty-box { border: 2px solid var(--line); border-radius: 16px; padding: 16px; display: grid; gap: 10px; }
-.qty-box input { font: inherit; font-family: var(--font-display); font-weight: 800; font-size: 26px; padding: 8px 12px; border: 2px solid var(--line); border-radius: 12px; width: 100%; }
-.qty-box .chips { display: flex; gap: 6px; flex-wrap: wrap; }
-.qty-box .chips button { font: inherit; font-size: 12px; font-weight: 700; padding: 5px 10px; border-radius: 999px; border: 1px solid var(--line); background: #fff; cursor: pointer; }
-.qty-box .chips button.is-active { background: var(--navy); color: #fff; border-color: var(--navy); }
-.price-box { border-radius: 16px; padding: 16px 18px; background: linear-gradient(90deg, #f7941d, #f9c94a 70%, #fbe36b); display: grid; align-content: center; gap: 4px; }
-.price-box .tot { font-family: var(--font-display); font-weight: 800; font-size: 34px; letter-spacing: -0.03em; }
-.price-box small { font-weight: 700; font-size: 13px; }
-.modal__cta { display: grid; justify-items: center; gap: 10px; }
-.modal__cta .btn { width: 100%; max-width: 480px; font-size: 18px; padding: 16px 24px; }
-.modal__cta .alt { font-weight: 800; text-decoration: none; color: var(--ink); }
+.modal__preview { background: #f4f5fa; border-radius: 18px; display: grid; place-items: center; height: min(38vh, 340px); overflow: hidden; }
+.modal__preview img { width: 100%; height: 100%; object-fit: contain; }
+.modal__row { display: grid; grid-template-columns: 200px 1fr; gap: 16px; align-items: stretch; }
+.qty-box { border: 2px solid var(--line); border-radius: 16px; padding: 12px 14px; display: grid; gap: 6px; align-content: center; }
+.qty-box input { font: inherit; font-family: var(--font-display); font-weight: 800; font-size: 28px; padding: 6px 12px; border: 2px solid var(--line); border-radius: 12px; width: 100%; text-align: center; }
+.qty-box input:focus { outline: 0; border-color: var(--blue); }
+.reorder-cta { display: grid; gap: 6px; align-content: center; justify-items: center; }
+.reorder-cta .btn { width: 100%; font-size: 20px; padding: 18px 24px; display: flex; justify-content: center; align-items: baseline; gap: 14px; }
+.reorder-cta .btn small { font-size: 14px; font-weight: 700; opacity: .85; }
+.reorder-cta .alt { font-weight: 800; text-decoration: none; color: var(--ink); }
+.reorder-credit { display: flex; align-items: center; gap: 12px; padding-top: 14px; border-top: 1px solid var(--line); font-size: 14px; }
+.reorder-credit img { width: 40px; height: auto; filter: drop-shadow(0 3px 5px rgba(0,0,0,.2)); }
 @media (max-width: 900px) {
 	.acc { grid-template-columns: 1fr; }
-	.acc__side { position: static; }
+	.acc__side > * { position: static; }
 	.credit-hero { grid-template-columns: 1fr; }
 	.credit-hero .side { border-left: 0; padding-left: 0; border-top: 1px solid rgba(255,255,255,.18); padding-top: 14px; }
-	.stat3, .two, .modal__grid { grid-template-columns: 1fr; }
+	.stat3, .two, .modal__row { grid-template-columns: 1fr; }
 	.orow { grid-template-columns: 56px 1fr; }
 	.orow__right { grid-column: 1 / -1; justify-items: start; }
 }

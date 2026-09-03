@@ -8,11 +8,7 @@
 		if (!email) return;
 		status = 'sending';
 		try {
-			const res = await fetch('/api/newsletter', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ email })
-			});
+			const res = await fetch('/api/newsletter', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) });
 			const data = await res.json().catch(() => ({}));
 			if (res.ok && data.ok) {
 				status = 'ok';
@@ -34,7 +30,7 @@
 		<div class="footer__grid">
 			<div class="footer__col">
 				<div class="footer__head">
-					<img src="/icons/footer/lock.webp" alt="" width="34" height="34" />
+					<img src="/icons/footer/lock.webp" alt="" width="26" height="26" />
 					<p>Metodi di pagamento sicuri</p>
 				</div>
 				<div class="footer__logos">
@@ -43,17 +39,10 @@
 					<img src="/icons/footer/mastercard.webp" alt="MasterCard" />
 					<img src="/icons/footer/amex.webp" alt="American Express" />
 				</div>
-				<nav class="footer__nav" aria-label="Footer">
-					<a href="/chi-siamo">Chi Siamo</a>
-					<a href="/blog">Blog</a>
-					<a href="/support">Supporto</a>
-					<a href="/resi">Resi</a>
-				</nav>
 			</div>
-
 			<div class="footer__col">
 				<div class="footer__head">
-					<img src="/icons/footer/furgowh.svg" alt="" width="34" height="34" />
+					<img src="/icons/footer/furgowh.svg" alt="" width="26" height="26" />
 					<p>Spedizioni Tracciate</p>
 				</div>
 				<div class="footer__logos footer__logos--ship">
@@ -61,9 +50,7 @@
 					<img src="/icons/footer/ups.webp" alt="UPS" />
 					<img src="/icons/footer/fedex.webp" alt="FedEx" />
 				</div>
-				<p class="footer__copy">© 2023 - {new Date().getFullYear()} Stickerprint Srl</p>
 			</div>
-
 			<div class="footer__col">
 				<div class="newsletter">
 					<h4>Iscriviti alla Nostra Newsletter</h4>
@@ -74,16 +61,26 @@
 					</form>
 					{#if message}<p class="msg" class:ok={status === 'ok'}>{message}</p>{/if}
 				</div>
-				<div class="footer__meta">
-					<div class="footer__lang">
-						<svg viewBox="0 0 3 2" preserveAspectRatio="none" aria-label="Bandiera italiana"><rect width="1" height="2" fill="#009246" /><rect x="1" width="1" height="2" fill="#ffffff" /><rect x="2" width="1" height="2" fill="#ce2b37" /></svg>
-						<span>Italiano (IT) - € EUR</span>
-					</div>
-					<div class="footer__social">
-						<a href="https://www.facebook.com/stickerprint.it" target="_blank" rel="noopener" aria-label="Facebook"><img src="/icons/footer/facebook.webp" alt="" /></a>
-						<a href="https://www.instagram.com/stickerprint.it" target="_blank" rel="noopener" aria-label="Instagram"><img src="/icons/footer/instagram.webp" alt="" /></a>
-						<a href="https://www.tiktok.com/@stickerprint.it" target="_blank" rel="noopener" aria-label="TikTok"><img src="/icons/footer/tiktok.webp" alt="" /></a>
-					</div>
+			</div>
+		</div>
+
+		<div class="footer__bottom">
+			<nav class="footer__nav" aria-label="Footer">
+				<a href="/chi-siamo">Chi Siamo</a>
+				<a href="/blog">Blog</a>
+				<a href="/support">Supporto</a>
+				<a href="/resi">Resi</a>
+			</nav>
+			<p class="footer__copy">© 2023 - {new Date().getFullYear()} Stickerprint Srl</p>
+			<div class="footer__meta">
+				<div class="footer__lang">
+					<svg viewBox="0 0 3 2" preserveAspectRatio="none" aria-label="Bandiera italiana"><rect width="1" height="2" fill="#009246" /><rect x="1" width="1" height="2" fill="#ffffff" /><rect x="2" width="1" height="2" fill="#ce2b37" /></svg>
+					<span>Italiano (IT) - € EUR</span>
+				</div>
+				<div class="footer__social">
+					<a href="https://www.facebook.com/stickerprint.it" target="_blank" rel="noopener" aria-label="Facebook"><img src="/icons/footer/facebook.webp" alt="" /></a>
+					<a href="https://www.instagram.com/stickerprint.it" target="_blank" rel="noopener" aria-label="Instagram"><img src="/icons/footer/instagram.webp" alt="" /></a>
+					<a href="https://www.tiktok.com/@stickerprint.it" target="_blank" rel="noopener" aria-label="TikTok"><img src="/icons/footer/tiktok.webp" alt="" /></a>
 				</div>
 			</div>
 		</div>

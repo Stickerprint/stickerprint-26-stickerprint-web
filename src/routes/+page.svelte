@@ -11,7 +11,13 @@
 		{ href: '/vetrofanie', img: '/images/ig-8.jpg', name: 'Vetrofanie & fogli', desc: 'Per vetrine, insegne e grandi formati.', from: 'Su misura' }
 	];
 
-	const brands = ['SEPHORA', 'NETFLIX', 'LEGO', 'RED BULL', 'SMASHBURGER', 'GRAVELLAND', 'TEMPLE STORE', 'SAUCE'];
+	// loghi dei brand: immagine in /images/brands, oppure solo il nome se il logo non c'è ancora
+	const brands: { name: string; img?: string }[] = [
+		{ name: 'VeraLab', img: 'veralab.png' }, { name: 'Samsung', img: 'samsung.png' }, { name: 'Jordan' }, { name: 'Moscot NY', img: 'moscot.png' },
+		{ name: 'Sephora', img: 'sephora.png' }, { name: 'Golden Goose', img: 'goldengoose.png' }, { name: 'Red Bull', img: 'redbull.png' }, { name: 'Würth', img: 'wurth.png' },
+		{ name: 'Tiffany & Co.', img: 'tiffany.png' }, { name: 'Technogym', img: 'technogym.png' }, { name: 'Ralph Lauren', img: 'ralphlauren.png' }, { name: 'MAC Cosmetics', img: 'maccosmetics.png' },
+		{ name: 'Dolce & Gabbana', img: 'dolcegabbana.png' }, { name: 'Guerlain', img: 'guerlain.png' }, { name: 'Borotalco' }, { name: 'Rapid Bike' }
+	];
 	const IG_URL = 'https://www.instagram.com/stickerprint.it/';
 	const followers = $derived(data.instagram.followers ?? 6455);
 </script>
@@ -57,7 +63,7 @@
 	<h2><span class="hl hl--purple">Abbiamo stampato per</span></h2>
 	<div class="marquee" aria-hidden="true">
 		<div class="marquee__track">
-			{#each [...brands, ...brands] as b}<span>{b}</span>{/each}
+			{#each [...brands, ...brands] as b, k (k)}{#if b.img}<img src="/images/brands/{b.img}" alt={b.name} title={b.name} />{:else}<span>{b.name}</span>{/if}{/each}
 		</div>
 	</div>
 </section>

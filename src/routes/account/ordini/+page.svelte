@@ -14,7 +14,6 @@
 
 <div class="acc__head">
 	<div><p class="eyebrow">Area personale</p><h1>I miei ordini</h1><p class="lead">Controlla lo stato, recupera i file e riordina con un click.</p></div>
-	<a class="btn btn--green" href="/prodotti">+ Nuovo ordine</a>
 </div>
 
 <div class="acard">

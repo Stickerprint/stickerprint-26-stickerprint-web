@@ -16,7 +16,7 @@
 	const active = (it: { href: string; exact?: boolean }) => (it.exact ? path === it.href : path.startsWith(it.href));
 </script>
 
-<div class="container acc">
+<div class="acc">
 	<aside class="acc__side">
 		<div class="acc__who">
 			<span class="avatar" style="width:44px;height:44px;font-size:15px">{initials}</span>
@@ -34,6 +34,6 @@
 		<form method="POST" action="/logout"><button class="link-btn" type="submit">Esci dall’account</button></form>
 	</aside>
 	<main class="acc__main">
-		{@render children()}
+		<div class="acc__inner">{@render children()}</div>
 	</main>
 </div>
