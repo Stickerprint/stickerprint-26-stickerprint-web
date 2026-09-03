@@ -365,9 +365,19 @@ body { overflow-x: clip; }
 .credit__visual { position: relative; padding: clamp(24px, 4vw, 56px); }
 .credit__visual::before { content: ""; position: absolute; inset: 0; background: var(--cyan-soft); border-radius: 22px; clip-path: polygon(0 0, 100% 0, 68% 100%, 0 100%); }
 .credit__visual img { position: relative; width: 82%; max-width: 460px; margin: 0 auto; filter: drop-shadow(0 24px 40px rgba(11,11,59,.25)); }
-.credit__example { display: flex; align-items: center; gap: 22px; background: var(--cyan-soft); padding: 18px 26px; border-radius: 12px; margin-top: 28px; font-size: 20px; }
-.credit__example .dash { width: 44px; height: 2px; background: var(--ink); opacity: .6; }
-.credit__example b { color: var(--blue); font-weight: 800; }
+.credit__levels { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 12px; }
+.credit__lv { display: grid; justify-items: center; gap: 2px; padding: 14px 10px; background: #fff; border: 2px solid var(--line); border-radius: 16px; text-align: center; }
+.credit__lv img { width: 54px; height: 54px; object-fit: contain; margin-bottom: 4px; }
+.credit__lv b { font-family: var(--font-display); font-weight: 800; font-size: 15px; letter-spacing: .02em; text-transform: uppercase; padding-bottom: 6px; border-bottom: 2px solid var(--blue); margin-bottom: 4px; }
+.credit__pct { font-family: var(--font-display); font-weight: 800; font-size: 28px; color: var(--blue); line-height: 1; }
+.credit__lv small { font-family: var(--font-display); font-weight: 800; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+.credit__lv--partner b { border-color: var(--pink); } .credit__lv--partner .credit__pct { color: var(--pink); }
+.credit__lv--ambassador { border-color: var(--yellow); background: #fffbe6; }
+.credit__lv--ambassador b { border-color: var(--yellow); } .credit__lv--ambassador .credit__pct { color: #e0a800; }
+.credit__example { display: flex; align-items: center; justify-content: center; gap: 18px; background: #fff; border: 2px solid var(--line); padding: 14px 22px; border-radius: 14px; margin-top: 14px; font-family: var(--font-display); font-weight: 800; font-size: 18px; text-transform: uppercase; letter-spacing: .01em; }
+.credit__example .arrow { color: var(--blue); font-size: 24px; }
+.credit__example b { font-size: 22px; } .credit__example b.blue { color: var(--blue); }
+@media (max-width: 600px) { .credit__levels { grid-template-columns: 1fr; } }
 @media (max-width: 900px) { .credit { grid-template-columns: 1fr; } }
 
 /* Business */

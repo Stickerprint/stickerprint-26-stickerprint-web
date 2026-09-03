@@ -200,3 +200,12 @@
 .special--below summary em { font-style: normal; font-family: var(--font-body); font-weight: 500; color: var(--muted); font-size: 13.5px; }
 .special__ico { width: 30px; height: 30px; border-radius: 9px; background: var(--sky); display: grid; place-items: center; font-size: 15px; }
 .special--below[open] { border-style: solid; }
+
+/* Popup "aggiunto al carrello" */
+.added-bg { position: fixed; inset: 0; background: rgba(10, 12, 40, .55); z-index: 100; display: grid; place-items: center; padding: 20px; }
+.added { background: #fff; border-radius: 24px; padding: 30px 32px; width: min(520px, 100%); text-align: center; display: grid; gap: 10px; justify-items: center; }
+.added__ck { width: 56px; height: 56px; border-radius: 50%; background: var(--green); color: var(--ink); display: grid; place-items: center; font-size: 26px; font-weight: 800; }
+.added h3 { font-size: 24px; }
+.added p { color: var(--muted); font-size: 14px; }
+.added__cta { display: grid; gap: 10px; margin-top: 10px; width: 100%; }
+.added__cta .btn { width: 100%; }

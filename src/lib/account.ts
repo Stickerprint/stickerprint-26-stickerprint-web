@@ -16,6 +16,7 @@ export interface Order {
 	credit_earned: number;
 	status: 'in_attesa' | 'in_produzione' | 'spedito' | 'consegnato' | 'annullato';
 	preview_url: string | null;
+	file_path?: string | null;
 	tracking_url: string | null;
 	created_at: string;
 }

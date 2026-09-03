@@ -8,7 +8,7 @@
 	 */
 	import { onMount } from 'svelte';
 	import EnginePreview from './EnginePreview.svelte';
-	import { loadDraft, saveDraft } from '$lib/utils/draftStore';
+	import { loadDraft, saveDraft, saveCartFile } from '$lib/utils/draftStore';
 	import { addToCart } from '$lib/cart';
 	import { quoteWith, suggestedSize, roundHalf, eur0, eur2, showFinishStep, showMaterialStep, type EngineConfig } from '$lib/pricing/engine';
 
@@ -138,10 +138,16 @@
 		setter();
 		setTimeout(() => (step = next(from)), 220);
 	}
-	function addCart() {
-		addToCart({ product, forma, materiale, w, h, qty, gross: q.gross, fileName: file?.name ?? null, note: `${showFinish ? finitura : ''}${note ? ' · ' + note : ''}` });
+	// si può ordinare solo con un file caricato
+	async function addCart() {
+		if (!file) return;
+		const it = addToCart({ product, productName: productName.replace(/^(i tuoi|le tue) /, ''), engineProduct, forma, materiale, finitura: showFinish ? finitura : undefined, w, h, qty, net: q.net, gross: q.gross, fileName: file.name, note });
+		try {
+			await saveCartFile(it.id, file);
+		} catch {
+			/* senza IndexedDB il file andrà ricaricato al checkout */
+		}
 		added = true;
-		setTimeout(() => (added = false), 4000);
 	}
 	const fmt = (v: number) => (Number.isInteger(v) ? String(v) : v.toFixed(1).replace('.', ','));
 </script>
@@ -340,7 +346,7 @@
 				{q.breakdown.m2.toFixed(3)} m² · commercial range ×{(1 + q.breakdown.cr).toFixed(2)} · price range ×{(1 + q.breakdown.pr).toFixed(2)}
 			</div>
 		{:else}
-			<button class="btn btn--green btn--cart" type="button" onclick={addCart}>{added ? 'Aggiunto ✓' : 'Aggiungi al carrello →'}</button>
+			<button class="btn btn--green btn--cart" type="button" onclick={addCart} disabled={!file} title={file ? '' : 'Carica il tuo file per ordinare'}>{file ? 'Aggiungi al carrello →' : 'Carica il file per ordinare'}</button>
 		{/if}
 	</div>
 </section>
@@ -350,4 +356,19 @@
 		<summary><span class="special__ico">💬</span> Hai una richiesta particolare? <em>Scrivicela qui: la leggiamo davvero, promesso.</em></summary>
 		<textarea rows="3" placeholder="Es. colore Pantone da rispettare, consegna entro una data, file da sistemare…" bind:value={note}></textarea>
 	</details>
+{/if}
+
+{#if added}
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
+	<div class="added-bg" onclick={(e) => { if (e.target === e.currentTarget) added = false; }} onkeydown={(e) => { if (e.key === 'Escape') added = false; }}>
+		<div class="added" role="dialog" aria-modal="true" aria-label="Prodotto aggiunto al carrello">
+			<span class="added__ck">✓</span>
+			<h3>Prodotto aggiunto al carrello</h3>
+			<p>{qty.toLocaleString('it-IT')} × {productName.replace(/^(i tuoi|le tue) /, '')} · {fmt(w)} × {fmt(h)} mm · {eur0(q.gross)}</p>
+			<div class="added__cta">
+				<a class="btn btn--green btn--lg" href="/checkout">Vai al checkout →</a>
+				<a class="btn btn--ghost btn--lg" href="/prodotti">Continua gli acquisti</a>
+			</div>
+		</div>
+	</div>
 {/if}

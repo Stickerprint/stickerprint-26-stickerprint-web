@@ -127,16 +127,21 @@
 <!-- CREDITO -->
 <section class="section container">
 	<div class="credit">
-		<div class="credit__visual"><img src="/images/credit-card.png" alt="Card Credito Stickerprint con saldo di 25,00 €" width="492" height="423" loading="lazy" /></div>
+		<div class="credit__visual"><img src="/images/credit-card.png" alt="Portafoglio Credito Stickerprint" width="492" height="423" loading="lazy" /></div>
 		<div>
 			<span class="tag tag--green">Il tuo prossimo ordine inizia da questo</span>
-			<h2 style="margin-top:14px">Ogni ordine ti lascia <span class="hl hl--green">qualcosa.</span></h2>
-			<p class="lead" style="margin-top:20px">
-				Con ogni acquisto <strong>guadagni fino al 6% in Credito Stickerprint</strong> (2% da Creator, 4% da Partner, 6% da Ambassador). Il credito finisce automaticamente nel tuo portafoglio e puoi usarlo sul prossimo ordine.
-			</p>
-			<div class="credit__example"><span>Ordine di 100€</span><span class="dash"></span><b>5€ di credito</b></div>
-			<p class="note" style="margin-top:10px">Credito calcolato IVA esclusa sul valore dei prodotti effettivamente pagati. Validità credito 6 mesi.</p>
-			<p style="margin-top:28px"><a class="btn btn--green btn--lg" href={data.user ? '/account' : '/signup'}>Inizia a guadagnare</a></p>
+			<h2 style="margin-top:14px">Ogni ordine ti lascia <span class="hl hl--blue">qualcosa.</span></h2>
+			<p class="lead" style="margin-top:16px">Con ogni acquisto accumuli Credito Stickerprint. Lo trovi automaticamente nel tuo account e lo usi sul prossimo ordine.</p>
+			<p style="margin-top:18px;font-weight:800">Più ordini fai, più guadagni.</p>
+			<div class="credit__levels">
+				<div class="credit__lv credit__lv--creator"><img src="/images/loyalty/creator.png" alt="" /><b>Creator</b><span class="credit__pct">2%</span><small>di credito</small></div>
+				<div class="credit__lv credit__lv--partner"><img src="/images/loyalty/partner.png" alt="" /><b>Partner</b><span class="credit__pct">4%</span><small>di credito</small></div>
+				<div class="credit__lv credit__lv--ambassador"><img src="/images/loyalty/ambassador.png" alt="" /><b>Ambassador</b><span class="credit__pct">6%</span><small>di credito</small></div>
+			</div>
+			<p class="note" style="margin-top:10px">Il tuo livello cresce insieme ai tuoi ordini.</p>
+			<div class="credit__example"><span><b>100€</b> di prodotti</span><span class="arrow">→</span><span>fino a <b class="blue">6€</b> di credito</span></div>
+			<p style="margin-top:20px"><a class="btn btn--green btn--lg" style="width:100%;text-align:center" href={data.user ? '/account' : '/signup'}>{data.user ? 'Vai al tuo account' : 'Crea il tuo account'}</a></p>
+			<p class="note" style="margin-top:10px;text-align:center">Credito calcolato sul valore dei prodotti IVA esclusa. Validità 6 mesi.</p>
 		</div>
 	</div>
 </section>
