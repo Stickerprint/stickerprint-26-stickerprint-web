@@ -26,7 +26,7 @@
 		{#if !compact}
 			<div class="loy__levels">
 				{#each l.levels as lv (lv.level)}
-					<div class="loy__lv" class:is-current={lv.level === l.level}><img src={lv.img} alt="" /><b>{lv.name}</b><small>{pct(lv.credit_rate)} di credito</small>{#if lv.rank > 1}<small>{lv.rank === 2 ? '500 SP' : '1.500 SP'} per arrivarci · {lv.keep_points.toLocaleString('it-IT')} SP l’anno per restare</small>{:else}<small>livello di partenza</small>{/if}</div>
+					<div class="loy__lv" class:is-current={lv.level === l.level}><img src={lv.img} alt="" /><b>{lv.name}</b><small>{pct(lv.credit_rate)} di credito</small>{#if lv.rank > 1}<small>{(l.levels[lv.rank - 2]?.next_points ?? 0).toLocaleString('it-IT')} SP per arrivarci · {lv.keep_points.toLocaleString('it-IT')} SP l’anno per restare</small>{:else}<small>livello di partenza</small>{/if}</div>
 				{/each}
 			</div>
 		{/if}
