@@ -4,7 +4,8 @@
 .co-empty { text-align: center; padding: 60px 0; display: grid; gap: 18px; justify-items: center; }
 .co-login { background: var(--sky); border-radius: 16px; padding: 20px 22px; margin-bottom: 24px; }
 .co-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; }
-.co-grid label { display: grid; gap: 5px; font-size: 13px; font-weight: 700; }
+.co-grid label { display: flex; flex-wrap: wrap; align-items: baseline; gap: 3px 4px; font-size: 13px; font-weight: 700; }
+.co-grid label input, .co-grid label select, .co-grid label small { flex: 1 0 100%; }
 .co-grid label i { font-style: italic; font-weight: 500; color: var(--muted); margin-left: 4px; }
 .co-grid label small { font-weight: 500; color: var(--muted); font-size: 12px; }
 .co-grid .full { grid-column: 1 / -1; }

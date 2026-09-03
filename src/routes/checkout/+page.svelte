@@ -2,13 +2,13 @@
 	import '$lib/styles/checkout.css';
 	import { onMount, tick } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { enhance } from '$app/forms';
+	import { deserialize } from '$app/forms';
 	import { readCart, removeFromCart, updateCartItem, clearCart, type CartItem } from '$lib/cart';
 	import { getCartFile, deleteCartFile } from '$lib/utils/draftStore';
 	import { PROVINCES } from '$lib/provinces';
 	import { MATERIAL_LABEL, eur, fmtMm } from '$lib/account';
 
-	let { data, form } = $props();
+	let { data } = $props();
 	let items = $state<CartItem[]>([]);
 	let thumbs = $state<Record<string, string>>({});
 	let hasFile = $state<Record<string, boolean>>({});
@@ -31,8 +31,6 @@
 	let codeMsg = $state('');
 	let submitting = $state(false);
 	let err = $state('');
-	let itemsJson = $state('[]');
-	let ready = false;
 	let formEl = $state<HTMLFormElement | undefined>();
 
 	const VAT = 1.22;
@@ -48,7 +46,8 @@
 	const allFiles = $derived(items.every((i) => hasFile[i.id] || !!i.filePath));
 
 	onMount(async () => {
-		items = readCart();
+		// righe di vecchie versioni del carrello (senza prezzo) vengono scartate
+		items = readCart().filter((i) => typeof i.net === 'number' && typeof i.gross === 'number');
 		for (const it of items) {
 			const f = await getCartFile(it.id);
 			hasFile[it.id] = !!f;
@@ -75,13 +74,13 @@
 		if (file.type.startsWith('image/')) thumbs[id] = URL.createObjectURL(file);
 		items = updateCartItem(id, { fileName: file.name });
 	}
-	// prima carica i file su Storage, poi invia l'ordine
+	// prima carica i file su Storage, poi invia l'ordine all'azione del server
 	async function onSubmit(e: SubmitEvent) {
-		if (ready) return;
 		e.preventDefault();
 		err = '';
 		if (!data.user) { err = 'Accedi per completare l’ordine.'; return; }
 		if (!allFiles) { err = 'Manca il file di un prodotto.'; return; }
+		if (!formEl) return;
 		submitting = true;
 		try {
 			const lines = [];
@@ -97,23 +96,22 @@
 				}
 				lines.push({ id: it.id, product: it.product, forma: it.forma, materiale: it.materiale, finitura: it.finitura, w: it.w, h: it.h, qty: it.qty, filePath, fileName: it.fileName ?? null, note: it.note, reorderOf: it.reorderOf ?? null });
 			}
-			itemsJson = JSON.stringify(lines);
-			ready = true;
-			await tick();
-			formEl?.requestSubmit();
+			const fd = new FormData(formEl);
+			fd.set('items', JSON.stringify(lines));
+			const res = await fetch('?/order', { method: 'POST', body: fd, headers: { 'x-sveltekit-action': 'true' } });
+			const result = deserialize(await res.text());
+			if (result.type === 'success' && result.data?.numbers) {
+				for (const it of items) deleteCartFile(it.id);
+				clearCart();
+				await goto(`/checkout/grazie?n=${encodeURIComponent((result.data.numbers as string[]).join(','))}`);
+				return;
+			}
+			err = result.type === 'failure' ? String(result.data?.error ?? 'Ordine non inviato.') : 'Ordine non inviato, riprova.';
 		} catch (ex) {
 			err = ex instanceof Error ? ex.message : 'Errore durante l’invio.';
-			submitting = false;
 		}
+		submitting = false;
 	}
-	$effect(() => {
-		if (form?.ok && form.numbers) {
-			for (const it of readCart()) deleteCartFile(it.id);
-			clearCart();
-			goto(`/checkout/grazie?n=${encodeURIComponent(form.numbers.join(','))}`);
-		}
-		if (form?.error) { submitting = false; ready = false; }
-	});
 </script>
 
 <svelte:head><title>Checkout | Stickerprint</title></svelte:head>
@@ -127,8 +125,7 @@
 			<a class="btn btn--green btn--lg" href="/prodotti">Scegli un prodotto</a>
 		</div>
 	{:else}
-		<form class="co" method="POST" action="?/order" bind:this={formEl} onsubmit={onSubmit} use:enhance>
-			<input type="hidden" name="items" value={itemsJson} />
+		<form class="co" method="POST" action="?/order" bind:this={formEl} onsubmit={onSubmit}>
 			<input type="hidden" name="same_billing" value={sameBilling ? 'on' : 'off'} />
 
 			<!-- SINISTRA: dati -->
@@ -185,7 +182,7 @@
 				</div>
 				<p class="co-secure"><b>🔒 Sistema di pagamento sicuro.</b> Il pagamento verrà addebitato solo dopo che avrai approvato la prova di stampa. Ora registriamo solo i tuoi dati in sicurezza.</p>
 
-				{#if err || form?.error}<p class="error" style="margin-top:14px">{err || form?.error}</p>{/if}
+				{#if err}<p class="error" style="margin-top:14px">{err}</p>{/if}
 				<button class="btn btn--green btn--lg co-submit" type="submit" disabled={submitting || !data.user || !allFiles || items.length === 0}>{submitting ? 'Invio in corso…' : 'Invia il tuo ordine'}</button>
 				<p class="note" style="margin-top:8px">Cliccando su Invia il tuo ordine, accetti la <a class="link" href="/privacy">privacy policy</a> e i <a class="link" href="/termini">termini e condizioni</a> di Stickerprint.</p>
 			</div>
