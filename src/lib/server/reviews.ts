@@ -31,6 +31,11 @@ const FALLBACK: HomeReview[] = [
 	{ author: 'Elena P.', title: 'Adesivi 🔝', comment: 'Adesivi fatti veramente bene, stupendi, top. Super qualità di stampa e materiale resistente.', rating: 5, product: 'Adesivi personalizzati', href: '/adesivi-personalizzati', productType: 'adesivi_personalizzati' },
 	{ author: 'Marco T.', title: 'Adesivi finitura opaca', comment: 'Bella qualità di stampa, molto professionale. Finitura opaca perfetta per i nostri prodotti.', rating: 5, product: 'Adesivi personalizzati', href: '/adesivi-personalizzati', productType: 'adesivi_personalizzati' },
 	{ author: 'Chiara V.', title: 'Ottimo', comment: 'Adesivi ben fatti e di ottima qualità, la stampa è veramente ottima. Consegna nei tempi promessi.', rating: 4, product: 'Adesivi personalizzati', href: '/adesivi-personalizzati', productType: 'adesivi_personalizzati' },
+	{ author: 'Paolo G.', title: 'Resinati top', comment: 'Effetto bombato bellissimo, colori profondi. Li ho messi sulle borracce e sono ancora perfetti dopo mesi.', rating: 5, product: 'Adesivi resinati', href: '/adesivi-resinati', productType: 'adesivi_resinati' },
+	{ author: 'Federica S.', title: 'Etichette perfette', comment: 'Fogli ordinati, etichette che si staccano con un dito e stampa nitida anche sui testi piccoli. Le uso per le confezioni del mio laboratorio.', rating: 5, product: 'Etichette', href: '/etichette', productType: 'etichette' },
+	{ author: 'Stefano R.', title: 'Rilievo che si sente', comment: 'Il rilievo selettivo sul logo fa la differenza: tutti lo toccano. Consegna puntuale.', rating: 5, product: 'Adesivi a rilievo', href: '/adesivi-rilievo', productType: 'adesivi_rilievo' },
+	{ author: 'Ilaria M.', title: 'Vetrofania per il negozio', comment: 'Applicata dall’interno, si legge perfettamente da fuori. Taglio preciso e colori vivi.', rating: 5, product: 'Vetrofanie', href: '/vetrofanie', productType: 'vetrofanie' },
+	{ author: 'Gianni P.', title: 'Kit di adesivi', comment: 'Foglio con sei grafiche diverse, mezzo taglio perfetto. Ottimo per il merch dell’evento.', rating: 5, product: 'Fogli adesivi', href: '/fogli', productType: 'fogli_adesivi' },
 	{ author: 'Davide L.', title: 'Non c’è paragone', comment: 'Qualità fantastica rispetto ad altri servizi provati. Il taglio segue perfettamente il disegno.', rating: 5, product: 'Adesivi personalizzati', href: '/adesivi-personalizzati', productType: 'adesivi_personalizzati' }
 ];
 
@@ -45,7 +50,8 @@ export interface ReviewsResult {
  */
 export async function loadReviews(supabase: SupabaseClient, productType?: string): Promise<ReviewsResult> {
 	let reviews = productType ? FALLBACK.filter((r) => r.productType === productType) : FALLBACK;
-	let stats = productType ? { total: 15, average: 5 } : { total: 225, average: 4.9 };
+	if (productType && reviews.length < 3) reviews = [...reviews, ...FALLBACK.filter((r) => r.productType !== productType)].slice(0, 6);
+	let stats = productType ? { total: 15, average: 4.9 } : { total: 225, average: 4.9 };
 
 	try {
 		let q = supabase

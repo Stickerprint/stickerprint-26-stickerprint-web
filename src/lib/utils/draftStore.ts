@@ -4,7 +4,7 @@
  * IndexedDB perché i file possono superare i limiti di localStorage.
  */
 export interface Draft {
-	product: 'adesivi_personalizzati' | 'adesivi_resinati' | 'etichette';
+	product: string; // slug del prodotto (es. adesivi_personalizzati)
 	forma: string;
 	materiale: string;
 	file: File;

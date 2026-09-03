@@ -28,7 +28,8 @@ export const actions: Actions = {
 		}
 		const cfg = mergeConfig(defaultEngine(params.slug), parsed) as EngineConfig;
 		// controlli minimi
-		if (!cfg.tiers.length || cfg.tiers.some((t) => !(t.qty > 0) || !(t.base > 0))) return fail(400, { error: 'Ogni fascia deve avere quantità e prezzo base maggiori di zero.' });
+		if (!cfg.quantities.length) return fail(400, { error: 'Inserisci almeno una quantità.' });
+		if (!cfg.materials.some((m) => m.visible)) return fail(400, { error: 'Almeno un materiale deve essere visibile.' });
 		if (!(cfg.vat >= 1)) return fail(400, { error: 'IVA non valida (es. 1.22).' });
 
 		// salva la versione precedente nello storico

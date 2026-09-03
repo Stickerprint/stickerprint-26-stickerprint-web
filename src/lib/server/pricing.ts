@@ -1,13 +1,11 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { DEFAULT_ADESIVI_PERSONALIZZATI, mergeConfig, type EngineConfig } from '$lib/pricing/engine';
+import { DEFAULT_ENGINES, mergeConfig, type EngineConfig } from '$lib/pricing/engine';
 
-const DEFAULTS: Record<string, EngineConfig> = {
-	adesivi_personalizzati: DEFAULT_ADESIVI_PERSONALIZZATI
-};
+const DEFAULTS = DEFAULT_ENGINES;
 
 /** Listino di un prodotto: quello salvato dalla dashboard, altrimenti il default nel codice. */
 export async function loadEngine(supabase: SupabaseClient, slug: string): Promise<{ config: EngineConfig; savedAt: string | null }> {
-	const base = DEFAULTS[slug] ?? DEFAULT_ADESIVI_PERSONALIZZATI;
+	const base = DEFAULTS[slug] ?? DEFAULTS.adesivi_personalizzati;
 	try {
 		const { data } = await supabase.from('pricing_engines').select('config, updated_at').eq('slug', slug).maybeSingle();
 		if (data?.config && Object.keys(data.config).length > 0) {
@@ -20,5 +18,5 @@ export async function loadEngine(supabase: SupabaseClient, slug: string): Promis
 }
 
 export function defaultEngine(slug: string): EngineConfig {
-	return DEFAULTS[slug] ?? DEFAULT_ADESIVI_PERSONALIZZATI;
+	return DEFAULTS[slug] ?? DEFAULTS.adesivi_personalizzati;
 }

@@ -1,37 +1,51 @@
 <script lang="ts">
 	/**
-	 * Preventivatore adesivi personalizzati.
-	 * Sinistra: il logo del cliente con i comandi del motore (bordo, angoli, zoom/centratura, sfondo).
-	 * Destra: 5 passi (sagoma, materiale, finitura, misura, quantità) e riepilogo.
+	 * Preventivatore prodotto (adesivi, etichette, vetrofanie…).
+	 * Sinistra: il logo del cliente con i comandi del motore di anteprima.
+	 * Destra: i passi (sagoma, materiale, [finitura], misura, quantità) e riepilogo.
+	 * Il listino `cfg` arriva dalla dashboard (Supabase) e decide cosa mostrare e i prezzi.
 	 */
 	import { onMount } from 'svelte';
 	import EnginePreview from './EnginePreview.svelte';
 	import { loadDraft, saveDraft } from '$lib/utils/draftStore';
 	import { addToCart } from '$lib/cart';
-	import { quoteWith, factorOf, tierPrice, suggestedSize, roundHalf, eur0, eur2, type EngineConfig } from '$lib/pricing/engine';
+	import { quoteWith, suggestedSize, roundHalf, eur0, eur2, type EngineConfig } from '$lib/pricing/engine';
 
-	let { shipDate, cfg }: { shipDate: string; cfg: EngineConfig } = $props();
+	let {
+		shipDate,
+		cfg,
+		product = 'adesivi_personalizzati',
+		productName = 'i tuoi adesivi',
+		engineProduct = 'sticker'
+	}: { shipDate: string; cfg: EngineConfig; product?: string; productName?: string; engineProduct?: 'sticker' | 'resinati' } = $props();
 
-	// listino: arriva dal server (dashboard → Supabase), con default nel codice
-	const SHAPES = $derived(cfg.shapes);
-	const MATERIALS = $derived(cfg.materials);
-	const FINISHES = $derived(cfg.finishes);
-	const QTY_TIERS = $derived(cfg.tiers);
+	const SHAPES = $derived(cfg.shapes.filter((s) => s.visible));
+	const MATERIALS = $derived(cfg.materials.filter((m) => m.visible));
+	const FINISHES = $derived(cfg.finishes.filter((f) => f.visible));
+	const showFinish = $derived(cfg.ui.showFinish && FINISHES.length > 0);
+	const showMaterials = $derived(cfg.ui.showMaterials && MATERIALS.length > 1);
 	const MIN_MM = $derived(cfg.size.minMm);
 	const MAX_MM = $derived(cfg.size.maxMm);
 
-	const STEPS = 5;
+	// passi visibili, numerati in ordine
+	const steps = $derived(
+		([['forma', true], ['materiale', showMaterials], ['finitura', showFinish], ['misura', true], ['qty', true]] as [string, boolean][])
+			.filter(([, on]) => on)
+			.map(([id]) => id)
+	);
+	const stepNo = (id: string) => steps.indexOf(id) + 1;
+
 	let forma = $state('sagomato');
 	let materiale = $state('bianco');
 	let finitura = $state('lucida');
 	let w = $state(50);
 	let h = $state(50);
-	let fileRatio = $state<number | null>(null); // larghezza/altezza del file (dall'immagine)
-	let cutRatio = $state<number | null>(null); // larghezza/altezza della sagoma generata dal motore
+	let fileRatio = $state<number | null>(null);
+	let cutRatio = $state<number | null>(null);
 	let showCut = $state(true);
 	let sizeKey = '';
 	let qty = $state(500);
-	let step = $state(1);
+	let step = $state('forma');
 	let vatIncluded = $state(true);
 	let file = $state<File | null>(null);
 	let fileUrl = $state<string | null>(null);
@@ -39,46 +53,44 @@
 	let added = $state(false);
 	let fileInput = $state<HTMLInputElement | undefined>();
 
+	// valori iniziali coerenti con il listino
+	$effect(() => {
+		if (!SHAPES.some((s) => s.id === forma)) forma = SHAPES[0]?.id ?? 'sagomato';
+		if (!MATERIALS.some((m) => m.id === materiale)) materiale = MATERIALS[0]?.id ?? 'bianco';
+		if (!FINISHES.some((f) => f.id === finitura)) finitura = FINISHES.find((f) => f.laminate)?.id ?? FINISHES[0]?.id ?? 'nessuna';
+		if (!cfg.quantities.includes(qty)) qty = cfg.quantities.includes(cfg.recommendedQty) ? cfg.recommendedQty : cfg.quantities[0];
+	});
+
 	const shape = $derived(SHAPES.find((s) => s.id === forma) ?? SHAPES[0]);
-	const material = $derived(MATERIALS.find((m) => m.id === materiale) ?? MATERIALS[0]);
-	const finish = $derived(FINISHES.find((f) => f.id === finitura) ?? FINISHES[0]);
-	/** proporzione effettiva della sagoma: tondo e quadrato sono sempre 1:1 */
-	const ratio = $derived(shape.equal ? 1 : (cutRatio ?? fileRatio ?? 1));
-	const factor = $derived(factorOf(cfg, w, h, forma, materiale, finitura));
-	const q = $derived(quoteWith(cfg, { w, h, forma, materiale, finitura, qty, vatIncluded }));
-	const progress = $derived((step / STEPS) * 100);
-	/** misure proposte: larghezze fisse, altezza in proporzione */
+	const material = $derived(MATERIALS.find((m) => m.id === materiale) ?? cfg.materials[0]);
+	const finish = $derived(FINISHES.find((f) => f.id === finitura));
+	const fin = $derived(showFinish ? finitura : 'nessuna');
+	const ratio = $derived(shape?.equal ? 1 : (cutRatio ?? fileRatio ?? 1));
+	const q = $derived(quoteWith(cfg, { w, h, forma, materiale, finitura: fin, qty, vatIncluded }));
+	const progress = $derived((stepNo(step) / steps.length) * 100);
 	const suggested = $derived(suggestedSize(ratio));
 	const presets = $derived(
 		[suggested[0], ...cfg.size.presets.filter((x) => x !== suggested[0])].slice(0, 4).map((pw) => [pw, roundHalf(pw / ratio)] as [number, number])
 	);
+	const basePerPiece = $derived(quoteWith(cfg, { w, h, forma, materiale, finitura: fin, qty: cfg.quantities[0], vatIncluded }).perPiece);
 
 	onMount(async () => {
 		const d = await loadDraft();
-		if (d && d.product === 'adesivi_personalizzati') {
+		if (d && d.product === product) {
 			file = d.file;
 			fileUrl = URL.createObjectURL(d.file);
-			forma = SHAPES.some((s) => s.id === d.forma) ? d.forma : forma;
-			materiale = MATERIALS.some((m) => m.id === d.materiale) ? d.materiale : 'bianco';
+			if (SHAPES.some((s) => s.id === d.forma)) forma = d.forma;
+			if (MATERIALS.some((m) => m.id === d.materiale)) materiale = d.materiale;
 		}
 	});
 
-	/**
-	 * Misura rilevata dal file: quando il motore ha generato la sagoma, per ogni file+sagoma
-	 * si parte dalla misura reale (PDF/SVG hanno dimensioni fisiche) o da quella consigliata
-	 * per la proporzione; poi il cliente può cambiarla e l'altro lato segue.
-	 */
 	function onRender(s: { w: number; h: number; srcMM: { w: number; h: number } | null }) {
 		const key = `${file?.name ?? ''}|${file?.size ?? 0}|${forma}`;
 		if (key === sizeKey) return;
 		sizeKey = key;
-		const r = shape.equal ? 1 : s.h > 0 ? s.w / s.h : (fileRatio ?? 1);
+		const r = shape?.equal ? 1 : s.h > 0 ? s.w / s.h : (fileRatio ?? 1);
 		cutRatio = r;
-		if (s.srcMM && s.srcMM.w >= MIN_MM && s.srcMM.w <= MAX_MM) {
-			w = clamp(s.srcMM.w);
-		} else {
-			w = suggestedSize(r)[0];
-		}
+		w = s.srcMM && s.srcMM.w >= MIN_MM && s.srcMM.w <= MAX_MM ? clamp(s.srcMM.w) : suggestedSize(r)[0];
 		h = clamp(w / r);
 	}
 
@@ -92,7 +104,7 @@
 		if (fileUrl) URL.revokeObjectURL(fileUrl);
 		file = f;
 		fileUrl = URL.createObjectURL(f);
-		saveDraft({ product: 'adesivi_personalizzati', forma, materiale, file: f, savedAt: Date.now() }).catch(() => {});
+		saveDraft({ product, forma, materiale, file: f, savedAt: Date.now() }).catch(() => {});
 	}
 	function setW(v: number) {
 		w = clamp(v);
@@ -102,12 +114,16 @@
 		h = clamp(v);
 		w = clamp(h * ratio);
 	}
-	function choose(setter: () => void, next: number) {
+	function next(id: string) {
+		const i = steps.indexOf(id);
+		return steps[Math.min(i + 1, steps.length - 1)];
+	}
+	function choose(setter: () => void, from: string) {
 		setter();
-		setTimeout(() => (step = next), 220);
+		setTimeout(() => (step = next(from)), 220);
 	}
 	function addCart() {
-		addToCart({ product: 'adesivi_personalizzati', forma, materiale, w, h, qty, gross: q.gross, fileName: file?.name ?? null, note: `${finitura}${note ? ' · ' + note : ''}` });
+		addToCart({ product, forma, materiale, w, h, qty, gross: q.gross, fileName: file?.name ?? null, note: `${showFinish ? finitura : ''}${note ? ' · ' + note : ''}` });
 		added = true;
 		setTimeout(() => (added = false), 4000);
 	}
@@ -118,7 +134,7 @@
 	<!-- ANTEPRIMA + COMANDI DEL MOTORE -->
 	<div class="cfg__preview">
 		{#if file}
-			<EnginePreview {file} {forma} {materiale} {finitura} {w} {h} {showCut} panel stage={400} onrender={onRender} />
+			<EnginePreview {file} {forma} {materiale} finitura={showFinish ? finitura : 'lucida'} prodotto={engineProduct} {w} {h} {showCut} panel stage={400} onrender={onRender} />
 			{#if fileUrl}<img src={fileUrl} alt="" hidden onload={onImgLoad} />{/if}
 		{:else}
 			<div class="cfg__stage cfg__stage--empty">
@@ -142,24 +158,24 @@
 		<div class="cfg__head">
 			<div>
 				<p class="eyebrow">Configura in 30 secondi</p>
-				<h2 class="cfg__title">Crea i tuoi adesivi</h2>
+				<h2 class="cfg__title">Crea {productName}</h2>
 			</div>
-			<span class="cfg__stepcount">Passaggio {step} di {STEPS}</span>
+			<span class="cfg__stepcount">Passaggio {stepNo(step)} di {steps.length}</span>
 		</div>
 		<div class="progress"><span style="width:{progress}%"></span></div>
 
-		<!-- 1 sagoma -->
-		<div class="step" class:is-open={step === 1}>
-			<button class="step__head" type="button" onclick={() => (step = 1)} aria-expanded={step === 1}>
-				<span class="step__n">{#if step > 1}✓{:else}1{/if}</span>
-				<span class="step__title">Seleziona sagoma {#if step !== 1}<em>{shape.label}</em>{/if}</span>
-				<span class="step__edit">{step === 1 ? '' : 'Modifica'}</span>
+		<!-- sagoma -->
+		<div class="step" class:is-open={step === 'forma'}>
+			<button class="step__head" type="button" onclick={() => (step = 'forma')} aria-expanded={step === 'forma'}>
+				<span class="step__n">{#if stepNo(step) > stepNo('forma')}✓{:else}{stepNo('forma')}{/if}</span>
+				<span class="step__title">Seleziona sagoma {#if step !== 'forma'}<em>{shape?.label}</em>{/if}</span>
+				<span class="step__edit">{step === 'forma' ? '' : 'Modifica'}</span>
 			</button>
-			{#if step === 1}
+			{#if step === 'forma'}
 				<div class="step__body">
 					<div class="pic-grid pic-grid--3">
 						{#each SHAPES as s (s.id)}
-							<button type="button" class="pic" class:is-active={forma === s.id} onclick={() => choose(() => (forma = s.id), 2)}>
+							<button type="button" class="pic" class:is-active={forma === s.id} onclick={() => choose(() => (forma = s.id), 'forma')}>
 								<img src={s.img} alt="" />
 								<b>{s.label}</b>
 							</button>
@@ -169,60 +185,64 @@
 			{/if}
 		</div>
 
-		<!-- 2 materiale -->
-		<div class="step" class:is-open={step === 2}>
-			<button class="step__head" type="button" onclick={() => (step = 2)} aria-expanded={step === 2}>
-				<span class="step__n">{#if step > 2}✓{:else}2{/if}</span>
-				<span class="step__title">Materiale {#if step !== 2}<em>{material.label}</em>{/if}</span>
-				<span class="step__edit">{step === 2 ? '' : 'Modifica'}</span>
-			</button>
-			{#if step === 2}
-				<div class="step__body">
-					<p class="step__hint">Non sai quale scegliere? Il bianco va bene quasi sempre.</p>
-					<div class="pic-grid pic-grid--3 pic-grid--sm">
-						{#each MATERIALS as m (m.id)}
-							<button type="button" class="pic" class:is-active={materiale === m.id} onclick={() => choose(() => (materiale = m.id), 3)}>
-								<img src={m.img} alt="" />
-								<b>{m.label.replace('Vinile ', '')}</b>
-								{#if m.tag}<span class="pic__tag">{m.tag}</span>{/if}
-							</button>
-						{/each}
+		<!-- materiale -->
+		{#if showMaterials}
+			<div class="step" class:is-open={step === 'materiale'}>
+				<button class="step__head" type="button" onclick={() => (step = 'materiale')} aria-expanded={step === 'materiale'}>
+					<span class="step__n">{#if stepNo(step) > stepNo('materiale')}✓{:else}{stepNo('materiale')}{/if}</span>
+					<span class="step__title">Materiale {#if step !== 'materiale'}<em>{material?.label}</em>{/if}</span>
+					<span class="step__edit">{step === 'materiale' ? '' : 'Modifica'}</span>
+				</button>
+				{#if step === 'materiale'}
+					<div class="step__body">
+						<p class="step__hint">Non sai quale scegliere? Il bianco va bene quasi sempre.</p>
+						<div class="pic-grid pic-grid--3 pic-grid--sm">
+							{#each MATERIALS as m (m.id)}
+								<button type="button" class="pic" class:is-active={materiale === m.id} onclick={() => choose(() => (materiale = m.id), 'materiale')}>
+									<img src={m.img} alt="" />
+									<b>{m.label}</b>
+									{#if m.tag}<span class="pic__tag">{m.tag}</span>{/if}
+								</button>
+							{/each}
+						</div>
 					</div>
-				</div>
-			{/if}
-		</div>
+				{/if}
+			</div>
+		{/if}
 
-		<!-- 3 finitura -->
-		<div class="step" class:is-open={step === 3}>
-			<button class="step__head" type="button" onclick={() => (step = 3)} aria-expanded={step === 3}>
-				<span class="step__n">{#if step > 3}✓{:else}3{/if}</span>
-				<span class="step__title">Lamina protettiva {#if step !== 3}<em>{finish.label}</em>{/if}</span>
-				<span class="step__edit">{step === 3 ? '' : 'Modifica'}</span>
-			</button>
-			{#if step === 3}
-				<div class="step__body">
-					<div class="pic-grid pic-grid--3 pic-grid--sm">
-						{#each FINISHES as f (f.id)}
-							<button type="button" class="pic" class:is-active={finitura === f.id} onclick={() => choose(() => (finitura = f.id), 4)}>
-								<img src={f.img} alt="" />
-								<b>{f.label}</b>
-								<small>{f.description ?? ''}</small>
-							</button>
-						{/each}
+		<!-- finitura -->
+		{#if showFinish}
+			<div class="step" class:is-open={step === 'finitura'}>
+				<button class="step__head" type="button" onclick={() => (step = 'finitura')} aria-expanded={step === 'finitura'}>
+					<span class="step__n">{#if stepNo(step) > stepNo('finitura')}✓{:else}{stepNo('finitura')}{/if}</span>
+					<span class="step__title">Lamina protettiva {#if step !== 'finitura'}<em>{finish?.label}</em>{/if}</span>
+					<span class="step__edit">{step === 'finitura' ? '' : 'Modifica'}</span>
+				</button>
+				{#if step === 'finitura'}
+					<div class="step__body">
+						<div class="pic-grid pic-grid--3 pic-grid--sm">
+							{#each FINISHES as f (f.id)}
+								<button type="button" class="pic" class:is-active={finitura === f.id} onclick={() => choose(() => (finitura = f.id), 'finitura')}>
+									<img src={f.img} alt="" />
+									<b>{f.label}</b>
+									<small>{f.description ?? ''}</small>
+								</button>
+							{/each}
+						</div>
+						{#if finitura === 'nessuna'}<p class="step__hint">Ideale se ti servono adesivi di alta qualità per uso promozionale provvisorio. Tradotto: poca spesa, tantissima resa.</p>{/if}
 					</div>
-					{#if finitura === 'nessuna'}<p class="step__hint">Ideale se ti servono adesivi personalizzati di alta qualità per uso promozionale provvisorio. Tradotto: poca spesa, tantissima resa.</p>{/if}
-				</div>
-			{/if}
-		</div>
+				{/if}
+			</div>
+		{/if}
 
-		<!-- 4 misura -->
-		<div class="step" class:is-open={step === 4}>
-			<button class="step__head" type="button" onclick={() => (step = 4)} aria-expanded={step === 4}>
-				<span class="step__n">{#if step > 4}✓{:else}4{/if}</span>
-				<span class="step__title">Dimensione {#if step !== 4}<em>{fmt(w)} × {fmt(h)} mm</em>{/if}</span>
-				<span class="step__edit">{step === 4 ? '' : 'Modifica'}</span>
+		<!-- misura -->
+		<div class="step" class:is-open={step === 'misura'}>
+			<button class="step__head" type="button" onclick={() => (step = 'misura')} aria-expanded={step === 'misura'}>
+				<span class="step__n">{#if stepNo(step) > stepNo('misura')}✓{:else}{stepNo('misura')}{/if}</span>
+				<span class="step__title">Dimensione {#if step !== 'misura'}<em>{fmt(w)} × {fmt(h)} mm</em>{/if}</span>
+				<span class="step__edit">{step === 'misura' ? '' : 'Modifica'}</span>
 			</button>
-			{#if step === 4}
+			{#if step === 'misura'}
 				<div class="step__body">
 					{#if !file}
 						<p class="step__hint step__hint--box">Carica il tuo file: rileviamo la proporzione e ti consigliamo la misura.</p>
@@ -239,32 +259,29 @@
 						<span class="size-x">×</span>
 						<label><span>Altezza</span><input type="number" min={MIN_MM} max={MAX_MM} step="0.5" value={h} onchange={(e) => setH(+(e.currentTarget as HTMLInputElement).value)} /><em>mm</em></label>
 					</div>
-					<p class="step__lock">🔗 Cambia un lato: l’altro segue la proporzione{shape.equal ? ' (per tondo e quadrato i lati sono uguali)' : ''}. Arrotondiamo al mezzo millimetro.</p>
-					<button class="step__continue" type="button" onclick={() => (step = 5)}>Continua alla quantità</button>
+					<p class="step__lock">🔗 Cambia un lato: l’altro segue la proporzione{shape?.equal ? ' (per tondo e quadrato i lati sono uguali)' : ''}. Arrotondiamo al mezzo millimetro.</p>
+					<button class="step__continue" type="button" onclick={() => (step = 'qty')}>Continua alla quantità</button>
 				</div>
 			{/if}
 		</div>
 
-		<!-- 5 quantità -->
-		<div class="step" class:is-open={step === 5}>
-			<button class="step__head" type="button" onclick={() => (step = 5)} aria-expanded={step === 5}>
-				<span class="step__n">5</span>
-				<span class="step__title">Scegli quantità {#if step !== 5}<em>{qty.toLocaleString('it-IT')} pezzi · {eur0(q.gross)}</em>{/if}</span>
-				<span class="step__edit">{step === 5 ? '' : 'Modifica'}</span>
+		<!-- quantità -->
+		<div class="step" class:is-open={step === 'qty'}>
+			<button class="step__head" type="button" onclick={() => (step = 'qty')} aria-expanded={step === 'qty'}>
+				<span class="step__n">{stepNo('qty')}</span>
+				<span class="step__title">Scegli quantità {#if step !== 'qty'}<em>{qty.toLocaleString('it-IT')} pezzi · {eur0(vatIncluded ? q.gross : q.net)}</em>{/if}</span>
+				<span class="step__edit">{step === 'qty' ? '' : 'Modifica'}</span>
 			</button>
-			{#if step === 5}
+			{#if step === 'qty'}
 				<div class="step__body">
 					<div class="qty-grid">
-						{#each QTY_TIERS as t (t.qty)}
-							{@const price = tierPrice(t, factor)}
-							{@const shown = vatIncluded ? price : price / cfg.vat}
-							{@const per = shown / t.qty}
-							{@const base = tierPrice(QTY_TIERS[0], factor) / QTY_TIERS[0].qty}
-							{@const disc = Math.max(0, Math.round((1 - price / t.qty / base) * 100))}
-							<button type="button" class="qty" class:is-active={qty === t.qty} onclick={() => (qty = t.qty)}>
-								{#if t.tag}<span class="qty__tag">{t.tag}</span>{/if}
-								<span class="qty__top"><b>{t.qty.toLocaleString('it-IT')}</b><b>{eur0(shown)}</b></span>
-								<span class="qty__bottom">{per.toFixed(2).replace('.', ',')} €/pz {#if disc > 0}<b>−{disc}%</b>{/if}</span>
+						{#each cfg.quantities as n (n)}
+							{@const qq = quoteWith(cfg, { w, h, forma, materiale, finitura: fin, qty: n, vatIncluded })}
+							{@const disc = Math.max(0, Math.round((1 - qq.perPiece / basePerPiece) * 100))}
+							<button type="button" class="qty" class:is-active={qty === n} onclick={() => (qty = n)}>
+								{#if n === cfg.recommendedQty}<span class="qty__tag">Consigliato</span>{/if}
+								<span class="qty__top"><b>{n.toLocaleString('it-IT')}</b><b>{eur0(vatIncluded ? qq.gross : qq.net)}</b></span>
+								<span class="qty__bottom">{qq.perPiece.toFixed(2).replace('.', ',')} €/pz {#if disc > 0}<b>−{disc}%</b>{/if}</span>
 							</button>
 						{/each}
 					</div>

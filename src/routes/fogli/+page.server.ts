@@ -4,7 +4,7 @@ import { loadReviews } from '$lib/server/reviews';
 import { estimatedShipDate, formatItDate } from '$lib/utils/shipping';
 import type { PageServerLoad } from './$types';
 
-const SLUG = 'adesivi_personalizzati';
+const SLUG = 'fogli_adesivi';
 
 export const load: PageServerLoad = async ({ locals: { supabase } }) => {
 	const [{ reviews, stats }, { config }] = await Promise.all([loadReviews(supabase, SLUG), loadEngine(supabase, SLUG)]);

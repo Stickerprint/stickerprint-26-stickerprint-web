@@ -22,7 +22,8 @@ progressivamente stickerprint.it (SvelteKit su Cloudflare Pages). Lingua del pro
 - `src/routes/login|signup|reset-password|logout|auth/callback` flusso auth
 - `src/routes/account/` dashboard cliente (in sviluppo)
 - `src/routes/dashboard/` area amministratore (login dedicato in `/dashboard/login`, accesso solo a profili con role admin/staff)
-- `src/lib/components/Configurator.svelte` preventivatore adesivi (5 passi). Il listino arriva da `pricing_engines` (Supabase) tramite `src/lib/server/pricing.ts`, con default in `src/lib/pricing/engine.ts`; si modifica da `/dashboard/preventivatori/[slug]` (storico in `pricing_engine_history`)
+- `src/lib/components/Configurator.svelte` preventivatore prodotto (passi dinamici: sagoma, materiale, finitura, misura, quantità). Il listino è a costi (`src/lib/pricing/engine.ts`, versione 2: materiali €/m², stampa, avvio produzione, lamina, resina, range commerciale per m² e range prezzo per quantità, markup) e arriva da `pricing_engines` (Supabase) tramite `src/lib/server/pricing.ts`; si modifica da `/dashboard/preventivatori/[slug]` (storico in `pricing_engine_history`)
+- `src/lib/components/ProductPage.svelte` + `src/lib/products.ts`: pagina prodotto generica e contenuti (testi/foto) per `/adesivi-personalizzati`, `/adesivi-resinati`, `/adesivi-rilievo`, `/etichette`, `/fogli`, `/vetrofanie`
 - `/dashboard/codici-sconto` gestisce `discount_codes`. Migrazione: `supabase/migrations/0003_dashboard.sql`
 - `src/lib/components/EnginePreview.svelte` motore preprint in iframe; con `panel` mostra i comandi del motore sotto l'anteprima
 - `src/lib/components/` Header (logo centrato e ruotato), Footer, UploadPreview
@@ -56,6 +57,6 @@ npm run build    # build di produzione
 ## Stato e prossimi passi
 
 1. Homepage: fatta. 2. Auth Supabase: fatta. 3. Postmark: modulo pronto, token da inserire.
-4. Pagine prodotto/configuratore, campioni, aziende, supporto, blog: da fare.
+4. Pagine prodotto con configuratore: fatte (6 prodotti). Campioni, aziende, supporto, blog: da fare.
 5. Dashboard cliente (ordini, prove, fatture, credito 5%): da fare.
 6. Dashboard interna produzione (`/admin`): da fare.
