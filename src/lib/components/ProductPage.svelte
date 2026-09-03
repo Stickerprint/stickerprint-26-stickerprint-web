@@ -4,7 +4,7 @@
 	import Configurator from '$lib/components/Configurator.svelte';
 	import Faq from '$lib/components/Faq.svelte';
 	import ReviewsCarousel from '$lib/components/ReviewsCarousel.svelte';
-	import type { ProductContent } from '$lib/products';
+	import { KIT, type ProductContent } from '$lib/products';
 	import type { EngineConfig } from '$lib/pricing/engine';
 	import type { HomeReview } from '$lib/server/reviews';
 
@@ -20,6 +20,7 @@
 	<meta name="description" content="{p.title}: {p.sub} {p.desc}" />
 </svelte:head>
 
+<!-- HERO -->
 <section class="container ph">
 	<div>
 		<h1>{p.title}</h1>
@@ -37,27 +38,27 @@
 	<Carousel images={p.gallery} alt={p.title} />
 </section>
 
+<!-- PREVENTIVATORE -->
 <section class="container">
 	<Configurator {shipDate} cfg={engine} product={p.slug} productName={p.cta.replace(/^(i tuoi|le tue) /, '')} engineProduct={p.engineProduct} />
 </section>
 
+<!-- CONTROLLI PRIMA DELLA STAMPA -->
 <section class="section container">
 	<div class="split">
 		<img src={big} alt={p.title} loading="lazy" />
 		<div>
-			<h2>Zero ansia. <span class="hl hl--green">Ci pensiamo noi.</span></h2>
-			<p class="lead">È il tuo primo ordine? Non ti preoccupare.<br />Ecco la checklist che eseguiamo su ogni ordine:</p>
+			<h2>{p.care.title} <span class="hl hl--green">{p.care.hl}</span></h2>
+			<p class="lead">{p.care.intro}</p>
 			<ul class="checks">
-				<li><span class="ck">✓</span>Controllo manuale di ogni file</li>
-				<li><span class="ck">✓</span>Se serve, sistemiamo il file prima di stampare</li>
-				<li><span class="ck">✓</span>Ti mandiamo una prova da approvare</li>
-				<li><span class="ck">✓</span>Vedrai esattamente come realizzeremo il tuo prodotto</li>
-				<li><span class="ck">✓</span>Solo dopo il tuo ok andiamo in stampa</li>
+				{#each p.care.checks as c (c)}<li><span class="ck">✓</span>{c}</li>{/each}
 			</ul>
+			{#if p.care.closing}<p class="lead" style="margin-top:16px"><b>{p.care.closing}</b></p>{/if}
 		</div>
 	</div>
 </section>
 
+<!-- COSA STAI STAMPANDO -->
 <section class="section container center">
 	<h2><span class="hl hl--yellow">Cosa stai stampando, esattamente</span></h2>
 	<p class="lead" style="margin-top:16px">{p.cosa}</p>
@@ -68,20 +69,49 @@
 	</div>
 </section>
 
+<!-- RECENSIONI -->
+<section class="section container">
+	<div class="panel panel--navy social-proof center">
+		<h2>{p.reviewsTitle} <span class="hl hl--yellow">{p.reviewsHl}</span></h2>
+		<p class="lead" style="margin-top:18px">{p.reviewsSub} Valutazione media {avg} su 5.</p>
+		<ReviewsCarousel {reviews} />
+	</div>
+</section>
+
+<!-- KIT CAMPIONI -->
+<section class="section container">
+	<div class="panel panel--peach kit">
+		<div class="kit__copy">
+			<p class="eyebrow">Offerta speciale</p>
+			<h2>Prova i nostri adesivi. <span class="hl hl--yellow">Kit campioni a {KIT.price}</span></h2>
+			<ul class="checks">
+				{#each KIT.checks as c (c)}<li><span class="ck">✓</span>{c}</li>{/each}
+			</ul>
+			<div class="kit__cta">
+				<a class="btn btn--yellow btn--lg" href="/campioni">Prova ora il kit →</a>
+				<small>Li recuperi sul primo ordine</small>
+			</div>
+		</div>
+		<img class="kit__img" src={KIT.img} alt="Kit campioni Stickerprint" loading="lazy" />
+	</div>
+</section>
+
+<!-- FAQ -->
 <section class="section container">
 	<div class="faq-wrap">
 		<div>
-			<h2>Domande frequenti <span class="hl hl--blue">{p.title}</span></h2>
+			<h2>{p.faqTitle.replace(/ (sugli|sulle|sui) .*$/, '')} <span class="hl hl--blue">{p.title}</span></h2>
 			<p class="lead" style="margin-top:16px">Cerchi risposte? Dai un’occhiata a queste domande correlate o cerca nella nostra <a class="link" href="/support" style="color:var(--blue)">sezione di supporto</a>.</p>
 		</div>
 		<Faq items={p.faq} />
 	</div>
 </section>
 
-<section class="section container">
-	<div class="panel panel--navy social-proof center">
-		<h2>Cosa dicono di <span class="hl hl--yellow">{p.articolo}.</span></h2>
-		<p class="lead" style="margin-top:18px">Recensioni verificate · valutazione media {avg} su 5.</p>
-		<ReviewsCarousel {reviews} />
+<!-- CTA FINALE -->
+<section class="section container center">
+	<div class="final-cta">
+		<h2>Carica il tuo file, <span class="hl hl--green">al resto pensiamo noi.</span></h2>
+		<p class="lead" style="margin-top:12px">Stampa ora: pronti per la spedizione il <b>{shipShort}</b>.</p>
+		<a class="btn btn--green btn--lg" style="margin-top:22px" href="#configura">Inizia subito →</a>
 	</div>
 </section>

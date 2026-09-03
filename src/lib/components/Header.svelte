@@ -16,9 +16,21 @@
 			.join('');
 	});
 
-	const links = [
-		{ href: '/adesivi-personalizzati', label: 'Adesivi', menu: true },
-		{ href: '/etichette', label: 'Etichette', menu: true },
+	// menù a discesa: icona (sagoma del prodotto) + nome, come sul sito attuale
+	const I = '/images/estimator';
+	const links: { href: string; label: string; items?: { href: string; label: string; img: string }[] }[] = [
+		{
+			href: '/adesivi-personalizzati',
+			label: 'Adesivi',
+			items: [
+				{ href: '/adesivi-resinati', label: 'Adesivi Resinati', img: `${I}/res/round_res.webp` },
+				{ href: '/adesivi-personalizzati', label: 'Adesivi Personalizzati', img: `${I}/square_stickers.webp` },
+				{ href: '/adesivi-rilievo', label: 'Adesivi in Rilievo', img: `${I}/oval_stickers.webp` },
+				{ href: '/vetrofanie', label: 'Vetrofanie', img: `${I}/vetr/vetr_round.webp` },
+				{ href: '/fogli', label: 'Fogli di Adesivi', img: `${I}/sheet/Sticker_sheet_1.webp` }
+			]
+		},
+		{ href: '/etichette', label: 'Etichette', items: [{ href: '/etichette', label: 'Etichette in Fogli', img: `${I}/label/round_label.webp` }] },
 		{ href: '/offerte', label: 'Promo' },
 		{ href: '/aziende', label: 'Aziende' }
 	];
@@ -34,14 +46,24 @@
 	<div class="container header__inner">
 		<nav aria-label="Principale">
 			<ul class="nav nav--desktop">
-				{#each links as l}
-					<li>
-						<a href={l.href}>
+				{#each links as l (l.label)}
+					<li class="nav__item" class:has-menu={l.items}>
+						<a href={l.href} aria-haspopup={l.items ? 'true' : undefined}>
 							{l.label}
-							{#if l.menu}
+							{#if l.items}
 								<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
 							{/if}
 						</a>
+						{#if l.items}
+							<div class="dropdown">
+								{#each l.items as it (it.href)}
+									<a class="dropdown__item" href={it.href}>
+										<img src={it.img} alt="" width="52" height="52" />
+										<span>{it.label}</span>
+									</a>
+								{/each}
+							</div>
+						{/if}
 					</li>
 				{/each}
 			</ul>
@@ -77,10 +99,39 @@
 {#if open}
 	<div class="mobile-menu">
 		<div class="container">
-			{#each links as l}<a href={l.href}>{l.label}</a>{/each}
+			{#each links as l (l.label)}
+				{#if l.items}
+					<p class="mobile-menu__group">{l.label}</p>
+					{#each l.items as it (it.href)}<a class="mobile-menu__sub" href={it.href}><img src={it.img} alt="" width="36" height="36" />{it.label}</a>{/each}
+				{:else}
+					<a href={l.href}>{l.label}</a>
+				{/if}
+			{/each}
 			<a href="/campioni">Kit campioni</a>
 			<a href="/support">Supporto</a>
 			{#if user}<a href="/account">Il tuo account</a>{:else}<a href="/login">Accedi</a>{/if}
 		</div>
 	</div>
 {/if}
+
+<style>
+	.nav__item { position: relative; }
+	.dropdown {
+		position: absolute; top: 100%; left: -14px; margin-top: 14px; min-width: 290px;
+		background: #fff; color: var(--ink); border-radius: 18px; padding: 14px 16px;
+		box-shadow: 0 18px 40px rgba(10, 14, 60, 0.22); display: grid; gap: 4px; z-index: 40;
+		opacity: 0; visibility: hidden; transform: translateY(6px); transition: opacity .18s ease, transform .18s ease, visibility .18s;
+	}
+	/* zona invisibile tra voce e pannello, così il mouse non "cade" fuori */
+	.dropdown::before { content: ''; position: absolute; left: 0; right: 0; top: -16px; height: 16px; }
+	.has-menu:hover .dropdown, .has-menu:focus-within .dropdown { opacity: 1; visibility: visible; transform: translateY(0); }
+	.dropdown__item {
+		display: flex; align-items: center; gap: 16px; padding: 12px 14px; border-radius: 12px;
+		font-family: var(--font-display); font-weight: 800; font-size: 15px; color: #4b5563; text-decoration: none; white-space: nowrap;
+	}
+	.dropdown__item:hover { background: #f3f4f6; color: var(--ink); }
+	.dropdown__item img { width: 52px; height: 52px; object-fit: contain; flex: 0 0 auto; }
+	.mobile-menu__group { font-family: var(--font-display); font-weight: 800; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--blue); margin: 14px 0 6px; }
+	.mobile-menu__sub { display: flex; align-items: center; gap: 12px; }
+	.mobile-menu__sub img { width: 36px; height: 36px; object-fit: contain; }
+</style>

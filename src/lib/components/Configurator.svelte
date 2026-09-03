@@ -68,7 +68,7 @@
 	const material = $derived(MATERIALS.find((m) => m.id === materiale) ?? cfg.materials[0]);
 	const finish = $derived(FINISHES.find((f) => f.id === finitura));
 	const fin = $derived(showFinish ? finitura : 'nessuna');
-	const ratio = $derived(shape?.equal ? 1 : (cutRatio ?? fileRatio ?? 1));
+	const ratio = $derived(shape?.equal ? 1 : (shape?.ratio ?? cutRatio ?? fileRatio ?? 1));
 	const q = $derived(quoteWith(cfg, { w, h, forma, materiale, finitura: fin, qty, vatIncluded }));
 	const progress = $derived((stepNo(step) / steps.length) * 100);
 	const suggested = $derived(suggestedSize(ratio));
@@ -76,6 +76,17 @@
 	const presets = $derived(
 		(file ? [suggested[0], ...shapePresets.filter((x) => x !== suggested[0])] : shapePresets).slice(0, 4).map((pw) => [pw, roundHalf(pw / ratio)] as [number, number])
 	);
+	// senza file, al cambio sagoma si parte dalla misura proposta (50 mm se c'è, altrimenti la prima)
+	let lastForma = '';
+	$effect(() => {
+		if (forma === lastForma) return;
+		lastForma = forma;
+		if (!file) {
+			const [pw, ph] = presets.find(([x]) => x === 50) ?? presets[0];
+			w = pw;
+			h = ph;
+		}
+	});
 	const basePerPiece = $derived(quoteWith(cfg, { w, h, forma, materiale, finitura: fin, qty: cfg.quantities[0], vatIncluded }).perPiece);
 
 	onMount(async () => {
@@ -93,7 +104,7 @@
 		const key = `${file?.name ?? ''}|${file?.size ?? 0}|${forma}`;
 		if (key === sizeKey) return;
 		sizeKey = key;
-		const r = shape?.equal ? 1 : s.h > 0 ? s.w / s.h : (fileRatio ?? 1);
+		const r = shape?.equal ? 1 : (shape?.ratio ?? (s.h > 0 ? s.w / s.h : (fileRatio ?? 1)));
 		cutRatio = r;
 		w = s.srcMM && s.srcMM.w >= MIN_MM && s.srcMM.w <= MAX_MM ? clamp(s.srcMM.w) : suggestedSize(r)[0];
 		h = clamp(w / r);

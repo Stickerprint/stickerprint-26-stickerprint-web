@@ -22,7 +22,7 @@ export type EngineKind = 'lamina' | 'resina';
 export interface CostItem { costM2: number; markup: number } // markup 0 = nessun ricarico, 0.5 = +50%
 export interface MaterialOption extends CostItem { id: string; label: string; description?: string; tag?: string; img?: string; visible: boolean }
 export interface FinishOption { id: string; label: string; description?: string; img?: string; laminate: boolean; visible: boolean }
-export interface ShapeOption { id: string; label: string; description?: string; img?: string; equal?: boolean; visible: boolean; presets: number[] }
+export interface ShapeOption { id: string; label: string; description?: string; img?: string; equal?: boolean; ratio?: number; visible: boolean; presets: number[] } // ratio = proporzione fissa larghezza/altezza (fogli)
 export interface RangeStep { from: number; factor: number }
 
 export interface EngineConfig {
@@ -48,7 +48,7 @@ const IMG = '/images/estimator';
 
 const ALL_MATERIALS: MaterialOption[] = [
 	{ id: 'bianco', label: 'Bianco', description: 'Vinile bianco standard', tag: 'Più scelto', img: `${IMG}/white.webp`, costM2: 4, markup: 0, visible: true },
-	{ id: 'super', label: 'Bianco super adesivo', description: 'Per superfici difficili', img: `${IMG}/white.webp`, costM2: 6.7, markup: 0, visible: false },
+	{ id: 'super', label: 'Bianco super adesivo', description: 'Per superfici difficili', img: `${IMG}/white_super.webp`, costM2: 6.7, markup: 0, visible: false },
 	{ id: 'olografico', label: 'Olografico', description: 'Riflessi arcobaleno', img: `${IMG}/olo.webp`, costM2: 13.9, markup: 0, visible: true },
 	{ id: 'glitterato', label: 'Glitterato', description: 'Brillantini in superficie', img: `${IMG}/glitter.webp`, costM2: 14.5, markup: 0, visible: true },
 	{ id: 'trasparente', label: 'Trasparente', description: 'Effetto senza fondo', img: `${IMG}/transparent.webp`, costM2: 4.3, markup: 0, visible: true },
@@ -56,12 +56,27 @@ const ALL_MATERIALS: MaterialOption[] = [
 	{ id: 'oro', label: 'Oro', description: 'Cromo oro', img: `${IMG}/gold.webp`, costM2: 11.3, markup: 0, visible: true }
 ];
 
-const ALL_SHAPES: ShapeOption[] = [
-	{ id: 'sagomato', label: 'Sagomato', description: 'Forma libera', img: `${IMG}/custom_stickers.webp`, visible: true, presets: [30, 50, 70, 100] },
-	{ id: 'tondo', label: 'Rotondo', description: 'Cerchio', img: `${IMG}/round_stickers.webp`, equal: true, visible: true, presets: [30, 40, 50, 70] },
-	{ id: 'quadrato', label: 'Quadrato', description: 'Angoli morbidi', img: `${IMG}/square_stickers.webp`, equal: true, visible: true, presets: [30, 40, 50, 70] },
-	{ id: 'ovale', label: 'Ovale', description: 'Ellisse', img: `${IMG}/oval_stickers.webp`, visible: true, presets: [50, 70, 100] },
-	{ id: 'rettangolare', label: 'Rettangolo', description: 'Orizzontale', img: `${IMG}/rect_stickers.webp`, visible: true, presets: [50, 70, 100, 150] }
+/** Sagome standard; le immagini cambiano per prodotto (cartelle res/, vetr/, label/) */
+function stdShapes(imgs: [string, string, string, string, string], presets: number[]): ShapeOption[] {
+	const [custom, round, square, oval, rect] = imgs;
+	return [
+		{ id: 'sagomato', label: 'Sagomato', description: 'Forma libera', img: custom, visible: true, presets: [...presets] },
+		{ id: 'tondo', label: 'Rotondo', description: 'Cerchio', img: round, equal: true, visible: true, presets: [...presets] },
+		{ id: 'quadrato', label: 'Quadrato', description: 'Angoli morbidi', img: square, equal: true, visible: true, presets: [...presets] },
+		{ id: 'ovale', label: 'Ovale', description: 'Ellisse', img: oval, visible: true, presets: [...presets] },
+		{ id: 'rettangolare', label: 'Rettangolo', description: 'Orizzontale', img: rect, visible: true, presets: [...presets] }
+	];
+}
+const STICKER_IMGS: [string, string, string, string, string] = [`${IMG}/custom_stickers.webp`, `${IMG}/round_stickers.webp`, `${IMG}/square_stickers.webp`, `${IMG}/oval_stickers.webp`, `${IMG}/rect_stickers.webp`];
+const RES_IMGS: [string, string, string, string, string] = [`${IMG}/res/custom_res.webp`, `${IMG}/res/round_res.webp`, `${IMG}/res/square_res.webp`, `${IMG}/res/oval_res.webp`, `${IMG}/res/rect_res.webp`];
+const VETR_IMGS: [string, string, string, string, string] = [`${IMG}/vetr/vetr_custom.webp`, `${IMG}/vetr/vetr_round.webp`, `${IMG}/vetr/vetr_square.webp`, `${IMG}/vetr/vetr_oval.webp`, `${IMG}/vetr/vetr_rect.webp`];
+const LABEL_IMGS: [string, string, string, string, string] = [`${IMG}/label/custom_labels.webp`, `${IMG}/label/round_label.webp`, `${IMG}/label/square_labels.webp`, `${IMG}/label/oval_labels.webp`, `${IMG}/label/rect_label.webp`];
+const ALL_SHAPES: ShapeOption[] = stdShapes(STICKER_IMGS, [30, 50, 70, 100]);
+/** Fogli di adesivi: formati foglio, proporzione fissa */
+const SHEET_SHAPES: ShapeOption[] = [
+	{ id: 'verticale', label: 'Verticale', description: '100×150, 148×210, 213×275 mm', img: `${IMG}/sheet/Sticker_sheet_1.webp`, ratio: 100 / 150, visible: true, presets: [100, 148, 213] },
+	{ id: 'orizzontale', label: 'Orizzontale', description: '150×100, 210×148, 275×213 mm', img: `${IMG}/sheet/sticker_sheet2.webp`, ratio: 150 / 100, visible: true, presets: [150, 210, 275] },
+	{ id: 'sagomato', label: 'Sagomati', description: 'Foglio tagliato a forma', img: `${IMG}/sheet/sticker_sheet3.webp`, visible: true, presets: [100, 148, 213] }
 ];
 
 const ALL_FINISHES: FinishOption[] = [
@@ -111,21 +126,30 @@ function withFinishes(ids: string[]): FinishOption[] {
 	return clone(ALL_FINISHES).map((f) => ({ ...f, visible: ids.includes(f.id) }));
 }
 
+const QTY_STD = [50, 100, 200, 300, 500, 1000, 2000, 3000, 5000];
+const QTY_SMALL = [10, 50, 100, 200, 300, 500, 1000, 2000, 3000];
+const MAT_STICKER = ['bianco', 'olografico', 'glitterato', 'trasparente', 'argento', 'oro'];
+
 /** Listini iniziali, uno per prodotto e indipendenti tra loro (poi ognuno si modifica dalla dashboard) */
 export const DEFAULT_ENGINES: Record<string, EngineConfig> = {
-	adesivi_personalizzati: base(),
-	adesivi_rilievo: base(),
-	etichette: base(),
-	fogli_adesivi: base(),
+	adesivi_personalizzati: base({ materials: withMaterials(MAT_STICKER), quantities: QTY_STD }),
+	adesivi_rilievo: base({ materials: withMaterials(MAT_STICKER), shapes: stdShapes(STICKER_IMGS, [50, 80, 100, 125]), quantities: QTY_SMALL, size: { minMm: 20, maxMm: 500 } }),
+	etichette: base({ materials: withMaterials(MAT_STICKER), shapes: stdShapes(LABEL_IMGS, [50, 80, 100, 125]), quantities: QTY_SMALL, size: { minMm: 15, maxMm: 300 } }),
+	fogli_adesivi: base({ materials: withMaterials(MAT_STICKER), shapes: clone(SHEET_SHAPES), quantities: QTY_SMALL, recommendedQty: 100, size: { minMm: 50, maxMm: 300 } }),
 	adesivi_resinati: base({
 		kind: 'resina',
-		materials: withMaterials(['bianco', 'super', 'trasparente', 'oro', 'argento']),
+		materials: withMaterials(['bianco', 'super', 'trasparente', 'argento', 'oro']),
 		finishes: withFinishes([]),
+		shapes: stdShapes(RES_IMGS, [25, 50, 80, 100]),
+		quantities: QTY_STD,
 		size: { minMm: 10, maxMm: 200 }
 	}),
 	vetrofanie: base({
 		materials: withMaterials(['trasparente']),
-		finishes: withFinishes(['nessuna'])
+		finishes: withFinishes(['nessuna']),
+		shapes: stdShapes(VETR_IMGS, [80, 100, 180, 250]),
+		quantities: QTY_STD,
+		size: { minMm: 30, maxMm: 500 }
 	})
 };
 
