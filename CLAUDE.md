@@ -20,6 +20,7 @@ progressivamente stickerprint.it (SvelteKit su Cloudflare Pages). Lingua del pro
 
 - `src/routes/+page.svelte` homepage (design da HOME_V4.pdf), dati in `+page.server.ts`
 - `src/routes/login|signup|reset-password|logout|auth/callback` flusso auth
+- `src/routes/checkout/` carrello (localStorage + file in IndexedDB) e ordine: prezzi ricalcolati lato server con il listino, file caricati nel bucket privato `order-files`, numerazione `SP-xxxx`
 - `src/routes/account/` area personale cliente (panoramica, ordini con popup Riordina, credito, fatture, dati e indirizzi, pagamenti, recensioni). Tabelle `orders`, `invoices`, `reviews` in `supabase/migrations/0009_customer_area.sql`
 - `src/routes/blog/` blog pubblico (tabelle `posts`, `post_categories`, bucket `blog-media`, migrazione 0008); gestione in `/dashboard/blog`
 - `src/routes/aziende|chi-siamo|support|resi` pagine informative (testi da stickerprint.it); i form salvano in `contact_requests` (migrazione 0007)
@@ -59,6 +60,6 @@ npm run build    # build di produzione
 ## Stato e prossimi passi
 
 1. Homepage: fatta. 2. Auth Supabase: fatta. 3. Postmark: modulo pronto, token da inserire.
-4. Pagine prodotto con configuratore: fatte (6 prodotti). Aziende, chi siamo, supporto, resi, blog: fatte. Campioni, prodotti (catalogo), checkout: da fare.
-5. Area personale cliente: fatta (manca il collegamento al checkout/pagamenti).
+4. Pagine prodotto con configuratore: fatte (6 prodotti). Aziende, chi siamo, supporto, resi, blog: fatte. Campioni e catalogo `/prodotti`: da fare.
+5. Area personale cliente e programma fedeltà (Creator/Partner/Ambassador): fatti. Checkout `/checkout`: fatto con pagamento "Test"; carta e PayPal richiedono le chiavi Stripe/PayPal (da collegare).
 6. Dashboard interna produzione (`/admin`): da fare.
