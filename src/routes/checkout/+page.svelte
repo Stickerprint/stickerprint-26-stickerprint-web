@@ -37,13 +37,15 @@
 	const subtotalNet = $derived(items.reduce((a, i) => a + i.net, 0));
 	const subtotalGross = $derived(items.reduce((a, i) => a + i.gross, 0));
 	const discountAmt = $derived(discount ? Math.min(discount.amount, subtotalNet) : 0);
-	const expressNet = $derived(express ? data.expressNet : 0);
+	const expressNet = $derived(express ? Math.round(subtotalNet * data.expressRate * 100) / 100 : 0);
 	const totalNet = $derived(Math.max(0, subtotalNet - discountAmt) + expressNet);
 	const totalGross = $derived(Math.round(totalNet * VAT * 100) / 100);
 	const creditUsed = $derived(useCredit ? Math.min(data.credit, totalGross) : 0);
 	const toPay = $derived(Math.round((totalGross - creditUsed) * 100) / 100);
 	const vatAmount = $derived(totalGross - totalNet);
 	const allFiles = $derived(items.every((i) => hasFile[i.id] || !!i.filePath));
+	let guestEmail = $state('');
+	const canOrder = $derived(!!data.user || (data.guestAllowed && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(guestEmail)));
 
 	onMount(async () => {
 		// righe di vecchie versioni del carrello (senza prezzo) vengono scartate
@@ -78,7 +80,7 @@
 	async function onSubmit(e: SubmitEvent) {
 		e.preventDefault();
 		err = '';
-		if (!data.user) { err = 'Accedi per completare l’ordine.'; return; }
+		if (!canOrder) { err = data.user ? '' : data.guestAllowed ? 'Inserisci la tua email.' : 'Accedi o registrati per completare l’ordine.'; return; }
 		if (!allFiles) { err = 'Manca il file di un prodotto.'; return; }
 		if (!formEl) return;
 		submitting = true;
@@ -89,7 +91,7 @@
 				const f = await getCartFile(it.id);
 				if (f) {
 					const ext = (f.name.split('.').pop() ?? 'bin').toLowerCase().replace(/[^a-z0-9]/g, '') || 'bin';
-					const path = `${data.user.id}/${it.id}.${ext}`;
+					const path = `${data.user?.id ?? 'guest'}/${it.id}.${ext}`;
 					const { error } = await data.supabase.storage.from('order-files').upload(path, f, { contentType: f.type || undefined, upsert: true });
 					if (error) throw new Error(`File non caricato (${f.name}): ${error.message}`);
 					filePath = path;
@@ -132,9 +134,9 @@
 			<div class="co__left">
 				{#if !data.user}
 					<div class="co-login">
-						<h2>Accedi per completare l’ordine</h2>
-						<p class="lead">Con l’account trovi prove di stampa, fatture e Credito Stickerprint. Il carrello resta salvato.</p>
-						<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px"><a class="btn btn--green" href="/login?next=/checkout">Accedi</a><a class="btn btn--ghost" href="/signup?next=/checkout">Crea un account</a></div>
+						<h2>Hai già un account? <a class="link" href="/login?next=/checkout">Accedi</a></h2>
+						<p class="lead">Registrandoti guadagni il <b>2% in Credito Stickerprint</b> su questo ordine e trovi prove di stampa e fatture nella tua area personale. {#if data.guestAllowed}Oppure ordina come ospite: riceverai conferma e fattura via email.{/if}</p>
+						<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px"><a class="btn btn--green" href="/signup?next=/checkout">Crea un account</a><a class="btn btn--ghost" href="/login?next=/checkout">Accedi</a></div>
 					</div>
 				{/if}
 
@@ -142,7 +144,7 @@
 				<div class="co-grid">
 					<label>Nome <i>obbligatorio</i><input name="first_name" required value={addr?.first_name ?? fn ?? ''} /></label>
 					<label>Cognome <i>obbligatorio</i><input name="last_name" required value={addr?.last_name ?? ln.join(' ')} /></label>
-					<label class="full">Indirizzo email <i>obbligatorio</i><input type="email" value={data.user?.email ?? ''} readonly={!!data.user} /><small>{#if data.user}Stai ordinando come <b>{data.user.email}</b>. Per usare un’altra email, esci dall’account.{/if}</small></label>
+					<label class="full">Indirizzo email <i>obbligatorio</i>{#if data.user}<input type="email" value={data.user.email ?? ''} readonly /><small>Stai ordinando come <b>{data.user.email}</b>. Per usare un’altra email, esci dall’account.</small>{:else}<input type="email" name="email" required bind:value={guestEmail} autocomplete="email" /><small>Conferma d’ordine e fattura arrivano a questo indirizzo.</small>{/if}</label>
 					<label class="full">Indirizzo <i>obbligatorio</i><input name="street" required value={addr?.street ?? ''} /></label>
 					<label class="full"><span class="sr-only">Dettagli indirizzo</span><input name="street2" placeholder="Appartamento, scala, piano, ecc." /></label>
 					<label>Città <i>obbligatorio</i><input name="city" required value={addr?.city ?? ''} /></label>
@@ -180,10 +182,10 @@
 					<label class="co-pay__opt is-soon"><input type="radio" name="payment" value="paypal" disabled /><span><b>PayPal</b><small>Disponibile a breve</small></span><img src="/icons/footer/paypal.webp" alt="" /></label>
 					<label class="co-pay__opt"><input type="radio" name="payment" value="test" bind:group={payment} /><span><b>Test (gratuito)</b><small>Crea l’ordine senza pagamento reale</small></span></label>
 				</div>
-				<p class="co-secure"><b>🔒 Sistema di pagamento sicuro.</b> Il pagamento verrà addebitato solo dopo che avrai approvato la prova di stampa. Ora registriamo solo i tuoi dati in sicurezza.</p>
+				<p class="co-secure"><b>🔒 Pagamento sicuro.</b> Il pagamento viene effettuato subito alla conferma dell’ordine. Ricevi conferma e fattura via email; la prova di stampa arriva a seguire e andiamo in produzione solo dopo il tuo ok.</p>
 
 				{#if err}<p class="error" style="margin-top:14px">{err}</p>{/if}
-				<button class="btn btn--green btn--lg co-submit" type="submit" disabled={submitting || !data.user || !allFiles || items.length === 0}>{submitting ? 'Invio in corso…' : 'Invia il tuo ordine'}</button>
+				<button class="btn btn--green btn--lg co-submit" type="submit" disabled={submitting || !canOrder || !allFiles || items.length === 0}>{submitting ? 'Invio in corso…' : 'Invia il tuo ordine e paga'}</button>
 				<p class="note" style="margin-top:8px">Cliccando su Invia il tuo ordine, accetti la <a class="link" href="/privacy">privacy policy</a> e i <a class="link" href="/termini">termini e condizioni</a> di Stickerprint.</p>
 			</div>
 
@@ -207,7 +209,7 @@
 						</div>
 					{/each}
 					<div class="co-row"><span>Prova di stampa</span><b>Gratis</b></div>
-					<div class="co-ship">🚚 Pronti per la spedizione il <b>{express ? data.expressDate : data.shipDate}</b></div>
+					<div class="co-ship">🚀 Pronti per la spedizione il <b>{express ? data.expressDate : data.shipDate}</b></div>
 
 					<label class="co-code__label" for="code">Hai un codice sconto o un codice referral da utilizzare?</label>
 					<div class="co-code"><input id="code" placeholder="Inserisci codice" bind:value={code} /><button type="button" class="btn btn--blue btn--xs" onclick={applyCode} disabled={!code}>Applica</button></div>
@@ -216,6 +218,8 @@
 
 					{#if data.user && data.credit > 0}
 						<label class="co-credit"><input type="checkbox" name="use_credit" bind:checked={useCredit} /><img src="/images/coin-sp.png" alt="" /><span>Usa il tuo Credito Stickerprint <b>{eur(data.credit)}</b></span></label>
+					{:else if !data.user}
+						<div class="co-credit" style="cursor:default"><img src="/images/coin-sp.png" alt="" /><span><a class="link" href="/signup?next=/checkout">Registrati</a> e guadagni il 2% in credito su questo ordine.</span></div>
 					{/if}
 
 					<div class="co-totals">
@@ -229,10 +233,12 @@
 					</div>
 				</div>
 
-				<div class="co-box co-express">
-					<h3>Produzione express</h3>
+				<div class="co-express">
+					<h3>Produzione Express ⚡</h3>
 					<p>Salti la coda di produzione. Spediamo i tuoi adesivi 2 giorni prima rispetto alla data standard.</p>
-					<label class="co-check"><input type="checkbox" name="express" bind:checked={express} /> Sì, li voglio prima <b>(+{eur(data.expressNet * VAT)})</b></label>
+					<input type="checkbox" name="express" bind:checked={express} hidden />
+					<button type="button" class="co-express__btn" class:is-on={express} onclick={() => (express = !express)}>{express ? `✓ Attivata · +${eur(Math.round(subtotalNet * data.expressRate * VAT * 100) / 100)}` : 'Sì, li voglio prima'}</button>
+					<small>+{Math.round(data.expressRate * 100)}% sul valore dei prodotti{#if data.user} · concorre al tuo credito{/if}</small>
 				</div>
 			</aside>
 		</form>

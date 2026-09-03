@@ -101,3 +101,17 @@ export function ownerNotifyEmail(opts: { title: string; lines: string[]; href?: 
 }
 
 export const OWNER_EMAIL = env.OWNER_NOTIFY_EMAIL || 'info@stickerprint.it';
+
+export function orderConfirmationEmail(opts: { name?: string | null; numbers: string[]; invoiceNumber: string; total: string; lines: string[]; shipDate: string; accountUrl?: string | null }) {
+	const items = opts.lines.map((l) => `<li>${l}</li>`).join('');
+	return {
+		subject: `Ordine ${opts.numbers.join(', ')} confermato – Stickerprint`,
+		tag: 'order-confirmation',
+		html: `<p>Ciao ${opts.name || ''},</p>
+<p>grazie per il tuo ordine! Abbiamo ricevuto il pagamento e stiamo già preparando la <strong>prova di stampa</strong>, che ti invieremo a breve via email.</p>
+<p><strong>Ordine:</strong> ${opts.numbers.join(', ')}<br><strong>Fattura:</strong> ${opts.invoiceNumber} (in allegato)<br><strong>Totale pagato:</strong> ${opts.total}<br><strong>Pronti per la spedizione:</strong> ${opts.shipDate}</p>
+<ul>${items}</ul>
+${opts.accountUrl ? `<p>Trovi ordine e fattura anche nella tua <a href="${opts.accountUrl}">area personale</a>.</p>` : '<p>Vuoi seguire l’ordine e guadagnare credito sul prossimo? <a href="https://stickerprint.it/signup">Crea il tuo account</a> con questa stessa email: ordine e fattura saranno già lì.</p>'}
+<p>A presto,<br>Il team Stickerprint</p>`
+	};
+}

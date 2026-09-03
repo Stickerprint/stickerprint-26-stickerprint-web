@@ -14,6 +14,8 @@ export interface SendEmailInput {
 	replyTo?: string;
 	/** Metadati liberi visibili nel pannello Postmark */
 	metadata?: Record<string, string>;
+	/** Allegati (es. fattura PDF), contenuto in base64 */
+	attachments?: { name: string; content: string; contentType: string }[];
 }
 
 export interface SendEmailResult {
@@ -54,6 +56,7 @@ export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult>
 			ReplyTo: input.replyTo,
 			MessageStream: stream,
 			Metadata: input.metadata,
+			Attachments: input.attachments?.map((a) => ({ Name: a.name, Content: a.content, ContentType: a.contentType })),
 			TrackOpens: true
 		})
 	});

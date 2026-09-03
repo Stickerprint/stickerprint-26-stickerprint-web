@@ -11,10 +11,10 @@
 	{#if numbers.length}<p class="lead" style="margin-top:10px">Numero ordine: <b>{numbers.join(', ')}</b></p>{/if}
 	<div class="card" style="text-align:left;margin-top:26px;padding:24px 28px">
 		<ol style="display:grid;gap:12px;padding-left:22px;font-size:15.5px">
-			<li><b>Controlliamo il tuo file</b> e prepariamo la prova di stampa.</li>
-			<li><b>Ti mandiamo la prova via email</b>: la approvi con un click (o ci dici cosa cambiare).</li>
-			<li><b>Solo dopo il tuo ok</b> andiamo in stampa e addebitiamo il pagamento.</li>
-			<li><b>Spediamo con corriere tracciato</b>: il codice arriva nella tua area personale.</li>
+			<li><b>Pagamento ricevuto:</b> conferma d’ordine e fattura sono in arrivo via email.</li>
+			<li><b>Controlliamo il tuo file</b> e ti mandiamo la prova di stampa: la approvi con un click (o ci dici cosa cambiare).</li>
+			<li><b>Dopo il tuo ok</b> andiamo in produzione.</li>
+			<li><b>Spediamo con corriere tracciato</b>: il codice arriva via email e nell’area personale.</li>
 		</ol>
 	</div>
 	<div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:26px">

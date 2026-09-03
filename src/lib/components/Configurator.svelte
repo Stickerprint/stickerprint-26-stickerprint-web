@@ -321,7 +321,7 @@
 	<!-- RIEPILOGO: spedizione, credito, totale e bottone, tutti alla stessa altezza -->
 	<div class="cfg__summary">
 		<div class="sum sum--ship">
-			<span class="sum__ico">🚚</span>
+			<span class="sum__ico">🚀</span>
 			<div class="sum__text"><span class="sum__label">Pronti per la spedizione</span><span class="sum__value">{shipDate}</span><span class="sum__sub">Corriere espresso tracciato</span></div>
 		</div>
 		<div class="sum sum--credit">
