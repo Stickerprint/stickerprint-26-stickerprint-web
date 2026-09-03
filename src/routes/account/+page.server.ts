@@ -1,20 +1,23 @@
+import { loadOrders } from '$lib/server/account';
+import type { CreditTx } from '$lib/account';
 import type { PageServerLoad } from './$types';
 
-/**
- * Bozza dashboard cliente: per ora mostra i dati base dell'utente
- * e conta gli ordini esistenti nel database attuale (tabella `orders`).
- * Le sezioni complete (ordini, prove, fatture, credito) arrivano nello step successivo.
- */
 export const load: PageServerLoad = async ({ locals: { supabase, user } }) => {
-	let ordersCount = 0;
-	try {
-		const { count } = await supabase
-			.from('orders')
-			.select('id', { count: 'exact', head: true })
-			.eq('user_id', user!.id);
-		ordersCount = count ?? 0;
-	} catch {
-		/* la tabella potrebbe non essere accessibile dal nuovo progetto: non è un errore bloccante */
-	}
-	return { ordersCount };
+	const uid = user!.id;
+	const [{ orders, engines }, { data: tx }, { data: balance }] = await Promise.all([
+		loadOrders(supabase, uid, 3),
+		supabase.from('credit_transactions').select('*').eq('user_id', uid).order('created_at', { ascending: false }).limit(6),
+		supabase.rpc('my_credit_balance')
+	]);
+	const all = (tx ?? []) as CreditTx[];
+	const year = new Date().getFullYear();
+	return {
+		orders, engines, tx: all,
+		credit: {
+			balance: Number(balance ?? 0),
+			earned: all.filter((t) => t.amount > 0).reduce((s, t) => s + Number(t.amount), 0),
+			used: all.filter((t) => t.amount < 0).reduce((s, t) => s - Number(t.amount), 0),
+			earnedYear: all.filter((t) => t.amount > 0 && new Date(t.created_at).getFullYear() === year).reduce((s, t) => s + Number(t.amount), 0)
+		}
+	};
 };

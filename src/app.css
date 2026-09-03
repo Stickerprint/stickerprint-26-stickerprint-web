@@ -170,7 +170,7 @@ body { overflow-x: clip; }
   background: none; border: 0; color: #fff; font-family: var(--font-display); font-weight: 800; font-size: 16px; letter-spacing: -0.02em; padding: 10px 14px;
   border-radius: 8px; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
 }
-.nav a:hover, .nav button:hover { background: rgba(255,255,255,.1); }
+.nav a:hover, .nav button:hover, .nav .has-menu:hover > a, .nav a.is-active { background: var(--yellow); color: var(--ink); }
 .nav .chev { width: 12px; height: 12px; }
 .header__logo {
   position: absolute; left: 50%; top: 12px; transform: translateX(-50%) rotate(-6deg);

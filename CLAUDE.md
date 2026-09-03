@@ -20,7 +20,9 @@ progressivamente stickerprint.it (SvelteKit su Cloudflare Pages). Lingua del pro
 
 - `src/routes/+page.svelte` homepage (design da HOME_V4.pdf), dati in `+page.server.ts`
 - `src/routes/login|signup|reset-password|logout|auth/callback` flusso auth
-- `src/routes/account/` dashboard cliente (in sviluppo)
+- `src/routes/account/` area personale cliente (panoramica, ordini con popup Riordina, credito, fatture, dati e indirizzi, pagamenti, recensioni). Tabelle `orders`, `invoices`, `reviews` in `supabase/migrations/0009_customer_area.sql`
+- `src/routes/blog/` blog pubblico (tabelle `posts`, `post_categories`, bucket `blog-media`, migrazione 0008); gestione in `/dashboard/blog`
+- `src/routes/aziende|chi-siamo|support|resi` pagine informative (testi da stickerprint.it); i form salvano in `contact_requests` (migrazione 0007)
 - `src/routes/dashboard/` area amministratore (login dedicato in `/dashboard/login`, accesso solo a profili con role admin/staff)
 - `src/lib/components/Configurator.svelte` preventivatore prodotto (passi dinamici: sagoma, materiale, finitura, misura, quantità). Il listino è a costi (`src/lib/pricing/engine.ts`, versione 2: materiali €/m², stampa, avvio produzione, lamina, resina, range commerciale per m² e range prezzo per quantità, markup) e arriva da `pricing_engines` (Supabase) tramite `src/lib/server/pricing.ts`; si modifica da `/dashboard/preventivatori/[slug]` (storico in `pricing_engine_history`)
 - `src/lib/components/ProductPage.svelte` + `src/lib/products.ts`: pagina prodotto generica e contenuti (testi/foto) per `/adesivi-personalizzati`, `/adesivi-resinati`, `/adesivi-rilievo`, `/etichette`, `/fogli`, `/vetrofanie`
@@ -57,6 +59,6 @@ npm run build    # build di produzione
 ## Stato e prossimi passi
 
 1. Homepage: fatta. 2. Auth Supabase: fatta. 3. Postmark: modulo pronto, token da inserire.
-4. Pagine prodotto con configuratore: fatte (6 prodotti). Campioni, aziende, supporto, blog: da fare.
-5. Dashboard cliente (ordini, prove, fatture, credito 5%): da fare.
+4. Pagine prodotto con configuratore: fatte (6 prodotti). Aziende, chi siamo, supporto, resi, blog: fatte. Campioni, prodotti (catalogo), checkout: da fare.
+5. Area personale cliente: fatta (manca il collegamento al checkout/pagamenti).
 6. Dashboard interna produzione (`/admin`): da fare.

@@ -35,6 +35,12 @@
 		{ href: '/aziende', label: 'Aziende' }
 	];
 
+	// voce evidenziata (gialla) quando si è in una pagina della sezione
+	const sectionActive = (l: (typeof links)[number]) => {
+		const path = page.url.pathname;
+		return l.items ? l.items.some((it) => path.startsWith(it.href)) : path.startsWith(l.href);
+	};
+
 	$effect(() => {
 		// chiude il menu mobile a ogni navigazione
 		page.url.pathname;
@@ -48,7 +54,7 @@
 			<ul class="nav nav--desktop">
 				{#each links as l (l.label)}
 					<li class="nav__item" class:has-menu={l.items}>
-						<a href={l.href} aria-haspopup={l.items ? 'true' : undefined}>
+						<a href={l.href} class:is-active={sectionActive(l)} aria-haspopup={l.items ? 'true' : undefined}>
 							{l.label}
 							{#if l.items}
 								<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
