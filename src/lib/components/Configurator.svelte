@@ -8,12 +8,17 @@
 	import EnginePreview from './EnginePreview.svelte';
 	import { loadDraft, saveDraft } from '$lib/utils/draftStore';
 	import { addToCart } from '$lib/cart';
-	import {
-		SHAPES, MATERIALS, FINISHES, QTY_TIERS, MIN_MM, MAX_MM,
-		quote, sizeFactor, tierPrice, suggestedSize, roundHalf, eur0, eur2
-	} from '$lib/pricing/adesivi';
+	import { quoteWith, factorOf, tierPrice, suggestedSize, roundHalf, eur0, eur2, type EngineConfig } from '$lib/pricing/engine';
 
-	let { shipDate }: { shipDate: string } = $props();
+	let { shipDate, cfg }: { shipDate: string; cfg: EngineConfig } = $props();
+
+	// listino: arriva dal server (dashboard → Supabase), con default nel codice
+	const SHAPES = $derived(cfg.shapes);
+	const MATERIALS = $derived(cfg.materials);
+	const FINISHES = $derived(cfg.finishes);
+	const QTY_TIERS = $derived(cfg.tiers);
+	const MIN_MM = $derived(cfg.size.minMm);
+	const MAX_MM = $derived(cfg.size.maxMm);
 
 	const STEPS = 5;
 	let forma = $state('sagomato');
@@ -36,16 +41,16 @@
 
 	const shape = $derived(SHAPES.find((s) => s.id === forma) ?? SHAPES[0]);
 	const material = $derived(MATERIALS.find((m) => m.id === materiale) ?? MATERIALS[0]);
-	const finish = $derived(FINISHES.find((f) => f.id === finitura) ?? FINISHES[1]);
+	const finish = $derived(FINISHES.find((f) => f.id === finitura) ?? FINISHES[0]);
 	/** proporzione effettiva della sagoma: tondo e quadrato sono sempre 1:1 */
 	const ratio = $derived(shape.equal ? 1 : (cutRatio ?? fileRatio ?? 1));
-	const factor = $derived(sizeFactor(w, h, materiale, forma, finitura));
-	const q = $derived(quote({ w, h, materiale, forma, finitura, qty, vatIncluded }));
+	const factor = $derived(factorOf(cfg, w, h, forma, materiale, finitura));
+	const q = $derived(quoteWith(cfg, { w, h, forma, materiale, finitura, qty, vatIncluded }));
 	const progress = $derived((step / STEPS) * 100);
 	/** misure proposte: larghezze fisse, altezza in proporzione */
 	const suggested = $derived(suggestedSize(ratio));
 	const presets = $derived(
-		[suggested[0], ...[30, 50, 70, 100].filter((x) => x !== suggested[0])].slice(0, 4).map((pw) => [pw, roundHalf(pw / ratio)] as [number, number])
+		[suggested[0], ...cfg.size.presets.filter((x) => x !== suggested[0])].slice(0, 4).map((pw) => [pw, roundHalf(pw / ratio)] as [number, number])
 	);
 
 	onMount(async () => {
@@ -120,7 +125,7 @@
 				<div class="cfg__placeholder"><strong>IL TUO<br />DESIGN</strong><small>qui</small></div>
 			</div>
 		{/if}
-		<div class="cfg__tools" class:cfg__tools--static={!file}
+		<div class="cfg__tools" class:cfg__tools--static={!file}>
 			<button type="button" class="eye" class:is-off={!showCut} onclick={() => (showCut = !showCut)} aria-pressed={showCut} title={showCut ? 'Nascondi la linea di taglio' : 'Mostra la linea di taglio'}>
 				<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" />{#if !showCut}<path d="M3 3l18 18" />{/if}</svg>
 				<span class="eye__dash" aria-hidden="true"></span>
@@ -201,7 +206,7 @@
 							<button type="button" class="pic" class:is-active={finitura === f.id} onclick={() => choose(() => (finitura = f.id), 4)}>
 								<img src={f.img} alt="" />
 								<b>{f.label}</b>
-								<small>{f.description}</small>
+								<small>{f.description ?? ''}</small>
 							</button>
 						{/each}
 					</div>
@@ -252,9 +257,9 @@
 					<div class="qty-grid">
 						{#each QTY_TIERS as t (t.qty)}
 							{@const price = tierPrice(t, factor)}
-							{@const shown = vatIncluded ? price : price / 1.22}
+							{@const shown = vatIncluded ? price : price / cfg.vat}
 							{@const per = shown / t.qty}
-							{@const base = tierPrice(QTY_TIERS[0], factor) / 50}
+							{@const base = tierPrice(QTY_TIERS[0], factor) / QTY_TIERS[0].qty}
 							{@const disc = Math.max(0, Math.round((1 - price / t.qty / base) * 100))}
 							<button type="button" class="qty" class:is-active={qty === t.qty} onclick={() => (qty = t.qty)}>
 								{#if t.tag}<span class="qty__tag">{t.tag}</span>{/if}

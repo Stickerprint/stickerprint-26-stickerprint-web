@@ -1,12 +1,16 @@
 <script lang="ts">
 	import '../app.css';
 	import { invalidate } from '$app/navigation';
+	import { page } from '$app/state';
 	import { onMount } from 'svelte';
 	import Header from '$lib/components/Header.svelte';
 	import Footer from '$lib/components/Footer.svelte';
 
 	let { data, children } = $props();
 	let { session, supabase, user } = $derived(data);
+
+	// l'area amministratore ha la sua interfaccia: niente header e footer del sito
+	const isDashboard = $derived(page.url.pathname.startsWith('/dashboard') && page.url.pathname !== '/dashboard/login');
 
 	onMount(() => {
 		// Quando Supabase cambia sessione nel browser (login, logout, refresh token)
@@ -21,11 +25,11 @@
 </script>
 
 <div class="app">
-	<Header {user} />
+	{#if !isDashboard}<Header {user} />{/if}
 	<main>
 		{@render children()}
 	</main>
-	<Footer />
+	{#if !isDashboard}<Footer />{/if}
 </div>
 
 <style>

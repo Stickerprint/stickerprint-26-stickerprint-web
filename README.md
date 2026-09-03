@@ -89,6 +89,11 @@ vercel --prod
 
 Quando si vorrà spostare il dominio: su Vercel → Project → Domains aggiungi `stickerprint.it` e aggiorna il record DNS su Cloudflare (CNAME verso `cname.vercel-dns.com`, proxy disattivato o DNS-only).
 
+## Area amministratore
+
+`/dashboard/login` → solo profili con `role` admin o staff. Crea l'utente in Supabase (Authentication → Users → Add user, Auto Confirm) e poi `update public.profiles set role='admin' where email='...'`.
+Esegui `supabase/migrations/0003_dashboard.sql` nel SQL Editor per listini (`pricing_engines`) e codici sconto (`discount_codes`).
+
 ## Prossimi passi
 
 - Pagine prodotto/configuratore, campioni, aziende, supporto, blog

@@ -43,7 +43,7 @@
 
 <!-- PREVENTIVATORE -->
 <section class="container">
-	<Configurator shipDate={data.shipDate} />
+	<Configurator shipDate={data.shipDate} cfg={data.engine} />
 </section>
 
 <!-- ZERO ANSIA -->
