@@ -6,7 +6,7 @@ import { estimatedShipDate, formatItDate } from '$lib/utils/shipping';
 import type { Actions, PageServerLoad } from './$types';
 
 /** Supplemento produzione express (imponibile): spediamo 2 giorni prima. Modificabile qui. */
-export const EXPRESS_NET = 15;
+const EXPRESS_NET = 15;
 const VAT = 1.22;
 
 export const load: PageServerLoad = async ({ locals: { supabase, user } }) => {
