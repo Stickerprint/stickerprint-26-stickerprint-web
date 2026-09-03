@@ -13,7 +13,8 @@ progressivamente stickerprint.it (SvelteKit su Cloudflare Pages). Lingua del pro
   nel browser via `data.supabase` dal layout. Lo schema è versionato in `supabase/migrations/`:
   ogni modifica al DB va scritta come nuovo file `NNNN_descrizione.sql`, mai fatta a mano nel pannello.
 - Email transazionali: Postmark via `src/lib/server/email.ts` + template in `email-templates.ts`.
-- Deploy: Vercel (`@sveltejs/adapter-vercel`). Variabili in `.env` (mai committare), elenco in `.env.example`.
+- Deploy: Vercel (`@sveltejs/adapter-vercel`). Variabili in `.env` (mai committare), elenco in `.env.example`. `SUPABASE_SERVICE_ROLE_KEY` (solo server) abilita gli ordini degli ospiti nel checkout.
+- Lingue/valute: struttura in `src/lib/i18n.ts` (cookie `sp-locale`, rilevamento in `hooks.server.ts`, selettore nel footer, percorsi `/en` e `/us`). Testi ancora in italiano.
 - Route protette: `/account/*` (cliente) e `/admin/*` (staff) sono gestite in `hooks.server.ts`.
 
 ## Struttura
@@ -61,5 +62,5 @@ npm run build    # build di produzione
 
 1. Homepage: fatta. 2. Auth Supabase: fatta. 3. Postmark: modulo pronto, token da inserire.
 4. Pagine prodotto con configuratore: fatte (6 prodotti). Aziende, chi siamo, supporto, resi, blog: fatte. Campioni e catalogo `/prodotti`: da fare.
-5. Area personale cliente e programma fedeltà (Creator/Partner/Ambassador): fatti. Checkout `/checkout`: fatto con pagamento "Test"; carta e PayPal richiedono le chiavi Stripe/PayPal (da collegare).
+5. Area personale cliente e programma fedeltà (Creator/Partner/Ambassador): fatti. Checkout `/checkout` con fattura PDF automatica (pdf-lib, bucket `invoices`) ed email di conferma: fatto con pagamento "Test"; carta e PayPal richiedono le chiavi Stripe/PayPal (da collegare).
 6. Dashboard interna produzione (`/admin`): da fare.
