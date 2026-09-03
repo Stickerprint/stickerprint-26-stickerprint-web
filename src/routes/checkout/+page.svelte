@@ -37,7 +37,8 @@
 	const subtotalNet = $derived(items.reduce((a, i) => a + i.net, 0));
 	const subtotalGross = $derived(items.reduce((a, i) => a + i.gross, 0));
 	const discountAmt = $derived(discount ? Math.min(discount.amount, subtotalNet) : 0);
-	const expressNet = $derived(express ? Math.round(subtotalNet * data.expressRate * 100) / 100 : 0);
+	const expressBase = $derived(items.filter((i) => i.product !== 'campioni').reduce((a, i) => a + i.net, 0));
+	const expressNet = $derived(express ? Math.round(expressBase * data.expressRate * 100) / 100 : 0);
 	const totalNet = $derived(Math.max(0, subtotalNet - discountAmt) + expressNet);
 	const totalGross = $derived(Math.round(totalNet * VAT * 100) / 100);
 	const creditUsed = $derived(useCredit ? Math.min(data.credit, totalGross) : 0);
@@ -197,9 +198,9 @@
 						<div class="co-item">
 							<div class="co-item__thumb">{#if thumbs[it.id]}<img src={thumbs[it.id]} alt="" />{:else}<img src="/images/estimator/round_stickers.webp" alt="" />{/if}</div>
 							<div class="co-item__body">
-								<div class="co-item__top"><b>{it.qty.toLocaleString('it-IT')} {it.productName} {it.forma}</b><span class="co-item__price">{eur(it.gross)}</span><button type="button" class="co-item__x" aria-label="Rimuovi" onclick={() => remove(it.id)}>✕</button></div>
-								<small>Misura: {fmtMm(it.w)} × {fmtMm(it.h)} mm · {MATERIAL_LABEL[it.materiale] ?? it.materiale}{#if it.finitura && it.finitura !== 'nessuna'} · lamina {it.finitura}{/if}</small>
-								<small>File: {#if hasFile[it.id] || it.filePath}{it.fileName ?? 'file caricato'}{:else}<span class="err">mancante</span> <label class="link" style="cursor:pointer">carica<input type="file" hidden accept="image/*,.pdf,.svg,.ai,.eps" onchange={(e) => reupload(it.id, e)} /></label>{/if}</small>
+								<div class="co-item__top"><b>{#if it.product === 'campioni'}Kit campioni{:else}{it.qty.toLocaleString('it-IT')} {it.productName} {it.forma}{/if}</b><span class="co-item__price">{eur(it.gross)}</span><button type="button" class="co-item__x" aria-label="Rimuovi" onclick={() => remove(it.id)}>✕</button></div>
+								{#if it.product === 'campioni'}<small>Selezione dei nostri materiali e finiture · spedizione gratuita</small>{:else}<small>Misura: {fmtMm(it.w)} × {fmtMm(it.h)} mm · {MATERIAL_LABEL[it.materiale] ?? it.materiale}{#if it.finitura && it.finitura !== 'nessuna'} · lamina {it.finitura}{/if}</small>{/if}
+								{#if it.product !== 'campioni'}<small>File: {#if hasFile[it.id] || it.filePath}{it.fileName ?? 'file caricato'}{:else}<span class="err">mancante</span> <label class="link" style="cursor:pointer">carica<input type="file" hidden accept="image/*,.pdf,.svg,.ai,.eps" onchange={(e) => reupload(it.id, e)} /></label>{/if}</small>{/if}
 								{#if noteOpen === it.id}
 									<textarea rows="2" placeholder="Note per questo prodotto" value={it.note ?? ''} onchange={(e) => (items = updateCartItem(it.id, { note: (e.currentTarget as HTMLTextAreaElement).value }))}></textarea>
 								{:else}
@@ -237,7 +238,7 @@
 					<h3>Produzione Express ⚡</h3>
 					<p>Salti la coda di produzione. Spediamo i tuoi adesivi 2 giorni prima rispetto alla data standard.</p>
 					<input type="checkbox" name="express" bind:checked={express} hidden />
-					<button type="button" class="co-express__btn" class:is-on={express} onclick={() => (express = !express)}>{express ? `✓ Attivata · +${eur(Math.round(subtotalNet * data.expressRate * VAT * 100) / 100)}` : 'Sì, li voglio prima'}</button>
+					<button type="button" class="co-express__btn" class:is-on={express} onclick={() => (express = !express)}>{express ? `✓ Attivata · +${eur(Math.round(expressBase * data.expressRate * VAT * 100) / 100)}` : 'Sì, li voglio prima'}</button>
 					<small>+{Math.round(data.expressRate * 100)}% sul valore dei prodotti{#if data.user} · concorre al tuo credito{/if}</small>
 				</div>
 			</aside>

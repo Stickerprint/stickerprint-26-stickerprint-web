@@ -40,15 +40,13 @@
 			<p class="lead" style="margin-top:34px">
 				Carica il tuo file e visualizza <strong>subito l’anteprima automatica</strong> dei tuoi adesivi. Ti piace? Conferma. Vuoi cambiare qualcosa? Ce ne occupiamo noi.
 			</p>
+			<div class="hero__stars"><span class="stars">★★★★★</span> {data.stats.average.toLocaleString('it-IT', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} su 5 · recensioni verificate</div>
 			<div class="hero__ctas">
 				<a class="btn btn--blue btn--lg" href="/adesivi-personalizzati">Stampa ora</a>
 				<a class="btn btn--yellow btn--lg" href="/campioni">Campioni</a>
 			</div>
-			<ul class="hero__perks">
-				<li>✦ Anteprima immediata</li>
-				<li>✦ Modifiche su richiesta</li>
-				<li>✦ Fino al 6% in Credito Stickerprint</li>
-			</ul>
+			<div class="hero__pill"><span>✦ Anteprima immediata</span><span>✦ Fino al 6% di Credito Stickerprint</span></div>
+			<p class="hero__ship">🚀 Ordina ora: pronti per la spedizione il <b>{data.shipDate}</b></p>
 		</div>
 		<div class="hero__visual">
 			<img src="/images/ig-3.jpg" alt="Adesivi fustellati Bubu's Smashburger stampati da Stickerprint" width="600" height="600" />
@@ -130,7 +128,7 @@
 		<div class="credit__visual"><img src="/images/credit-card.png" alt="Portafoglio Credito Stickerprint" width="492" height="423" loading="lazy" /></div>
 		<div>
 			<span class="tag tag--green">Il tuo prossimo ordine inizia da questo</span>
-			<h2 style="margin-top:14px">Ogni ordine ti lascia <span class="hl hl--blue">qualcosa.</span></h2>
+			<h2 style="margin-top:14px">Ogni ordine ti lascia <span class="hl hl--green">qualcosa.</span></h2>
 			<p class="lead" style="margin-top:16px">Con ogni acquisto accumuli Credito Stickerprint. Lo trovi automaticamente nel tuo account e lo usi sul prossimo ordine.</p>
 			<p style="margin-top:18px;font-weight:800">Più ordini fai, più guadagni.</p>
 			<div class="credit__levels">
@@ -182,11 +180,14 @@
 </section>
 
 <!-- INSTAGRAM -->
-<section class="section container center">
-	<span class="tag tag--pink">@Stickerprint.it</span>
-	<h2 style="margin-top:14px"><span class="hl hl--pink">Più di {followers} creativi sono già con noi.</span></h2>
-	<p class="lead" style="margin-top:18px">Lavorazioni, novità e progetti reali <strong>LIVE</strong> direttamente dal nostro laboratorio.</p>
-	<p style="margin-top:24px"><a class="btn btn--pink btn--lg" href={IG_URL} target="_blank" rel="noopener">Seguici su Instagram</a></p>
+<section class="section container">
+	<div class="ig-head">
+		<div>
+			<h2><span class="hl hl--pink">Più di {followers} creativi sono già con noi.</span></h2>
+			<p class="lead" style="margin-top:14px">Lavorazioni, novità e progetti reali <strong>LIVE</strong> direttamente dal nostro laboratorio.</p>
+		</div>
+		<a class="tag tag--pink" href={IG_URL} target="_blank" rel="noopener" style="text-decoration:none">@stickerprint.it</a>
+	</div>
 	<div class="ig-grid">
 		{#each data.instagram.media as m (m.id)}
 			<a href={m.permalink} target="_blank" rel="noopener" title={m.caption || 'Apri su Instagram'}>
@@ -195,6 +196,7 @@
 			</a>
 		{/each}
 	</div>
+	<p class="center" style="margin-top:26px"><a class="btn btn--pink btn--lg" href={IG_URL} target="_blank" rel="noopener">Seguici su Instagram</a></p>
 </section>
 
 <!-- FINALE -->

@@ -29,7 +29,7 @@
 	<main>
 		{@render children()}
 	</main>
-	{#if !isDashboard}<Footer />{/if}
+	{#if !isDashboard}<Footer locale={data.locale} />{/if}
 </div>
 
 <style>

@@ -19,5 +19,5 @@ export const load: LayoutLoad = async ({ data, depends, fetch }) => {
 				}
 			});
 
-	return { session: data.session, user: data.user, supabase };
+	return { session: data.session, user: data.user, supabase, locale: data.locale };
 };

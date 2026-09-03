@@ -2,6 +2,7 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { redirect, type Handle } from '@sveltejs/kit';
 import { sequence } from '@sveltejs/kit/hooks';
 import { PUBLIC_SUPABASE_ANON_KEY, PUBLIC_SUPABASE_URL } from '$env/static/public';
+import { LOCALE_COOKIE, detectLocale, isLocale } from '$lib/i18n';
 
 /**
  * 1) Crea un client Supabase per ogni richiesta, con sessione letta/scritta nei cookie.
@@ -50,6 +51,17 @@ const PROTECTED_PREFIXES = ['/account', '/admin'];
 const GUEST_ONLY = ['/login', '/signup'];
 const DASHBOARD_LOGIN = '/dashboard/login';
 
+/** Lingua/valuta: dal cookie, altrimenti rilevata da paese e lingua del browser (modificabile dal footer) */
+const locale: Handle = async ({ event, resolve }) => {
+	const saved = event.cookies.get(LOCALE_COOKIE);
+	if (isLocale(saved)) event.locals.locale = saved;
+	else {
+		event.locals.locale = detectLocale(event.request.headers.get('x-vercel-ip-country'), event.request.headers.get('accept-language'));
+		event.cookies.set(LOCALE_COOKIE, event.locals.locale, { path: '/', maxAge: 60 * 60 * 24 * 365, sameSite: 'lax' });
+	}
+	return resolve(event);
+};
+
 const authGuard: Handle = async ({ event, resolve }) => {
 	const { session, user } = await event.locals.safeGetSession();
 	event.locals.session = session;
@@ -84,4 +96,4 @@ const securityHeaders: Handle = async ({ event, resolve }) => {
 	return response;
 };
 
-export const handle = sequence(supabase, authGuard, securityHeaders);
+export const handle = sequence(supabase, locale, authGuard, securityHeaders);

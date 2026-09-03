@@ -14,6 +14,8 @@ import type { Actions, PageServerLoad } from './$types';
 
 /** Produzione express: +30% sui prodotti (concorre al credito) */
 const EXPRESS_RATE = 0.3;
+/** Kit campioni: prezzo IVA inclusa, spedizione gratuita */
+const SAMPLES_GROSS = 10;
 const VAT = 1.22;
 
 /** Client con chiave di servizio (ordini degli ospiti): serve SUPABASE_SERVICE_ROLE_KEY su Vercel */
@@ -57,7 +59,7 @@ export const actions: Actions = {
 			return fail(400, { error: 'Carrello non leggibile.' });
 		}
 		if (!lines.length) return fail(400, { error: 'Il carrello è vuoto.' });
-		if (lines.some((l) => !l.filePath)) return fail(400, { error: 'Manca il file di un prodotto: caricalo per continuare.' });
+		if (lines.some((l) => !l.filePath && l.product !== 'campioni')) return fail(400, { error: 'Manca il file di un prodotto: caricalo per continuare.' });
 
 		const email = (user?.email ?? s('email')).toLowerCase();
 		if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return fail(400, { error: 'Inserisci un indirizzo email valido.' });
@@ -77,6 +79,12 @@ export const actions: Actions = {
 		const engines: Record<string, Awaited<ReturnType<typeof loadEngine>>['config']> = {};
 		const priced = [];
 		for (const l of lines) {
+			if (l.product === 'campioni') {
+				// kit campioni: prezzo fisso 10 € IVA inclusa, niente file, niente express
+				const baseNet = r2(SAMPLES_GROSS / VAT);
+				priced.push({ ...l, qty: 1, baseNet, net: baseNet, gross: SAMPLES_GROSS, expressNet: 0 });
+				continue;
+			}
 			engines[l.product] ??= (await loadEngine(supabase, l.product)).config;
 			const q = quoteWith(engines[l.product], { w: Number(l.w), h: Number(l.h), forma: l.forma, materiale: l.materiale, finitura: l.finitura ?? 'nessuna', qty: Number(l.qty), vatIncluded: true });
 			const baseNet = q.net;
@@ -111,7 +119,7 @@ export const actions: Actions = {
 			const { data: num, error: ne } = await db.rpc('next_order_number');
 			if (ne || !num) return fail(400, { error: 'Numero d’ordine non disponibile, riprova.' });
 			const share = productsNet > 0 ? l.baseNet / productsNet : 1 / priced.length;
-			const name = PRODUCT_ENGINES.find((p) => p.slug === l.product)?.name ?? l.product;
+			const name = l.product === 'campioni' ? 'Kit campioni' : (PRODUCT_ENGINES.find((p) => p.slug === l.product)?.name ?? l.product);
 			const row = {
 				user_id: user?.id ?? null, number: num as string,
 				product_slug: l.product, product_name: name,
@@ -119,7 +127,7 @@ export const actions: Actions = {
 				width_mm: l.w, height_mm: l.h, qty: l.qty,
 				total_net: l.net, total_gross: l.gross,
 				status: 'in_attesa',
-				file_path: l.filePath?.startsWith('riordino:') ? null : l.filePath,
+				file_path: l.filePath?.startsWith('riordino:') || l.filePath === 'campioni' ? null : l.filePath,
 				notes: [l.reorderOf ? `Riordino di ${l.reorderOf}` : '', l.note ?? ''].filter(Boolean).join(' · ') || null,
 				email, shipping: ship, billing: bill,
 				payment_method: payment, payment_status: payment === 'test' ? 'test' : 'paid',
@@ -130,7 +138,7 @@ export const actions: Actions = {
 			const { error } = await db.from('orders').insert(row);
 			if (error) return fail(400, { error: `Ordine non registrato: ${error.message}` });
 			numbers.push(row.number);
-			invLines.push({ description: `${row.number} · ${name} ${l.forma} ${MATERIAL_LABEL[l.materiale] ?? l.materiale}${l.finitura && l.finitura !== 'nessuna' ? ' lamina ' + l.finitura : ''} ${l.w}×${l.h} mm`, qty: l.qty, unit_net: r2(l.baseNet / l.qty), total_net: l.baseNet });
+			invLines.push({ description: l.product === 'campioni' ? `${row.number} · Kit campioni` : `${row.number} · ${name} ${l.forma} ${MATERIAL_LABEL[l.materiale] ?? l.materiale}${l.finitura && l.finitura !== 'nessuna' ? ' lamina ' + l.finitura : ''} ${l.w}×${l.h} mm`, qty: l.qty, unit_net: r2(l.baseNet / l.qty), total_net: l.baseNet });
 		}
 		if (creditUsed > 0) await supabase.from('credit_transactions').insert({ user_id: user!.id, amount: -creditUsed, kind: 'spend', order_ref: numbers[0], note: `Credito usato sull'ordine ${numbers.join(', ')}` });
 		if (discountCode) await db.rpc('discount_code_used', { p_code: discountCode });
