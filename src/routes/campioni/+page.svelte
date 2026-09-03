@@ -89,7 +89,8 @@
 <style>
 	.kit-buy { display: flex; align-items: center; gap: 18px; margin-top: 22px; }
 	.kit-buy__price { font-family: var(--font-display); font-weight: 800; font-size: 44px; letter-spacing: -0.03em; color: var(--blue); }
-	.reels--kit { grid-template-columns: minmax(0, 320px); margin-top: 0; }
+	.reels--kit { grid-template-columns: minmax(0, 300px); justify-content: end; margin-top: 0; }
+	@media (max-width: 900px) { .reels--kit { justify-content: center; } }
 	.kit-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 30px; }
 	.kit-item { display: grid; justify-items: center; text-align: center; gap: 4px; padding: 14px; background: #fff; border: 1px solid var(--line); border-radius: 18px; }
 	.kit-item img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 12px; margin-bottom: 6px; }
