@@ -151,7 +151,7 @@
 		<!-- ANTEPRIMA + COMANDI DEL MOTORE -->
 		<div class="cfg__preview">
 			{#if file}
-				<EnginePreview {file} {forma} {materiale} finitura={showFinish ? finitura : 'lucida'} prodotto={engineProduct} {w} {h} {showCut} panel stage={400} onrender={onRender} />
+				<EnginePreview {file} {forma} {materiale} finitura={showFinish ? finitura : 'lucida'} prodotto={engineProduct} {w} {h} {showCut} panel stage={320} onrender={onRender} />
 				{#if fileUrl}<img src={fileUrl} alt="" hidden onload={onImgLoad} />{/if}
 			{:else}
 				<div class="cfg__stage cfg__stage--empty">
