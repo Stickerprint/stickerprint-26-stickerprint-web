@@ -1,6 +1,7 @@
 import { error, fail } from '@sveltejs/kit';
 import { PRODUCT_ENGINES, mergeConfig, type EngineConfig } from '$lib/pricing/engine';
 import { defaultEngine, loadEngine } from '$lib/server/pricing';
+import { estimatedShipDate, formatItDate } from '$lib/utils/shipping';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ params, locals: { supabase } }) => {
@@ -14,7 +15,7 @@ export const load: PageServerLoad = async ({ params, locals: { supabase } }) => 
 		.eq('slug', params.slug)
 		.order('changed_at', { ascending: false })
 		.limit(10);
-	return { product, config, savedAt, active: row?.active ?? false, history: history ?? [], defaults: defaultEngine(params.slug) };
+	return { product, config, savedAt, active: row?.active ?? false, history: history ?? [], defaults: defaultEngine(params.slug), shipDate: formatItDate(estimatedShipDate(5)) };
 };
 
 export const actions: Actions = {
@@ -30,6 +31,8 @@ export const actions: Actions = {
 		// controlli minimi
 		if (!cfg.quantities.length) return fail(400, { error: 'Inserisci almeno una quantità.' });
 		if (!cfg.materials.some((m) => m.visible)) return fail(400, { error: 'Almeno un materiale deve essere visibile.' });
+		if (!cfg.shapes.some((s) => s.visible)) return fail(400, { error: 'Almeno una sagoma deve essere visibile.' });
+		if (!(cfg.size.minMm > 0) || !(cfg.size.maxMm > cfg.size.minMm)) return fail(400, { error: 'Misura minima e massima non valide.' });
 		if (!(cfg.vat >= 1)) return fail(400, { error: 'IVA non valida (es. 1.22).' });
 
 		// salva la versione precedente nello storico

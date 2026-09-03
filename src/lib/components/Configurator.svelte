@@ -4,26 +4,28 @@
 	 * Sinistra: il logo del cliente con i comandi del motore di anteprima.
 	 * Destra: i passi (sagoma, materiale, [finitura], misura, quantità) e riepilogo.
 	 * Il listino `cfg` arriva dalla dashboard (Supabase) e decide cosa mostrare e i prezzi.
+	 * Con `test` (dashboard) niente colonna del file e niente carrello: solo i passi e il prezzo.
 	 */
 	import { onMount } from 'svelte';
 	import EnginePreview from './EnginePreview.svelte';
 	import { loadDraft, saveDraft } from '$lib/utils/draftStore';
 	import { addToCart } from '$lib/cart';
-	import { quoteWith, suggestedSize, roundHalf, eur0, eur2, type EngineConfig } from '$lib/pricing/engine';
+	import { quoteWith, suggestedSize, roundHalf, eur0, eur2, showFinishStep, showMaterialStep, type EngineConfig } from '$lib/pricing/engine';
 
 	let {
 		shipDate,
 		cfg,
 		product = 'adesivi_personalizzati',
 		productName = 'i tuoi adesivi',
-		engineProduct = 'sticker'
-	}: { shipDate: string; cfg: EngineConfig; product?: string; productName?: string; engineProduct?: 'sticker' | 'resinati' } = $props();
+		engineProduct = 'sticker',
+		test = false
+	}: { shipDate: string; cfg: EngineConfig; product?: string; productName?: string; engineProduct?: 'sticker' | 'resinati'; test?: boolean } = $props();
 
 	const SHAPES = $derived(cfg.shapes.filter((s) => s.visible));
 	const MATERIALS = $derived(cfg.materials.filter((m) => m.visible));
 	const FINISHES = $derived(cfg.finishes.filter((f) => f.visible));
-	const showFinish = $derived(cfg.ui.showFinish && FINISHES.length > 0);
-	const showMaterials = $derived(cfg.ui.showMaterials && MATERIALS.length > 1);
+	const showFinish = $derived(showFinishStep(cfg));
+	const showMaterials = $derived(showMaterialStep(cfg));
 	const MIN_MM = $derived(cfg.size.minMm);
 	const MAX_MM = $derived(cfg.size.maxMm);
 
@@ -53,12 +55,13 @@
 	let added = $state(false);
 	let fileInput = $state<HTMLInputElement | undefined>();
 
-	// valori iniziali coerenti con il listino
+	// valori iniziali coerenti con il listino (anche quando il listino cambia sotto, in dashboard)
 	$effect(() => {
 		if (!SHAPES.some((s) => s.id === forma)) forma = SHAPES[0]?.id ?? 'sagomato';
 		if (!MATERIALS.some((m) => m.id === materiale)) materiale = MATERIALS[0]?.id ?? 'bianco';
 		if (!FINISHES.some((f) => f.id === finitura)) finitura = FINISHES.find((f) => f.laminate)?.id ?? FINISHES[0]?.id ?? 'nessuna';
 		if (!cfg.quantities.includes(qty)) qty = cfg.quantities.includes(cfg.recommendedQty) ? cfg.recommendedQty : cfg.quantities[0];
+		if (!steps.includes(step)) step = steps[0];
 	});
 
 	const shape = $derived(SHAPES.find((s) => s.id === forma) ?? SHAPES[0]);
@@ -69,12 +72,14 @@
 	const q = $derived(quoteWith(cfg, { w, h, forma, materiale, finitura: fin, qty, vatIncluded }));
 	const progress = $derived((stepNo(step) / steps.length) * 100);
 	const suggested = $derived(suggestedSize(ratio));
+	const shapePresets = $derived(shape?.presets?.length ? shape.presets : [30, 50, 70, 100]);
 	const presets = $derived(
-		[suggested[0], ...cfg.size.presets.filter((x) => x !== suggested[0])].slice(0, 4).map((pw) => [pw, roundHalf(pw / ratio)] as [number, number])
+		(file ? [suggested[0], ...shapePresets.filter((x) => x !== suggested[0])] : shapePresets).slice(0, 4).map((pw) => [pw, roundHalf(pw / ratio)] as [number, number])
 	);
 	const basePerPiece = $derived(quoteWith(cfg, { w, h, forma, materiale, finitura: fin, qty: cfg.quantities[0], vatIncluded }).perPiece);
 
 	onMount(async () => {
+		if (test) return;
 		const d = await loadDraft();
 		if (d && d.product === product) {
 			file = d.file;
@@ -130,34 +135,36 @@
 	const fmt = (v: number) => (Number.isInteger(v) ? String(v) : v.toFixed(1).replace('.', ','));
 </script>
 
-<section class="cfg" id="configura">
-	<!-- ANTEPRIMA + COMANDI DEL MOTORE -->
-	<div class="cfg__preview">
-		{#if file}
-			<EnginePreview {file} {forma} {materiale} finitura={showFinish ? finitura : 'lucida'} prodotto={engineProduct} {w} {h} {showCut} panel stage={400} onrender={onRender} />
-			{#if fileUrl}<img src={fileUrl} alt="" hidden onload={onImgLoad} />{/if}
-		{:else}
-			<div class="cfg__stage cfg__stage--empty">
-				<div class="cfg__placeholder"><strong>IL TUO<br />DESIGN</strong><small>qui</small></div>
+<section class="cfg" class:cfg--test={test} id="configura">
+	{#if !test}
+		<!-- ANTEPRIMA + COMANDI DEL MOTORE -->
+		<div class="cfg__preview">
+			{#if file}
+				<EnginePreview {file} {forma} {materiale} finitura={showFinish ? finitura : 'lucida'} prodotto={engineProduct} {w} {h} {showCut} panel stage={400} onrender={onRender} />
+				{#if fileUrl}<img src={fileUrl} alt="" hidden onload={onImgLoad} />{/if}
+			{:else}
+				<div class="cfg__stage cfg__stage--empty">
+					<div class="cfg__placeholder"><strong>IL TUO<br />DESIGN</strong><small>qui</small></div>
+				</div>
+			{/if}
+			<div class="cfg__tools" class:cfg__tools--static={!file}>
+				<button type="button" class="eye" class:is-off={!showCut} onclick={() => (showCut = !showCut)} aria-pressed={showCut} title={showCut ? 'Nascondi la linea di taglio' : 'Mostra la linea di taglio'}>
+					<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" />{#if !showCut}<path d="M3 3l18 18" />{/if}</svg>
+					<span class="eye__dash" aria-hidden="true"></span>
+					<span class="sr-only">Linea di taglio</span>
+				</button>
+				<input bind:this={fileInput} type="file" accept="image/png,image/jpeg,image/svg+xml,application/pdf" hidden onchange={(e) => pick((e.currentTarget as HTMLInputElement).files?.[0])} />
+				<button type="button" class="link-btn link-btn--bold" onclick={() => fileInput?.click()}>{file ? 'Cambia file' : 'Carica il tuo file'}</button>
+				{#if file}<span class="cfg__filename">{file.name}</span>{/if}
 			</div>
-		{/if}
-		<div class="cfg__tools" class:cfg__tools--static={!file}>
-			<button type="button" class="eye" class:is-off={!showCut} onclick={() => (showCut = !showCut)} aria-pressed={showCut} title={showCut ? 'Nascondi la linea di taglio' : 'Mostra la linea di taglio'}>
-				<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" />{#if !showCut}<path d="M3 3l18 18" />{/if}</svg>
-				<span class="eye__dash" aria-hidden="true"></span>
-				<span class="sr-only">Linea di taglio</span>
-			</button>
-			<input bind:this={fileInput} type="file" accept="image/png,image/jpeg,image/svg+xml,application/pdf" hidden onchange={(e) => pick((e.currentTarget as HTMLInputElement).files?.[0])} />
-			<button type="button" class="link-btn link-btn--bold" onclick={() => fileInput?.click()}>{file ? 'Cambia file' : 'Carica il tuo file'}</button>
-			{#if file}<span class="cfg__filename">{file.name}</span>{/if}
 		</div>
-	</div>
+	{/if}
 
 	<!-- CONFIGURAZIONE -->
 	<aside class="cfg__steps">
 		<div class="cfg__head">
 			<div>
-				<p class="eyebrow">Configura in 30 secondi</p>
+				<p class="eyebrow">{test ? 'Test preventivatore' : 'Configura in 30 secondi'}</p>
 				<h2 class="cfg__title">Crea {productName}</h2>
 			</div>
 			<span class="cfg__stepcount">Passaggio {stepNo(step)} di {steps.length}</span>
@@ -210,7 +217,7 @@
 			</div>
 		{/if}
 
-		<!-- finitura -->
+		<!-- finitura (solo prodotti con lamina) -->
 		{#if showFinish}
 			<div class="step" class:is-open={step === 'finitura'}>
 				<button class="step__head" type="button" onclick={() => (step = 'finitura')} aria-expanded={step === 'finitura'}>
@@ -244,14 +251,16 @@
 			</button>
 			{#if step === 'misura'}
 				<div class="step__body">
-					{#if !file}
+					{#if test}
+						<p class="step__hint">Misure proposte per la sagoma "{shape?.label}" (da {MIN_MM} a {MAX_MM} mm).</p>
+					{:else if !file}
 						<p class="step__hint step__hint--box">Carica il tuo file: rileviamo la proporzione e ti consigliamo la misura.</p>
 					{:else}
 						<p class="step__hint">Misura consigliata per il tuo file: <b>{fmt(suggested[0])} × {fmt(roundHalf(suggested[0] / ratio))} mm</b>. Le proporzioni restano sempre bloccate.</p>
 					{/if}
 					<div class="size-presets">
 						{#each presets as [pw, ph], k (pw)}
-							<button type="button" class="size-btn" class:is-active={w === pw && h === ph} onclick={() => { w = pw; h = ph; }}>{#if k === 0}<small>Consigliata</small>{/if}{fmt(pw)} × {fmt(ph)} mm</button>
+							<button type="button" class="size-btn" class:is-active={w === pw && h === ph} onclick={() => { w = pw; h = ph; }}>{#if file && k === 0}<small>Consigliata</small>{/if}{fmt(pw)} × {fmt(ph)} mm</button>
 						{/each}
 					</div>
 					<div class="size-inputs">
@@ -285,15 +294,17 @@
 							</button>
 						{/each}
 					</div>
-					<a class="link" href="/support" style="font-size:14px">Ti serve un’altra quantità?</a>
+					{#if !test}<a class="link" href="/support" style="font-size:14px">Ti serve un’altra quantità?</a>{/if}
 				</div>
 			{/if}
 		</div>
 
-		<details class="special">
-			<summary>Hai una richiesta particolare?</summary>
-			<textarea rows="3" placeholder="Scrivici qui: la leggiamo davvero, promesso." bind:value={note}></textarea>
-		</details>
+		{#if !test}
+			<details class="special">
+				<summary>Hai una richiesta particolare?</summary>
+				<textarea rows="3" placeholder="Scrivici qui: la leggiamo davvero, promesso." bind:value={note}></textarea>
+			</details>
+		{/if}
 	</aside>
 
 	<!-- RIEPILOGO -->
@@ -317,6 +328,13 @@
 				<span class:active={vatIncluded}>IVA inclusa</span>
 			</div>
 		</div>
-		<button class="btn btn--green btn--cart" type="button" onclick={addCart}>{added ? 'Aggiunto ✓' : 'Aggiungi al carrello →'}</button>
+		{#if test}
+			<div class="test-detail">
+				<b>Netto {eur2(q.net)}</b> · materiale {eur2(q.breakdown.material)} · stampa {eur2(q.breakdown.print)}{#if cfg.kind === 'lamina'} · lamina {eur2(q.breakdown.laminate)}{:else} · resina {eur2(q.breakdown.resin)}{/if} · avvio {eur2(q.breakdown.setup)}<br />
+				{q.breakdown.m2.toFixed(3)} m² · commercial range ×{(1 + q.breakdown.cr).toFixed(2)} · price range ×{(1 + q.breakdown.pr).toFixed(2)}
+			</div>
+		{:else}
+			<button class="btn btn--green btn--cart" type="button" onclick={addCart}>{added ? 'Aggiunto ✓' : 'Aggiungi al carrello →'}</button>
+		{/if}
 	</div>
 </section>

@@ -1,48 +1,47 @@
 /**
- * Motore di calcolo prezzi A COSTI — replica del foglio "custom price calculator.xlsx".
- * Tutto ciò che sta in `EngineConfig` è modificabile dalla dashboard, per ogni prodotto.
+ * Motore di calcolo prezzi A COSTI — replica fedele del foglio "custom price calculator.xlsx".
+ * Ogni prodotto ha il suo `EngineConfig`, salvato a parte in `pricing_engines` (slug):
+ * quello che si modifica su un prodotto resta confinato a quel prodotto.
  *
  * Per un ordine (w × h mm, quantità, materiale, finitura):
  *   m²        = w·h / 1.000.000 × quantità
  *   cm²       = w·h / 100 × quantità
- *   vendita   = costo × (1 + ricarico)
+ *   vendita   = acquisto × (1 + ricarico)
  *   CR        = commercial range: fattore in base ai m² totali (0→1,15 … 100→0,60)
  *   PR        = price range: fattore in base alla quantità (1→1,30 … 20000→0,60)
- *   materiale = vendita materiale €/m² × m² × CR × PR
- *   stampa    = vendita stampa €/m²   × m² × CR × PR
- *   lamina    = vendita plastifica €/m² × m² × CR × PR   (solo se la finitura la prevede)
- *   resina    = vendita resina €/cm² × cm² × PR           (solo prodotti resinati; nel foglio non ha il CR)
- *   extra     = lavorazione €/pezzo × quantità            (voce nostra, default 0)
- *   netto     = materiale + stampa + lamina + resina + extra + avvio produzione
- *   netto     = max(netto, prezzo minimo per pezzo × quantità)  (voce nostra, default 0)
+ *   Nel foglio i fattori sono applicati come (1 + CR) e (1 + PR): qui facciamo lo stesso.
+ *   materiale = vendita materiale €/m² × m² × (1+CR) × (1+PR)
+ *   stampa    = vendita stampa €/m²   × m² × (1+CR) × (1+PR)
+ *   lamina    = vendita plastifica €/m² × m² × (1+CR) × (1+PR)   (prodotti con lamina, se la finitura la prevede)
+ *   resina    = vendita resina €/cm² × cm² × (1+PR)              (prodotti resinati, sempre; nel foglio non ha il CR)
+ *   netto     = materiale + stampa + lamina + resina + avvio produzione
  *   lordo     = netto × IVA
  */
 
+export type EngineKind = 'lamina' | 'resina';
 export interface CostItem { costM2: number; markup: number } // markup 0 = nessun ricarico, 0.5 = +50%
 export interface MaterialOption extends CostItem { id: string; label: string; description?: string; tag?: string; img?: string; visible: boolean }
 export interface FinishOption { id: string; label: string; description?: string; img?: string; laminate: boolean; visible: boolean }
-export interface ShapeOption { id: string; label: string; description?: string; img?: string; equal?: boolean; visible: boolean }
+export interface ShapeOption { id: string; label: string; description?: string; img?: string; equal?: boolean; visible: boolean; presets: number[] }
 export interface RangeStep { from: number; factor: number }
 
 export interface EngineConfig {
-	version: 2;
+	version: 3;
+	kind: EngineKind; // 'lamina' = lamina protettiva opzionale; 'resina' = resina sempre inclusa
 	vat: number;
 	creditRate: number;
 	setup: number; // avvio produzione, una tantum
 	print: CostItem;
-	laminate: CostItem;
-	resin: { enabled: boolean; costKg: number; gramsPerCm2: number; markup: number };
-	extraPerPiece: number; // lavorazione per pezzo (taglio, confezionamento)
-	minPerPiece: number; // prezzo minimo netto per pezzo
+	laminate: CostItem; // solo kind 'lamina'
+	resin: { costKg: number; gramsPerCm2: number; markup: number }; // solo kind 'resina'
 	commercialRange: RangeStep[]; // per m² totali
 	priceRange: RangeStep[]; // per quantità
 	quantities: number[]; // fasce mostrate al cliente
 	recommendedQty: number;
-	size: { minMm: number; maxMm: number; presets: number[] };
-	shapes: ShapeOption[];
+	size: { minMm: number; maxMm: number };
+	shapes: ShapeOption[]; // ogni sagoma ha le sue misure proposte (larghezze in mm)
 	materials: MaterialOption[];
 	finishes: FinishOption[];
-	ui: { showFinish: boolean; showMaterials: boolean; showShapes: boolean };
 }
 
 const IMG = '/images/estimator';
@@ -58,11 +57,11 @@ const ALL_MATERIALS: MaterialOption[] = [
 ];
 
 const ALL_SHAPES: ShapeOption[] = [
-	{ id: 'sagomato', label: 'Sagomato', description: 'Forma libera', img: `${IMG}/custom_stickers.webp`, visible: true },
-	{ id: 'tondo', label: 'Rotondo', description: 'Cerchio', img: `${IMG}/round_stickers.webp`, equal: true, visible: true },
-	{ id: 'quadrato', label: 'Quadrato', description: 'Angoli morbidi', img: `${IMG}/square_stickers.webp`, equal: true, visible: true },
-	{ id: 'ovale', label: 'Ovale', description: 'Ellisse', img: `${IMG}/oval_stickers.webp`, visible: true },
-	{ id: 'rettangolare', label: 'Rettangolo', description: 'Orizzontale', img: `${IMG}/rect_stickers.webp`, visible: true }
+	{ id: 'sagomato', label: 'Sagomato', description: 'Forma libera', img: `${IMG}/custom_stickers.webp`, visible: true, presets: [30, 50, 70, 100] },
+	{ id: 'tondo', label: 'Rotondo', description: 'Cerchio', img: `${IMG}/round_stickers.webp`, equal: true, visible: true, presets: [30, 40, 50, 70] },
+	{ id: 'quadrato', label: 'Quadrato', description: 'Angoli morbidi', img: `${IMG}/square_stickers.webp`, equal: true, visible: true, presets: [30, 40, 50, 70] },
+	{ id: 'ovale', label: 'Ovale', description: 'Ellisse', img: `${IMG}/oval_stickers.webp`, visible: true, presets: [50, 70, 100] },
+	{ id: 'rettangolare', label: 'Rettangolo', description: 'Orizzontale', img: `${IMG}/rect_stickers.webp`, visible: true, presets: [50, 70, 100, 150] }
 ];
 
 const ALL_FINISHES: FinishOption[] = [
@@ -85,24 +84,22 @@ const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v));
 
 function base(over: Partial<EngineConfig> = {}): EngineConfig {
 	return {
-		version: 2,
+		version: 3,
+		kind: 'lamina',
 		vat: 1.22,
 		creditRate: 0.05,
 		setup: 50,
 		print: { costM2: 4, markup: 0 },
 		laminate: { costM2: 4, markup: 0 },
-		resin: { enabled: false, costKg: 10.9, gramsPerCm2: 0.15, markup: 1.5 },
-		extraPerPiece: 0,
-		minPerPiece: 0,
+		resin: { costKg: 10.9, gramsPerCm2: 0.15, markup: 1.5 },
 		commercialRange: clone(COMMERCIAL_RANGE),
 		priceRange: clone(PRICE_RANGE),
 		quantities: [50, 100, 200, 300, 500, 1000, 2000, 3000, 5000],
 		recommendedQty: 500,
-		size: { minMm: 10, maxMm: 500, presets: [30, 50, 70, 100] },
+		size: { minMm: 10, maxMm: 500 },
 		shapes: clone(ALL_SHAPES),
 		materials: clone(ALL_MATERIALS),
 		finishes: clone(ALL_FINISHES),
-		ui: { showFinish: true, showMaterials: true, showShapes: true },
 		...over
 	};
 }
@@ -110,21 +107,25 @@ function base(over: Partial<EngineConfig> = {}): EngineConfig {
 function withMaterials(ids: string[]): MaterialOption[] {
 	return clone(ALL_MATERIALS).map((m) => ({ ...m, visible: ids.includes(m.id) }));
 }
+function withFinishes(ids: string[]): FinishOption[] {
+	return clone(ALL_FINISHES).map((f) => ({ ...f, visible: ids.includes(f.id) }));
+}
 
-/** Listini iniziali per prodotto (poi modificabili dalla dashboard) */
+/** Listini iniziali, uno per prodotto e indipendenti tra loro (poi ognuno si modifica dalla dashboard) */
 export const DEFAULT_ENGINES: Record<string, EngineConfig> = {
 	adesivi_personalizzati: base(),
 	adesivi_rilievo: base(),
 	etichette: base(),
 	fogli_adesivi: base(),
 	adesivi_resinati: base({
+		kind: 'resina',
 		materials: withMaterials(['bianco', 'super', 'trasparente', 'oro', 'argento']),
-		resin: { enabled: true, costKg: 10.9, gramsPerCm2: 0.15, markup: 1.5 },
-		ui: { showFinish: false, showMaterials: true, showShapes: true }
+		finishes: withFinishes([]),
+		size: { minMm: 10, maxMm: 200 }
 	}),
 	vetrofanie: base({
 		materials: withMaterials(['trasparente']),
-		ui: { showFinish: false, showMaterials: false, showShapes: true }
+		finishes: withFinishes(['nessuna'])
 	})
 };
 
@@ -137,12 +138,15 @@ export const PRODUCT_ENGINES: { slug: string; name: string; href: string; engine
 	{ slug: 'vetrofanie', name: 'Vetrofanie', href: '/vetrofanie', engineProduct: 'sticker' }
 ];
 
-/** Unisce un config salvato (anche parziale o di versione vecchia) con i default del prodotto */
+/** Unisce un config salvato con i default del prodotto (campi nuovi presi dal default, per id) */
 export function mergeConfig(defaults: EngineConfig, saved: unknown): EngineConfig {
 	if (!saved || typeof saved !== 'object') return clone(defaults);
 	const s = saved as Partial<EngineConfig> & { version?: number };
-	if (s.version !== 2) return clone(defaults); // formato precedente: si riparte dal default
-	const list = <T extends { id: string }>(def: T[], got: unknown): T[] => (Array.isArray(got) && got.length ? (got as T[]) : def);
+	if (s.version !== 3) return clone(defaults); // formato precedente: si riparte dal default
+	const list = <T extends { id: string }>(def: T[], got: unknown): T[] => {
+		if (!Array.isArray(got) || !got.length) return def;
+		return (got as T[]).map((it) => ({ ...(def.find((d) => d.id === it.id) ?? {}), ...it }) as T);
+	};
 	return {
 		...clone(defaults),
 		...s,
@@ -150,7 +154,6 @@ export function mergeConfig(defaults: EngineConfig, saved: unknown): EngineConfi
 		laminate: { ...defaults.laminate, ...(s.laminate ?? {}) },
 		resin: { ...defaults.resin, ...(s.resin ?? {}) },
 		size: { ...defaults.size, ...(s.size ?? {}) },
-		ui: { ...defaults.ui, ...(s.ui ?? {}) },
 		commercialRange: Array.isArray(s.commercialRange) && s.commercialRange.length ? [...s.commercialRange].sort((a, b) => a.from - b.from) : defaults.commercialRange,
 		priceRange: Array.isArray(s.priceRange) && s.priceRange.length ? [...s.priceRange].sort((a, b) => a.from - b.from) : defaults.priceRange,
 		quantities: Array.isArray(s.quantities) && s.quantities.length ? [...s.quantities].map(Number).filter((n) => n > 0).sort((a, b) => a - b) : defaults.quantities,
@@ -162,6 +165,11 @@ export function mergeConfig(defaults: EngineConfig, saved: unknown): EngineConfi
 
 export const sale = (c: CostItem) => c.costM2 * (1 + (c.markup ?? 0));
 export const resinSaleCm2 = (r: EngineConfig['resin']) => (r.costKg / 1000) * r.gramsPerCm2 * (1 + r.markup);
+
+/** Il passo "Materiale" si mostra solo se c'è una scelta */
+export const showMaterialStep = (cfg: EngineConfig) => cfg.materials.filter((m) => m.visible).length > 1;
+/** Il passo "Lamina protettiva" esiste solo nei prodotti con lamina e se c'è una scelta */
+export const showFinishStep = (cfg: EngineConfig) => cfg.kind === 'lamina' && cfg.finishes.filter((f) => f.visible).length > 1;
 
 export function rangeFactor(steps: RangeStep[], value: number): number {
 	let f = steps[0]?.factor ?? 1;
@@ -182,9 +190,7 @@ export interface Breakdown {
 	print: number;
 	laminate: number;
 	resin: number;
-	extra: number;
 	setup: number;
-	minApplied: boolean;
 }
 export interface Quote {
 	net: number;
@@ -201,20 +207,15 @@ export function quoteWith(cfg: EngineConfig, o: { w: number; h: number; forma: s
 	const cm2 = ((o.w * o.h) / 100) * qty;
 	const cr = rangeFactor(cfg.commercialRange, m2);
 	const pr = rangeFactor(cfg.priceRange, qty);
+	const crF = 1 + cr; // come nel foglio: (1 + E2)
+	const prF = 1 + pr; // come nel foglio: (1 + E3)
 	const mat = cfg.materials.find((m) => m.id === o.materiale) ?? cfg.materials.find((m) => m.visible) ?? cfg.materials[0];
 	const fin = cfg.finishes.find((f) => f.id === o.finitura);
-	const material = sale(mat) * m2 * cr * pr;
-	const print = sale(cfg.print) * m2 * cr * pr;
-	const laminate = cfg.ui.showFinish && fin?.laminate ? sale(cfg.laminate) * m2 * cr * pr : 0;
-	const resin = cfg.resin.enabled ? resinSaleCm2(cfg.resin) * cm2 * pr : 0;
-	const extra = cfg.extraPerPiece * qty;
-	let net = material + print + laminate + resin + extra + cfg.setup;
-	let minApplied = false;
-	if (cfg.minPerPiece > 0 && net < cfg.minPerPiece * qty) {
-		net = cfg.minPerPiece * qty;
-		minApplied = true;
-	}
-	net = Math.round(net * 100) / 100;
+	const material = sale(mat) * m2 * crF * prF;
+	const print = sale(cfg.print) * m2 * crF * prF;
+	const laminate = cfg.kind === 'lamina' && fin?.laminate ? sale(cfg.laminate) * m2 * crF * prF : 0;
+	const resin = cfg.kind === 'resina' ? resinSaleCm2(cfg.resin) * cm2 * prF : 0;
+	const net = Math.round((material + print + laminate + resin + cfg.setup) * 100) / 100;
 	const gross = Math.round(net * cfg.vat * 100) / 100;
 	const shown = o.vatIncluded ? gross : net;
 	return {
@@ -223,7 +224,7 @@ export function quoteWith(cfg: EngineConfig, o: { w: number; h: number; forma: s
 		perPiece: shown / qty,
 		perPieceNet: net / qty,
 		credit: net * cfg.creditRate,
-		breakdown: { m2, cm2, cr, pr, material, print, laminate, resin, extra, setup: cfg.setup, minApplied }
+		breakdown: { m2, cm2, cr, pr, material, print, laminate, resin, setup: cfg.setup }
 	};
 }
 
