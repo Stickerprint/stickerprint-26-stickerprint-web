@@ -310,34 +310,29 @@
 			{/if}
 		</div>
 
-		{#if !test}
-			<details class="special">
-				<summary>Hai una richiesta particolare?</summary>
-				<textarea rows="3" placeholder="Scrivici qui: la leggiamo davvero, promesso." bind:value={note}></textarea>
-			</details>
-		{/if}
 	</aside>
 
-	<!-- RIEPILOGO -->
+	<!-- RIEPILOGO: spedizione, credito, totale e bottone, tutti alla stessa altezza -->
 	<div class="cfg__summary">
-		<div class="sum-ship">
-			<span class="sum-ico">🚚</span>
-			<span><small>Pronti per la spedizione</small><strong>{shipDate}</strong></span>
+		<div class="sum sum--ship">
+			<span class="sum__ico">🚚</span>
+			<div class="sum__text"><span class="sum__label">Pronti per la spedizione</span><span class="sum__value">{shipDate}</span><span class="sum__sub">Corriere espresso tracciato</span></div>
 		</div>
-		<div class="sum-credit">
-			<img class="sum-coin" src="/images/coin-sp.png" alt="Credito Stickerprint" width="44" height="42" />
-			<span><strong>Guadagni {eur2(q.credit)}</strong><small>di credito da usare sul prossimo ordine</small></span>
+		<div class="sum sum--credit">
+			<span class="sum__ico"><img src="/images/coin-sp.png" alt="Credito Stickerprint" /></span>
+			<div class="sum__text"><span class="sum__label">Guadagni in credito</span><span class="sum__value">{eur2(q.credit)}</span><span class="sum__sub">da usare sul prossimo ordine</span></div>
 		</div>
-		<div class="sum-price">
-			<div class="total-box">
-				<span>Totale {eur0(vatIncluded ? q.gross : q.net)}</span>
-				<span class="total-box__per">{q.perPiece.toFixed(2)}€/pz</span>
+		<div class="sum sum--total">
+			<div class="sum__text">
+				<span class="sum__label">Totale {vatIncluded ? 'IVA inclusa' : 'IVA esclusa'}</span>
+				<span class="sum__value sum__value--big">{eur0(vatIncluded ? q.gross : q.net)}</span>
+				<div class="vat-toggle">
+					<span class:active={!vatIncluded}>IVA esclusa</span>
+					<button type="button" class="switch" class:on={vatIncluded} role="switch" aria-checked={vatIncluded} aria-label="Mostra prezzi IVA inclusa" onclick={() => (vatIncluded = !vatIncluded)}><i></i></button>
+					<span class:active={vatIncluded}>IVA inclusa</span>
+				</div>
 			</div>
-			<div class="vat-toggle">
-				<span class:active={!vatIncluded}>IVA esclusa</span>
-				<button type="button" class="switch" class:on={vatIncluded} role="switch" aria-checked={vatIncluded} aria-label="Mostra prezzi IVA inclusa" onclick={() => (vatIncluded = !vatIncluded)}><i></i></button>
-				<span class:active={vatIncluded}>IVA inclusa</span>
-			</div>
+			<span class="sum__per">{q.perPiece.toFixed(2).replace('.', ',')} €/pz</span>
 		</div>
 		{#if test}
 			<div class="test-detail">
@@ -349,3 +344,10 @@
 		{/if}
 	</div>
 </section>
+
+{#if !test}
+	<details class="special special--below">
+		<summary><span class="special__ico">💬</span> Hai una richiesta particolare? <em>Scrivicela qui: la leggiamo davvero, promesso.</em></summary>
+		<textarea rows="3" placeholder="Es. colore Pantone da rispettare, consegna entro una data, file da sistemare…" bind:value={note}></textarea>
+	</details>
+{/if}
