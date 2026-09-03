@@ -1,6 +1,8 @@
 <script lang="ts">
 	import OrderRow from '$lib/components/OrderRow.svelte';
 	import ReorderModal from '$lib/components/ReorderModal.svelte';
+	import LoyaltyCard from '$lib/components/LoyaltyCard.svelte';
+	import { pct } from '$lib/account';
 	import { eur, dateIt, type Order } from '$lib/account';
 	let { data } = $props();
 	let reorder = $state<Order | null>(null);
@@ -17,12 +19,14 @@
 	</div>
 </div>
 
+{#if data.loyalty}<LoyaltyCard l={data.loyalty} />{/if}
+
 <div class="credit-hero">
 	<div>
 		<p class="eyebrow">Il tuo credito</p>
 		<small>Disponibile ora</small>
 		<div class="big">{eur(data.credit.balance)}</div>
-		<small>da usare sul prossimo ordine</small><br />
+		<small>da usare sul prossimo ordine{#if data.loyalty} · guadagni il {pct(data.loyalty.credit_rate)} su ogni ordine come {data.loyalty.name}{/if}</small><br />
 		<a class="link" style="color:#fff;font-size:13px;display:inline-block;margin-top:12px" href="/account/credito">Scopri come funziona ›</a>
 	</div>
 	<img src="/images/coin-sp.png" alt="" />

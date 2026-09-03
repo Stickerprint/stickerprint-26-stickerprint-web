@@ -1,6 +1,7 @@
 <script lang="ts">
 	import '$lib/styles/account.css';
 	import { page } from '$app/state';
+	import { invalidateAll } from '$app/navigation';
 	let { data, children } = $props();
 	const path = $derived(page.url.pathname);
 	const initials = $derived((data.profile.name || 'SP').split(/[\s@._-]+/).filter(Boolean).slice(0, 2).map((s: string) => s[0]?.toUpperCase()).join(''));
@@ -14,13 +15,44 @@
 		{ href: '/account/recensioni', label: 'Recensioni', icon: 'M12 3l2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.3 6.4 20.2l1.1-6.2L3 9.6l6.2-.9z', count: data.counts.toReview }
 	]);
 	const active = (it: { href: string; exact?: boolean }) => (it.exact ? path === it.href : path.startsWith(it.href));
+
+	// foto profilo: caricata nel bucket "avatars" nella cartella dell'utente
+	let avatarInput = $state<HTMLInputElement | undefined>();
+	let avatarMsg = $state('');
+	async function onAvatar(e: Event) {
+		const input = e.currentTarget as HTMLInputElement;
+		const file = input.files?.[0];
+		if (!file || !data.user) return;
+		if (file.size > 5 * 1024 * 1024) { avatarMsg = 'Foto troppo grande (max 5 MB).'; return; }
+		avatarMsg = 'Caricamento…';
+		const ext = (file.name.split('.').pop() ?? 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
+		const path = `${data.user.id}/avatar-${Date.now()}.${ext}`;
+		const { error } = await data.supabase.storage.from('avatars').upload(path, file, { contentType: file.type, upsert: true });
+		if (error) { avatarMsg = `Foto non caricata: ${error.message}`; return; }
+		const url = data.supabase.storage.from('avatars').getPublicUrl(path).data.publicUrl;
+		const { error: e2 } = await data.supabase.from('profiles').update({ avatar_url: url }).eq('id', data.user.id);
+		avatarMsg = e2 ? `Foto non salvata: ${e2.message}` : '';
+		input.value = '';
+		await invalidateAll();
+	}
 </script>
 
 <div class="acc">
 	<aside class="acc__side">
 		<div class="acc__who">
-			<span class="avatar" style="width:44px;height:44px;font-size:15px">{initials}</span>
-			<div><b>{data.profile.name}</b><small>Cliente dal {data.profile.since}</small></div>
+			<div class="acc__avatar">
+				{#if data.profile.avatar}<img src={data.profile.avatar} alt="" />{:else}<span class="avatar" style="width:52px;height:52px;font-size:16px">{initials}</span>{/if}
+				<input bind:this={avatarInput} type="file" accept="image/*" hidden onchange={onAvatar} />
+				<button type="button" class="acc__cam" title="Cambia foto profilo" aria-label="Cambia foto profilo" onclick={() => avatarInput?.click()}>
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z" /><circle cx="12" cy="13" r="3.5" /></svg>
+				</button>
+			</div>
+			<div>
+				<b>{data.profile.name}</b>
+				{#if data.loyalty}<span class="acc__level"><img src={data.loyalty.img} alt="" />{data.loyalty.name}</span>{/if}
+				<small>Cliente dal {data.profile.since}</small>
+			</div>
+			{#if avatarMsg}<small style="grid-column:1/-1;color:#ffb3ad">{avatarMsg}</small>{/if}
 		</div>
 		<nav class="acc__nav" aria-label="Area personale">
 			{#each items as it (it.href)}

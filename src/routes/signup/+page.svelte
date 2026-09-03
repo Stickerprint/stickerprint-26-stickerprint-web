@@ -10,7 +10,7 @@
 	<aside class="auth__side">
 		<span class="tag tag--green">Il tuo prossimo ordine inizia da questo</span>
 		<h1>Ogni ordine ti lascia <span class="hl hl--green">qualcosa.</span></h1>
-		<p class="lead" style="color:#d9dcf2">Con l’account guadagni il 5% in Credito Stickerprint su ogni acquisto, riordini in un click e trovi tutte le tue prove di stampa.</p>
+		<p class="lead" style="color:#d9dcf2">Con l’account guadagni fino al 6% in Credito Stickerprint su ogni acquisto, riordini in un click e trovi tutte le tue prove di stampa.</p>
 	</aside>
 	<section class="auth__form">
 		{#if form?.success}

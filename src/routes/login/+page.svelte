@@ -28,6 +28,6 @@
 			<button class="btn btn--blue btn--lg" type="submit" disabled={loading}>{loading ? 'Accesso…' : 'Accedi'}</button>
 		</form>
 		<p class="auth__alt"><a class="link" href="/reset-password">Password dimenticata?</a></p>
-		<p class="auth__alt">Non hai un account? <a class="link" href="/signup">Registrati</a> e inizia a guadagnare il 5% di credito.</p>
+		<p class="auth__alt">Non hai un account? <a class="link" href="/signup">Registrati</a> e inizia a guadagnare fino al 6% di credito.</p>
 	</section>
 </div>

@@ -43,7 +43,7 @@ export function welcomeEmail(opts: { name?: string | null; email: string }) {
 		tag: 'welcome',
 		html: layout(
 			`Ciao ${esc(name)}, il tuo account è pronto.`,
-			`<p>Da oggi ogni ordine ti lascia qualcosa: <strong>il 5% in Credito Stickerprint</strong> finisce automaticamente nel tuo portafoglio e puoi usarlo sul prossimo ordine.</p>
+			`<p>Da oggi ogni ordine ti lascia qualcosa: <strong>fino al 6% in Credito Stickerprint</strong> finisce automaticamente nel tuo portafoglio e puoi usarlo sul prossimo ordine.</p>
 			 <p>Carica il tuo file, guarda subito l’anteprima automatica e conferma solo quando sei soddisfatto. Un umano controlla ogni file prima della stampa.</p>`,
 			{ label: 'Inizia a stampare', href: `${SITE}/adesivi-personalizzati` }
 		)

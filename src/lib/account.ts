@@ -35,3 +35,12 @@ export const productHref = (slug: string) => PRODUCT_ENGINES.find((p) => p.slug 
 export const eur = (v: number) => new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(v);
 export const dateIt = (d: string, long = false) => new Intl.DateTimeFormat('it-IT', long ? { day: 'numeric', month: 'long', year: 'numeric' } : { day: 'numeric', month: 'short' }).format(new Date(d));
 export const fmtMm = (v: number | null) => (v == null ? '' : Number.isInteger(+v) ? String(+v) : (+v).toFixed(1).replace('.', ','));
+
+export interface LoyaltyLevel { level: string; name: string; rank: number; credit_rate: number; img: string; next_points: number | null; keep_points: number }
+export interface Loyalty {
+	level: string; name: string; rank: number; credit_rate: number; img: string;
+	period_points: number; lifetime_points: number; level_since: string; expires_at: string; keep_points: number;
+	next: { level: string; name: string; points: number; credit_rate: number; img: string } | null;
+	levels: LoyaltyLevel[];
+}
+export const pct = (rate: number) => `${Math.round(rate * 100)}%`;

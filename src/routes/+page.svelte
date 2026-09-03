@@ -24,7 +24,7 @@
 
 <svelte:head>
 	<title>Stickerprint | Adesivi personalizzati con anteprima automatica</title>
-	<meta name="description" content="Adesivi perfetti, zero sorprese. Carica il file, guarda subito l’anteprima automatica e conferma. Prova di stampa inclusa, spedizione in 5 giorni, 5% in credito su ogni ordine." />
+	<meta name="description" content="Adesivi perfetti, zero sorprese. Carica il file, guarda subito l’anteprima automatica e conferma. Prova di stampa inclusa, spedizione in 5 giorni, fino al 6% in credito su ogni ordine." />
 	<link rel="canonical" href="https://stickerprint.it/" />
 	<meta property="og:title" content="Stickerprint — Adesivi perfetti. Zero sorprese." />
 	<meta property="og:description" content="Carica il file e guarda subito l’anteprima automatica dei tuoi adesivi." />
@@ -47,7 +47,7 @@
 			<ul class="hero__perks">
 				<li>✦ Anteprima immediata</li>
 				<li>✦ Modifiche su richiesta</li>
-				<li>✦ 5% in Credito Stickerprint</li>
+				<li>✦ Fino al 6% in Credito Stickerprint</li>
 			</ul>
 		</div>
 		<div class="hero__visual">
@@ -132,7 +132,7 @@
 			<span class="tag tag--green">Il tuo prossimo ordine inizia da questo</span>
 			<h2 style="margin-top:14px">Ogni ordine ti lascia <span class="hl hl--green">qualcosa.</span></h2>
 			<p class="lead" style="margin-top:20px">
-				Con ogni acquisto <strong>guadagni il 5% in Credito Stickerprint</strong>. Il credito finisce automaticamente nel tuo portafoglio e puoi usarlo sul prossimo ordine.
+				Con ogni acquisto <strong>guadagni fino al 6% in Credito Stickerprint</strong> (2% da Creator, 4% da Partner, 6% da Ambassador). Il credito finisce automaticamente nel tuo portafoglio e puoi usarlo sul prossimo ordine.
 			</p>
 			<div class="credit__example"><span>Ordine di 100€</span><span class="dash"></span><b>5€ di credito</b></div>
 			<p class="note" style="margin-top:10px">Credito calcolato IVA esclusa sul valore dei prodotti effettivamente pagati. Validità credito 6 mesi.</p>
