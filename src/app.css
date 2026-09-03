@@ -365,10 +365,9 @@ body { overflow-x: clip; }
 @media (max-width: 520px) { .reviews { grid-template-columns: 1fr; } }
 
 /* Credito */
-.credit { display: grid; grid-template-columns: 1fr 1.1fr; gap: clamp(24px, 4vw, 64px); align-items: center; }
-.credit__visual { position: relative; padding: clamp(24px, 4vw, 56px); }
-.credit__visual::before { content: ""; position: absolute; inset: 0; background: var(--cyan-soft); border-radius: 22px; clip-path: polygon(0 0, 100% 0, 68% 100%, 0 100%); }
-.credit__visual img { position: relative; width: 82%; max-width: 460px; margin: 0 auto; filter: drop-shadow(0 24px 40px rgba(11,11,59,.25)); }
+.credit { display: grid; grid-template-columns: 1fr 1.1fr; gap: clamp(24px, 4vw, 64px); align-items: stretch; }
+.credit__visual { background: var(--cyan-soft); border-radius: 26px; padding: clamp(24px, 4vw, 48px); display: grid; place-items: center; }
+.credit__visual img { width: 100%; max-width: 440px; height: auto; border-radius: 18px; box-shadow: 0 24px 44px rgba(11,11,59,.18); }
 .credit__levels { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 12px; }
 .credit__lv { display: grid; justify-items: center; gap: 2px; padding: 14px 10px; background: #fff; border: 2px solid var(--line); border-radius: 16px; text-align: center; }
 .credit__lv img { width: 54px; height: 54px; object-fit: contain; margin-bottom: 4px; }
