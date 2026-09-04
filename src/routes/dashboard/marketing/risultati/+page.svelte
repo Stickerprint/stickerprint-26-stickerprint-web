@@ -79,7 +79,10 @@
 				<div class="mk-lista">
 					{#each social.contenuti as c, i (c.id)}
 						<div class="mk-riga">
-							<span><b>#{i + 1}</b> {c.didascalia ? c.didascalia.slice(0, 90) : c.tipo ?? 'Post'}{#if c.didascalia && c.didascalia.length > 90}…{/if}<small>{c.data ? dataBreve(c.data) : ''}{#if c.permalink} · <a class="link" href={c.permalink} target="_blank" rel="noopener">apri su Instagram ↗</a>{/if}</small></span>
+							<span style="display:flex;gap:10px;align-items:center">
+								{#if c.immagine}<img src={c.immagine} alt="" style="width:44px;height:44px;object-fit:cover;border-radius:8px;flex:0 0 auto" loading="lazy" />{/if}
+								<span><b>#{i + 1}</b> {c.titolo}<small>{c.quando ? dataBreve(c.quando) : ''}{#if c.permalink} · <a class="link" href={c.permalink} target="_blank" rel="noopener">apri su Instagram ↗</a>{/if}</small></span>
+							</span>
 							<span style="text-align:right"><b>{num(c.like)}</b> like<small>{num(c.commenti)} commenti</small></span>
 						</div>
 					{/each}
