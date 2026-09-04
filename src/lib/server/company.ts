@@ -6,8 +6,8 @@ export const COMPANY = {
 	city: 'Locate di Triulzi',
 	province: 'MI',
 	country: 'IT',
-	vat: '00000000000',        // P.IVA (11 cifre) — DA INSERIRE
-	fiscalCode: '00000000000', // codice fiscale — DA INSERIRE
+	vat: '11308040960',        // P.IVA (in fattura e XML senza il prefisso IT)
+	fiscalCode: '11308040960', // codice fiscale = P.IVA
 	rea: '',                   // es. MI-1234567 (facoltativo)
 	capital: '',               // capitale sociale (facoltativo)
 	regime: 'RF01',            // regime fiscale FatturaPA (RF01 = ordinario)
