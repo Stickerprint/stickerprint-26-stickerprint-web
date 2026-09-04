@@ -655,7 +655,7 @@ const RESIN_R=2.0;          // raggio minimo obbligatorio sugli angoli, in mm
 const RESIN_NECK=5.0;       // collo minimo per il resinato, in mm
 const RESIN_BORDER=2.5;     // bordo minimo, così l'arrotondamento non mangia il disegno
 const EMBED=(new URLSearchParams(location.search)).get('embed')==='1';
-const S={prod:'sticker',foglio:false,artClip:null,palette:null,palIdx:0,bgOpaque:true,viewTotW:50,resinR:0,src:null,artCanvas:null,name:'',srcW:0,srcH:0,srcMM:null,work:null,mask:null,mw:0,mh:0,bbox:null,
+const S={prod:'sticker',foglio:false,lente:false,artClip:null,palette:null,palIdx:0,bgOpaque:true,viewTotW:50,resinR:0,src:null,artCanvas:null,name:'',srcW:0,srcH:0,srcMM:null,work:null,mask:null,mw:0,mh:0,bbox:null,
   bgCol:null,bgSrc:'',cands:[],chosen:-1,ctx0:null,seeds:[],lineSeed:null,wand:false,keptPct:0,
   Rsafe:null,RsafeFor:null,polys:null,pathD:'',cutW:0,cutH:0,bleed:0,art:null,quality:null,
   layout:null,dirHandle:null};
@@ -3248,7 +3248,7 @@ function draw(){
   /* [sito] ETICHETTE IN FOGLI: l'anteprima mostra il foglio (circa A4) con dentro
      tutte le etichette che ci stanno: margine 10 mm per lato, 2 mm fra un'etichetta
      e l'altra, in orizzontale e in verticale. Il numero cambia con la misura. */
-  if(S.foglio){
+  if(S.foglio&&!S.lente){
     const L=layoutFoglio();
     if(L){
       const padS=6, totWs=L.SW+2*padS, totHs=L.SH+2*padS;
@@ -4609,9 +4609,29 @@ function ppGeoUI(){
     }catch(e){}
   };
   setInterval(fitEmbed,300); addEventListener('resize',fitEmbed);
+  /* [sito] ETICHETTE: la lente di fianco al foglio. Un clic mostra l'etichetta da vicino
+     (stessa vista degli adesivi: si lavora su zoom, colori, bordo), un altro torna al foglio. */
+  const LENTE_SVG='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/><path d="M8 10.5h5M10.5 8v5"/></svg>';
+  const FOGLIO_SVG='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h3M13 8h3M8 12h3M13 12h3M8 16h3M13 16h3"/></svg>';
+  let lente=null;
+  const aggiornaLente=()=>{
+    try{
+      const st=document.getElementById('ppStage'); if(!st)return;
+      if(!lente){
+        lente=document.createElement('button'); lente.type='button'; lente.id='ppLente';
+        lente.style.cssText='position:absolute;right:10px;top:10px;z-index:6;display:none;align-items:center;gap:7px;padding:9px 12px;border-radius:999px;border:1.5px solid #dfe3ea;background:#fff;color:#0b0b3b;font:700 12.5px Montserrat,system-ui,sans-serif;cursor:pointer;box-shadow:0 4px 14px rgba(11,11,59,.12)';
+        lente.onclick=()=>{S.lente=!S.lente; aggiornaLente(); if(S.src&&S.bbox){try{draw();computeLayout();}catch(e){}} };
+        st.style.position='relative'; st.appendChild(lente);
+      }
+      const on=!!(S.foglio&&S.src&&S.bbox);
+      lente.style.display=on?'inline-flex':'none';
+      lente.innerHTML=S.lente?(FOGLIO_SVG+'<span>Torna al foglio</span>'):(LENTE_SVG+'<span>Etichetta da vicino</span>');
+      lente.title=S.lente?'Mostra il foglio intero':'Ingrandisci una sola etichetta per lavorarci da vicino';
+    }catch(e){}
+  };
   /* dopo ogni disegno la tela va inquadrata SUBITO: prima passavano fino a
      300 ms con l'anteprima piccola, che poi tornava normale */
-  try{ const _draw=draw; draw=function(){const r=_draw.apply(this,arguments); try{fitEmbed();}catch(e){} return r;}; }catch(e){}
+  try{ const _draw=draw; draw=function(){const r=_draw.apply(this,arguments); try{fitEmbed();aggiornaLente();}catch(e){} return r;}; }catch(e){}
   /* altezza reale del contenuto, così il sito dimensiona l'iframe */
   let lastH=0; const sendSize=()=>{const app=document.querySelector('.pp-app'); const h=Math.ceil(app?app.getBoundingClientRect().height+8:document.documentElement.scrollHeight); if(h!==lastH){lastH=h;send('size',{h});}};
   setInterval(sendSize,400); addEventListener('load',sendSize);
@@ -4630,7 +4650,7 @@ function ppGeoUI(){
           if(i===0&&mat==='clear')o.img='checker'; else if(i===0&&bare)o.img=materialTexture(48,48,mat).toDataURL(); return o; }); }catch(e){}
       send('render',{name:S.name||null,w:+((S.cutW||0)).toFixed(1),h:+((S.cutH||0)).toFixed(1),srcMM:S.srcMM||null,
         materiale:(typeof matKind==='function')?matKind():null,png,palette,palIdx:S.palIdx,rimuovi:!!S.rimuoviSfondo,
-        foglio:(S._an&&S._an.sheet)?{n:S._an.sheet.n,cols:S._an.sheet.cols,rows:S._an.sheet.rows,w:S._an.sheet.SW,h:S._an.sheet.SH}:null});
+        foglio:(S.foglio&&S.cutW)?(()=>{try{const L=layoutFoglio();return L?{n:L.n,cols:L.cols,rows:L.rows,w:L.SW,h:L.SH}:null;}catch(e){return null;}})():null});
       try{console.debug('[motore] istantanea: attesa',Math.round(t0-(window.__busyOff||t0)),'ms · inquadratura',Math.round(t1-t0),'ms · png',Math.round(t2-t1),'ms ·',cv.width+'x'+cv.height);}catch(e){}
     }catch(e){}
   };
