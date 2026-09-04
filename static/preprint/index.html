@@ -655,7 +655,7 @@ const RESIN_R=2.0;          // raggio minimo obbligatorio sugli angoli, in mm
 const RESIN_NECK=5.0;       // collo minimo per il resinato, in mm
 const RESIN_BORDER=2.5;     // bordo minimo, così l'arrotondamento non mangia il disegno
 const EMBED=(new URLSearchParams(location.search)).get('embed')==='1';
-const S={prod:'sticker',artClip:null,palette:null,palIdx:0,bgOpaque:true,viewTotW:50,resinR:0,src:null,artCanvas:null,name:'',srcW:0,srcH:0,srcMM:null,work:null,mask:null,mw:0,mh:0,bbox:null,
+const S={prod:'sticker',foglio:false,artClip:null,palette:null,palIdx:0,bgOpaque:true,viewTotW:50,resinR:0,src:null,artCanvas:null,name:'',srcW:0,srcH:0,srcMM:null,work:null,mask:null,mw:0,mh:0,bbox:null,
   bgCol:null,bgSrc:'',cands:[],chosen:-1,ctx0:null,seeds:[],lineSeed:null,wand:false,keptPct:0,
   Rsafe:null,RsafeFor:null,polys:null,pathD:'',cutW:0,cutH:0,bleed:0,art:null,quality:null,
   layout:null,dirHandle:null};
@@ -3245,6 +3245,29 @@ function draw(){
   try{ if(EMBED){const st=$('ppStage'); const lato=Math.min(st.clientWidth||400,st.clientHeight||400)||400; cap=Math.min(cap,Math.max(6,Math.ceil(1.7*lato/Math.max(totW,totH))));} }catch(e){}
   const ppm=Math.min(1400/totW,1000/totH,cap);
   const tile=renderTile(ppm,true,0);
+  /* [sito] ETICHETTE IN FOGLI: l'anteprima mostra il foglio (circa A4) con dentro
+     tutte le etichette che ci stanno: margine 10 mm per lato, 2 mm fra un'etichetta
+     e l'altra, in orizzontale e in verticale. Il numero cambia con la misura. */
+  if(S.foglio){
+    const L=layoutFoglio();
+    if(L){
+      const padS=6, totWs=L.SW+2*padS, totHs=L.SH+2*padS;
+      let capS=6;
+      try{ if(EMBED){const st=$('ppStage'); const lato=Math.min(st.clientWidth||400,st.clientHeight||400)||400; capS=Math.max(1.5,Math.ceil(2.2*lato/Math.max(totWs,totHs)));} }catch(e){}
+      const ppmS=Math.min(1400/totWs,1000/totHs,capS);
+      cv.width=Math.round(totWs*ppmS);cv.height=Math.round(totHs*ppmS);
+      cv.style.display='block';$('empty').style.display='none';
+      fitPreview(cv,totWs/totHs);
+      S.viewTotW=totWs;
+      S._an={cv,tile,pad:padS,ppm:ppmS,b:0,dash:Math.max(0.6,Math.min(1.6,S.cutW/40)),path:S.pathD,sheet:L,tilePpm:ppm};
+      ridipingi();
+      $('s1').innerHTML='Etichetta <b>'+S.cutW.toFixed(1)+' × '+S.cutH.toFixed(1)+' mm</b>';
+      $('s2').innerHTML='Foglio <b>'+L.SW+' × '+L.SH+' mm</b> · <b>'+L.n+' etichette</b> ('+L.cols+' × '+L.rows+')';
+      $('s3').innerHTML='Contorno <b>'+contourColor().toUpperCase()+'</b>';
+      $('s4').innerHTML='';$('qual').style.display='none';
+      return;
+    }
+  }
   cv.width=Math.round(totW*ppm);cv.height=Math.round(totH*ppm);
   cv.style.display='block';$('empty').style.display='none';
   fitPreview(cv,totW/totH);
@@ -3961,7 +3984,7 @@ const U_MATER={bianco:'white',white:'white',olografico:'holo',holo:'holo',
 function uLeggiConfig(){
   const q=new URLSearchParams(location.search);
   const c=Object.assign({},window.SPPS_CONFIG||{});
-  ['forma','materiale','w','h','qta','prodotto','lamina'].forEach(k=>{
+  ['forma','materiale','w','h','qta','prodotto','lamina','foglio'].forEach(k=>{
     if(c[k]===undefined&&q.get(k)!==null)c[k]=q.get(k);});
   return c;
 }
@@ -3974,6 +3997,7 @@ function uBloccaCombinazione(){
     if(p!==S.prod)setProd(p);
     $('segProd').classList.add('hidden');
   }
+  if(c.foglio!==undefined){const v=String(c.foglio).toLowerCase(); S.foglio=!(v===''||v==='0'||v==='false'||v==='no');}
   const f=U_FORMA[String(c.forma||'').toLowerCase()];
   if(f){
     CL.shape=f;
@@ -4102,8 +4126,54 @@ function disegnaFoglio(g,W,H,padPx,ppm){
   }catch(e){}
 }
 
+/* [sito] disposizione delle etichette sul foglio: margine 10 mm per lato, 2 mm di
+   passo fra le etichette; si prova il foglio in verticale e in orizzontale e si tiene
+   quello che ne contiene di piu'. La griglia viene centrata (i margini restano >= 10 mm). */
+const FOGLIO_M=10, FOGLIO_G=2;
+function layoutFoglio(){
+  const w=S.cutW, h=S.cutH; if(!(w>0&&h>0))return null;
+  const opts=[[210,297],[297,210]].map(([SW,SH])=>{
+    const cols=Math.floor((SW-2*FOGLIO_M+FOGLIO_G)/(w+FOGLIO_G)+1e-6), rows=Math.floor((SH-2*FOGLIO_M+FOGLIO_G)/(h+FOGLIO_G)+1e-6);
+    return {SW,SH,cols:Math.max(0,cols),rows:Math.max(0,rows),n:Math.max(0,cols)*Math.max(0,rows)};});
+  let L=opts[0]; if(opts[1].n>L.n)L=opts[1];
+  if(L.n<1)return null;
+  const usedW=L.cols*w+(L.cols-1)*FOGLIO_G, usedH=L.rows*h+(L.rows-1)*FOGLIO_G;
+  L.x0=(L.SW-usedW)/2; L.y0=(L.SH-usedH)/2; L.G=FOGLIO_G; L.M=FOGLIO_M; L.w=w; L.h=h;
+  return L;}
+function disegnaPagina(g,x,y,w,h,ppm){
+  g.save();
+  g.shadowColor='rgba(0,0,0,0.18)';g.shadowBlur=2.2*ppm;g.shadowOffsetX=0.4*ppm;g.shadowOffsetY=1.2*ppm;
+  g.fillStyle='#ffffff';g.fillRect(x,y,w,h);
+  g.restore();
+  g.save();g.strokeStyle='rgba(11,11,59,0.10)';g.lineWidth=1;g.strokeRect(x+0.5,y+0.5,w-1,h-1);g.restore();}
+
 function ridipingi(){
   const a=S._an; if(!a)return;
+  if(a.sheet){
+    const {cv,tile,pad,ppm,dash}=a, L=a.sheet, k=ppm/a.tilePpm;
+    const g=cv.getContext('2d');
+    g.setTransform(1,0,0,1,0,0);
+    g.clearRect(0,0,cv.width,cv.height);
+    if(!a.base||a.baseTile!==tile||a.base.width!==cv.width||a.base.height!==cv.height){
+      const base=document.createElement('canvas');base.width=cv.width;base.height=cv.height;
+      const gb=base.getContext('2d');
+      disegnaPagina(gb,pad*ppm,pad*ppm,L.SW*ppm,L.SH*ppm,ppm);
+      gb.imageSmoothingQuality='high';
+      for(let r=0;r<L.rows;r++)for(let c=0;c<L.cols;c++){
+        const x=(pad+L.x0+c*(L.w+L.G))*ppm, y=(pad+L.y0+r*(L.h+L.G))*ppm;
+        gb.drawImage(tile,x,y,tile.width*k,tile.height*k);}
+      a.base=base;a.baseTile=tile;
+    }
+    g.drawImage(a.base,0,0);
+    if(!S.showCut)return;
+    const p=new Path2D(a.path);
+    g.lineWidth=Math.max(.12,0.9/ppm);g.strokeStyle='#ff2d95';g.lineCap='butt';
+    for(let r=0;r<L.rows;r++)for(let c=0;c<L.cols;c++){
+      g.setTransform(ppm,0,0,ppm,(pad+L.x0+c*(L.w+L.G))*ppm,(pad+L.y0+r*(L.h+L.G))*ppm);
+      g.setLineDash([dash,dash*0.75]);g.lineDashOffset=-anT;g.stroke(p);}
+    g.setLineDash([]);g.lineDashOffset=0;g.setTransform(1,0,0,1,0,0);
+    return;
+  }
   const {cv,tile,pad,ppm,b,dash}=a;
   const g=cv.getContext('2d');
   g.setTransform(1,0,0,1,0,0);
@@ -4526,7 +4596,7 @@ function ppGeoUI(){
       const W=st.clientWidth, H=st.clientHeight; if(!W||!H)return;
       /* margine per ombra e bagliore, che sporgono dalla sagoma: mai tagliati */
       const m=(S.prod==='resin'&&!S.senzaResina)?(a.pad*(a.ppm||4)):7*(a.ppm||4);
-      const k=Math.min(0.96*W/(a.tile.width+2*m), 0.96*H/(a.tile.height+2*m));
+      const k=a.sheet?Math.min(0.98*W/a.cv.width,0.98*H/a.cv.height):Math.min(0.96*W/(a.tile.width+2*m), 0.96*H/(a.tile.height+2*m));
       const w=Math.round(a.cv.width*k), h=Math.round(a.cv.height*k);
       if(a.cv.style.width!==w+'px'||a.cv.style.height!==h+'px'){a.cv.style.width=w+'px';a.cv.style.height=h+'px';}
     }catch(e){}
@@ -4552,7 +4622,8 @@ function ppGeoUI(){
         palette=(S.palette||[[255,255,255]]).map((c,i)=>{ const o={hex:hexOf(c)};
           if(i===0&&mat==='clear')o.img='checker'; else if(i===0&&bare)o.img=materialTexture(48,48,mat).toDataURL(); return o; }); }catch(e){}
       send('render',{name:S.name||null,w:+((S.cutW||0)).toFixed(1),h:+((S.cutH||0)).toFixed(1),srcMM:S.srcMM||null,
-        materiale:(typeof matKind==='function')?matKind():null,png,palette,palIdx:S.palIdx,rimuovi:!!S.rimuoviSfondo});
+        materiale:(typeof matKind==='function')?matKind():null,png,palette,palIdx:S.palIdx,rimuovi:!!S.rimuoviSfondo,
+        foglio:(S._an&&S._an.sheet)?{n:S._an.sheet.n,cols:S._an.sheet.cols,rows:S._an.sheet.rows,w:S._an.sheet.SW,h:S._an.sheet.SH}:null});
       try{console.debug('[motore] istantanea: attesa',Math.round(t0-(window.__busyOff||t0)),'ms · inquadratura',Math.round(t1-t0),'ms · png',Math.round(t2-t1),'ms ·',cv.width+'x'+cv.height);}catch(e){}
     }catch(e){}
   };
@@ -4577,6 +4648,7 @@ function ppGeoUI(){
       try{
         const c=d.config||{}; let geom=false, mat=false;
         if(c.prodotto){const p=String(c.prodotto).toLowerCase().indexOf('resin')>=0?'resin':'sticker'; if(p!==S.prod){setProd(p);geom=true;}}
+        if(c.foglio!==undefined){const fg=!!c.foglio; if(fg!==S.foglio){S.foglio=fg;geom=true;}}
         const f=U_FORMA[String(c.forma||'').toLowerCase()];
         if(f&&f!==CL.shape){CL.shape=f;document.querySelectorAll('#cShape .chip').forEach(e=>e.classList.toggle('on',e.dataset.s===f));applyPreset(false);geom=true;
           /* nuova sagoma: il disegno riparte grande e centrato, e il pannello mostra i comandi giusti */

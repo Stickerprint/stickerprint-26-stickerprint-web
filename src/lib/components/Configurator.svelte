@@ -60,6 +60,9 @@
 	let palIdx = $state(0);
 	let rimuovi = $state(false);
 	let colInput = $state<HTMLInputElement | null>(null);
+	// etichette in fogli: il motore mostra il foglio e dice quante etichette ci entrano
+	const foglio = $derived(product === 'etichette');
+	let perSheet = $state<{ n: number; cols: number; rows: number; w: number; h: number } | null>(null);
 	let over = $state(false);
 	let customOpen = $state(false);
 	let customQty = $state<number | ''>('');
@@ -124,8 +127,9 @@
 		customOpen = true;
 	}
 
-	function onRender(s: { png?: string | null; w: number; h: number; srcMM: { w: number; h: number } | null; palette?: { hex: string; img?: string }[]; palIdx?: number; rimuovi?: boolean }) {
+	function onRender(s: { png?: string | null; w: number; h: number; srcMM: { w: number; h: number } | null; palette?: { hex: string; img?: string }[]; palIdx?: number; rimuovi?: boolean; foglio?: { n: number; cols: number; rows: number; w: number; h: number } | null }) {
 		if (s.png) lastPng = s.png;
+		perSheet = s.foglio ?? null;
 		if (s.palette) { palette = s.palette; palIdx = s.palIdx ?? 0; rimuovi = !!s.rimuovi; }
 		const key = `${file?.name ?? ''}|${file?.size ?? 0}|${forma}`;
 		if (key === sizeKey) return;
@@ -191,7 +195,7 @@
 		<!-- ANTEPRIMA + BARRA COMANDI (sfondo · rimuovi sfondo · cambia file · tracciato) -->
 		<div class="cfg__preview">
 			{#if file}
-				<EnginePreview bind:this={engine} {file} {forma} {materiale} finitura={showFinish ? finitura : 'lucida'} prodotto={engineProduct} {w} {h} {showCut} panel stage={370} onrender={onRender} />
+				<EnginePreview bind:this={engine} {file} {forma} {materiale} finitura={showFinish ? finitura : 'lucida'} prodotto={engineProduct} {foglio} {w} {h} {showCut} panel stage={foglio ? 440 : 370} onrender={onRender} />
 				{#if fileUrl}<img src={fileUrl} alt="" hidden onload={onImgLoad} />{/if}
 				<div class="cfg__bar">
 					<div class="cfg__bar-group">
@@ -346,6 +350,9 @@
 				<span class="step__title">Scegli quantità <em>{qty.toLocaleString('it-IT')} pezzi · {eur0(vatIncluded ? q.gross : q.net)}</em></span>
 			</div>
 				<div class="step__body">
+					{#if foglio && perSheet && file}
+						<p class="step__hint step__hint--box">Con questa misura entrano <b>{perSheet.n} etichette per foglio</b> ({perSheet.cols} × {perSheet.rows} su un foglio {perSheet.w} × {perSheet.h} mm): {qty.toLocaleString('it-IT')} pezzi sono <b>{Math.ceil(qty / perSheet.n)} {Math.ceil(qty / perSheet.n) === 1 ? 'foglio' : 'fogli'}</b>.</p>
+					{/if}
 					<div class="qty-grid">
 						{#each cfg.quantities as n (n)}
 							{@const qq = quoteWith(cfg, { w, h, forma, materiale, finitura: fin, qty: n, vatIncluded })}

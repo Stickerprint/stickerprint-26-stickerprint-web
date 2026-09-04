@@ -175,3 +175,14 @@ e' stato stretto per gli adesivi: piccolo `[86,12,14]`, medio `[70,25,32]`, gran
 (stelle, angoli) meno stondate, soprattutto su "piccolo". I resinati usano la tabella
 di prima (`P_TAGLIO_L_RES`): la resina vuole raccordi dolci. Banco di prova:
 `scratchpad/harness/contorno.html` (prima/dopo sui tre bordi, grafica testo+stella).
+
+## Etichette in fogli: anteprima del foglio (5 settembre 2026)
+
+Con `foglio=1` (URL) o `config.foglio=true` (messaggio dal sito) il motore mostra il
+foglio invece del pezzo singolo: `layoutFoglio()` prova A4 verticale e orizzontale
+(210×297 / 297×210), margine `FOGLIO_M`=10 mm per lato, passo `FOGLIO_G`=2 mm fra le
+etichette, e tiene l'orientamento che ne contiene di piu'; la griglia e' centrata.
+`draw()` renderizza il pezzo una volta (`renderTile`) e `ridipingi()` lo ripete sul
+foglio (`S._an.sheet`), con il tratteggio di taglio su ogni etichetta. Il messaggio
+`render` porta `foglio:{n,cols,rows,w,h}` e il preventivatore delle etichette lo usa
+per dire "N etichette per foglio → M fogli". Banco: `scratchpad/harness/foglio.html`.
