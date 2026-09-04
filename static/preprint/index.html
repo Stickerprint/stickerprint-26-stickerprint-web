@@ -2671,7 +2671,7 @@ function membrana(bin,W,H){
   let mx=0; for(let i=0;i<W*H;i++){if(!bin[i])f[i]=0;else if(f[i]>mx)mx=f[i];}
   if(mx>0)for(let i=0;i<W*H;i++)f[i]/=mx;
   return f;}
-function resinDome(core,ppm){
+function resinDomeFisico(core,ppm){
   const W=core.width,H=core.height,N=W*H;
   const gc=core.getContext('2d',{willReadFrequently:true});
   const id=gc.getImageData(0,0,W,H),d=id.data;
@@ -2963,6 +2963,98 @@ function resinDome(core,ppm){
   go.putImageData(oid,0,0);
   return out;}
 
+/* ==========================================================================
+   RESINA — MOCKUP (4 set 2026)
+   L'effetto e' ricostruito sui mockup Photoshop dell'utente (tondo, ovale,
+   quadrato, rettangolo): una cupola bianca pulita con un filo lucido sul
+   perimetro, una fascia appena piu' scura subito dentro (il menisco), un
+   riflesso netto che corre lungo il bordo in basso a sinistra, un filo di
+   luce in alto a destra e una leggerissima vignettatura verso il bordo.
+   Tutto dipende solo dalla distanza dal bordo e dalla direzione del bordo:
+   vale per qualunque sagoma, anche il die-cut, senza forme predefinite.
+   Le misure sono in millimetri, cosi' il rilievo resta lo stesso a ogni
+   dimensione di adesivo e di anteprima.
+   ========================================================================== */
+const RESM={
+  base:0.972,                    // la resina scurisce appena la stampa sotto (tono del mockup)
+  contW:0.09, contK:0.15,        // filo di contatto: sottile ombra proprio sul taglio
+  rimC:0.22,  rimW:0.12, rimK:1.00,  // filo lucido del bordo della cupola
+  menC:0.66,  menW:0.34, menK:0.13,  // fascia scura del menisco, subito dentro il filo
+  glC:0.50,   glW:0.42,  glK:1.05, glP:1.8, glMax:0.92,  // riflesso in basso a sinistra, lungo il bordo
+  glowL:2.2,  glowK:0.26,        // alone morbido dello stesso riflesso verso l'interno
+  trK:0.50,                      // filo di luce in alto a destra
+  inW:1.6,    vigK:0.045,        // vignettatura: piu' scuro avvicinandosi al bordo
+  gradK:0.032,                   // gradiente generale: piu' chiaro in alto a sinistra
+  softK:0.04                     // riflesso morbido della luce di studio in alto a sinistra
+};
+function resinDome(core,ppm){
+  const W=core.width,H=core.height,N=W*H;
+  const gc=core.getContext('2d',{willReadFrequently:true});
+  const id=gc.getImageData(0,0,W,H),d=id.data;
+  const bin=new Uint8Array(N);
+  for(let i=0,p=3;i<N;i++,p+=4)bin[i]=d[p]>10?1:0;
+  /* distanza dal bordo VERO del pezzo (l'alpha del disegno), su una tela con
+     una cornice di un pixel "fuori": cosi' il bordo della tela conta come
+     bordo (quadrato che riempie tutto) senza inventare spigoli dentro le
+     sagome tonde. Le fasce di luce e ombra seguono esattamente il taglio:
+     una sagoma lisciata a parte creava tacche dove il tracciato ondeggia. */
+  const W2=W+2,H2=H+2,inv=new Uint8Array(W2*H2).fill(1);
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++)if(bin[y*W+x])inv[(y+1)*W2+x+1]=0;
+  const g2=edt2d(inv,W2,H2);
+  const dist=new Float32Array(N); let dmax=0;
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++){
+    const i=y*W+x;
+    if(!bin[i]){dist[i]=0;continue;}
+    /* l'alpha sfumato del bordo vale come mezzo pixel in piu' */
+    const a=d[i*4+3]/255;
+    const v=Math.max(0,Math.sqrt(g2[(y+1)*W2+x+1])-1+a*0.5);
+    dist[i]=v; if(v>dmax)dmax=v;
+  }
+  if(dmax<4)return core;
+  /* direzione del bordo: gradiente della distanza sfocata A PIENA risoluzione
+     (la versione ridotta a un quarto lasciava scalini lungo i bordi curvi) */
+  const dS=blurF(dist,W,H,Math.max(2,Math.round(0.28*ppm)),3);
+  const P=RESM, gauss=t=>Math.exp(-0.5*t*t);
+  const out=document.createElement('canvas');out.width=W;out.height=H;
+  const go=out.getContext('2d');
+  const oid=go.createImageData(W,H),o=oid.data;
+  const cx=W/2,cy=H/2,R=Math.max(W,H)/2;
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++){
+    const i=y*W+x,p=i*4;
+    if(!bin[i]){o[p+3]=0;continue;}
+    const dd=dist[i]/ppm;                       // mm dal bordo
+    const xm=x>0?i-1:i, xp=x<W-1?i+1:i, ym=y>0?i-W:i, yp=y<H-1?i+W:i;
+    const gx=(dS[xp]-dS[xm])*0.5, gy=(dS[yp]-dS[ym])*0.5;
+    const gl=Math.hypot(gx,gy);
+    const ox=gl>1e-4?-gx/gl:0, oy=gl>1e-4?-gy/gl:0;   // normale verso l'esterno
+    /* quanto il bordo guarda verso: basso-sinistra, alto-sinistra, alto-destra, basso-destra */
+    const bl=Math.max(0,(-ox+oy)*0.7071), tl=Math.max(0,(-ox-oy)*0.7071), tr=Math.max(0,(ox-oy)*0.7071), br=Math.max(0,(ox+oy)*0.7071);
+    const contact=gauss(dd/P.contW);
+    const rim=gauss((dd-P.rimC)/P.rimW);
+    const men=gauss((dd-P.menC)/P.menW);
+    const band=gauss((dd-P.glC)/P.glW);
+    const glow=Math.exp(-dd/P.glowL);
+    const inner=Math.exp(-Math.pow(dd/P.inW,1.4));   // vignetta senza gomiti: decade dolcemente
+    let mul=P.base-P.contK*contact*(0.75+0.35*br)
+             -P.menK*men*(0.85+0.45*(tl*0.5+br*0.5))
+             -P.vigK*inner*(0.55+0.9*br)
+             -P.gradK*(((x-cx)/R)*0.55+((y-cy)/R));
+    let hi=P.rimK*rim*(0.28+0.72*Math.pow(tl,0.8))
+          +P.glK*band*Math.pow(bl,P.glP)
+          +P.glowK*glow*bl*bl
+          +P.trK*band*Math.pow(tr,3)
+          +P.softK*Math.max(0,1-Math.hypot((x-cx)/R+0.45,(y-cy)/R+0.45)/1.4)*(1-inner);
+    if(hi>P.glMax)hi=P.glMax; if(mul<0)mul=0;   // mai bianco pieno: sul colore resta un velo di tinta, come su un riflesso vero
+    for(let c=0;c<3;c++){
+      let v=d[p+c]/255*mul;
+      v=v+(1-v)*hi;
+      o[p+c]=v>1?255:v<0?0:Math.round(v*255);
+    }
+    o[p+3]=d[p+3];
+  }
+  go.putImageData(oid,0,0);
+  return out;}
+
 /* [sito] lamina opaca: colori un filo più scuri e spenti, su ogni materiale */
 function renderCore(ppm,withMat){
   const c=renderCoreRaw(ppm,withMat);
@@ -3107,7 +3199,7 @@ function draw(){
   /* L'abbondanza non si vede: serve alla stampa, non al cliente. A schermo
      si mostra il pezzo come sarà una volta tagliato. Nei file scaricabili
      — file singolo e foglio di stampa — resta al suo posto. */
-  const cv=$('preview'),b=0,pad=Math.max(5,S.bleed+3);
+  const cv=$('preview'),b=0,pad=(S.prod==='resin'&&!S.senzaResina)?Math.max(6,S.bleed+3,0.16*Math.max(S.cutW,S.cutH)):Math.max(5,S.bleed+3);
   const totW=S.cutW+2*b+pad*2,totH=S.cutH+2*b+pad*2;
   const ppm=Math.min(1400/totW,1000/totH,16);
   const tile=renderTile(ppm,true,0);
@@ -3228,11 +3320,17 @@ $('bMock').onclick=async()=>{
     const cv=document.createElement('canvas');
     cv.width=Math.round(totW*ppm);cv.height=Math.round(totH*ppm);
     const g=cv.getContext('2d'),p=new Path2D(S.pathD);
+    if(S.prod==='resin'&&!S.senzaResina){
+      disegnaFoglio(g,cv.width,cv.height,pad*ppm,ppm);
+      g.save();g.shadowColor='rgba(0,0,0,0.22)';g.shadowBlur=0.9*ppm;g.shadowOffsetX=0.18*ppm;g.shadowOffsetY=0.32*ppm;
+      g.setTransform(ppm,0,0,ppm,pad*ppm,pad*ppm);g.fillStyle='#fff';g.fill(p,'evenodd');g.restore();
+    } else {
     g.save();g.setTransform(ppm,0,0,ppm,pad*ppm,pad*ppm);
     g.shadowColor='rgba(0,0,0,0.34)';g.shadowBlur=pad*.55*ppm;g.shadowOffsetY=pad*.28*ppm;
     g.fillStyle='#fff';g.fill(p,'evenodd');
     g.shadowColor='rgba(0,0,0,0.30)';g.shadowBlur=pad*.18*ppm;g.shadowOffsetY=pad*.09*ppm;
     g.fill(p,'evenodd');g.restore();
+    }
     if(matKind()==='clear'){ // il trasparente deve restare trasparente anche sull'ombra
       g.save();g.globalCompositeOperation='destination-out';
       g.setTransform(ppm,0,0,ppm,pad*ppm,pad*ppm);
@@ -3932,16 +4030,49 @@ try{paintPalette();renumberSteps();}catch(e){}
    una cosa sola: guardare la prova e dire sì. Tutto il resto è rumore.
    ========================================================================== */
 let anT=0, anRAF=0;
+/* Il foglio di carta dei mockup: bianco appena caldo, ombra morbida verso il
+   basso a destra, grana finissima. Occupa la tela lasciando fuori solo lo
+   spazio dell'ombra. */
+let __grana=null;
+function disegnaFoglio(g,W,H,padPx,ppm){
+  const m=Math.max(2,padPx*0.28);
+  g.save();
+  g.shadowColor='rgba(0,0,0,0.20)';g.shadowBlur=1.1*ppm;g.shadowOffsetX=0.30*ppm;g.shadowOffsetY=0.45*ppm;
+  g.fillStyle='#fbfbfb';g.fillRect(m,m,W-2*m,H-2*m);
+  g.restore();
+  g.save();
+  g.shadowColor='rgba(0,0,0,0.10)';g.shadowBlur=0.25*ppm;g.shadowOffsetX=0.06*ppm;g.shadowOffsetY=0.10*ppm;
+  g.fillStyle='#fbfbfb';g.fillRect(m,m,W-2*m,H-2*m);
+  g.restore();
+  try{
+    if(!__grana){const c=document.createElement('canvas');c.width=c.height=96;const t=c.getContext('2d');const im=t.createImageData(96,96);
+      for(let i=0;i<im.data.length;i+=4){const v=248+Math.random()*7;im.data[i]=im.data[i+1]=im.data[i+2]=v;im.data[i+3]=255;}
+      t.putImageData(im,0,0);__grana=c;}
+    g.save();g.globalAlpha=0.55;g.globalCompositeOperation='multiply';
+    g.fillStyle=g.createPattern(__grana,'repeat');g.fillRect(m,m,W-2*m,H-2*m);g.restore();
+  }catch(e){}
+}
+
 function ridipingi(){
   const a=S._an; if(!a)return;
   const {cv,tile,pad,ppm,b,dash}=a;
   const g=cv.getContext('2d');
   g.setTransform(1,0,0,1,0,0);
   g.clearRect(0,0,cv.width,cv.height);
+  if(S.prod==='resin'&&!S.senzaResina){
+    /* mockup del resinato: foglio di carta bianco sotto l'adesivo, con la sua
+       ombra morbida, e l'ombra della cupola sul foglio (come nei mockup) */
+    disegnaFoglio(g,cv.width,cv.height,pad*ppm,ppm);
+    g.save();g.shadowColor='rgba(0,0,0,0.22)';g.shadowBlur=0.9*ppm;g.shadowOffsetX=0.18*ppm;g.shadowOffsetY=0.32*ppm;
+    g.drawImage(tile,pad*ppm,pad*ppm);g.restore();
+    g.save();g.shadowColor='rgba(0,0,0,0.10)';g.shadowBlur=0.22*ppm;g.shadowOffsetY=0.08*ppm;
+    g.drawImage(tile,pad*ppm,pad*ppm);g.restore();
+  } else {
   g.save();g.shadowColor='rgba(0,0,0,0.4)';g.shadowBlur=3*ppm;g.shadowOffsetY=1.5*ppm;
   g.drawImage(tile,pad*ppm,pad*ppm);g.restore();
+  }
   try{
-    const f=fasBagliore();
+    const f=(S.prod==='resin'&&!S.senzaResina)?99:fasBagliore();
     if(f<10){
       g.globalCompositeOperation='screen';
       g.drawImage(bagliore(tile,f),pad*ppm,pad*ppm);
@@ -4331,7 +4462,7 @@ document.querySelectorAll('#cLam .chip').forEach(el=>{
       const st=document.getElementById('ppStage'); if(!st)return;
       const W=st.clientWidth, H=st.clientHeight; if(!W||!H)return;
       /* margine per ombra e bagliore, che sporgono dalla sagoma: mai tagliati */
-      const m=7*(a.ppm||4);
+      const m=(S.prod==='resin'&&!S.senzaResina)?(a.pad*(a.ppm||4)):7*(a.ppm||4);
       const k=Math.min(0.96*W/(a.tile.width+2*m), 0.96*H/(a.tile.height+2*m));
       const w=Math.round(a.cv.width*k), h=Math.round(a.cv.height*k);
       if(a.cv.style.width!==w+'px'||a.cv.style.height!==h+'px'){a.cv.style.width=w+'px';a.cv.style.height=h+'px';}

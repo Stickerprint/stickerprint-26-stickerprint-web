@@ -140,3 +140,25 @@ sorgente, non modificarne sessanta.
 L'etichetta accanto al logo (`motore mNN`) serve a sapere a colpo d'occhio quale
 build si sta guardando. Va alzata a ogni consegna: senza, si finisce a discutere
 di difetti già corretti in un file che nessuno stava usando.
+
+
+## Resina: effetto mockup (4 settembre 2026)
+
+`resinDome()` non usa piu' il modello ottico (che resta nel file come
+`resinDomeFisico()`, spento). L'effetto e' ricostruito sui mockup Photoshop
+dell'utente: distanza dal bordo VERO del pezzo (alpha del disegno, con una
+cornice di un pixel fuori dalla tela), direzione del bordo dal gradiente
+della distanza sfocata a piena risoluzione, e da li' — tutto in millimetri,
+parametri in `RESM` — filo lucido sul perimetro, fascia scura del menisco,
+riflesso in basso a sinistra con alone, filo di luce in alto a destra,
+vignettatura e gradiente. Le luci non arrivano mai al bianco pieno
+(`glMax`), cosi' sul colore resta un velo di tinta. Sul resinato la banda di
+luce in movimento (`bagliore`) e' spenta: il mockup e' statico come quelli
+di riferimento. Sotto l'adesivo c'e' il foglio di carta (`disegnaFoglio`)
+con ombra morbida e grana, sia nell'anteprima sia nel mockup esportato; per
+questo `draw()` allarga il margine (`pad`) sul resinato e `fitEmbed` inquadra
+tutta la tela.
+
+Banco: `scratchpad/harness/index.html` (sessione del 4/9) manda al motore
+sei file di prova (quadrato, rettangolo, ovale, tondo, stella, scritta) via
+postMessage e mostra le istantanee; si fotografa con Chrome headless.
