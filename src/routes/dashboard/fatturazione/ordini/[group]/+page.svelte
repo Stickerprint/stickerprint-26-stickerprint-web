@@ -61,8 +61,8 @@
 			<div class="sumrow"><span>Spedizione prevista</span><b>{dmy(g.delivery_date)}</b></div>
 			{#if first.courier}<div class="sumrow"><span>Corriere</span><b>{first.courier}{#if first.parcels} · {first.parcels} {first.parcels === 1 ? 'collo' : 'colli'}{/if}</b></div>{/if}
 			<form method="POST" action="?/tracking" use:enhance class="sumrow" style="align-items:center"><span>Tracking</span><span style="display:flex;gap:6px"><input name="tracking" class="sel-sm" style="max-width:220px" placeholder="link tracking" value={first.tracking_url ?? ''} /><button class="ibtn" type="submit" title="Salva">💾</button>{#if first.tracking_url}<a class="link" href={first.tracking_url} target="_blank" rel="noopener">↗</a>{/if}</span></form>
-			{#if data.ddts.length}<div class="sumrow"><span>DDT</span><b>{#each data.ddts as d (d.id)}<a class="link" href="/dashboard/fatturazione/ddt/{d.id}/pdf" target="_blank">{d.number}</a> {/each}</b></div>{/if}
-			{#if data.invoices.length}<div class="sumrow"><span>Fatture</span><b>{#each data.invoices as inv (inv.id)}<a class="link" href="/dashboard/fatturazione/fatture/{inv.id}">{inv.number}</a> · {money(Number(inv.amount_gross))} {/each}</b></div>{/if}
+			{#if data.ddts.length}<div class="sumrow"><span>DDT</span><b style="text-align:right">{#each data.ddts as d, i (d.id)}{#if i > 0} · {/if}<a class="link" href="/dashboard/fatturazione/ddt/{d.id}/pdf" target="_blank">{d.number}</a>{/each}</b></div>{/if}
+			{#if data.invoices.length}<div class="sumrow"><span>Fatture</span><b style="text-align:right">{#each data.invoices as inv, i (inv.id)}{#if i > 0}<br />{/if}<a class="link" href="/dashboard/fatturazione/fatture/{inv.id}">{inv.number}</a> · {money(Number(inv.amount_gross))}{/each}</b></div>{/if}
 			<div class="sumrow"><span>Stato pagamento</span><b>{first.payment_status === 'paid' ? 'Pagato' : first.payment_status === 'test' ? 'Test (nessun addebito)' : 'In attesa'}</b></div>
 			{#if first.internal_notes}<h4 class="h4">Note interne</h4><p class="small">{first.internal_notes}</p>{/if}
 			{#if first.notes}<h4 class="h4">Note del cliente</h4><p class="small">{first.notes}</p>{/if}

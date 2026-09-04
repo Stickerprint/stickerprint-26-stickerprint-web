@@ -58,6 +58,16 @@ export const actions: Actions = {
 		}
 		const g = groupOrders(data as OrderRow[])[0];
 		const first = g.items[0];
+		// se le quantità sono cambiate, le scadenze di pagamento seguono il nuovo totale (in proporzione)
+		const oldTerms = first.payment_terms ?? [];
+		const oldSum = r2(oldTerms.reduce((s, t) => s + Number(t.amount), 0));
+		if (oldTerms.length && oldSum > 0 && Math.abs(oldSum - g.gross) > 0.01) {
+			const k = g.gross / oldSum;
+			const terms = oldTerms.map((t) => ({ ...t, amount: r2(Number(t.amount) * k) }));
+			terms[terms.length - 1].amount = r2(terms[terms.length - 1].amount + g.gross - terms.reduce((s, t) => s + t.amount, 0));
+			await supabase.from('orders').update({ payment_terms: terms }).eq('checkout_group', group);
+			for (const it of g.items) it.payment_terms = terms;
+		}
 		const mode = deliveryMode(g);
 		if (mode === 'ours' && !(first.courier && first.transmitted_at)) return fail(400, { error: 'Scegli il corriere e trasmetti la spedizione prima di concludere.' });
 		const courier = mode === 'direct' ? 'Consegna diretta' : mode === 'customer' ? 'Corriere del destinatario' : first.courier!;
