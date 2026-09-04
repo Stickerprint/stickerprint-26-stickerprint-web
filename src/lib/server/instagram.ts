@@ -25,8 +25,11 @@ async function fromPeriz(): Promise<IgData | null> {
 	published.sort((a, b) => String(b.published_at ?? b.publish_date ?? '').localeCompare(String(a.published_at ?? a.publish_date ?? '')));
 	const top = new Map((s.contenuti ?? []).map((c) => [c.id, c.permalink || c.url || null]));
 	const media: IgMedia[] = published.slice(0, 8).map((c) => ({ id: c.id, permalink: top.get(c.id) || PROFILE, image: c.url as string, caption: (c.caption ?? c.title ?? '').slice(0, 140), isVideo: c.media === 'video' }));
-	if (s.kpi.follower == null && media.length < 4) return null;
-	return { username: s.instagram.username ?? 'stickerprint.it', profileUrl: PROFILE, followers: s.kpi.follower ?? null, media: media.length >= 4 ? media : FALLBACK.media, live: true, source: 'periz', updatedAt: s.aggiornato ?? new Date().toISOString() };
+	// follower SOLO Instagram: il KPI "follower" di PERIZ somma anche Facebook, la serie "Follower Instagram nel tempo" no → ultimo punto disponibile
+	const serie = (s.serieFollower ?? []).filter((p) => typeof p.value === 'number' && p.value > 0);
+	const igFollowers = serie.length ? Number(serie[serie.length - 1].value) : null;
+	if (igFollowers == null && media.length < 4) return null;
+	return { username: s.instagram.username ?? 'stickerprint.it', profileUrl: PROFILE, followers: igFollowers, media: media.length >= 4 ? media : FALLBACK.media, live: true, source: 'periz', updatedAt: s.aggiornato ?? new Date().toISOString() };
 }
 
 async function fromGraph(): Promise<IgData | null> {
