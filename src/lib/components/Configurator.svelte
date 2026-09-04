@@ -55,13 +55,21 @@
 	let added = $state(false);
 	let fileInput = $state<HTMLInputElement | undefined>();
 	let lastPng: string | null = null; // ultima anteprima generata dal motore (con tracciato di taglio)
+	let engine = $state<{ post: (type: string, detail?: Record<string, unknown>) => void }>();
+	let palette = $state<{ hex: string; img?: string }[]>([]);
+	let palIdx = $state(0);
+	let rimuovi = $state(false);
+	let over = $state(false);
+	let customOpen = $state(false);
+	let customQty = $state(0);
+	let custom = $state(false);
 
 	// valori iniziali coerenti con il listino (anche quando il listino cambia sotto, in dashboard)
 	$effect(() => {
 		if (!SHAPES.some((s) => s.id === forma)) forma = SHAPES[0]?.id ?? 'sagomato';
 		if (!MATERIALS.some((m) => m.id === materiale)) materiale = MATERIALS[0]?.id ?? 'bianco';
 		if (!FINISHES.some((f) => f.id === finitura)) finitura = FINISHES.find((f) => f.laminate)?.id ?? FINISHES[0]?.id ?? 'nessuna';
-		if (!cfg.quantities.includes(qty)) qty = cfg.quantities.includes(cfg.recommendedQty) ? cfg.recommendedQty : cfg.quantities[0];
+		if (!custom && !cfg.quantities.includes(qty)) qty = cfg.quantities.includes(cfg.recommendedQty) ? cfg.recommendedQty : cfg.quantities[0];
 		if (!steps.includes(step)) step = steps[0];
 	});
 
@@ -100,11 +108,19 @@
 			fileUrl = URL.createObjectURL(d.file);
 			if (SHAPES.some((s) => s.id === d.forma)) forma = d.forma;
 			if (MATERIALS.some((m) => m.id === d.materiale)) materiale = d.materiale;
+			// arrivando dalla home con il file gia' caricato si atterra direttamente sul preventivatore
+			if (location.hash === '#configura') setTimeout(() => document.getElementById('configura')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 250);
 		}
 	});
+	const minQty = $derived(cfg.quantities[0] ?? 15);
+	function applyCustom() {
+		const n = Math.max(minQty, Math.round(Number(customQty) || 0));
+		customQty = n; custom = true; qty = n;
+	}
 
-	function onRender(s: { png?: string | null; w: number; h: number; srcMM: { w: number; h: number } | null }) {
+	function onRender(s: { png?: string | null; w: number; h: number; srcMM: { w: number; h: number } | null; palette?: { hex: string; img?: string }[]; palIdx?: number; rimuovi?: boolean }) {
 		if (s.png) lastPng = s.png;
+		if (s.palette) { palette = s.palette; palIdx = s.palIdx ?? 0; rimuovi = !!s.rimuovi; }
 		const key = `${file?.name ?? ''}|${file?.size ?? 0}|${forma}`;
 		if (key === sizeKey) return;
 		sizeKey = key;
@@ -142,9 +158,9 @@
 		const i = steps.indexOf(id);
 		return steps[Math.min(i + 1, steps.length - 1)];
 	}
-	function choose(setter: () => void, from: string) {
+	// la scelta non chiude il passo: il cliente confronta con calma e va avanti quando vuole
+	function choose(setter: () => void, _from: string) {
 		setter();
-		setTimeout(() => (step = next(from)), 220);
 	}
 	// si può ordinare solo con un file caricato
 	async function addCart() {
@@ -166,26 +182,45 @@
 
 <section class="cfg" class:cfg--test={test} id="configura">
 	{#if !test}
-		<!-- ANTEPRIMA + COMANDI DEL MOTORE -->
+		<!-- ANTEPRIMA + BARRA COMANDI (sfondo · rimuovi sfondo · cambia file · tracciato) -->
 		<div class="cfg__preview">
 			{#if file}
-				<EnginePreview {file} {forma} {materiale} finitura={showFinish ? finitura : 'lucida'} prodotto={engineProduct} {w} {h} {showCut} panel stage={320} onrender={onRender} />
+				<EnginePreview bind:this={engine} {file} {forma} {materiale} finitura={showFinish ? finitura : 'lucida'} prodotto={engineProduct} {w} {h} {showCut} panel stage={370} onrender={onRender} />
 				{#if fileUrl}<img src={fileUrl} alt="" hidden onload={onImgLoad} />{/if}
-			{:else}
-				<div class="cfg__stage cfg__stage--empty">
-					<div class="cfg__placeholder"><strong>IL TUO<br />DESIGN</strong><small>qui</small></div>
+				<div class="cfg__bar">
+					<div class="cfg__bar-group">
+						<span class="cfg__bar-label">Sfondo</span>
+						<div class="cfg__dots">
+							{#each palette as c, i (i)}
+								<button type="button" class="cfg__dot" class:is-on={i === palIdx} style={c.img === 'checker' ? 'background:repeating-conic-gradient(#cfd6dd 0 25%,#fff 0 50%) 0 0/10px 10px' : c.img ? `background-image:url(${c.img});background-size:cover` : `background:${c.hex}`} title={c.img ? 'Colore del materiale' : c.hex.toUpperCase()} aria-label="Sfondo {c.hex}" onclick={() => engine?.post('bg', { idx: i })}></button>
+							{/each}
+						</div>
+						<button type="button" class="cfg__tool" class:is-on={rimuovi} onclick={() => engine?.post('rimuovi')} title="Toglie lo sfondo del file: resta solo il disegno">✨ Rimuovi sfondo</button>
+					</div>
+					<div class="cfg__bar-group">
+						<input bind:this={fileInput} type="file" accept="image/png,image/jpeg,image/svg+xml,application/pdf" hidden onchange={(e) => pick((e.currentTarget as HTMLInputElement).files?.[0])} />
+						<button type="button" class="cfg__tool cfg__tool--blue" onclick={() => fileInput?.click()} title={file.name}>Cambia file</button>
+						<button type="button" class="eye" class:is-off={!showCut} onclick={() => (showCut = !showCut)} aria-pressed={showCut} title={showCut ? 'Nascondi la linea di taglio' : 'Mostra la linea di taglio'}>
+							<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" />{#if !showCut}<path d="M3 3l18 18" />{/if}</svg>
+							<span class="eye__dash" aria-hidden="true"></span>
+							<span class="sr-only">Linea di taglio</span>
+						</button>
+					</div>
 				</div>
+			{:else}
+				<label class="dropzone dropzone--compact cfg__drop" class:is-over={over}
+					ondragenter={(e) => { e.preventDefault(); over = true; }}
+					ondragover={(e) => { e.preventDefault(); over = true; }}
+					ondragleave={() => (over = false)}
+					ondrop={(e) => { e.preventDefault(); over = false; pick(e.dataTransfer?.files[0]); }}>
+					<input bind:this={fileInput} type="file" accept="image/png,image/jpeg,image/svg+xml,application/pdf" onchange={(e) => pick((e.currentTarget as HTMLInputElement).files?.[0])} />
+					<div>
+						<div class="dropzone__icon"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 16V4m0 0l-4 4m4-4l4 4" /><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" /></svg></div>
+						<div class="dropzone__title">Trascina qui il tuo file</div>
+						<div class="dropzone__sub">oppure clicca per sceglierlo · PNG, JPG, SVG, PDF</div>
+					</div>
+				</label>
 			{/if}
-			<div class="cfg__tools" class:cfg__tools--static={!file}>
-				<button type="button" class="eye" class:is-off={!showCut} onclick={() => (showCut = !showCut)} aria-pressed={showCut} title={showCut ? 'Nascondi la linea di taglio' : 'Mostra la linea di taglio'}>
-					<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" />{#if !showCut}<path d="M3 3l18 18" />{/if}</svg>
-					<span class="eye__dash" aria-hidden="true"></span>
-					<span class="sr-only">Linea di taglio</span>
-				</button>
-				<input bind:this={fileInput} type="file" accept="image/png,image/jpeg,image/svg+xml,application/pdf" hidden onchange={(e) => pick((e.currentTarget as HTMLInputElement).files?.[0])} />
-				<button type="button" class="link-btn link-btn--bold" onclick={() => fileInput?.click()}>{file ? 'Cambia file' : 'Carica il tuo file'}</button>
-				{#if file}<span class="cfg__filename">{file.name}</span>{/if}
-			</div>
 		</div>
 	{/if}
 
@@ -280,13 +315,6 @@
 			</button>
 			{#if step === 'misura'}
 				<div class="step__body">
-					{#if test}
-						<p class="step__hint">Misure proposte per la sagoma "{shape?.label}" (da {MIN_MM} a {MAX_MM} mm).</p>
-					{:else if !file}
-						<p class="step__hint step__hint--box">Carica il tuo file: rileviamo la proporzione e ti consigliamo la misura.</p>
-					{:else}
-						<p class="step__hint">Misura consigliata per il tuo file: <b>{fmt(suggested[0])} × {fmt(roundHalf(suggested[0] / ratio))} mm</b>.{#if !freeSize} Le proporzioni restano sempre bloccate.{:else} Oppure scrivi la misura che vuoi.{/if}</p>
-					{/if}
 					<div class="size-presets">
 						{#each presets as [pw, ph], k (pw)}
 							<button type="button" class="size-btn" class:is-active={w === pw && h === ph} onclick={() => { w = pw; h = ph; }}>{#if file && k === 0}<small>Consigliata</small>{/if}{fmt(pw)} × {fmt(ph)} mm</button>
@@ -297,12 +325,6 @@
 						<span class="size-x">×</span>
 						<label><span>Altezza</span><input type="number" min={MIN_MM} max={MAX_MM} step="0.5" value={h} onchange={(e) => setH(+(e.currentTarget as HTMLInputElement).value)} /><em>mm</em></label>
 					</div>
-					{#if freeSize}
-						<p class="step__lock">✏️ Misura libera: larghezza e altezza le decidi tu, da {MIN_MM} a {MAX_MM} mm. Arrotondiamo al mezzo millimetro.</p>
-					{:else}
-						<p class="step__lock">🔗 Cambia un lato: l’altro segue la proporzione{shape?.equal ? ' (per tondo e quadrato i lati sono uguali)' : ''}. Arrotondiamo al mezzo millimetro.</p>
-					{/if}
-					<button class="step__continue" type="button" onclick={() => (step = 'qty')}>Continua alla quantità</button>
 				</div>
 			{/if}
 		</div>
@@ -320,14 +342,23 @@
 						{#each cfg.quantities as n (n)}
 							{@const qq = quoteWith(cfg, { w, h, forma, materiale, finitura: fin, qty: n, vatIncluded })}
 							{@const disc = Math.max(0, Math.round((1 - qq.perPiece / basePerPiece) * 100))}
-							<button type="button" class="qty" class:is-active={qty === n} onclick={() => (qty = n)}>
+							<button type="button" class="qty" class:is-active={qty === n} onclick={() => { custom = false; qty = n; }}>
 								{#if n === cfg.recommendedQty}<span class="qty__tag">Consigliato</span>{/if}
 								<span class="qty__top"><b>{n.toLocaleString('it-IT')}</b><b>{eur0(vatIncluded ? qq.gross : qq.net)}</b></span>
 								<span class="qty__bottom">{qq.perPiece.toFixed(2).replace('.', ',')} €/pz {#if disc > 0}<b>−{disc}%</b>{/if}</span>
 							</button>
 						{/each}
 					</div>
-					{#if !test}<a class="link" href="/support" style="font-size:14px">Ti serve un’altra quantità?</a>{/if}
+					{#if !test}
+						<button type="button" class="link-btn" style="justify-self:start;font-size:14px" onclick={() => (customOpen = !customOpen)}>Ti serve un’altra quantità?</button>
+						{#if customOpen}
+							<div class="qty-custom">
+								<label>Quantità<input type="number" min={minQty} step="1" bind:value={customQty} placeholder={String(minQty)} onkeydown={(e) => { if (e.key === 'Enter') applyCustom(); }} /></label>
+								<button type="button" class="btn btn--blue btn--sm" onclick={applyCustom}>Calcola</button>
+								{#if custom}<span class="qty-custom__res"><b>{qty.toLocaleString('it-IT')} pezzi</b> · {eur0(vatIncluded ? q.gross : q.net)} · {q.perPiece.toFixed(2).replace('.', ',')} €/pz</span>{/if}
+							</div>
+						{/if}
+					{/if}
 				</div>
 			{/if}
 		</div>

@@ -4468,7 +4468,9 @@ document.querySelectorAll('#cLam .chip').forEach(el=>{
       '#ppStage{display:block!important}'+
       '#ppStage>.stage{display:flex!important;align-items:center;justify-content:center;background:transparent!important;border:0!important;padding:0!important;overflow:visible!important}'+
       '#ppStage canvas{max-height:none!important;max-width:none!important}'+
-      '.pp-right{border:0!important;padding:92px 2px 0!important;overflow:visible!important;font-family:Montserrat,system-ui,sans-serif!important;background:transparent!important}'+
+      '.pp-right{border:0!important;padding:4px 2px 0!important;overflow:visible!important;font-family:Montserrat,system-ui,sans-serif!important;background:transparent!important}'+
+      /* sfondo e "rimuovi sfondo" stanno nella barra del sito, sulla stessa riga di "cambia file" e occhio */
+      '.pp-sec:has(#ppDots){display:none!important}'+
       '.pp-h{font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:#6b6e8c}'+
       '.pp-sec{padding:12px 0;border-bottom:1px solid #e6e7f0}.pp-sec:last-of-type{border-bottom:0}'+
       /* bordo: tre bottoni più compatti */
@@ -4514,8 +4516,13 @@ document.querySelectorAll('#cLam .chip').forEach(el=>{
       const t1=performance.now();
       const png=(cv&&cv.width&&cv.style.display!=='none')?cv.toDataURL('image/png'):null;
       const t2=performance.now();
+      /* tavolozza dei colori di sfondo (i colori davvero presenti nel file): il sito
+         la mostra nella sua barra e rimanda qui la scelta con il messaggio 'bg' */
+      let palette=[]; try{ const mat=matKind(), bare=mat!=='white';
+        palette=(S.palette||[[255,255,255]]).map((c,i)=>{ const o={hex:hexOf(c)};
+          if(i===0&&mat==='clear')o.img='checker'; else if(i===0&&bare)o.img=materialTexture(48,48,mat).toDataURL(); return o; }); }catch(e){}
       send('render',{name:S.name||null,w:+((S.cutW||0)).toFixed(1),h:+((S.cutH||0)).toFixed(1),srcMM:S.srcMM||null,
-        materiale:(typeof matKind==='function')?matKind():null,png});
+        materiale:(typeof matKind==='function')?matKind():null,png,palette,palIdx:S.palIdx,rimuovi:!!S.rimuoviSfondo});
       try{console.debug('[motore] istantanea: attesa',Math.round(t0-(window.__busyOff||t0)),'ms · inquadratura',Math.round(t1-t0),'ms · png',Math.round(t2-t1),'ms ·',cv.width+'x'+cv.height);}catch(e){}
     }catch(e){}
   };
@@ -4527,6 +4534,10 @@ document.querySelectorAll('#cLam .chip').forEach(el=>{
         e=>{(window.__msgs||[]).push({t:Date.now(),error:String(e&&e.message||e)});});
     }
     if(d.type==='snapshot')snapshot();
+    /* barra del sito: colore di sfondo e "rimuovi sfondo" */
+    if(d.type==='bg'&&S.src){ const i=Math.max(0,+d.idx||0); S.palIdx=i; try{paintPalette();paintSwatch();}catch(e){}
+      busy(true,'Aggiorno…'); setTimeout(()=>{try{buildCut();draw();}catch(e){} window.__busyOff=performance.now(); snapshot(); busy(false);},0); }
+    if(d.type==='rimuovi'){ const b=$('ppRimuovi'); if(b)b.click(); }
     if(d.type==='cut'){S.showCut=!!d.on;try{ridipingi();}catch(e){}}
     /* cambio di sagoma, materiale, lamina o misura SENZA ricaricare il motore:
        il file resta caricato e segmentato, si rifanno solo taglio e disegno */

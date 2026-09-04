@@ -29,7 +29,7 @@
 		panel?: boolean;
 		stage?: number;
 		showCut?: boolean;
-		onrender?: (s: { png: string | null; w: number; h: number; srcMM: { w: number; h: number } | null }) => void;
+		onrender?: (s: { png: string | null; w: number; h: number; srcMM: { w: number; h: number } | null; palette?: { hex: string; img?: string }[]; palIdx?: number; rimuovi?: boolean }) => void;
 	} = $props();
 
 	let frame = $state<HTMLIFrameElement | undefined>();
@@ -53,6 +53,15 @@
 		return `/preprint/index.html?${q.toString()}`;
 	}
 
+	/** comandi della barra del sito (colore di sfondo, rimuovi sfondo) */
+	export function post(type: string, detail: Record<string, unknown> = {}) {
+		frame?.contentWindow?.postMessage({ source: 'sito', type, ...detail }, location.origin);
+	}
+	// un file nuovo (Cambia file) si manda al motore gia' caricato, senza ricaricarlo
+	$effect(() => {
+		const f = file;
+		untrack(() => { if (f && src && ready && sentFor !== f) { busy = true; send(true); } });
+	});
 	function send(force = false) {
 		if (!file || !frame?.contentWindow) return;
 		if (sentFor === file && !force) return;
@@ -112,7 +121,7 @@
 			ready = true;
 			sentCfg = JSON.stringify({ forma, materiale, lamina: finitura, w, h, prodotto });
 			clearTimeout(retry);
-			onrender?.({ png: d.detail.png, w: d.detail.w ?? 0, h: d.detail.h ?? 0, srcMM: d.detail.srcMM ?? null });
+			onrender?.({ png: d.detail.png, w: d.detail.w ?? 0, h: d.detail.h ?? 0, srcMM: d.detail.srcMM ?? null, palette: d.detail.palette ?? [], palIdx: d.detail.palIdx ?? 0, rimuovi: !!d.detail.rimuovi });
 			frame?.contentWindow?.postMessage({ source: 'sito', type: 'cut', on: showCut }, location.origin);
 		}
 	}

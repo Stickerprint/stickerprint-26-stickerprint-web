@@ -160,7 +160,7 @@
 				savedAt: Date.now()
 			});
 			const q = usesEngine ? `?forma=${forma}&materiale=${materiale}` : '';
-			await goto(`${current.href}${q}`);
+			await goto(`${current.href}${q}#configura`);
 		} finally {
 			saving = false;
 		}

@@ -126,8 +126,8 @@ function withFinishes(ids: string[]): FinishOption[] {
 	return clone(ALL_FINISHES).map((f) => ({ ...f, visible: ids.includes(f.id) }));
 }
 
-const QTY_STD = [50, 100, 200, 300, 500, 1000, 2000, 3000, 5000];
-const QTY_SMALL = [10, 50, 100, 200, 300, 500, 1000, 2000, 3000];
+const QTY_STD = [15, 50, 100, 200, 300, 500, 1000, 2000, 3000, 5000];
+const QTY_SMALL = [15, 50, 100, 200, 300, 500, 1000, 2000, 3000];
 const MAT_STICKER = ['bianco', 'olografico', 'glitterato', 'trasparente', 'argento', 'oro'];
 
 /** Listini iniziali, uno per prodotto e indipendenti tra loro (poi ognuno si modifica dalla dashboard) */
