@@ -4,12 +4,14 @@
 
 	let { data } = $props();
 
+	// card "Cosa creiamo oggi?": ordine fisso, un colore per card, prezzo minimo dal listino (data.fromPrices)
 	const products = [
-		{ href: '/adesivi-personalizzati', img: '/images/ig-1.jpg', name: 'Adesivi personalizzati', desc: 'Vinile fustellato, qualsiasi forma. Opachi o lucidi.', from: 'Anteprima automatica ✓' },
-		{ href: '/adesivi-resinati', img: '/images/ig-7.jpg', name: 'Adesivi resinati', desc: 'Effetto 3D con cupola in resina. Premium.', from: 'Anteprima automatica ✓' },
-		{ href: '/etichette', img: '/images/ig-5.jpg', name: 'Etichette', desc: 'In rotolo o in fogli per prodotti e packaging.', from: 'Da 200 pezzi' },
-		{ href: '/vetrofanie', img: '/images/ig-8.jpg', name: 'Vetrofanie & fogli', desc: 'Per vetrine, insegne e grandi formati.', from: 'Su misura' }
+		{ slug: 'adesivi_resinati', href: '/adesivi-resinati', img: '/images/ig-7.jpg', name: 'Adesivi resinati', desc: 'Effetto 3D con cupola in resina. Premium.', pill: 'pill--blue' },
+		{ slug: 'adesivi_personalizzati', href: '/adesivi-personalizzati', img: '/images/ig-1.jpg', name: 'Adesivi personalizzati', desc: 'Vinile fustellato, qualsiasi forma. Opachi o lucidi.', pill: 'pill--yellow' },
+		{ slug: 'adesivi_rilievo', href: '/adesivi-rilievo', img: '/images/home/rilievo-card.webp', name: 'Adesivi in rilievo', desc: 'Dettagli in rilievo che si sentono al tatto.', pill: 'pill--pink' },
+		{ slug: 'etichette', href: '/etichette', img: '/images/ig-5.jpg', name: 'Etichette in fogli', desc: 'Per prodotti, packaging e confezioni.', pill: 'pill--green' }
 	];
+	const eur0 = (v: number) => v.toLocaleString('it-IT', { maximumFractionDigits: 0 }) + ' €';
 
 	// loghi dei brand: immagine in /images/brands, oppure solo il nome se il logo non c'è ancora
 	const brands: { name: string; img?: string }[] = [
@@ -94,7 +96,9 @@
 				<div class="product__art"><img src={p.img} alt="" width="600" height="600" loading="lazy" /></div>
 				<div class="product__name">{p.name}</div>
 				<div class="product__desc">{p.desc}</div>
-				<div class="product__from">{p.from}</div>
+				{#if data.fromPrices?.[p.slug]}
+					<div class="product__from {p.pill}"><span>a partire da</span> <b>{eur0(data.fromPrices[p.slug])}</b></div>
+				{/if}
 			</a>
 		{/each}
 	</div>

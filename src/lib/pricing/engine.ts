@@ -264,6 +264,20 @@ export function quoteWith(cfg: EngineConfig, o: { w: number; h: number; forma: s
 	};
 }
 
+/** Prezzo "a partire da" di un prodotto: quantità minima, misura più piccola proposta,
+ *  primo materiale visibile, finitura più economica; IVA inclusa, arrotondato per eccesso */
+export function lowestPrice(cfg: EngineConfig): number {
+	const sh = cfg.shapes.find((s) => s.visible) ?? cfg.shapes[0];
+	const mat = cfg.materials.find((m) => m.visible) ?? cfg.materials[0];
+	const w = Math.max(cfg.size.minMm, Math.min(...(sh?.presets?.length ? sh.presets : [50])));
+	const h = sh?.ratio ? w / sh.ratio : w;
+	const fins = cfg.finishes.filter((f) => f.visible);
+	const ids = fins.length ? fins.map((f) => f.id) : ['nessuna'];
+	const qty = cfg.quantities[0] ?? 1;
+	const best = Math.min(...ids.map((finitura) => quoteWith(cfg, { w, h, forma: sh?.id ?? 'sagomato', materiale: mat?.id ?? 'bianco', finitura, qty, vatIncluded: true }).gross));
+	return Math.ceil(best);
+}
+
 /** Misura consigliata dalla proporzione del file */
 export function suggestedSize(ratio: number): [number, number] {
 	const nearSquare = ratio > 0.85 && ratio < 1.18;
