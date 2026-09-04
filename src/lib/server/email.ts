@@ -27,7 +27,9 @@ export interface SendEmailResult {
 
 export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult> {
 	const token = env.POSTMARK_SERVER_TOKEN;
-	const from = env.POSTMARK_FROM || 'Stickerprint <noreply@stickerprint.it>';
+	// mittente: "Nome <indirizzo>" o solo indirizzo; si tollera una parentesi mancante o virgolette copiate per sbaglio
+	let from = (env.POSTMARK_FROM || 'Stickerprint <noreply@stickerprint.it>').trim().replace(/^["']|["']$/g, '');
+	if (from.includes('<') && !from.includes('>')) from += '>';
 	const stream = env.POSTMARK_MESSAGE_STREAM || 'outbound';
 
 	// In sviluppo senza token: logga e basta, non blocca il flusso.
