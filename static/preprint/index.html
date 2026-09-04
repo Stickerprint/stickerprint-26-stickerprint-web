@@ -3221,7 +3221,7 @@ function draw(){
   let cap=(S.prod==='resin'&&!S.senzaResina)?12:16;
   /* dentro il sito l'anteprima e' alta 300-400 px: si disegna a risoluzione
      retina di quello spazio, non a 16 px/mm — un quarto dei pixel, un quarto del tempo */
-  try{ if(EMBED){const st=$('ppStage'); const big=Math.max(st.clientWidth,st.clientHeight)||400; cap=Math.min(cap,Math.max(6,Math.ceil(2.2*big/Math.max(totW,totH))));} }catch(e){}
+  try{ if(EMBED){const st=$('ppStage'); const lato=Math.min(st.clientWidth||400,st.clientHeight||400)||400; cap=Math.min(cap,Math.max(6,Math.ceil(1.7*lato/Math.max(totW,totH))));} }catch(e){}
   const ppm=Math.min(1400/totW,1000/totH,cap);
   const tile=renderTile(ppm,true,0);
   cv.width=Math.round(totW*ppm);cv.height=Math.round(totH*ppm);
@@ -4080,18 +4080,28 @@ function ridipingi(){
   const g=cv.getContext('2d');
   g.setTransform(1,0,0,1,0,0);
   g.clearRect(0,0,cv.width,cv.height);
-  if(S.prod==='resin'&&!S.senzaResina){
-    /* mockup del resinato: foglio di carta bianco sotto l'adesivo, con la sua
-       ombra morbida, e l'ombra della cupola sul foglio (come nei mockup) */
-    disegnaFoglio(g,cv.width,cv.height,pad*ppm,ppm);
-    g.save();g.shadowColor='rgba(0,0,0,0.22)';g.shadowBlur=0.9*ppm;g.shadowOffsetX=0.18*ppm;g.shadowOffsetY=0.32*ppm;
-    g.drawImage(tile,pad*ppm,pad*ppm);g.restore();
-    g.save();g.shadowColor='rgba(0,0,0,0.10)';g.shadowBlur=0.22*ppm;g.shadowOffsetY=0.08*ppm;
-    g.drawImage(tile,pad*ppm,pad*ppm);g.restore();
-  } else {
-  g.save();g.shadowColor='rgba(0,0,0,0.4)';g.shadowBlur=3*ppm;g.shadowOffsetY=1.5*ppm;
-  g.drawImage(tile,pad*ppm,pad*ppm);g.restore();
+  /* La parte ferma (foglio, ombre, adesivo) si compone UNA volta per disegno
+     in una tela di appoggio: le ombre sfumate del canvas costano decine di
+     millisecondi e prima venivano rifatte a ogni fotogramma dell'animazione
+     del tratteggio, saturando il processore e ritardando tutto il resto. */
+  if(!a.base||a.baseTile!==tile||a.base.width!==cv.width||a.base.height!==cv.height||a.baseRes!==(S.prod+'|'+!!S.senzaResina)){
+    const base=document.createElement('canvas');base.width=cv.width;base.height=cv.height;
+    const gb=base.getContext('2d');
+    if(S.prod==='resin'&&!S.senzaResina){
+      /* mockup del resinato: foglio di carta bianco sotto l'adesivo, con la sua
+         ombra morbida, e l'ombra della cupola sul foglio (come nei mockup) */
+      disegnaFoglio(gb,cv.width,cv.height,pad*ppm,ppm);
+      gb.save();gb.shadowColor='rgba(0,0,0,0.22)';gb.shadowBlur=0.9*ppm;gb.shadowOffsetX=0.18*ppm;gb.shadowOffsetY=0.32*ppm;
+      gb.drawImage(tile,pad*ppm,pad*ppm);gb.restore();
+      gb.save();gb.shadowColor='rgba(0,0,0,0.10)';gb.shadowBlur=0.22*ppm;gb.shadowOffsetY=0.08*ppm;
+      gb.drawImage(tile,pad*ppm,pad*ppm);gb.restore();
+    } else {
+      gb.save();gb.shadowColor='rgba(0,0,0,0.4)';gb.shadowBlur=3*ppm;gb.shadowOffsetY=1.5*ppm;
+      gb.drawImage(tile,pad*ppm,pad*ppm);gb.restore();
+    }
+    a.base=base;a.baseTile=tile;a.baseRes=S.prod+'|'+!!S.senzaResina;
   }
+  g.drawImage(a.base,0,0);
   try{
     const f=(S.prod==='resin'&&!S.senzaResina)?99:fasBagliore();
     if(f<10){
