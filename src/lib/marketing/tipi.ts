@@ -190,17 +190,21 @@ export interface PuntoGiorno {
 	facebook?: number;
 	value?: number;
 }
+/** Un post Instagram vero, come lo da' la dashboard PERIZ (api/social-insights.js). */
 export interface ContenutoTop {
 	id: string;
-	url?: string | null;
-	permalink?: string | null;
-	anteprima?: string | null;
-	didascalia?: string | null;
-	tipo?: string | null;
-	data?: string | null;
+	titolo: string;
+	immagine: string | null;
+	permalink: string | null;
 	like: number;
 	commenti: number;
-	copertura?: number | null;
+	quando: string;
+}
+/** Il feed: gli ultimi 12 post, senza filtro di periodo. Per la griglia Instagram del sito. */
+export interface PostFeed extends ContenutoTop {
+	tipo: 'immagine' | 'video' | 'carosello';
+	didascalia: string;
+	video: string | null;
 }
 export interface SocialCollegato {
 	ok: true;
@@ -220,8 +224,8 @@ export interface SocialCollegato {
 	serieFollower: PuntoGiorno[];
 	engagement: { name: string; value: number; color: string }[];
 	contenuti: ContenutoTop[];
-	instagram: { collegato: boolean; username: string | null };
-	facebook: { collegato: boolean; nome: string | null };
+	instagram: { collegato: boolean; username: string | null; follower: number | null; contenutiTotali: number | null; feed: PostFeed[] };
+	facebook: { collegato: boolean; nome: string | null; follower: number | null };
 	tiktok: { collegato: false; motivo: string };
 	avvisi: string[];
 }
