@@ -179,9 +179,11 @@ di prima (`P_TAGLIO_L_RES`): la resina vuole raccordi dolci. Banco di prova:
 ## Etichette in fogli: anteprima del foglio (5 settembre 2026)
 
 Con `foglio=1` (URL) o `config.foglio=true` (messaggio dal sito) il motore mostra il
-foglio invece del pezzo singolo: `layoutFoglio()` prova A4 verticale e orizzontale
-(210×297 / 297×210), margine `FOGLIO_M`=10 mm per lato, passo `FOGLIO_G`=2 mm fra le
-etichette, e tiene l'orientamento che ne contiene di piu'; la griglia e' centrata.
+foglio invece del pezzo singolo: `layoutFoglio()` parte da un A4 verticale o orizzontale
+ma il foglio non e' vincolato: puo' crescere fino a `FOGLIO_TOL` (+10% per lato) se cosi'
+entra una colonna o una riga in piu', e si ritaglia a misura della griglia (margine di
+sicurezza `FOGLIO_M`=10 mm per lato, passo `FOGLIO_G`=2 mm). Si tiene l'orientamento
+che ne contiene di piu' (a parita', il foglio piu' piccolo): priorita' al materiale.
 `draw()` renderizza il pezzo una volta (`renderTile`) e `ridipingi()` lo ripete sul
 foglio (`S._an.sheet`), con il tratteggio di taglio su ogni etichetta. Il messaggio
 `render` porta `foglio:{n,cols,rows,w,h}` e il preventivatore delle etichette lo usa

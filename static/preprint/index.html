@@ -4126,19 +4126,26 @@ function disegnaFoglio(g,W,H,padPx,ppm){
   }catch(e){}
 }
 
-/* [sito] disposizione delle etichette sul foglio: margine 10 mm per lato, 2 mm di
-   passo fra le etichette; si prova il foglio in verticale e in orizzontale e si tiene
-   quello che ne contiene di piu'. La griglia viene centrata (i margini restano >= 10 mm). */
-const FOGLIO_M=10, FOGLIO_G=2;
+/* [sito] disposizione delle etichette sul foglio. Priorita': usare il materiale al
+   meglio e sprecare il meno possibile. Il foglio parte da un A4 (210×297) ma non e'
+   vincolato: puo' crescere fino al 10% per lato se cosi' entra una colonna o una riga
+   in piu', e si ritaglia a misura della griglia (margine di sicurezza di 10 mm per
+   lato, passo di 2 mm fra le etichette). Si prova in verticale e in orizzontale e si
+   tiene l'orientamento che ne contiene di piu' (a parita', il foglio piu' piccolo). */
+const FOGLIO_M=10, FOGLIO_G=2, FOGLIO_BASE=[210,297], FOGLIO_TOL=1.10;
 function layoutFoglio(){
   const w=S.cutW, h=S.cutH; if(!(w>0&&h>0))return null;
-  const opts=[[210,297],[297,210]].map(([SW,SH])=>{
-    const cols=Math.floor((SW-2*FOGLIO_M+FOGLIO_G)/(w+FOGLIO_G)+1e-6), rows=Math.floor((SH-2*FOGLIO_M+FOGLIO_G)/(h+FOGLIO_G)+1e-6);
-    return {SW,SH,cols:Math.max(0,cols),rows:Math.max(0,rows),n:Math.max(0,cols)*Math.max(0,rows)};});
-  let L=opts[0]; if(opts[1].n>L.n)L=opts[1];
+  const [A,B]=FOGLIO_BASE;
+  const opts=[[A,B],[B,A]].map(([bw,bh])=>{
+    const maxW=bw*FOGLIO_TOL, maxH=bh*FOGLIO_TOL;
+    const cols=Math.max(0,Math.floor((maxW-2*FOGLIO_M+FOGLIO_G)/(w+FOGLIO_G)+1e-6));
+    const rows=Math.max(0,Math.floor((maxH-2*FOGLIO_M+FOGLIO_G)/(h+FOGLIO_G)+1e-6));
+    const SW=Math.round((2*FOGLIO_M+cols*w+Math.max(0,cols-1)*FOGLIO_G)*10)/10;
+    const SH=Math.round((2*FOGLIO_M+rows*h+Math.max(0,rows-1)*FOGLIO_G)*10)/10;
+    return {SW,SH,cols,rows,n:cols*rows,base:bw+'×'+bh};});
+  let L=opts[0]; if(opts[1].n>L.n||(opts[1].n===L.n&&opts[1].SW*opts[1].SH<L.SW*L.SH))L=opts[1];
   if(L.n<1)return null;
-  const usedW=L.cols*w+(L.cols-1)*FOGLIO_G, usedH=L.rows*h+(L.rows-1)*FOGLIO_G;
-  L.x0=(L.SW-usedW)/2; L.y0=(L.SH-usedH)/2; L.G=FOGLIO_G; L.M=FOGLIO_M; L.w=w; L.h=h;
+  L.x0=FOGLIO_M; L.y0=FOGLIO_M; L.G=FOGLIO_G; L.M=FOGLIO_M; L.w=w; L.h=h;
   return L;}
 function disegnaPagina(g,x,y,w,h,ppm){
   g.save();
