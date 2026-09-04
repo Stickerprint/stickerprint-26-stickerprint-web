@@ -4539,7 +4539,7 @@ document.querySelectorAll('#cLam .chip').forEach(el=>{
   /* ogni volta che il motore finisce un lavoro (busy(false)) manda l'istantanea */
   try{
     const _busy=busy;
-    busy=function(on){const r=_busy.apply(this,arguments); if(on===false&&S.src)setTimeout(snapshot,150); return r;};
+    busy=function(on){const r=_busy.apply(this,arguments); if(on===false&&S.src)setTimeout(snapshot,30); return r;};
   }catch(e){}
   send('ready');
   addEventListener('load',()=>send('ready'));

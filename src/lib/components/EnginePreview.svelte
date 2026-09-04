@@ -90,7 +90,7 @@
 				busy = true;
 				cfgSentAt = performance.now();
 				frame.contentWindow.postMessage({ source: 'sito', type: 'config', config: JSON.parse(cfg) }, location.origin);
-			}, 120);
+			}, 60);
 		});
 	});
 
