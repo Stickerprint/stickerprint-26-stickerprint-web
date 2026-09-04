@@ -3217,13 +3217,32 @@ function rilievoApply(c,ppm){
   {const r=meno(mk,mk,dd,dd,dd*0.35);o.globalCompositeOperation='screen';o.globalAlpha=Math.min(1,0.85*K);o.drawImage(tint(r,'#fff'),0,0);
    /* filo di luce netto sul ciglio: e' quello che fa leggere lo spessore */
    const r2=meno(mk,mk,dd*0.45,dd*0.45,0);o.globalCompositeOperation='source-over';o.globalAlpha=Math.min(1,0.95*K);o.drawImage(tint(r2,'#fff'),0,0);}
+  /* 3b. SUPERFICIE BOMBATA: il rilievo e' pieno, non un filo sul bordo. Dalla
+     maschera sfumata (due raggi: uno per i tratti sottili, uno per le lettere
+     grandi) si ricava un'altezza a cupola; il versante verso la luce (alto a
+     sinistra) si schiarisce, quello opposto si scurisce, con pendenze morbide
+     che attraversano tutta la superficie dell'elemento. */
+  {const dome=(r)=>{const t=nc(),g=t.getContext('2d');g.filter='blur('+r+'px)';g.drawImage(mk,0,0);g.filter='none';
+     g.globalCompositeOperation='destination-in';g.drawImage(mk,0,0);return t;};
+   const H1=dome(Math.max(1,0.7*ppm)), H2=dome(Math.max(2,2.2*ppm));
+   const dl=Math.max(1,0.45*ppm);
+   for(const [Hc,aL,aD] of [[H1,0.55,0.40],[H2,0.45,0.32]]){
+     const lit=meno(Hc,Hc,dl,dl,0), dark=meno(Hc,Hc,-dl,-dl,0);
+     o.globalCompositeOperation='screen';o.globalAlpha=Math.min(1,aL*K);o.drawImage(tint(lit,'#fff'),0,0);
+     o.globalCompositeOperation='multiply';o.globalAlpha=Math.min(1,aD*K);o.drawImage(tint(dark,'#000'),0,0);}
+   /* banda di riflesso che attraversa in diagonale tutta la superficie in rilievo */
+   const b=nc(),gb=b.getContext('2d');const gr=gb.createLinearGradient(0,0,W,H*0.9);
+   gr.addColorStop(0,'rgba(255,255,255,0)');gr.addColorStop(0.22,'rgba(255,255,255,0.06)');gr.addColorStop(0.36,'rgba(255,255,255,0.40)');
+   gr.addColorStop(0.46,'rgba(255,255,255,0.10)');gr.addColorStop(0.7,'rgba(255,255,255,0)');gr.addColorStop(1,'rgba(255,255,255,0)');
+   gb.fillStyle=gr;gb.fillRect(0,0,W,H);gb.globalCompositeOperation='destination-in';gb.drawImage(mk,0,0);
+   o.globalCompositeOperation='source-over';o.globalAlpha=Math.min(1,0.9*K);o.drawImage(b,0,0);}
   /* 4. il rilievo e' sempre lucido: velo di luce e colori piu' pieni */
   {const v=nc(),g=v.getContext('2d');const gr=g.createLinearGradient(0,0,W*0.7,H);
    gr.addColorStop(0,'rgba(255,255,255,0.42)');gr.addColorStop(0.5,'rgba(255,255,255,0.12)');gr.addColorStop(1,'rgba(255,255,255,0.03)');
    g.fillStyle=gr;g.fillRect(0,0,W,H);g.globalCompositeOperation='destination-in';g.drawImage(mk,0,0);
    o.globalCompositeOperation='source-over';o.globalAlpha=1;o.drawImage(v,0,0);
    const k=nc(),gk=k.getContext('2d');gk.drawImage(c,0,0);gk.globalCompositeOperation='destination-in';gk.drawImage(mk,0,0);
-   o.globalCompositeOperation='overlay';o.globalAlpha=0.36;o.drawImage(k,0,0);}
+   o.globalCompositeOperation='overlay';o.globalAlpha=0.45;o.drawImage(k,0,0);}
   /* debug: ?rildebug=1 tinge di rosso la maschera del rilievo */
   if(S.rilDebug){o.globalCompositeOperation='source-over';o.globalAlpha=0.45;o.drawImage(tint(mk,'#ff0000'),0,0);}
   o.globalAlpha=1;o.globalCompositeOperation='destination-in';o.drawImage(c,0,0);

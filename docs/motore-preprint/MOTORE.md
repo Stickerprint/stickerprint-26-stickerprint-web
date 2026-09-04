@@ -201,8 +201,10 @@ loro stesso colore (il fondo tagliato in spicchi da scritte e cerchi) (le sfumat
 non hanno bordi netti, quindi restano una regione sola). Se il rilievo supera il
 60% del disegno la soglia dei bordi sale (file complessi). `rilievoApply()` in
 `renderCore` compone: ombra portata in basso a destra, ombra interna sul fianco,
-cresta di luce in alto a sinistra con filo netto sul ciglio, velo lucido e colori
-piu' pieni (`S.rilForza` regola l'intensita'; `?rildebug=1` tinge la maschera di rosso
+cresta di luce in alto a sinistra con filo netto sul ciglio, SUPERFICIE BOMBATA
+(altezza a cupola dalla maschera sfumata con due raggi, 0,7 e 2,2 mm: versante verso la
+luce schiarito, versante opposto scurito su tutta la superficie), banda di riflesso in
+diagonale, velo lucido e colori piu' pieni (`S.rilForza` regola l'intensita'; `?rildebug=1` tinge la maschera di rosso
 e mette le regioni in `S.ril.regs`). La lente "Rilievo da vicino" ingrandisce 2,6x
 e si trascina per spostarsi. L'effetto va
 sopra la finitura (UV opaca spegne il resto, il rilievo resta lucido). Banco:
