@@ -3606,9 +3606,13 @@ const P_BORD=[0.57,1.15,1.83];              // piccolo / medio / grande
    tre i livelli è ciò che faceva sembrare "piccolo" e "medio" identici:
    cambiava solo un decimo di millimetro di offset, non il carattere.
        [rientranza, semplicità, levigatura] */
-const P_TAGLIO_L=[[74,20,30],   // piccolo: ricalca, segue i dettagli
-                  [59,31,42],   // medio:   il compromesso
-                  [42,45,58]];  // grande:  avvolge, arrotonda
+/* [sito] adesivi: contorno un po' meno stondato e piu' fedele al disegno,
+   soprattutto su "piccolo" (rientranza su, semplificazione e levigatura giu') */
+const P_TAGLIO_L=[[90,12,14],   // piccolo: ricalca, segue i dettagli
+                  [70,25,32],   // medio:   il compromesso
+                  [46,42,54]];  // grande:  avvolge, arrotonda
+/* resinati: la resina vuole raccordi dolci, restano i valori di prima */
+const P_TAGLIO_L_RES=[[74,20,30],[59,31,42],[42,45,58]];
 const P_COMPL=[                              // [rientranza, semplicità, levigatura]
   [15,74,80],                                // poco: sagoma piena e morbida
   [45,40,50],                                // medio
@@ -3631,7 +3635,8 @@ function applyBorderLevel(){
   $('bordInfo').textContent='contorno '+off.toFixed(1)+' mm su uno sticker da '+w.toFixed(0)+' mm';}
 
 function applyPreset(recalc){
-  const c=P_TAGLIO_L[CL.bord]||P_TAGLIO_L[1];   // segue la larghezza del bordo
+  const tab=(S.prod==='resin')?P_TAGLIO_L_RES:P_TAGLIO_L;
+  const c=tab[CL.bord]||tab[1];   // segue la larghezza del bordo
   $('rie').value=c[0];$('rieV').textContent=c[0];
   $('sem').value=c[1];$('semV').textContent=c[1];
   $('lev').value=c[2];$('levV').textContent=c[2];

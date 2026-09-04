@@ -166,3 +166,12 @@ tutta la tela.
 Banco: `scratchpad/harness/index.html` (sessione del 4/9) manda al motore
 sei file di prova (quadrato, rettangolo, ovale, tondo, stella, scritta) via
 postMessage e mostra le istantanee; si fotografa con Chrome headless.
+
+## Contorno del sagomato sugli adesivi (5 settembre 2026)
+
+`P_TAGLIO_L` (rientranza, semplificazione, levigatura per bordo piccolo/medio/grande)
+e' stato stretto per gli adesivi: piccolo `[90,12,14]`, medio `[70,25,32]`, grande
+`[46,42,54]`. Il tracciato segue di piu' le rientranze fra le lettere e tiene le punte
+(stelle, angoli) meno stondate, soprattutto su "piccolo". I resinati usano la tabella
+di prima (`P_TAGLIO_L_RES`): la resina vuole raccordi dolci. Banco di prova:
+`scratchpad/harness/contorno.html` (prima/dopo sui tre bordi, grafica testo+stella).
