@@ -4485,6 +4485,9 @@ document.querySelectorAll('#cLam .chip').forEach(el=>{
     }catch(e){}
   };
   setInterval(fitEmbed,300); addEventListener('resize',fitEmbed);
+  /* dopo ogni disegno la tela va inquadrata SUBITO: prima passavano fino a
+     300 ms con l'anteprima piccola, che poi tornava normale */
+  try{ const _draw=draw; draw=function(){const r=_draw.apply(this,arguments); try{fitEmbed();}catch(e){} return r;}; }catch(e){}
   /* altezza reale del contenuto, così il sito dimensiona l'iframe */
   let lastH=0; const sendSize=()=>{const app=document.querySelector('.pp-app'); const h=Math.ceil(app?app.getBoundingClientRect().height+8:document.documentElement.scrollHeight); if(h!==lastH){lastH=h;send('size',{h});}};
   setInterval(sendSize,400); addEventListener('load',sendSize);
@@ -4521,7 +4524,12 @@ document.querySelectorAll('#cLam .chip').forEach(el=>{
           if($('wmm').value!==w.toFixed(1)||$('hmm').value!==h.toFixed(1)){$('wmm').value=w.toFixed(1);$('hmm').value=h.toFixed(1);syncRatio();changed=true;}}
         if(changed&&S.src&&S.bbox){
           busy(true,'Aggiorno…');
-          setTimeout(()=>{try{buildCut();draw();computeLayout();}catch(e){} busy(false);},0);
+          setTimeout(()=>{
+            const t0=performance.now(); let t1=t0,t2=t0;
+            try{buildCut();t1=performance.now();draw();t2=performance.now();computeLayout();}catch(e){}
+            try{console.debug('[motore] config',JSON.stringify(c),'taglio',Math.round(t1-t0),'ms · disegno',Math.round(t2-t1),'ms');}catch(e){}
+            busy(false);
+          },0);
         } else if(changed){try{uSummary();}catch(e){}}
       }catch(e){}
     }

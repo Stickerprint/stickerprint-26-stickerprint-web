@@ -71,7 +71,7 @@
 	const fin = $derived(showFinish ? finitura : 'nessuna');
 	const ratio = $derived(shape?.equal ? 1 : (shape?.ratio ?? cutRatio ?? fileRatio ?? 1));
 	// rettangolo e ovale: le misure sono solo proposte, il cliente puo' scrivere la sua (lati indipendenti)
-	const freeSize = $derived(!!shape?.ratio && !shape?.equal);
+	const freeSize = $derived(forma === 'rettangolo' || forma === 'ovale');
 	const q = $derived(quoteWith(cfg, { w, h, forma, materiale, finitura: fin, qty, vatIncluded }));
 	const progress = $derived((stepNo(step) / steps.length) * 100);
 	const suggested = $derived(suggestedSize(ratio));
@@ -110,8 +110,12 @@
 		sizeKey = key;
 		const r = shape?.equal ? 1 : (shape?.ratio ?? (s.h > 0 ? s.w / s.h : (fileRatio ?? 1)));
 		cutRatio = r;
-		w = s.srcMM && s.srcMM.w >= MIN_MM && s.srcMM.w <= MAX_MM ? clamp(s.srcMM.w) : suggestedSize(r)[0];
-		h = clamp(w / r);
+		// la misura dal file vale per il sagomato (segue la proporzione del disegno); sulle sagome
+		// geometriche resta quella scelta dal cliente, cosi' il cambio sagoma non rifa' il disegno due volte
+		if (forma === 'sagomato' || !file) {
+			w = s.srcMM && s.srcMM.w >= MIN_MM && s.srcMM.w <= MAX_MM ? clamp(s.srcMM.w) : suggestedSize(r)[0];
+			h = clamp(w / r);
+		} else if (shape?.equal) h = w;
 	}
 
 	const clamp = (v: number) => Math.min(MAX_MM, Math.max(MIN_MM, roundHalf(v || MIN_MM)));

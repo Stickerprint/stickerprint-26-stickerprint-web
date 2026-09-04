@@ -69,6 +69,7 @@
 	// non sparisce mai, si aggiorna al posto suo in pochi decimi di secondo.
 	let lastSrc = '';
 	let cfgTimer: ReturnType<typeof setTimeout> | undefined;
+	let cfgSentAt = 0;
 	let sentCfg = '';
 	$effect(() => {
 		const f = file;
@@ -87,6 +88,7 @@
 				if (!frame?.contentWindow || !ready) return;
 				sentCfg = cfg;
 				busy = true;
+				cfgSentAt = performance.now();
 				frame.contentWindow.postMessage({ source: 'sito', type: 'config', config: JSON.parse(cfg) }, location.origin);
 			}, 120);
 		});
@@ -105,6 +107,7 @@
 		if (d.type === 'ready') send();
 		if (d.type === 'size' && panel && d.detail?.h) contentH = d.detail.h;
 		if (d.type === 'render' && d.detail?.png) {
+			if (cfgSentAt) { console.debug('[anteprima] aggiornata in', Math.round(performance.now() - cfgSentAt), 'ms'); cfgSentAt = 0; }
 			busy = false;
 			ready = true;
 			sentCfg = JSON.stringify({ forma, materiale, lamina: finitura, w, h, prodotto });
