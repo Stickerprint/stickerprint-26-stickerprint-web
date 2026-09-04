@@ -2985,13 +2985,13 @@ const RESM={
      (proporzionate al pezzo) e in millimetri per il filo. */
   base:0.985,
   contW:0.07, contK:0.20,            // filo di contatto: la linea sottile del taglio
-  rimC:0.18,  rimW:0.12, rimK:1.00,  // filo lucido sul perimetro, piu' forte in alto a sinistra
-  glIn:0.010, glOut:0.058, glK:0.82, // mezzaluna in basso a sinistra: inizio e fine (frazione del lato), intensita'
-  glowR:0.12, glowK:0.10,            // alone morbido oltre la mezzaluna
-  trIn:0.008, trOut:0.030, trK:0.45, // luce secondaria in alto a destra
-  sheenK:0.07,                       // lucentezza diffusa della cupola verso l'alto a sinistra
-  shadeR:0.10, shadeK:0.07,          // ombra morbida sul lato in basso a destra
-  gradK:0.018,                       // gradiente generale
+  rimC:0.18,  rimW:0.12, rimK:0.90,  // filo lucido sul perimetro, piu' forte in alto a sinistra
+  glIn:0.010, glOut:0.058, glK:0.74, // mezzaluna in basso a sinistra: inizio e fine (frazione del lato), intensita'
+  glowR:0.12, glowK:0.09,            // alone morbido oltre la mezzaluna
+  trIn:0.008, trOut:0.030, trK:0.40, // luce secondaria in alto a destra
+  sheenK:0.063,                      // lucentezza diffusa della cupola verso l'alto a sinistra
+  shadeR:0.10, shadeK:0.09,          // ombra morbida sul lato in basso a destra
+  gradK:0.03,                        // gradiente generale: il lato destro un filo piu' scuro, per la profondita'
   aBL:32, aTL:70, aTR:22, aBR:55,    // apertura angolare (gradi) di mezzaluna, filo, luce secondaria, ombra
   glMax:0.93
 };
@@ -3054,7 +3054,7 @@ function resinDome(core,ppm){
     const sheen=Math.max(0,Math.min(1,0.5-0.5*(nx*0.6+ny*0.6)));
     let mul=P.base-P.contK*contact*(0.8+0.3*br)
              -P.shadeK*shade
-             -P.gradK*(nx*0.55+ny);
+             -P.gradK*(nx*1.0+ny*0.6);
     let hi=P.rimK*rim*(0.5+0.5*tl)
           +P.glK*glare
           +P.glowK*glow
@@ -3217,7 +3217,7 @@ function draw(){
      — file singolo e foglio di stampa — resta al suo posto. */
   const cv=$('preview'),b=0,pad=(S.prod==='resin'&&!S.senzaResina)?Math.max(6,S.bleed+3,0.16*Math.max(S.cutW,S.cutH)):Math.max(5,S.bleed+3);
   const totW=S.cutW+2*b+pad*2,totH=S.cutH+2*b+pad*2;
-  const ppm=Math.min(1400/totW,1000/totH,16);
+  const ppm=Math.min(1400/totW,1000/totH,(S.prod==='resin'&&!S.senzaResina)?12:16);
   const tile=renderTile(ppm,true,0);
   cv.width=Math.round(totW*ppm);cv.height=Math.round(totH*ppm);
   cv.style.display='block';$('empty').style.display='none';
@@ -4506,6 +4506,25 @@ document.querySelectorAll('#cLam .chip').forEach(el=>{
     }
     if(d.type==='snapshot')snapshot();
     if(d.type==='cut'){S.showCut=!!d.on;try{ridipingi();}catch(e){}}
+    /* cambio di sagoma, materiale, lamina o misura SENZA ricaricare il motore:
+       il file resta caricato e segmentato, si rifanno solo taglio e disegno */
+    if(d.type==='config'){
+      try{
+        const c=d.config||{}; let changed=false;
+        if(c.prodotto){const p=String(c.prodotto).toLowerCase().indexOf('resin')>=0?'resin':'sticker'; if(p!==S.prod){setProd(p);changed=true;}}
+        const f=U_FORMA[String(c.forma||'').toLowerCase()];
+        if(f&&f!==CL.shape){CL.shape=f;document.querySelectorAll('#cShape .chip').forEach(e=>e.classList.toggle('on',e.dataset.s===f));applyPreset(false);changed=true;}
+        const m=U_MATER[String(c.materiale||'').toLowerCase()];
+        if(m&&$('mat')&&$('mat').value!==m){$('mat').value=m;try{syncMatChips();paintPalette();}catch(e){}changed=true;}
+        if(c.lamina){const L=String(c.lamina).toLowerCase();const nl=L.indexOf('op')>=0?'opaca':(L.indexOf('ness')>=0?'nessuna':'lucida');if(nl!==S.lamina){S.lamina=nl;document.querySelectorAll('#cLam .chip').forEach(e=>e.classList.toggle('on',e.dataset.l===S.lamina));changed=true;}}
+        if(c.w){const w=Math.max(8,+c.w||50),h=Math.max(8,+(c.h||c.w)||w);
+          if($('wmm').value!==w.toFixed(1)||$('hmm').value!==h.toFixed(1)){$('wmm').value=w.toFixed(1);$('hmm').value=h.toFixed(1);syncRatio();changed=true;}}
+        if(changed&&S.src&&S.bbox){
+          busy(true,'Aggiorno…');
+          setTimeout(()=>{try{buildCut();draw();computeLayout();}catch(e){} busy(false);},0);
+        } else if(changed){try{uSummary();}catch(e){}}
+      }catch(e){}
+    }
   });
   document.addEventListener('preprint:ok',e=>send('ok',e.detail));
   document.addEventListener('preprint:modifiche',e=>send('modifiche',e.detail));

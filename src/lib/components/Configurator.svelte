@@ -70,6 +70,8 @@
 	const finish = $derived(FINISHES.find((f) => f.id === finitura));
 	const fin = $derived(showFinish ? finitura : 'nessuna');
 	const ratio = $derived(shape?.equal ? 1 : (shape?.ratio ?? cutRatio ?? fileRatio ?? 1));
+	// rettangolo e ovale: le misure sono solo proposte, il cliente puo' scrivere la sua (lati indipendenti)
+	const freeSize = $derived(!!shape?.ratio && !shape?.equal);
 	const q = $derived(quoteWith(cfg, { w, h, forma, materiale, finitura: fin, qty, vatIncluded }));
 	const progress = $derived((stepNo(step) / steps.length) * 100);
 	const suggested = $derived(suggestedSize(ratio));
@@ -126,11 +128,11 @@
 	}
 	function setW(v: number) {
 		w = clamp(v);
-		h = clamp(w / ratio);
+		if (!freeSize) h = clamp(w / ratio);
 	}
 	function setH(v: number) {
 		h = clamp(v);
-		w = clamp(h * ratio);
+		if (!freeSize) w = clamp(h * ratio);
 	}
 	function next(id: string) {
 		const i = steps.indexOf(id);
@@ -279,7 +281,7 @@
 					{:else if !file}
 						<p class="step__hint step__hint--box">Carica il tuo file: rileviamo la proporzione e ti consigliamo la misura.</p>
 					{:else}
-						<p class="step__hint">Misura consigliata per il tuo file: <b>{fmt(suggested[0])} × {fmt(roundHalf(suggested[0] / ratio))} mm</b>. Le proporzioni restano sempre bloccate.</p>
+						<p class="step__hint">Misura consigliata per il tuo file: <b>{fmt(suggested[0])} × {fmt(roundHalf(suggested[0] / ratio))} mm</b>.{#if !freeSize} Le proporzioni restano sempre bloccate.{:else} Oppure scrivi la misura che vuoi.{/if}</p>
 					{/if}
 					<div class="size-presets">
 						{#each presets as [pw, ph], k (pw)}
@@ -291,7 +293,11 @@
 						<span class="size-x">×</span>
 						<label><span>Altezza</span><input type="number" min={MIN_MM} max={MAX_MM} step="0.5" value={h} onchange={(e) => setH(+(e.currentTarget as HTMLInputElement).value)} /><em>mm</em></label>
 					</div>
-					<p class="step__lock">🔗 Cambia un lato: l’altro segue la proporzione{shape?.equal ? ' (per tondo e quadrato i lati sono uguali)' : ''}. Arrotondiamo al mezzo millimetro.</p>
+					{#if freeSize}
+						<p class="step__lock">✏️ Misura libera: larghezza e altezza le decidi tu, da {MIN_MM} a {MAX_MM} mm. Arrotondiamo al mezzo millimetro.</p>
+					{:else}
+						<p class="step__lock">🔗 Cambia un lato: l’altro segue la proporzione{shape?.equal ? ' (per tondo e quadrato i lati sono uguali)' : ''}. Arrotondiamo al mezzo millimetro.</p>
+					{/if}
 					<button class="step__continue" type="button" onclick={() => (step = 'qty')}>Continua alla quantità</button>
 				</div>
 			{/if}

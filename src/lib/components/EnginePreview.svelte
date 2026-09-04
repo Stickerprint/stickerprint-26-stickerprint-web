@@ -64,30 +64,31 @@
 		}, 5000);
 	}
 
-	// ricarica il motore quando cambia una qualsiasi impostazione (con un piccolo debounce sulle misure).
-	// Legge solo le props: lo stato interno è in untrack, così l'effetto non si riesegue da solo.
+	// Il motore si carica UNA volta per file/prodotto. Sagoma, materiale, lamina e
+	// misura si mandano via messaggio: il file resta caricato e l'anteprima
+	// non sparisce mai, si aggiorna al posto suo in pochi decimi di secondo.
 	let lastSrc = '';
+	let cfgTimer: ReturnType<typeof setTimeout> | undefined;
+	let sentCfg = '';
 	$effect(() => {
-		const next = buildSrc();
 		const f = file;
+		const next = f ? `${prodotto}|${panel}|${stage}` : '';
 		untrack(() => {
-			if (!f) {
-				src = '';
-				ready = false;
-				lastSrc = '';
-				sentFor = null;
-				return;
-			}
-			if (next === lastSrc && sentFor === f) return;
-			clearTimeout(reloadTimer);
-			reloadTimer = setTimeout(() => {
+			if (!f) { src = ''; ready = false; lastSrc = ''; sentFor = null; sentCfg = ''; return; }
+			if (next !== lastSrc) { lastSrc = next; sentFor = null; sentCfg = ''; busy = true; ready = false; src = buildSrc(); }
+		});
+	});
+	$effect(() => {
+		const cfg = JSON.stringify({ forma, materiale, lamina: finitura, w, h, prodotto });
+		untrack(() => {
+			if (!file || !src || cfg === sentCfg) return;
+			clearTimeout(cfgTimer);
+			cfgTimer = setTimeout(() => {
+				if (!frame?.contentWindow || !ready) return;
+				sentCfg = cfg;
 				busy = true;
-				ready = false;
-				sentFor = null;
-				lastSrc = next;
-				if (src === next) send(true);
-				else src = next;
-			}, 250);
+				frame.contentWindow.postMessage({ source: 'sito', type: 'config', config: JSON.parse(cfg) }, location.origin);
+			}, 120);
 		});
 	});
 
@@ -106,6 +107,7 @@
 		if (d.type === 'render' && d.detail?.png) {
 			busy = false;
 			ready = true;
+			sentCfg = JSON.stringify({ forma, materiale, lamina: finitura, w, h, prodotto });
 			clearTimeout(retry);
 			onrender?.({ png: d.detail.png, w: d.detail.w ?? 0, h: d.detail.h ?? 0, srcMM: d.detail.srcMM ?? null });
 			frame?.contentWindow?.postMessage({ source: 'sito', type: 'cut', on: showCut }, location.origin);
@@ -119,10 +121,10 @@
 	{#if panel}
 		<div class="engine-panel" style="height:{height}px">
 			<iframe bind:this={frame} class="engine engine--panel" class:is-ready={ready} {src} title="Anteprima e regolazioni del tuo adesivo" onload={() => send()}></iframe>
-			{#if busy}<div class="stage__busy" style="top:{stage / 2}px"><span class="spinner spinner--dark"></span> Genero l’anteprima…</div>{/if}
+			{#if busy}<div class="stage__busy" class:stage__busy--soft={ready} style="top:{ready ? 12 : stage / 2}px"><span class="spinner spinner--dark"></span> {ready ? 'Aggiorno…' : 'Genero l’anteprima…'}</div>{/if}
 		</div>
 	{:else}
 		<iframe bind:this={frame} class="engine engine--live" class:is-ready={ready} {src} title="Anteprima del tuo adesivo" tabindex="-1" onload={() => send()}></iframe>
-		{#if busy}<div class="stage__busy"><span class="spinner spinner--dark"></span> Genero l’anteprima…</div>{/if}
+		{#if busy}<div class="stage__busy" class:stage__busy--soft={ready}><span class="spinner spinner--dark"></span> {ready ? 'Aggiorno…' : 'Genero l’anteprima…'}</div>{/if}
 	{/if}
 {/if}
