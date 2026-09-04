@@ -108,8 +108,9 @@
 			fileUrl = URL.createObjectURL(d.file);
 			if (SHAPES.some((s) => s.id === d.forma)) forma = d.forma;
 			if (MATERIALS.some((m) => m.id === d.materiale)) materiale = d.materiale;
-			// arrivando dalla home con il file gia' caricato si atterra direttamente sul preventivatore
-			if (location.hash === '#configura') setTimeout(() => document.getElementById('configura')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 250);
+			// arrivando dalla home con il file gia' caricato si atterra direttamente sul preventivatore:
+			// si ripete perche' le foto della pagina, caricandosi, spostano il blocco verso il basso
+			if (location.hash === '#configura') for (const ms of [200, 900, 2000, 3500]) setTimeout(() => document.getElementById('configura')?.scrollIntoView({ behavior: ms > 500 ? 'auto' : 'smooth', block: 'start' }), ms);
 		}
 	});
 	const minQty = $derived(cfg.quantities[0] ?? 15);
