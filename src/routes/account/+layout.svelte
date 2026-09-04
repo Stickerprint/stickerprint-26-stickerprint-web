@@ -2,6 +2,14 @@
 	import '$lib/styles/account.css';
 	import { page } from '$app/state';
 	import { invalidateAll } from '$app/navigation';
+
+	// gli stati dei tuoi ordini si aggiornano da soli quando la produzione li fa avanzare
+	$effect(() => {
+		const uid = data.user?.id;
+		if (!uid) return;
+		const ch = data.supabase.channel('my-orders').on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders', filter: `user_id=eq.${uid}` }, () => invalidateAll()).subscribe();
+		return () => { data.supabase.removeChannel(ch); };
+	});
 	let { data, children } = $props();
 	const path = $derived(page.url.pathname);
 	const initials = $derived((data.profile.name || 'SP').split(/[\s@._-]+/).filter(Boolean).slice(0, 2).map((s: string) => s[0]?.toUpperCase()).join(''));

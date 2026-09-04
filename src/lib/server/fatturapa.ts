@@ -1,0 +1,49 @@
+import { COMPANY } from './company';
+
+export interface FpaInvoice {
+	number: string; issued_at: string; email: string | null; billing: Record<string, string>;
+	lines: { description: string; qty: number; unit_net: number; total_net: number }[];
+	discount_net: number; discount_code?: string | null; express_net: number; credit_used: number; vat_amount: number; amount_gross: number;
+	payment_method: string | null; ddt_number?: string | null; ddt_date?: string | null; order_numbers?: string[] | null;
+}
+const esc = (s: string) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const n2 = (v: number) => (Math.round(v * 100) / 100).toFixed(2);
+const n8 = (v: number) => v.toFixed(8).replace(/0+$/, '').replace(/\.$/, '.00');
+const VAT = COMPANY.vatRate;
+
+/** XML FatturaPA (FPR12) per lo SDI, da inviare tramite Sibill. Progressivo = numero fattura senza prefisso. */
+export function buildFatturaPaXml(inv: FpaInvoice, progressivo: string): { xml: string; filename: string } {
+	const b = inv.billing ?? {};
+	const isCompany = !!b.vat;
+	const sdi = (b.sdi ?? '').trim().toUpperCase();
+	const pec = (b.pec ?? '').trim();
+	const codiceDest = sdi.length === 7 ? sdi : '0000000';
+	const payMode = /bonifico|ricevuta/i.test(inv.payment_method ?? '') ? 'MP05' : 'MP08';
+	// righe: prodotti, express, sconto codice (negativo), credito Stickerprint come sconto (negativo, scorporato)
+	const lines = inv.lines.map((l) => ({ d: l.description, q: l.qty, u: l.unit_net, t: l.total_net }));
+	if (inv.express_net > 0) lines.push({ d: 'Produzione express (+30%)', q: 1, u: inv.express_net, t: inv.express_net });
+	if (inv.discount_net > 0) lines.push({ d: `Sconto codice ${inv.discount_code ?? ''}`.trim(), q: 1, u: -inv.discount_net, t: -inv.discount_net });
+	if (inv.credit_used > 0) { const net = -(inv.credit_used / (1 + VAT)); lines.push({ d: 'Sconto Stickerprint', q: 1, u: net, t: net }); }
+	const imponibile = lines.reduce((s, l) => s + l.t, 0);
+	const imposta = imponibile * VAT;
+	const totale = imponibile + imposta;
+	const dettaglio = lines.map((l, i) => `<DettaglioLinee><NumeroLinea>${i + 1}</NumeroLinea><Descrizione>${esc(l.d).slice(0, 1000)}</Descrizione><Quantita>${n2(l.q)}</Quantita><PrezzoUnitario>${n8(l.u)}</PrezzoUnitario><PrezzoTotale>${n2(l.t)}</PrezzoTotale><AliquotaIVA>${n2(VAT * 100)}</AliquotaIVA></DettaglioLinee>`).join('');
+	const anagrafica = isCompany || b.company ? `<Denominazione>${esc(b.company || `${b.first_name ?? ''} ${b.last_name ?? ''}`.trim())}</Denominazione>` : `<Nome>${esc(b.first_name ?? '')}</Nome><Cognome>${esc(b.last_name ?? '')}</Cognome>`;
+	const fiscal = `${isCompany ? `<IdFiscaleIVA><IdPaese>${esc(b.country || 'IT')}</IdPaese><IdCodice>${esc(b.vat.replace(/^IT/i, ''))}</IdCodice></IdFiscaleIVA>` : ''}${b.fiscal_code ? `<CodiceFiscale>${esc(b.fiscal_code.toUpperCase())}</CodiceFiscale>` : ''}`;
+	const ddt = inv.ddt_number ? `<DatiDDT><NumeroDDT>${esc(inv.ddt_number)}</NumeroDDT><DataDDT>${inv.ddt_date ?? inv.issued_at}</DataDDT></DatiDDT>` : '';
+	const causale = inv.order_numbers?.length ? `<Causale>Ordine ${esc(inv.order_numbers.join(', '))}</Causale>` : '';
+	const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<p:FatturaElettronica versione="FPR12" xmlns:p="http://ivaservizi.agenziaentrate.gov.it/docs/xsd/fatture/v1.2" xmlns:ds="http://www.w3.org/2000/09/xmldsig#" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://ivaservizi.agenziaentrate.gov.it/docs/xsd/fatture/v1.2 http://www.fatturapa.gov.it/export/fatturazione/sdi/fatturapa/v1.2/Schema_del_file_xml_FatturaPA_versione_1.2.xsd">
+<FatturaElettronicaHeader>
+<DatiTrasmissione><IdTrasmittente><IdPaese>IT</IdPaese><IdCodice>${esc(COMPANY.fiscalCode)}</IdCodice></IdTrasmittente><ProgressivoInvio>${esc(progressivo)}</ProgressivoInvio><FormatoTrasmissione>FPR12</FormatoTrasmissione><CodiceDestinatario>${codiceDest}</CodiceDestinatario>${codiceDest === '0000000' && pec ? `<PECDestinatario>${esc(pec)}</PECDestinatario>` : ''}</DatiTrasmissione>
+<CedentePrestatore><DatiAnagrafici><IdFiscaleIVA><IdPaese>IT</IdPaese><IdCodice>${esc(COMPANY.vat)}</IdCodice></IdFiscaleIVA><CodiceFiscale>${esc(COMPANY.fiscalCode)}</CodiceFiscale><Anagrafica><Denominazione>${esc(COMPANY.name)}</Denominazione></Anagrafica><RegimeFiscale>${COMPANY.regime}</RegimeFiscale></DatiAnagrafici><Sede><Indirizzo>${esc(COMPANY.street)}</Indirizzo><CAP>${COMPANY.zip}</CAP><Comune>${esc(COMPANY.city)}</Comune><Provincia>${COMPANY.province}</Provincia><Nazione>${COMPANY.country}</Nazione></Sede>${COMPANY.email ? `<Contatti><Email>${esc(COMPANY.email)}</Email></Contatti>` : ''}</CedentePrestatore>
+<CessionarioCommittente><DatiAnagrafici>${fiscal}<Anagrafica>${anagrafica}</Anagrafica></DatiAnagrafici><Sede><Indirizzo>${esc([b.street, b.street2].filter(Boolean).join(', ') || '-')}</Indirizzo><CAP>${esc((b.zip ?? '00000').padStart(5, '0'))}</CAP><Comune>${esc(b.city || '-')}</Comune>${b.province ? `<Provincia>${esc(b.province.toUpperCase().slice(0, 2))}</Provincia>` : ''}<Nazione>${esc((b.country || 'IT').toUpperCase())}</Nazione></Sede></CessionarioCommittente>
+</FatturaElettronicaHeader>
+<FatturaElettronicaBody>
+<DatiGenerali><DatiGeneraliDocumento><TipoDocumento>TD01</TipoDocumento><Divisa>EUR</Divisa><Data>${inv.issued_at}</Data><Numero>${esc(inv.number)}</Numero><ImportoTotaleDocumento>${n2(totale)}</ImportoTotaleDocumento>${causale}</DatiGeneraliDocumento>${ddt}</DatiGenerali>
+<DatiBeniServizi>${dettaglio}<DatiRiepilogo><AliquotaIVA>${n2(VAT * 100)}</AliquotaIVA><ImponibileImporto>${n2(imponibile)}</ImponibileImporto><Imposta>${n2(imposta)}</Imposta><EsigibilitaIVA>I</EsigibilitaIVA></DatiRiepilogo></DatiBeniServizi>
+<DatiPagamento><CondizioniPagamento>TP02</CondizioniPagamento><DettaglioPagamento><ModalitaPagamento>${payMode}</ModalitaPagamento><ImportoPagamento>${n2(totale)}</ImportoPagamento></DettaglioPagamento></DatiPagamento>
+</FatturaElettronicaBody>
+</p:FatturaElettronica>`;
+	return { xml, filename: `IT${COMPANY.vat}_${progressivo.replace(/[^A-Za-z0-9]/g, '').slice(-5).padStart(5, '0')}.xml` };
+}
