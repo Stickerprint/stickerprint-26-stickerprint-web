@@ -2976,16 +2976,24 @@ function resinDomeFisico(core,ppm){
    dimensione di adesivo e di anteprima.
    ========================================================================== */
 const RESM={
-  base:0.972,                    // la resina scurisce appena la stampa sotto (tono del mockup)
-  contW:0.09, contK:0.15,        // filo di contatto: sottile ombra proprio sul taglio
-  rimC:0.22,  rimW:0.12, rimK:1.00,  // filo lucido del bordo della cupola
-  menC:0.66,  menW:0.34, menK:0.13,  // fascia scura del menisco, subito dentro il filo
-  glC:0.50,   glW:0.42,  glK:1.05, glP:1.8, glMax:0.92,  // riflesso in basso a sinistra, lungo il bordo
-  glowL:2.2,  glowK:0.26,        // alone morbido dello stesso riflesso verso l'interno
-  trK:0.50,                      // filo di luce in alto a destra
-  inW:1.6,    vigK:0.045,        // vignettatura: piu' scuro avvicinandosi al bordo
-  gradK:0.032,                   // gradiente generale: piu' chiaro in alto a sinistra
-  softK:0.04                     // riflesso morbido della luce di studio in alto a sinistra
+  /* Ricalibrato sui sei mockup con grafica (Aviationist, Alex, occhio, GDIS,
+     Tempo prezioso, Materico): niente fascia scura del menisco e niente
+     vignettatura — facevano un cratere. Il rilievo si legge con un filo
+     lucido sottile su tutto il perimetro, una mezzaluna di riflesso netta in
+     basso a sinistra, una luce secondaria in alto a destra e una lucentezza
+     diffusa verso l'alto a sinistra. Larghezze in frazioni del lato minore
+     (proporzionate al pezzo) e in millimetri per il filo. */
+  base:0.985,
+  contW:0.07, contK:0.20,            // filo di contatto: la linea sottile del taglio
+  rimC:0.18,  rimW:0.12, rimK:1.00,  // filo lucido sul perimetro, piu' forte in alto a sinistra
+  glIn:0.010, glOut:0.058, glK:0.82, // mezzaluna in basso a sinistra: inizio e fine (frazione del lato), intensita'
+  glowR:0.12, glowK:0.10,            // alone morbido oltre la mezzaluna
+  trIn:0.008, trOut:0.030, trK:0.45, // luce secondaria in alto a destra
+  sheenK:0.07,                       // lucentezza diffusa della cupola verso l'alto a sinistra
+  shadeR:0.10, shadeK:0.07,          // ombra morbida sul lato in basso a destra
+  gradK:0.018,                       // gradiente generale
+  aBL:32, aTL:70, aTR:22, aBR:55,    // apertura angolare (gradi) di mezzaluna, filo, luce secondaria, ombra
+  glMax:0.93
 };
 function resinDome(core,ppm){
   const W=core.width,H=core.height,N=W*H;
@@ -3013,38 +3021,46 @@ function resinDome(core,ppm){
   if(dmax<4)return core;
   /* direzione del bordo: gradiente della distanza sfocata A PIENA risoluzione
      (la versione ridotta a un quarto lasciava scalini lungo i bordi curvi) */
-  const dS=blurF(dist,W,H,Math.max(2,Math.round(0.28*ppm)),3);
+  const dS=null;
   const P=RESM, gauss=t=>Math.exp(-0.5*t*t);
+  const aw=(a,c,sig)=>{let da=a-c; da=((da+180)%360+360)%360-180; return Math.exp(-0.5*(da/sig)*(da/sig));};
+  /* finestra angolare a tetto piatto e fianchi decisi: il riflesso dei mockup e' una mezzaluna netta, non una nebbia */
+  const sg=(a,c,sig)=>{let da=a-c; da=((da+180)%360+360)%360-180; const q=(da/sig)*(da/sig); return Math.exp(-0.5*q*q);};
+  const ss=(v,a,b)=>{const t=Math.max(0,Math.min(1,(v-a)/(b-a))); return t*t*(3-2*t);};
   const out=document.createElement('canvas');out.width=W;out.height=H;
   const go=out.getContext('2d');
   const oid=go.createImageData(W,H),o=oid.data;
   const cx=W/2,cy=H/2,R=Math.max(W,H)/2;
+  const D=Math.max(8,2*dmax);                  // ~ lato minore del pezzo, in px
   for(let y=0;y<H;y++)for(let x=0;x<W;x++){
     const i=y*W+x,p=i*4;
     if(!bin[i]){o[p+3]=0;continue;}
-    const dd=dist[i]/ppm;                       // mm dal bordo
-    const xm=x>0?i-1:i, xp=x<W-1?i+1:i, ym=y>0?i-W:i, yp=y<H-1?i+W:i;
-    const gx=(dS[xp]-dS[xm])*0.5, gy=(dS[yp]-dS[ym])*0.5;
-    const gl=Math.hypot(gx,gy);
-    const ox=gl>1e-4?-gx/gl:0, oy=gl>1e-4?-gy/gl:0;   // normale verso l'esterno
-    /* quanto il bordo guarda verso: basso-sinistra, alto-sinistra, alto-destra, basso-destra */
-    const bl=Math.max(0,(-ox+oy)*0.7071), tl=Math.max(0,(-ox-oy)*0.7071), tr=Math.max(0,(ox-oy)*0.7071), br=Math.max(0,(ox+oy)*0.7071);
+    const dpx=dist[i], dd=dpx/ppm, rel=dpx/D;   // mm dal bordo · frazione del lato
+    /* Le luci sono posizionate nell'immagine, come in un mockup dipinto: si
+       pesa l'ANGOLO del pixel attorno al centro della sagoma (normalizzato
+       sul suo ingombro), non la normale del bordo. Cosi' sul quadrato non
+       compaiono le quattro facce a piramide e sul tondo il riflesso e' una
+       mezzaluna continua. */
+    const nx=(x-cx)/(W/2), ny=(y-cy)/(H/2);
+    const ang=Math.atan2(ny,nx)*57.2958;
+    const bl=sg(ang,135,P.aBL), tl=aw(ang,-135,P.aTL), tr=sg(ang,-45,P.aTR), br=aw(ang,45,P.aBR);
     const contact=gauss(dd/P.contW);
     const rim=gauss((dd-P.rimC)/P.rimW);
-    const men=gauss((dd-P.menC)/P.menW);
-    const band=gauss((dd-P.glC)/P.glW);
-    const glow=Math.exp(-dd/P.glowL);
-    const inner=Math.exp(-Math.pow(dd/P.inW,1.4));   // vignetta senza gomiti: decade dolcemente
-    let mul=P.base-P.contK*contact*(0.75+0.35*br)
-             -P.menK*men*(0.85+0.45*(tl*0.5+br*0.5))
-             -P.vigK*inner*(0.55+0.9*br)
-             -P.gradK*(((x-cx)/R)*0.55+((y-cy)/R));
-    let hi=P.rimK*rim*(0.28+0.72*Math.pow(tl,0.8))
-          +P.glK*band*Math.pow(bl,P.glP)
-          +P.glowK*glow*bl*bl
-          +P.trK*band*Math.pow(tr,3)
-          +P.softK*Math.max(0,1-Math.hypot((x-cx)/R+0.45,(y-cy)/R+0.45)/1.4)*(1-inner);
-    if(hi>P.glMax)hi=P.glMax; if(mul<0)mul=0;   // mai bianco pieno: sul colore resta un velo di tinta, come su un riflesso vero
+    /* mezzaluna: parte subito dentro il filo e finisce con un bordo interno morbido ma leggibile */
+    const glare=ss(rel,P.glIn,P.glIn*2)*(1-ss(rel,P.glOut,P.glOut*1.35))*(1-0.45*ss(rel,P.glIn*2,P.glOut))*bl;
+    const glow=Math.exp(-Math.pow(rel/P.glowR,2))*bl;
+    const trh=ss(rel,P.trIn,P.trIn*2)*(1-ss(rel,P.trOut,P.trOut*1.4))*tr;
+    const shade=Math.exp(-Math.pow(rel/P.shadeR,2))*br;
+    const sheen=Math.max(0,Math.min(1,0.5-0.5*(nx*0.6+ny*0.6)));
+    let mul=P.base-P.contK*contact*(0.8+0.3*br)
+             -P.shadeK*shade
+             -P.gradK*(nx*0.55+ny);
+    let hi=P.rimK*rim*(0.5+0.5*tl)
+          +P.glK*glare
+          +P.glowK*glow
+          +P.trK*trh
+          +P.sheenK*sheen*(1-contact);
+    if(hi>P.glMax)hi=P.glMax; if(mul<0)mul=0;
     for(let c=0;c<3;c++){
       let v=d[p+c]/255*mul;
       v=v+(1-v)*hi;

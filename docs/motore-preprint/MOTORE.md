@@ -146,12 +146,16 @@ di difetti già corretti in un file che nessuno stava usando.
 
 `resinDome()` non usa piu' il modello ottico (che resta nel file come
 `resinDomeFisico()`, spento). L'effetto e' ricostruito sui mockup Photoshop
-dell'utente: distanza dal bordo VERO del pezzo (alpha del disegno, con una
-cornice di un pixel fuori dalla tela), direzione del bordo dal gradiente
-della distanza sfocata a piena risoluzione, e da li' — tutto in millimetri,
-parametri in `RESM` — filo lucido sul perimetro, fascia scura del menisco,
-riflesso in basso a sinistra con alone, filo di luce in alto a destra,
-vignettatura e gradiente. Le luci non arrivano mai al bianco pieno
+dell'utente (sei con grafica vera): distanza dal bordo VERO del pezzo (alpha
+del disegno, con una cornice di un pixel fuori dalla tela) e ANGOLO del pixel
+attorno al centro della sagoma — le luci sono posizionate nell'immagine come
+in un mockup dipinto, non sulla normale del bordo (che dava facce a piramide
+sul quadrato). Da li', parametri in `RESM`: filo lucido sottile su tutto il
+perimetro (in mm), mezzaluna di riflesso netta in basso a sinistra, luce
+secondaria in alto a destra, lucentezza diffusa verso l'alto a sinistra e
+ombra morbida in basso a destra (in frazioni del lato minore, cosi' scalano
+col pezzo). Niente fascia scura del menisco ne' vignettatura: facevano un
+cratere. Le luci non arrivano mai al bianco pieno
 (`glMax`), cosi' sul colore resta un velo di tinta. Sul resinato la banda di
 luce in movimento (`bagliore`) e' spenta: il mockup e' statico come quelli
 di riferimento. Sotto l'adesivo c'e' il foglio di carta (`disegnaFoglio`)
