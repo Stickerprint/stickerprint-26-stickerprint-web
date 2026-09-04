@@ -61,7 +61,7 @@
 	let rimuovi = $state(false);
 	let over = $state(false);
 	let customOpen = $state(false);
-	let customQty = $state(0);
+	let customQty = $state<number | ''>('');
 	let custom = $state(false);
 
 	// valori iniziali coerenti con il listino (anche quando il listino cambia sotto, in dashboard)
@@ -116,6 +116,7 @@
 	function applyCustom() {
 		const n = Math.max(minQty, Math.round(Number(customQty) || 0));
 		customQty = n; custom = true; qty = n;
+		customOpen = true;
 	}
 
 	function onRender(s: { png?: string | null; w: number; h: number; srcMM: { w: number; h: number } | null; palette?: { hex: string; img?: string }[]; palIdx?: number; rimuovi?: boolean }) {
