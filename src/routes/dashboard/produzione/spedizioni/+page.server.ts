@@ -1,17 +1,16 @@
 import { fail } from '@sveltejs/kit';
 import { groupOrders, itemMeta, deliveryMode, COURIERS, type OrderRow } from '$lib/dashboard/orders';
+import { courierDay, generateLabels, transmitShipments } from '$lib/server/shipping';
+import { courierStatus } from '$lib/server/couriers';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals: { supabase } }) => {
 	const { data } = await supabase.from('orders').select('*').in('status', ['pronto', 'in_spedizione', 'spedito', 'in_consegna']).order('created_at', { ascending: false });
 	const groups = groupOrders((data ?? []) as OrderRow[]);
-	// spedizioni da trasmettere, per corriere: ordini pronti con corriere scelto e non ancora trasmessi
-	const pending: Record<string, string[]> = {};
-	for (const g of groups) {
-		const f = g.items[0];
-		if (g.status === 'pronto' && deliveryMode(g) === 'ours' && f.courier && COURIERS[f.courier] && !f.transmitted_at) (pending[f.courier] ??= []).push(g.key);
-	}
-	return { groups, pending };
+	// le tre colonne corriere: spedizioni di oggi, da generare, da trasmettere
+	const status = Object.fromEntries(courierStatus().map((c) => [c.id, c.configured]));
+	const couriers = Object.keys(COURIERS).map((c) => ({ id: c, ...courierDay(groups, c), configured: !!status[c] }));
+	return { groups, couriers };
 };
 const r2 = (v: number) => Math.round(v * 100) / 100;
 
@@ -25,17 +24,31 @@ export const actions: Actions = {
 		if (error) return fail(400, { error: error.message });
 		return { ok: true };
 	},
-	/** Trasmette al corriere tutte le spedizioni pronte con quel corriere e scarica le etichette (l'invio via API arriva con le credenziali del corriere) */
+	/** Genera spedizioni: crea le spedizioni presso il corriere (se collegato) e scarica il PDF unico delle etichette */
+	labels: async ({ request, locals: { supabase } }) => {
+		const f = await request.formData();
+		const courier = String(f.get('courier') ?? '');
+		if (!COURIERS[courier]) return fail(400, { error: 'Corriere non valido.' });
+		const { data } = await supabase.from('orders').select('*').eq('status', 'pronto').eq('courier', courier).is('labels_generated_at', null);
+		const keys = groupOrders((data ?? []) as OrderRow[]).filter((g) => deliveryMode(g) === 'ours').map((g) => g.key);
+		if (!keys.length) return fail(400, { error: `Nessuna spedizione ${courier} da generare.` });
+		try {
+			const r = await generateLabels(supabase, courier, keys);
+			return { ok: true, generated: courier, count: r.count, warnings: r.warnings, labels: `/dashboard/produzione/spedizioni/etichette?groups=${keys.join(',')}&courier=${courier}&day=1` };
+		} catch (e) { return fail(400, { error: e instanceof Error ? e.message : 'Errore' }); }
+	},
+	/** Trasmetti spedizioni: invio al corriere e manifest da consegnare all'autista */
 	transmit: async ({ request, locals: { supabase } }) => {
 		const f = await request.formData();
 		const courier = String(f.get('courier') ?? '');
 		if (!COURIERS[courier]) return fail(400, { error: 'Corriere non valido.' });
-		const { data } = await supabase.from('orders').select('*').eq('status', 'pronto').eq('courier', courier).is('transmitted_at', null);
-		const groups = groupOrders((data ?? []) as OrderRow[]).filter((g) => deliveryMode(g) === 'ours').map((g) => g.key);
-		if (!groups.length) return fail(400, { error: `Nessuna spedizione ${courier} da trasmettere.` });
-		const { error } = await supabase.from('orders').update({ transmitted_at: new Date().toISOString() }).in('checkout_group', groups);
-		if (error) return fail(400, { error: error.message });
-		return { ok: true, transmitted: courier, count: groups.length, labels: `/dashboard/produzione/spedizioni/etichette?groups=${groups.join(',')}&courier=${courier}` };
+		const { data } = await supabase.from('orders').select('*').eq('status', 'pronto').eq('courier', courier).not('labels_generated_at', 'is', null).is('transmitted_at', null);
+		const keys = groupOrders((data ?? []) as OrderRow[]).filter((g) => deliveryMode(g) === 'ours').map((g) => g.key);
+		if (!keys.length) return fail(400, { error: `Nessuna spedizione ${courier} da trasmettere: prima genera le spedizioni.` });
+		try {
+			const r = await transmitShipments(supabase, courier, keys);
+			return { ok: true, transmitted: courier, count: r.count, warnings: r.warnings, manifest: r.number, labels: `/dashboard/produzione/spedizioni/manifest/${r.manifestId}` };
+		} catch (e) { return fail(400, { error: e instanceof Error ? e.message : 'Errore' }); }
 	},
 	/** Concludi: DDT ed etichette dei colli per qualsiasi ordine (consegna diretta, corriere del cliente o nostro corriere già trasmesso). Le quantità possono cambiare rispetto all'ordine. */
 	ddt: async ({ request, locals: { supabase } }) => {

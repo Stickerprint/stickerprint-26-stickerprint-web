@@ -64,7 +64,7 @@ export interface OrderRow {
 	device: string | null; user_agent: string | null; proof_url: string | null; imposition_url: string | null; auto_proof: boolean;
 	payment_terms: { due: string; amount: number; method: string; xml_code: string }[] | null;
 	courier: string | null; shipped_at: string | null; delivered_at: string | null; parcels: number | null; weight_kg: number | null; ddt_id: string | null;
-	contact_id?: string | null; transmitted_at?: string | null;
+	contact_id?: string | null; transmitted_at?: string | null; labels_generated_at?: string | null; tracking_number?: string | null; courier_label_path?: string | null; manifest_id?: string | null;
 }
 /** Un "ordine" in dashboard = tutte le righe con lo stesso checkout_group */
 export interface OrderGroup {

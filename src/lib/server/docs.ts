@@ -136,3 +136,36 @@ export async function buildOrderPdf(d: OrderDocData): Promise<Uint8Array> {
 	t('Documento generato da stickerprint.it', M, 40, 8, font, gray);
 	return pdf.save();
 }
+
+export interface ManifestData { courier: string; number: string; day: string; shipments: { order_number: string; customer: string; city: string; zip?: string; parcels: number; weight_kg: number | null; tracking: string | null }[] }
+/** Manifest (borderò) di consegna al corriere: elenco dei colli affidati nella giornata, con firme */
+export async function buildManifestPdf(m: ManifestData): Promise<Uint8Array> {
+	const pdf = await PDFDocument.create();
+	const font = await pdf.embedFont(StandardFonts.Helvetica); const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
+	const logo = await pdf.embedPng(b64(LOGO_PNG_B64));
+	const M = 48; const perPage = 28;
+	for (let p = 0; p < Math.max(1, Math.ceil(m.shipments.length / perPage)); p++) {
+		const page = pdf.addPage([595.28, 841.89]);
+		docHeader(page, font, bold, logo, `MANIFEST SPEDIZIONI ${m.courier.toUpperCase()}`, m.number, new Date(m.day).toLocaleDateString('it-IT'));
+		const t = (txt: string, x: number, yy: number, size = 9, f: PDFFont = font, color = navy) => page.drawText(txt, { x, y: yy, size, font: f, color });
+		const rt = (txt: string, xr: number, yy: number, size = 9, f: PDFFont = font, color = navy) => page.drawText(txt, { x: xr - f.widthOfTextAtSize(txt, size), y: yy, size, font: f, color });
+		let y = 700;
+		t(`Mittente: ${COMPANY.name} · ${COMPANY.address} · Ritiro del ${new Date(m.day).toLocaleDateString('it-IT')}`, M, y, 9, font, gray); y -= 22;
+		page.drawRectangle({ x: M, y: y - 6, width: 499, height: 20, color: rgb(0.96, 0.97, 0.99) });
+		t('#', M + 4, y, 8.5, bold, gray); t('Ordine', M + 24, y, 8.5, bold, gray); t('Destinatario', M + 80, y, 8.5, bold, gray); t('Città', 300, y, 8.5, bold, gray); rt('Colli', 420, y, 8.5, bold, gray); rt('Peso', 460, y, 8.5, bold, gray); t('Tracking', 470, y, 8.5, bold, gray); y -= 20;
+		const slice = m.shipments.slice(p * perPage, (p + 1) * perPage);
+		slice.forEach((s, i) => {
+			t(String(p * perPage + i + 1), M + 4, y, 9); t(s.order_number, M + 24, y, 9, bold); t(s.customer.slice(0, 36), M + 80, y, 9); t(`${s.zip ? s.zip + ' ' : ''}${s.city}`.slice(0, 22), 300, y, 9); rt(String(s.parcels), 420, y, 9); rt(s.weight_kg ? `${s.weight_kg} kg` : '—', 460, y, 9); t((s.tracking ?? '—').slice(0, 18), 470, y, 8.5);
+			y -= 16; page.drawLine({ start: { x: M, y: y + 5 }, end: { x: 547, y: y + 5 }, thickness: 0.4, color: rgb(0.9, 0.91, 0.94) });
+		});
+		if (p === Math.ceil(m.shipments.length / perPage) - 1 || !m.shipments.length) {
+			y -= 10;
+			const tot = m.shipments.reduce((a, s) => a + s.parcels, 0); const kg = m.shipments.reduce((a, s) => a + Number(s.weight_kg ?? 0), 0);
+			t(`Totale: ${m.shipments.length} spedizioni · ${tot} colli${kg ? ` · ${kg.toFixed(1)} kg` : ''}`, M, y, 10, bold); y -= 40;
+			t('Firma del mittente ______________________________', M, Math.max(y, 90), 9, font, gray);
+			t('Firma dell\'autista / ora ritiro ______________________________', 300, Math.max(y, 90), 9, font, gray);
+		}
+		t(`Documento generato da stickerprint.it · pagina ${p + 1}`, M, 40, 8, font, gray);
+	}
+	return pdf.save();
+}

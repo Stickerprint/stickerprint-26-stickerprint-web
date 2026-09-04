@@ -16,7 +16,6 @@
 	const mode = (g: G) => deliveryMode(g);
 	/** "Concludi" si attiva subito per consegna diretta e corriere del cliente; con il nostro corriere solo dopo la trasmissione */
 	const canConclude = (g: G) => g.status === 'pronto' && (mode(g) !== 'ours' || !!(g.items[0].courier && g.items[0].transmitted_at));
-	const pendingCouriers = $derived(Object.entries(data.pending).filter(([, keys]) => keys.length));
 	function openDdt(g: G) { ddtPopup = g.key; ddtParcels = g.items[0].parcels ?? 1; ddtWeight = null; ddtQty = Object.fromEntries(g.items.map((i) => [i.id, i.qty])); }
 	function toggleRow(k: string) { const s = new Set(expanded); s.has(k) ? s.delete(k) : s.add(k); expanded = s; }
 	$effect(() => {
@@ -27,18 +26,29 @@
 
 <svelte:head><title>In spedizione | Dashboard</title></svelte:head>
 
-<div class="toolbar" style="justify-content:space-between;align-items:flex-start">
-	<div><h1>🚀 In spedizione</h1><p class="lead">Scegli il corriere dalla tendina, trasmetti le spedizioni per corriere (etichette 10×15 in un unico PDF per corriere) e poi concludi: DDT ed etichette dei colli. Consegna diretta e corriere del cliente si concludono subito.</p></div>
-	{#if pendingCouriers.length}
-		<div class="transmit-bar">
-			{#each pendingCouriers as [courier, keys] (courier)}
-				<form method="POST" action="?/transmit" use:enhance><input type="hidden" name="courier" value={courier} /><button class="btn btn--green transmit-btn" type="submit"><img src={COURIERS[courier].logo} alt={courier} /> Trasmetti spedizioni {courier} ({keys.length})</button></form>
-			{/each}
-		</div>
-	{/if}
+<div class="ship-head">
+	<div><h1>🚀 In spedizione</h1><p class="lead">Scegli il corriere dalla tendina. Nelle colonne: <b>Genera spedizioni</b> scarica in un unico PDF le etichette del corriere, poi <b>Trasmetti spedizioni</b> invia al corriere e scarica il MANIFEST da consegnare all'autista. Infine <b>Concludi</b>: DDT ed etichette dei colli. Consegna diretta e corriere del cliente si concludono subito.</p></div>
+	<div class="ship-cols">
+		{#each data.couriers as c (c.id)}
+			<div class="ship-col" class:is-off={!c.today}>
+				<img src={COURIERS[c.id].logo} alt={c.id} />
+				<b class="ship-col__n">{c.today}</b>
+				<span class="osub">{c.today === 1 ? 'spedizione affidata oggi' : 'spedizioni affidate oggi'}{#if !c.configured} · <span title="Collega le API in Setup → Corrieri">senza API</span>{/if}</span>
+				<form method="POST" action="?/labels" use:enhance><input type="hidden" name="courier" value={c.id} /><button class="btn btn--blue btn--xs" type="submit" disabled={!c.toGenerate.length} title={c.toGenerate.length ? 'Crea le spedizioni e scarica le etichette' : 'Nessuna spedizione da generare'}>🏷️ Genera spedizioni{#if c.toGenerate.length} ({c.toGenerate.length}){/if}</button></form>
+				{#if c.toTransmit.length}
+					<form method="POST" action="?/transmit" use:enhance><input type="hidden" name="courier" value={c.id} /><button class="btn btn--green btn--xs" type="submit" title="Invia al corriere e scarica il manifest">📤 Trasmetti spedizioni ({c.toTransmit.length})</button></form>
+				{/if}
+				{#if c.transmitted.length}
+					<a class="link" style="font-size:12px" href="/dashboard/produzione/spedizioni/etichette?groups={c.transmitted.join(',')}&courier={c.id}&day=1" target="_blank">⬇ etichette di oggi</a>
+					{#if c.manifestId}<a class="link" style="font-size:12px" href="/dashboard/produzione/spedizioni/manifest/{c.manifestId}" target="_blank">⬇ manifest di oggi</a>{/if}
+				{/if}
+			</div>
+		{/each}
+	</div>
 </div>
 {#if form?.error}<p class="error">{form.error}</p>{/if}
-{#if form?.ok && form.transmitted}<p class="success">{form.count} {form.count === 1 ? 'spedizione trasmessa' : 'spedizioni trasmesse'} a {form.transmitted}: <a class="link" href={form.labels} target="_blank" rel="noopener">⬇ etichette {form.transmitted}</a> (si aprono anche in una nuova scheda). Ora puoi concludere gli ordini.</p>{/if}
+{#if form?.ok && form.generated}<p class="success">{form.count} {form.count === 1 ? 'spedizione generata' : 'spedizioni generate'} per {form.generated}: <a class="link" href={form.labels} target="_blank" rel="noopener">⬇ etichette {form.generated}</a> (si aprono anche in una nuova scheda). Applica le etichette sui pacchi e poi "Trasmetti spedizioni".{#if form.warnings?.length}<br /><small>{form.warnings.join(' · ')}</small>{/if}</p>{/if}
+{#if form?.ok && form.transmitted}<p class="success">{form.count} {form.count === 1 ? 'spedizione trasmessa' : 'spedizioni trasmesse'} a {form.transmitted} · manifest {form.manifest}: <a class="link" href={form.labels} target="_blank" rel="noopener">⬇ MANIFEST da consegnare all'autista</a>. Ora puoi concludere gli ordini.{#if form.warnings?.length}<br /><small>{form.warnings.join(' · ')}</small>{/if}</p>{/if}
 {#if form?.ok && form.ddt}<p class="success">DDT {form.ddt} creato: <a class="link" href={form.labels} target="_blank" rel="noopener">⬇ etichette dei colli</a>.</p>{/if}
 
 <div class="dcard" style="padding:0;overflow-x:auto">
@@ -73,7 +83,7 @@
 									{/if}
 								</form>
 							</div>
-							{#if f.courier}<div class="osub">{f.transmitted_at ? '✓ trasmessa' : 'da trasmettere'}</div>{/if}
+							{#if f.courier}<div class="osub">{f.transmitted_at ? '✓ trasmessa' : f.labels_generated_at ? 'etichette pronte · da trasmettere' : 'da generare'}{#if f.tracking_number} · {f.tracking_number}{/if}</div>{/if}
 						{/if}
 						{#if f.parcels && g.status !== 'pronto'}<div class="osub">{f.parcels} {f.parcels === 1 ? 'collo' : 'colli'}</div>{/if}
 					</td>
@@ -87,7 +97,7 @@
 					<td style="white-space:nowrap">
 						{#if g.status === 'pronto'}
 							<button type="button" class="btn btn--green btn--xs" disabled={!canConclude(g)} title={canConclude(g) ? 'DDT ed etichette dei colli' : 'Scegli il corriere e trasmetti la spedizione'} onclick={() => openDdt(g)}>✓ Concludi</button>
-							{#if f.courier && f.transmitted_at}<a class="btn btn--ghost btn--xs" href="/dashboard/produzione/spedizioni/etichette?groups={g.key}&courier={f.courier}" target="_blank" title="Etichette di spedizione">🏷️</a>{/if}
+							{#if f.courier && f.labels_generated_at}<a class="btn btn--ghost btn--xs" href="/dashboard/produzione/spedizioni/etichette?groups={g.key}&courier={f.courier}&day=1" target="_blank" title="Etichetta di spedizione">🏷️</a>{/if}
 						{:else}
 							<form method="POST" action="?/status" use:enhance style="display:flex;gap:6px">
 								<input type="hidden" name="group" value={g.key} />

@@ -45,7 +45,8 @@
 		{ id: 'setup', title: 'Setup', items: [
 			{ label: 'Metodi di pagamento', href: '/dashboard/setup/metodi-pagamento' },
 			{ label: 'Codici sconto', href: '/dashboard/setup/codici-sconto' },
-			{ label: 'Codici prodotto', href: '/dashboard/setup/codici-prodotto' }
+			{ label: 'Codici prodotto', href: '/dashboard/setup/codici-prodotto' },
+			{ label: 'Corrieri', href: '/dashboard/setup/corrieri' }
 		] }
 	]);
 	const active = (href: string, exact = false) => path === href || (!exact && path.startsWith(href + '/'));
