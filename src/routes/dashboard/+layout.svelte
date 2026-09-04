@@ -29,7 +29,17 @@
 		{ id: 'anagrafica', title: 'Anagrafica', items: [
 			{ label: 'Clienti', href: '/dashboard/anagrafica/clienti' }
 		] },
-		{ id: 'marketing', title: 'Marketing', items: [{ label: 'Panoramica', href: '/dashboard/marketing' }] },
+		{ id: 'marketing', title: 'Marketing', items: [
+			// Dati dalla dashboard PERIZ Marketing (src/lib/server/periz.ts)
+			{ label: 'Panoramica', href: '/dashboard/marketing', exact: true },
+			{ label: 'Programmazione', href: '/dashboard/marketing/programmazione' },
+			{ label: 'Budget & ADV', href: '/dashboard/marketing/budget' },
+			{ label: 'Contenuti', href: '/dashboard/marketing/contenuti' },
+			{ label: 'Risultati', href: '/dashboard/marketing/risultati' },
+			{ label: 'Approvazioni', href: '/dashboard/marketing/approvazioni', count: data.counts?.approvazioni },
+			{ label: 'Appuntamenti', href: '/dashboard/marketing/appuntamenti' },
+			{ label: 'Notifiche', href: '/dashboard/marketing/notifiche', count: data.counts?.notifiche }
+		] },
 		{ id: 'blog', title: 'Blog', items: [{ label: 'Articoli', href: '/dashboard/blog' }] },
 		{ id: 'preventivatori', title: 'Preventivatori', items: PRODUCT_ENGINES.map((p) => ({ label: p.name, href: `/dashboard/preventivatori/${p.slug}` })) },
 		{ id: 'setup', title: 'Setup', items: [
@@ -38,7 +48,7 @@
 			{ label: 'Codici prodotto', href: '/dashboard/setup/codici-prodotto' }
 		] }
 	]);
-	const active = (href: string) => path === href || path.startsWith(href + '/');
+	const active = (href: string, exact = false) => path === href || (!exact && path.startsWith(href + '/'));
 
 	// gruppi aperti/chiusi, ricordati nel browser
 	let closed = $state<Set<string>>(new Set());
@@ -112,7 +122,7 @@
 						</button>
 						{#if !closed.has(group.id)}
 							{#each group.items as it (it.href)}
-								<a href={it.href} class:is-active={active(it.href)}>{it.label}{#if it.count}<span class="dash__cnt">{it.count}</span>{/if}</a>
+								<a href={it.href} class:is-active={active(it.href, 'exact' in it && it.exact)}>{it.label}{#if it.count}<span class="dash__cnt">{it.count}</span>{/if}</a>
 							{/each}
 						{/if}
 					</div>
