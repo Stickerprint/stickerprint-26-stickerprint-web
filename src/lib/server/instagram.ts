@@ -18,13 +18,13 @@ let cache: { at: number; data: IgData } | null = null;
 
 async function fromPeriz(): Promise<IgData | null> {
 	if (!perizConfigurato()) return null;
-	const s = await periz.social();
+	const [s, k] = await Promise.all([periz.social(), periz.contenuti()]);
 	if (!s.ok || !s.collegato) return null;
-	const media: IgMedia[] = (s.contenuti ?? [])
-		.filter((c) => c.anteprima && (!c.permalink || /instagram\.com/i.test(c.permalink) || !/facebook\.com/i.test(c.permalink ?? '')))
-		.sort((a, b) => String(b.data ?? '').localeCompare(String(a.data ?? '')))
-		.slice(0, 8)
-		.map((c) => ({ id: c.id, permalink: c.permalink || c.url || PROFILE, image: c.anteprima as string, caption: (c.didascalia ?? '').slice(0, 140), isVideo: /video|reel/i.test(c.tipo ?? '') }));
+	// feed: i post che l'agenzia ha pubblicato su Instagram (immagine o anteprima video dalla dashboard PERIZ)
+	const published = k.ok ? k.contenuti.filter((c) => (c.published_at || c.status === 'pubblicato') && c.url && (c.media === 'immagine' || c.media === 'video') && (!c.platforms?.length || c.platforms.some((p) => /instagram/i.test(String(p))))) : [];
+	published.sort((a, b) => String(b.published_at ?? b.publish_date ?? '').localeCompare(String(a.published_at ?? a.publish_date ?? '')));
+	const top = new Map((s.contenuti ?? []).map((c) => [c.id, c.permalink || c.url || null]));
+	const media: IgMedia[] = published.slice(0, 8).map((c) => ({ id: c.id, permalink: top.get(c.id) || PROFILE, image: c.url as string, caption: (c.caption ?? c.title ?? '').slice(0, 140), isVideo: c.media === 'video' }));
 	if (s.kpi.follower == null && media.length < 4) return null;
 	return { username: s.instagram.username ?? 'stickerprint.it', profileUrl: PROFILE, followers: s.kpi.follower ?? null, media: media.length >= 4 ? media : FALLBACK.media, live: true, source: 'periz', updatedAt: s.aggiornato ?? new Date().toISOString() };
 }
