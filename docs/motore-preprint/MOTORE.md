@@ -194,13 +194,17 @@ per dire "N etichette per foglio → M fogli". Banco: `scratchpad/harness/foglio
 Con `rilievo=1` (URL) o `config.rilievo=true` il motore dipinge l'effetto rilievo
 (vernice UV spessa, sempre lucida) SOLO sui dettagli del disegno. `rilievoMask()`
 divide il disegno in regioni delimitate dai bordi netti (Sobel su luminanza e
-crominanza, copia a 640 px) e alza una regione se e' sottile (raggio inscritto
-< 8% del lato corto del disegno) o piccola (< 6% dell'area); restano piatti lo
-sfondo del file, il colore di fondo scelto e le campiture larghe (le sfumature
+crominanza, copia a 640 px) e alza una regione se e' piccola (< 5% dell'area) o sottile (raggio inscritto
+< 8% del lato corto) purche' non sia una campitura (< 12%); restano piatti lo
+sfondo del file, il colore di fondo scelto, le campiture larghe e OGNI pezzo del
+loro stesso colore (il fondo tagliato in spicchi da scritte e cerchi) (le sfumature
 non hanno bordi netti, quindi restano una regione sola). Se il rilievo supera il
 60% del disegno la soglia dei bordi sale (file complessi). `rilievoApply()` in
 `renderCore` compone: ombra portata in basso a destra, ombra interna sul fianco,
-cresta di luce in alto a sinistra, velo lucido e colori piu' pieni. L'effetto va
+cresta di luce in alto a sinistra con filo netto sul ciglio, velo lucido e colori
+piu' pieni (`S.rilForza` regola l'intensita'; `?rildebug=1` tinge la maschera di rosso
+e mette le regioni in `S.ril.regs`). La lente "Rilievo da vicino" ingrandisce 2,6x
+e si trascina per spostarsi. L'effetto va
 sopra la finitura (UV opaca spegne il resto, il rilievo resta lucido). Banco:
 `scratchpad/harness/rilievo.html`. Sul sito il passo "Finitura" del rilievo ha
 UV opaca (consigliata) e UV lucida (`finishTitle`/`finishNote` nel listino).
