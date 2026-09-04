@@ -22,10 +22,10 @@ export async function buildLabelsPdf(orders: (LabelOrder & { parcels: number; co
 			const ld = logo.scale(58 / logo.height);
 			page.drawImage(logo, { x: M, y: H - M - ld.height, width: ld.width, height: ld.height });
 			t(COMPANY.name, M + ld.width + 8, H - M - 14, 9, bold);
-			t(COMPANY.address, M + ld.width + 8, H - M - 26, 7, font, gray);
-			t(`${COMPANY.email} · ${COMPANY.site}`, M + ld.width + 8, H - M - 36, 7, font, gray);
+			t(COMPANY.address, M + ld.width + 8, H - M - 26, 6.5, font, gray);
+			t(`${COMPANY.email} · ${COMPANY.site}`, M + ld.width + 8, H - M - 36, 6.5, font, gray);
 			page.drawLine({ start: { x: M, y: H - M - 66 }, end: { x: W - M, y: H - M - 66 }, thickness: 1, color: rgb(0.85, 0.87, 0.92) });
-			t(o.courier.toUpperCase(), M, H - M - 84, 13, bold);
+			if (!/diretta/i.test(o.courier)) t(o.courier.toUpperCase(), M, H - M - 84, 13, bold);
 			page.drawText(`COLLO ${n} / ${parcels}`, { x: W - M - bold.widthOfTextAtSize(`COLLO ${n} / ${parcels}`, 13), y: H - M - 84, size: 13, font: bold, color: navy });
 			t('DESTINATARIO', M, H - M - 108, 7, bold, gray);
 			let y = H - M - 124;
@@ -54,13 +54,14 @@ function docHeader(page: PDFPage, font: PDFFont, bold: PDFFont, logo: Awaited<Re
 	const M = 48; const top = 800;
 	const ld = logo.scale(52 / logo.height);
 	page.drawImage(logo, { x: M, y: top - ld.height + 8, width: ld.width, height: ld.height });
-	page.drawText(COMPANY.name, { x: M + ld.width + 10, y: top - 6, size: 14, font: bold, color: navy });
-	page.drawText(COMPANY.address, { x: M + ld.width + 10, y: top - 20, size: 8.5, font, color: gray });
-	page.drawText(`P.IVA ${COMPANY.vat} · ${COMPANY.email} · ${COMPANY.site}`, { x: M + ld.width + 10, y: top - 31, size: 8.5, font, color: gray });
-	page.drawText(title, { x: 547 - bold.widthOfTextAtSize(title, 18), y: top - 4, size: 18, font: bold, color: navy });
-	page.drawText(`N. ${number}`, { x: 547 - bold.widthOfTextAtSize(`N. ${number}`, 10), y: top - 20, size: 10, font: bold, color: navy });
-	page.drawText(`Data: ${date}`, { x: 547 - font.widthOfTextAtSize(`Data: ${date}`, 9), y: top - 32, size: 9, font, color: gray });
+	const [l1, l2, l3] = COMPANY.headerLines;
+	page.drawText(l1, { x: 547 - bold.widthOfTextAtSize(l1, 13), y: top - 4, size: 13, font: bold, color: navy });
+	page.drawText(l2, { x: 547 - font.widthOfTextAtSize(l2, 9.5), y: top - 19, size: 9.5, font, color: gray });
+	page.drawText(l3, { x: 547 - font.widthOfTextAtSize(l3, 9.5), y: top - 32, size: 9.5, font, color: gray });
 	page.drawLine({ start: { x: M, y: top - 56 }, end: { x: 547, y: top - 56 }, thickness: 1, color: rgb(0.85, 0.87, 0.92) });
+	page.drawText(title, { x: M, y: top - 76, size: 15, font: bold, color: navy });
+	const nd = `N. ${number} · ${date}`;
+	page.drawText(nd, { x: 547 - bold.widthOfTextAtSize(nd, 11), y: top - 76, size: 11, font: bold, color: navy });
 }
 const addrLines = (a: Record<string, string>) => [a.company, [a.first_name, a.last_name].filter(Boolean).join(' '), [a.street, a.street2].filter(Boolean).join(', '), [a.zip, a.city, a.province ? `(${a.province})` : ''].filter(Boolean).join(' '), a.country && a.country !== 'IT' ? a.country : 'Italia', a.vat ? `P.IVA ${a.vat}` : '', a.fiscal_code ? `C.F. ${a.fiscal_code}` : ''].filter(Boolean);
 const eur = (v: number) => `${v.toFixed(2).replace('.', ',')} €`;
@@ -72,7 +73,7 @@ export async function buildDdtPdf(d: DdtData): Promise<Uint8Array> {
 	const font = await pdf.embedFont(StandardFonts.Helvetica); const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
 	const logo = await pdf.embedPng(b64(LOGO_PNG_B64));
 	docHeader(page, font, bold, logo, 'DOCUMENTO DI TRASPORTO', d.number, new Date(d.issued_at).toLocaleDateString('it-IT'));
-	const M = 48; let y = 720;
+	const M = 48; let y = 700;
 	const t = (txt: string, x: number, yy: number, size = 10, f: PDFFont = font, color = navy) => page.drawText(txt, { x, y: yy, size, font: f, color });
 	t('Cliente', M, y, 8.5, bold, gray); t('Destinazione', 320, y, 8.5, bold, gray); y -= 14;
 	const L = addrLines(d.customer), R = addrLines(d.shipping);

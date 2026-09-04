@@ -12,7 +12,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase } }) => {
 	if (ddtId) {
 		const { data: d } = await supabase.from('ddts').select('checkout_group, parcels').eq('id', ddtId).maybeSingle();
 		if (!d?.checkout_group) error(404, 'DDT non trovato');
-		groups = [d.checkout_group]; courier = 'Consegna diretta Stickerprint'; parcelsOverride = d.parcels;
+		groups = [d.checkout_group]; courier = url.searchParams.get('courier') || 'Consegna diretta'; parcelsOverride = d.parcels;
 	}
 	if (!groups.length) error(400, 'Nessun ordine');
 	const { data } = await supabase.from('orders').select('*').in('checkout_group', groups);

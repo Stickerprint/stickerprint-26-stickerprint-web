@@ -20,16 +20,30 @@ export const actions: Actions = {
 		if (error) return fail(400, { error: error.message });
 		return { ok: true, labels: `/dashboard/produzione/spedizioni/etichette?groups=${groups.join(',')}&courier=${courier}` };
 	},
-	/** Consegna diretta Stickerprint: genera DDT ed etichette dei colli, poi l'ordine è spedito */
+	/** Ordini manuali: SEMPRE con DDT (consegna diretta o corriere). Le quantità possono cambiare rispetto all'ordine. */
 	ddt: async ({ request, locals: { supabase } }) => {
 		const f = await request.formData();
 		const group = String(f.get('group') ?? '');
 		const parcels = Math.max(1, Number(f.get('parcels') ?? 1));
 		const weight = Number(f.get('weight') ?? 0) || null;
+		const courierChoice = String(f.get('courier') ?? '');
+		let qtys: Record<string, number> = {};
+		try { qtys = JSON.parse(String(f.get('qtys') ?? '{}')); } catch { qtys = {}; }
 		const { data } = await supabase.from('orders').select('*').eq('checkout_group', group);
 		if (!data?.length) return fail(404, { error: 'Ordine non trovato.' });
+		// quantità effettivamente consegnate (es. 1000 ordinate, 1200 prodotte): si aggiornano ordine e importi
+		for (const it of data as OrderRow[]) {
+			const q = Math.max(1, Math.round(Number(qtys[it.id] ?? it.qty)));
+			if (q !== it.qty) {
+				const unit = Number(it.unit_net ?? Number(it.total_net) / it.qty);
+				const net = r2(unit * q);
+				await supabase.from('orders').update({ qty: q, total_net: net, total_gross: r2(net * 1.22) }).eq('id', it.id);
+				it.qty = q; it.total_net = net; it.total_gross = r2(net * 1.22);
+			}
+		}
 		const g = groupOrders(data as OrderRow[])[0];
 		const first = g.items[0];
+		const direct = /diretta/i.test(g.shipping_method ?? '') || !courierChoice;
 		const { data: num } = await supabase.rpc('next_ddt_number');
 		const lines = g.items.map((i) => ({ description: `${i.product_name}${i.description ? ' · ' + i.description : ''}${itemMeta(i) && !i.description ? ' · ' + itemMeta(i) : ''}`, qty: i.qty, unit_net: r2(Number(i.unit_net ?? Number(i.total_net) / i.qty)), total_net: r2(Number(i.total_net)) }));
 		const subtotal = r2(lines.reduce((s, l) => s + l.total_net, 0));
@@ -37,8 +51,8 @@ export const actions: Actions = {
 			data: { customer: first.billing ?? first.shipping ?? {}, shipping: first.shipping ?? {}, lines, subtotal_net: subtotal, vat_amount: r2(subtotal * 0.22), total_gross: r2(subtotal * 1.22), order_numbers: g.numbers, notes: first.internal_notes ?? null, payment_method: g.payment_method, payment_terms: first.payment_terms ?? null } };
 		const { data: row, error } = await supabase.from('ddts').insert(ddt).select('id').single();
 		if (error) return fail(400, { error: `DDT non creato: ${error.message}` });
-		await supabase.from('orders').update({ status: 'spedito', courier: 'Consegna diretta', parcels, weight_kg: weight, shipped_at: new Date().toISOString(), ddt_id: row.id }).eq('checkout_group', group);
-		return { ok: true, labels: `/dashboard/produzione/spedizioni/etichette?ddt=${row.id}`, ddt: ddt.number };
+		await supabase.from('orders').update({ status: direct ? 'spedito' : 'in_spedizione', courier: direct ? 'Consegna diretta' : courierChoice, parcels, weight_kg: weight, shipped_at: new Date().toISOString(), ddt_id: row.id }).eq('checkout_group', group);
+		return { ok: true, labels: `/dashboard/produzione/spedizioni/etichette?ddt=${row.id}${direct ? '' : `&courier=${encodeURIComponent(courierChoice)}`}`, ddt: ddt.number };
 	},
 	status: async ({ request, locals: { supabase } }) => {
 		const f = await request.formData();

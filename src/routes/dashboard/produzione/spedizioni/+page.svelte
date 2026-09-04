@@ -10,9 +10,14 @@
 	let ddtPopup = $state<string | null>(null);
 	let ddtParcels = $state(1);
 	let ddtWeight = $state<number | null>(null);
+	let ddtQty = $state<Record<string, number>>({});
+	let ddtCourier = $state('GLS');
+	const ddtGroup = $derived(data.groups.find((g) => g.key === ddtPopup) ?? null);
+	const ddtTotal = $derived(ddtGroup ? ddtGroup.items.reduce((s, i) => s + Number(i.unit_net ?? Number(i.total_net) / i.qty) * Number(ddtQty[i.id] ?? i.qty), 0) : 0);
 	const ready = $derived(data.groups.filter((g) => g.status === 'pronto'));
 	const isDirect = (g: (typeof data.groups)[number]) => /diretta/i.test(g.shipping_method ?? '');
-	const selectableAll = $derived(ready.filter((g) => !isDirect(g)).map((g) => g.key));
+	const selectableAll = $derived(ready.filter((g) => g.channel !== 'manuale').map((g) => g.key));
+	function openDdt(g: (typeof data.groups)[number]) { ddtPopup = g.key; ddtParcels = 1; ddtWeight = null; ddtQty = Object.fromEntries(g.items.map((i) => [i.id, i.qty])); ddtCourier = 'GLS'; }
 	function toggle(k: string) { const s = new Set(selected); s.has(k) ? s.delete(k) : s.add(k); selected = s; }
 	function toggleAll() { selected = selected.size === selectableAll.length ? new Set() : new Set(selectableAll); }
 	$effect(() => {
@@ -38,7 +43,7 @@
 				{@const ship = g.items[0].shipping ?? {}}
 				{@const f = g.items[0]}
 				<tr>
-					<td>{#if g.status === 'pronto' && !isDirect(g)}<input type="checkbox" checked={selected.has(g.key)} onchange={() => toggle(g.key)} />{/if}</td>
+					<td>{#if g.status === 'pronto' && g.channel !== 'manuale'}<input type="checkbox" checked={selected.has(g.key)} onchange={() => toggle(g.key)} />{/if}</td>
 					<td>{#if f.proof_url || f.preview_url || f.mockup_url}<img src={f.proof_url ?? f.preview_url ?? f.mockup_url} alt="" style="width:64px;height:64px;object-fit:contain;border-radius:8px;background:#f4f5fa" />{:else}<span class="thumb-ph"></span>{/if}{#if g.items.length > 1}<div class="osub">+{g.items.length - 1}</div>{/if}</td>
 					<td><a class="oid" href="/dashboard/fatturazione/ordini/{g.key}">{g.number}</a><div class="osub">{dmy(g.created_at)} · {g.qty} pz · {money(g.gross)}</div><div class="osub">{f.product_name} · {itemMeta(f)}</div></td>
 					<td><b>{g.customer}</b><div class="osub">{g.email}</div></td>
@@ -52,8 +57,8 @@
 						</form>
 					</td>
 					<td>
-						{#if g.status === 'pronto' && isDirect(g)}
-							<button type="button" class="btn btn--green btn--xs" onclick={() => { ddtPopup = g.key; ddtParcels = 1; ddtWeight = null; }}>✓ Spedito → DDT</button>
+						{#if g.status === 'pronto' && g.channel === 'manuale'}
+							<button type="button" class="btn btn--green btn--xs" onclick={() => openDdt(g)}>✓ Spedito → DDT</button>
 						{:else}
 							<form method="POST" action="?/status" use:enhance style="display:flex;gap:6px">
 								<input type="hidden" name="group" value={g.key} />
@@ -87,13 +92,40 @@
 		</form>
 	</div></div>
 {/if}
-{#if ddtPopup}
-	<div class="modal-bg"><div class="modal" style="width:min(460px,100%)">
-		<h3>Consegna diretta: genera il DDT</h3>
+{#if ddtPopup && ddtGroup}
+	<div class="modal-bg"><div class="modal" style="width:min(760px,100%)">
+		<h3>DDT per l'ordine {ddtGroup.number} · {ddtGroup.customer}</h3>
+		<p class="note">Controlla le voci: puoi cambiare solo le quantità (es. ordinate 1.000, prodotte 1.200). Importi e fattura seguiranno le quantità consegnate.</p>
 		<form method="POST" action="?/ddt" use:enhance style="display:grid;gap:12px">
 			<input type="hidden" name="group" value={ddtPopup} />
-			<div class="row2"><label>Colli<input type="number" name="parcels" min="1" bind:value={ddtParcels} /></label><label>Peso (kg)<input type="number" name="weight" step="0.1" min="0" bind:value={ddtWeight} placeholder="es. 2.4" /></label></div>
-			<p class="note">Il DDT prende il prossimo numero SPD e viene salvato in Fatturazione → DDT. Le etichette 10×15 con logo, dati e contenuto si scaricano subito: una per collo.</p>
+			<input type="hidden" name="qtys" value={JSON.stringify(ddtQty)} />
+			{#if !isDirect(ddtGroup)}<input type="hidden" name="courier" value={ddtCourier} />{/if}
+			<table class="dtable">
+				<thead><tr><th>Articolo</th><th>Q.tà ordinata</th><th>Q.tà consegnata</th><th>Prezzo unit.</th><th style="text-align:right">Imponibile</th></tr></thead>
+				<tbody>
+					{#each ddtGroup.items as it (it.id)}
+						{@const unit = Number(it.unit_net ?? Number(it.total_net) / it.qty)}
+						<tr>
+							<td><b>{it.product_name}</b><div class="osub">{it.description ?? itemMeta(it)}</div></td>
+							<td>{it.qty.toLocaleString('it-IT')}</td>
+							<td><input type="number" min="1" class="sel-sm" style="width:100px" bind:value={ddtQty[it.id]} /></td>
+							<td>{money(unit)}</td>
+							<td style="text-align:right"><b>{money(unit * Number(ddtQty[it.id] ?? it.qty))}</b></td>
+						</tr>
+					{/each}
+				</tbody>
+				<tfoot><tr><td colspan="4"><b>Imponibile</b> · IVA {money(ddtTotal * 0.22)} · totale {money(ddtTotal * 1.22)}</td><td style="text-align:right"><b>{money(ddtTotal)}</b></td></tr></tfoot>
+			</table>
+			<div class="row3" style="grid-template-columns:1fr 1fr 2fr">
+				<label>Colli<input type="number" name="parcels" min="1" bind:value={ddtParcels} /></label>
+				<label>Peso (kg)<input type="number" name="weight" step="0.1" min="0" bind:value={ddtWeight} placeholder="es. 2.4" /></label>
+				{#if isDirect(ddtGroup)}
+					<div><span class="osub">Trasporto</span><br /><b>Consegna diretta Stickerprint</b></div>
+				{:else}
+					<div><span class="osub">Trasporto: {ddtGroup.shipping_method}</span><div class="courier-opts" style="margin-top:6px">{#each ['GLS', 'FedEx', 'TNT'] as c (c)}<label class:is-on={ddtCourier === c} style="padding:8px"><input type="radio" value={c} bind:group={ddtCourier} /> {c}</label>{/each}</div></div>
+				{/if}
+			</div>
+			<p class="note">Il DDT prende il prossimo numero SPD (Fatturazione → DDT) e le etichette 10×15, una per collo, si scaricano subito.</p>
 			<div style="display:flex;gap:8px;justify-content:flex-end"><button type="button" class="btn btn--ghost btn--xs" onclick={() => (ddtPopup = null)}>Annulla</button><button class="btn btn--green" type="submit">Genera DDT ed etichette</button></div>
 		</form>
 	</div></div>

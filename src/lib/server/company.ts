@@ -1,9 +1,9 @@
 /** Dati aziendali per fatture, DDT, etichette e XML fattura elettronica. Da completare con i dati reali. */
 export const COMPANY = {
 	name: 'Stickerprint Srl',
-	street: 'Via Aldo Moro 18/c',
-	zip: '20085',
-	city: 'Locate di Triulzi',
+	street: 'Via Staffora 20/3',
+	zip: '20073',
+	city: 'Opera',
 	province: 'MI',
 	country: 'IT',
 	vat: '11308040960',        // P.IVA (in fattura e XML senza il prefisso IT)
@@ -17,5 +17,7 @@ export const COMPANY = {
 	phone: '',
 	site: 'stickerprint.it',
 	vatRate: 0.22,
-	get address() { return `${this.street}, ${this.zip} ${this.city} (${this.province})`; }
+	get address() { return `${this.street} - ${this.zip} ${this.city} (${this.province})`; },
+	/** Le tre righe dell'intestazione dei documenti */
+	get headerLines() { return [this.name, this.address, `P.IVA Cod. Fisc: ${this.vat} - ${this.email} - ${this.site}`]; }
 };

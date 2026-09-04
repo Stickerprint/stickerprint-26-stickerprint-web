@@ -1,5 +1,6 @@
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import { COMPANY } from './company';
+import { LOGO_PNG_B64 } from './logo-b64';
 
 export interface InvoiceLine { description: string; qty: number; unit_net: number; total_net: number }
 export interface InvoiceData {
@@ -49,16 +50,20 @@ export async function buildInvoicePdf(inv: InvoiceData): Promise<Uint8Array> {
 	const text = (t: string, x: number, yy: number, size = 10, f = font, color = navy) => page.drawText(t, { x, y: yy, size, font: f, color });
 	const right = (t: string, xRight: number, yy: number, size = 10, f = font, color = navy) => page.drawText(t, { x: xRight - f.widthOfTextAtSize(t, size), y: yy, size, font: f, color });
 
-	// intestazione
-	text(COMPANY.name, M, y, 18, bold);
-	text(COMPANY.address, M, y - 16, 9, font, gray);
-	text(`${COMPANY.vat} · ${COMPANY.email} · ${COMPANY.site}`, M, y - 28, 9, font, gray);
-	right('FATTURA', 547, y, 18, bold);
-	right(`N. ${inv.number}`, 547, y - 16, 10, bold);
-	right(`Data: ${new Date(inv.issued_at).toLocaleDateString('it-IT')}`, 547, y - 28, 9, font, gray);
-	y -= 70;
+	// intestazione: logo a sinistra, i tre dati aziendali a destra
+	const logo = await pdf.embedPng(Uint8Array.from(atob(LOGO_PNG_B64), (c) => c.charCodeAt(0)));
+	const ld = logo.scale(64 / logo.height);
+	page.drawImage(logo, { x: M, y: y - ld.height + 12, width: ld.width, height: ld.height });
+	const [l1, l2, l3] = COMPANY.headerLines;
+	right(l1, 547, y, 13, bold);
+	right(l2, 547, y - 16, 9.5, font, gray);
+	right(l3, 547, y - 29, 9.5, font, gray);
+	y -= 62;
 	page.drawLine({ start: { x: M, y }, end: { x: 547, y }, thickness: 1, color: rgb(0.85, 0.87, 0.92) });
 	y -= 24;
+	text('FATTURA', M, y, 16, bold);
+	right(`N. ${inv.number} · ${new Date(inv.issued_at).toLocaleDateString('it-IT')}`, 547, y, 11, bold);
+	y -= 26;
 
 	// cliente
 	const b = inv.billing;
