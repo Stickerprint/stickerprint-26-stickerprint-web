@@ -145,7 +145,10 @@
 			<label>Stampa: acquisto €/m²<input type="number" step="0.01" min="0" bind:value={cfg.print.costM2} /></label>
 			<label>Stampa: ricarico<input type="number" step="0.01" bind:value={cfg.print.markup} /></label>
 			<label>Stampa: vendita €/m²<input type="text" readonly value={money(sale(cfg.print))} /></label>
-			<label>Avvio produzione (€ per ordine)<input type="number" step="0.5" min="0" bind:value={cfg.setup} /></label>
+			<label>Avvio produzione (€ per ordine, oltre gli scaglioni)<input type="number" step="0.5" min="0" bind:value={cfg.setup} /></label>
+			{#each cfg.setupTiers as t, i (i)}
+				<label>Avvio fino a<span class="dform__pair"><input type="number" step="1" min="1" bind:value={t.upTo} /> pz → <input type="number" step="0.5" min="0" bind:value={t.setup} /> €</span></label>
+			{/each}
 		</div>
 	</div>
 

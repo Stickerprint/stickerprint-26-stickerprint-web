@@ -24,13 +24,16 @@ export interface MaterialOption extends CostItem { id: string; label: string; de
 export interface FinishOption { id: string; label: string; description?: string; img?: string; laminate: boolean; visible: boolean }
 export interface ShapeOption { id: string; label: string; description?: string; img?: string; equal?: boolean; ratio?: number; visible: boolean; presets: number[] } // ratio = proporzione fissa larghezza/altezza (fogli)
 export interface RangeStep { from: number; factor: number }
+/** Avvio produzione a scaglioni: fino a `upTo` pezzi si paga `setup`; oltre l'ultimo scaglione vale `cfg.setup` */
+export interface SetupTier { upTo: number; setup: number }
 
 export interface EngineConfig {
 	version: 3;
 	kind: EngineKind; // 'lamina' = lamina protettiva opzionale; 'resina' = resina sempre inclusa
 	vat: number;
 	creditRate: number;
-	setup: number; // avvio produzione, una tantum
+	setup: number; // avvio produzione, una tantum (oltre l'ultimo scaglione)
+	setupTiers: SetupTier[]; // avvio produzione ridotto per le quantità piccole
 	print: CostItem;
 	laminate: CostItem; // solo kind 'lamina'
 	resin: { costKg: number; gramsPerCm2: number; markup: number }; // solo kind 'resina'
@@ -104,6 +107,7 @@ function base(over: Partial<EngineConfig> = {}): EngineConfig {
 		vat: 1.22,
 		creditRate: 0.05,
 		setup: 50,
+		setupTiers: [{ upTo: 20, setup: 20 }, { upTo: 50, setup: 30 }],
 		print: { costM2: 4, markup: 0 },
 		laminate: { costM2: 4, markup: 0 },
 		resin: { costKg: 10.9, gramsPerCm2: 0.15, markup: 1.5 },
@@ -180,11 +184,18 @@ export function mergeConfig(defaults: EngineConfig, saved: unknown): EngineConfi
 		size: { ...defaults.size, ...(s.size ?? {}) },
 		commercialRange: Array.isArray(s.commercialRange) && s.commercialRange.length ? [...s.commercialRange].sort((a, b) => a.from - b.from) : defaults.commercialRange,
 		priceRange: Array.isArray(s.priceRange) && s.priceRange.length ? [...s.priceRange].sort((a, b) => a.from - b.from) : defaults.priceRange,
+		setupTiers: Array.isArray(s.setupTiers) ? [...s.setupTiers].filter((t) => t && t.upTo > 0 && t.setup >= 0).sort((a, b) => a.upTo - b.upTo) : defaults.setupTiers,
 		quantities: Array.isArray(s.quantities) && s.quantities.length ? [...s.quantities].map(Number).filter((n) => n > 0).sort((a, b) => a - b) : defaults.quantities,
 		shapes: list(defaults.shapes, s.shapes),
 		materials: list(defaults.materials, s.materials),
 		finishes: list(defaults.finishes, s.finishes)
 	};
+}
+
+/** Avvio produzione per una quantità: lo scaglione più basso che la contiene, altrimenti quello pieno */
+export function setupFor(cfg: EngineConfig, qty: number): number {
+	for (const t of cfg.setupTiers ?? []) if (qty <= t.upTo) return t.setup;
+	return cfg.setup;
 }
 
 export const sale = (c: CostItem) => c.costM2 * (1 + (c.markup ?? 0));
@@ -239,7 +250,8 @@ export function quoteWith(cfg: EngineConfig, o: { w: number; h: number; forma: s
 	const print = sale(cfg.print) * m2 * crF * prF;
 	const laminate = cfg.kind === 'lamina' && fin?.laminate ? sale(cfg.laminate) * m2 * crF * prF : 0;
 	const resin = cfg.kind === 'resina' ? resinSaleCm2(cfg.resin) * cm2 * prF : 0;
-	const net = Math.round((material + print + laminate + resin + cfg.setup) * 100) / 100;
+	const setup = setupFor(cfg, qty);
+	const net = Math.round((material + print + laminate + resin + setup) * 100) / 100;
 	const gross = Math.round(net * cfg.vat * 100) / 100;
 	const shown = o.vatIncluded ? gross : net;
 	return {
@@ -248,7 +260,7 @@ export function quoteWith(cfg: EngineConfig, o: { w: number; h: number; forma: s
 		perPiece: shown / qty,
 		perPieceNet: net / qty,
 		credit: net * cfg.creditRate,
-		breakdown: { m2, cm2, cr, pr, material, print, laminate, resin, setup: cfg.setup }
+		breakdown: { m2, cm2, cr, pr, material, print, laminate, resin, setup }
 	};
 }
 

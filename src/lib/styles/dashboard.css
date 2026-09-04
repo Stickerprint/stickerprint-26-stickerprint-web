@@ -30,6 +30,8 @@
 .dtable input[type=number] { max-width: 120px; }
 .dform { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); align-items: end; }
 .dform label { display: grid; gap: 4px; font-size: 12.5px; font-weight: 700; color: var(--muted); }
+.dform__pair { display: flex; align-items: center; gap: 6px; font-weight: 600; color: var(--ink); }
+.dform__pair input { width: 90px; }
 .dform input, .dform select, .dform textarea { padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; font: inherit; font-size: 14px; background: #fff; }
 .pill { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 11.5px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
 .pill--on { background: #e1f3e8; color: #1d7a46; } .pill--off { background: #fbe3e1; color: #b3261e; } .pill--soon { background: var(--sky); color: var(--blue); }

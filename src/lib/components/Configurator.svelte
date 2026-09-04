@@ -339,13 +339,12 @@
 		</div>
 
 		<!-- quantità -->
-		<div class="step" class:is-open={step === 'qty'}>
-			<button class="step__head" type="button" onclick={() => (step = 'qty')} aria-expanded={step === 'qty'}>
+		<!-- sempre aperto: il cliente vede tutti i prezzi a colpo d'occhio -->
+		<div class="step is-open step--qty">
+			<div class="step__head" role="presentation">
 				<span class="step__n">{stepNo('qty')}</span>
-				<span class="step__title">Scegli quantità {#if step !== 'qty'}<em>{qty.toLocaleString('it-IT')} pezzi · {eur0(vatIncluded ? q.gross : q.net)}</em>{/if}</span>
-				<span class="step__edit">{step === 'qty' ? '' : 'Modifica'}</span>
-			</button>
-			{#if step === 'qty'}
+				<span class="step__title">Scegli quantità <em>{qty.toLocaleString('it-IT')} pezzi · {eur0(vatIncluded ? q.gross : q.net)}</em></span>
+			</div>
 				<div class="step__body">
 					<div class="qty-grid">
 						{#each cfg.quantities as n (n)}
@@ -369,7 +368,6 @@
 						{/if}
 					{/if}
 				</div>
-			{/if}
 		</div>
 
 	</aside>
