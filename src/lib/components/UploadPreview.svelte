@@ -3,7 +3,7 @@
 	 * Anteprima automatica in home.
 	 *  - Adesivi personalizzati: usa il motore "preprint" (static/preprint/index.html)
 	 *    incorporato in un iframe; sagoma e materiale scelti qui vengono passati al motore.
-	 *  - Adesivi resinati / etichette in fogli: anteprima CSS semplificata (per ora).
+	 *  - Adesivi resinati ed etichette in fogli: stesso motore (le etichette con foglio=1, che mostra il foglio intero).
 	 * "Continua la configurazione" salva file e scelte nel browser e porta alla pagina prodotto.
 	 */
 	import { goto } from '$app/navigation';
@@ -14,7 +14,7 @@
 	const PRODUCTS: { id: Product; label: string; href: string; hint: string }[] = [
 		{ id: 'personalizzati', label: 'Adesivi personalizzati', href: '/adesivi-personalizzati', hint: 'Sagoma e linea di taglio calcolate dal tuo file' },
 		{ id: 'resinati', label: 'Adesivi resinati', href: '/adesivi-resinati', hint: 'Cupola in resina lucida, effetto 3D' },
-		{ id: 'fogli', label: 'Etichette in fogli', href: '/etichette', hint: 'Etichette angoli arrotondati, in fogli A4' }
+		{ id: 'fogli', label: 'Etichette in fogli', href: '/etichette', hint: 'Foglio a resa massima, margine 1 cm, etichette a 2 mm' }
 	];
 
 	const FORME = [
@@ -52,7 +52,7 @@
 	let saving = $state(false);
 
 	const current = $derived(PRODUCTS.find((p) => p.id === product)!);
-	const usesEngine = $derived(product === 'personalizzati' || product === 'resinati');
+	const usesEngine = true;
 	const ACCEPT = ['image/png', 'image/jpeg', 'image/svg+xml', 'application/pdf'];
 
 	function pick(f: File | undefined) {
@@ -60,10 +60,6 @@
 		if (!f) return;
 		if (!ACCEPT.includes(f.type)) {
 			error = 'Formati accettati: PNG, JPG, SVG, PDF.';
-			return;
-		}
-		if (f.type === 'application/pdf' && !usesEngine) {
-			error = 'Per le etichette in fogli usa PNG, JPG o SVG.';
 			return;
 		}
 		if (f.size > 25 * 1024 * 1024) {
@@ -93,6 +89,7 @@
 		snapshot = null;
 		sentFor = null;
 		const q = new URLSearchParams({ embed: '1', forma, materiale, prodotto: product === 'resinati' ? 'resinati' : 'sticker' });
+		if (product === 'fogli') q.set('foglio', '1');
 		engineSrc = `/preprint/index.html?${q.toString()}`;
 	}
 
@@ -142,7 +139,7 @@
 	function setProduct(id: Product) {
 		product = id;
 		snapshot = null;
-		if (file && (id === 'personalizzati' || id === 'resinati')) loadEngine();
+		if (file) loadEngine();
 	}
 
 	async function continua() {
@@ -191,18 +188,10 @@
 			</div>
 		</label>
 	{:else}
-		<div class="stage" class:stage--sheet={product === 'fogli'}>
-			{#if product === 'fogli'}
-				<div class="sheet" aria-label="Anteprima etichette in foglio">
-					{#each [1, 2, 3, 4] as i (i)}
-						<img src={url} alt={i === 1 ? 'Anteprima della tua etichetta' : ''} />
-					{/each}
-				</div>
-			{:else}
-				<!-- canvas vivo del motore: bagliore e linea di taglio animati come nel motore -->
-				<iframe bind:this={frame} class="engine engine--live" class:is-ready={!!snapshot} src={engineSrc} title="Anteprima del tuo adesivo" tabindex="-1" onload={() => sendFile()}></iframe>
-				{#if engineBusy}<div class="stage__busy"><span class="spinner spinner--dark"></span> Genero l’anteprima…</div>{/if}
-			{/if}
+		<div class="stage">
+			<!-- canvas vivo del motore: bagliore e linea di taglio animati come nel motore; per le etichette il foglio intero -->
+			<iframe bind:this={frame} class="engine engine--live" class:is-ready={!!snapshot} src={engineSrc} title={product === 'fogli' ? 'Anteprima del tuo foglio di etichette' : 'Anteprima del tuo adesivo'} tabindex="-1" onload={() => sendFile()}></iframe>
+			{#if engineBusy}<div class="stage__busy"><span class="spinner spinner--dark"></span> Genero l’anteprima…</div>{/if}
 		</div>
 	{/if}
 
@@ -212,7 +201,6 @@
 		{/each}
 	</div>
 
-	{#if product !== 'fogli'}
 		<div class="cfg-selects">
 			<label class="cfg-select">
 				<span class="cfg-select__label">Sagoma</span>
@@ -231,7 +219,6 @@
 				</span>
 			</label>
 		</div>
-	{/if}
 
 	<div class="cta-split">
 		<button class="btn btn--blue btn--xl" type="button" disabled={!file || saving || (usesEngine && engineBusy)} onclick={continua}>
