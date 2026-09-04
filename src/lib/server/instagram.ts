@@ -29,7 +29,9 @@ async function fromPeriz(): Promise<IgData | null> {
 		.slice(0, 8)
 		.map((m) => ({ id: m.id, permalink: m.permalink || PROFILE, image: m.immagine as string, caption: (m.didascalia || m.titolo || '').slice(0, 140), isVideo: m.tipo === 'video' }));
 	// I follower solo di Instagram: kpi.follower somma anche Facebook.
-	const followers = s.instagram.follower ?? null;
+	// se il campo manca, ultimo punto della serie "Follower Instagram nel tempo" (aggiornata da Meta ogni giorno)
+	const serie = (s.serieFollower ?? []).filter((p) => typeof p.value === 'number' && p.value > 0);
+	const followers = s.instagram.follower ?? (serie.length ? Number(serie[serie.length - 1].value) : null);
 	if (followers == null && media.length < 4) return null;
 	return { username: s.instagram.username ?? 'stickerprint.it', profileUrl: PROFILE, followers, media: media.length >= 4 ? media : FALLBACK.media, live: true, source: 'periz', updatedAt: s.aggiornato ?? new Date().toISOString() };
 }
