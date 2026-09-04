@@ -25,7 +25,7 @@ export async function buildLabelsPdf(orders: (LabelOrder & { parcels: number; co
 			t(COMPANY.address, M + ld.width + 8, H - M - 26, 6.5, font, gray);
 			t(`${COMPANY.email} · ${COMPANY.site}`, M + ld.width + 8, H - M - 36, 6.5, font, gray);
 			page.drawLine({ start: { x: M, y: H - M - 66 }, end: { x: W - M, y: H - M - 66 }, thickness: 1, color: rgb(0.85, 0.87, 0.92) });
-			if (!/diretta/i.test(o.courier)) t(o.courier.toUpperCase(), M, H - M - 84, 13, bold);
+			if (!/diretta|destinatario|cliente/i.test(o.courier)) t(o.courier.toUpperCase(), M, H - M - 84, 13, bold);
 			page.drawText(`COLLO ${n} / ${parcels}`, { x: W - M - bold.widthOfTextAtSize(`COLLO ${n} / ${parcels}`, 13), y: H - M - 84, size: 13, font: bold, color: navy });
 			t('DESTINATARIO', M, H - M - 108, 7, bold, gray);
 			let y = H - M - 124;

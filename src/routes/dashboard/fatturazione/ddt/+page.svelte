@@ -54,7 +54,7 @@
 					</td>
 				</tr>
 			{:else}
-				<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:30px">Nessun DDT{search ? ' con questo filtro' : ` nel ${data.year}`}. Si generano da In spedizione con "Spedito → DDT".</td></tr>
+				<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:30px">Nessun DDT{search ? ' con questo filtro' : ` nel ${data.year}`}. Si generano da In spedizione con "Concludi".</td></tr>
 			{/each}
 		</tbody>
 	</table>

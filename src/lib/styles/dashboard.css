@@ -169,3 +169,18 @@
 .pick__list button:hover { background: #f4f7ff; }
 .readonly-note { background: #fef6db; color: #7a5a00; padding: 8px 12px; border-radius: 10px; font-size: 13px; font-weight: 700; }
 @media (max-width: 1000px) { .riepilogo { grid-template-columns: 1fr; } .term-row { grid-template-columns: 1fr 1fr; } }
+
+/* Spedizioni: tendina corriere con loghi, bottoni "trasmetti" */
+.courier-logo { height: 26px; width: auto; vertical-align: middle; }
+.cmenu { position: relative; display: inline-block; }
+.cmenu__btn { display: inline-flex; align-items: center; gap: 8px; background: #fff; border: 2px solid var(--line); border-radius: 10px; padding: 5px 10px; font: inherit; font-weight: 700; font-size: 12.5px; cursor: pointer; color: var(--muted); }
+.cmenu__btn.is-set { border-color: var(--blue); color: var(--ink); }
+.cmenu__btn img { height: 26px; }
+.cmenu__btn i { font-style: normal; font-size: 11px; }
+.cmenu__list { position: absolute; left: 0; top: calc(100% + 4px); z-index: 30; background: #fff; border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 12px 30px rgba(11,11,59,.15); padding: 6px; display: grid; gap: 4px; min-width: 170px; }
+.cmenu__list button { display: flex; align-items: center; gap: 10px; background: none; border: 0; border-radius: 8px; padding: 6px 10px; font: inherit; font-weight: 700; font-size: 13px; cursor: pointer; text-align: left; }
+.cmenu__list button:hover, .cmenu__list button.is-on { background: #eef2ff; }
+.cmenu__list img { height: 28px; }
+.transmit-bar { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.transmit-btn { display: inline-flex; align-items: center; gap: 10px; padding: 9px 16px; font-size: 13px; }
+.transmit-btn img { height: 28px; border-radius: 6px; }

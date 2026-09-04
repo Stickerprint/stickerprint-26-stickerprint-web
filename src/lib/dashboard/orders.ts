@@ -35,6 +35,15 @@ export function categoryFromCode(code: string): string | null {
 }
 export const PAYMENT_METHODS_MANUALI = ['Bonifico immediato vista fattura', 'Ricevuta bancaria 30gg fm', 'Ricevuta bancaria 60gg fm', 'Ricevuta bancaria 90gg fm', 'Bonifico anticipato', 'Personalizzato'];
 export const SHIPPING_METHODS = ['Corriere a carico del mittente', 'Corriere a carico del destinatario', 'Consegna diretta Stickerprint'];
+/** Corrieri con cui spediamo noi */
+export const COURIERS: Record<string, { name: string; logo: string }> = { GLS: { name: 'GLS', logo: '/icons/couriers/gls.svg' }, FedEx: { name: 'FedEx', logo: '/icons/couriers/fedex.svg' }, TNT: { name: 'TNT', logo: '/icons/couriers/tnt.svg' } };
+/** Come si consegna un ordine: con il nostro corriere, con quello del cliente o a mano */
+export function deliveryMode(g: { shipping_method: string | null; channel: string }): 'ours' | 'customer' | 'direct' {
+	const m = g.shipping_method ?? '';
+	if (/diretta/i.test(m)) return 'direct';
+	if (/destinatario/i.test(m)) return 'customer';
+	return 'ours';
+}
 export const COUNTRIES: Record<string, { flag: string; name: string }> = {
 	IT: { flag: '🇮🇹', name: 'Italia' }, US: { flag: '🇺🇸', name: 'USA' }, ES: { flag: '🇪🇸', name: 'Spagna' }, DE: { flag: '🇩🇪', name: 'Germania' },
 	FR: { flag: '🇫🇷', name: 'Francia' }, GB: { flag: '🇬🇧', name: 'Regno Unito' }, CH: { flag: '🇨🇭', name: 'Svizzera' }, NL: { flag: '🇳🇱', name: 'Olanda' }, AT: { flag: '🇦🇹', name: 'Austria' }, BE: { flag: '🇧🇪', name: 'Belgio' }
@@ -55,7 +64,7 @@ export interface OrderRow {
 	device: string | null; user_agent: string | null; proof_url: string | null; imposition_url: string | null; auto_proof: boolean;
 	payment_terms: { due: string; amount: number; method: string; xml_code: string }[] | null;
 	courier: string | null; shipped_at: string | null; delivered_at: string | null; parcels: number | null; weight_kg: number | null; ddt_id: string | null;
-	contact_id?: string | null;
+	contact_id?: string | null; transmitted_at?: string | null;
 }
 /** Un "ordine" in dashboard = tutte le righe con lo stesso checkout_group */
 export interface OrderGroup {
