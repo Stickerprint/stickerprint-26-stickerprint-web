@@ -5,7 +5,7 @@ import { PUBLIC_SUPABASE_URL, PUBLIC_SITE_URL } from '$env/static/public';
 import { loadEngine } from '$lib/server/pricing';
 import { quoteWith, PRODUCT_ENGINES } from '$lib/pricing/engine';
 import { checkDiscount } from '$lib/server/discount';
-import { buildInvoicePdf, type InvoiceLine } from '$lib/server/invoice';
+import { buildInvoicePdf, normalizeLines, type InvoiceLine } from '$lib/server/invoice';
 import { sendEmail } from '$lib/server/email';
 import { pushStaff } from '$lib/server/push';
 import { orderConfirmationEmail } from '$lib/server/email-templates';
@@ -159,7 +159,9 @@ export const actions: Actions = {
 
 		// fattura: registrata, PDF generato e inviato via email (con la conferma d'ordine)
 		const { data: invNum } = await db.rpc('next_invoice_number');
-		const invoice = { number: (invNum as string) ?? `FT-${Date.now()}`, issued_at: new Date().toISOString().slice(0, 10), email, billing: bill, lines: invLines, subtotal_net: productsNet, discount_net: discount, discount_code: discountCode, express_net: expressNet, credit_used: creditUsed, vat_amount: vatAmount, total_gross: totalGross, to_pay: toPay, payment_method: payment, orders: numbers };
+		const invoiceLines = normalizeLines(invLines, discount, creditUsed);
+		const payTerms = [{ due: new Date().toISOString().slice(0, 10), amount: toPay, method: ({ paypal: 'PayPal', stripe: 'Carta di credito (Stripe)' } as Record<string, string>)[payment] ?? 'Test', xml_code: 'MP08' }];
+		const invoice = { number: (invNum as string) ?? `FT-${Date.now()}`, issued_at: new Date().toISOString().slice(0, 10), email, billing: bill, lines: invoiceLines, payment_terms: payTerms, subtotal_net: productsNet, discount_net: discount, discount_code: discountCode, express_net: expressNet, credit_used: creditUsed, vat_amount: vatAmount, total_gross: totalGross, to_pay: toPay, payment_method: payment, orders: numbers };
 		let pdfPath: string | null = null;
 		let pdfB64: string | null = null;
 		try {
@@ -173,7 +175,7 @@ export const actions: Actions = {
 			console.error('[invoice] pdf', e);
 		}
 		const { data: firstOrder } = await db.from('orders').select('id').eq('number', numbers[0]).maybeSingle();
-		await db.from('invoices').insert({ user_id: user?.id ?? null, order_id: firstOrder?.id ?? null, number: invoice.number, issued_at: invoice.issued_at, amount_gross: toPay, pdf_path: pdfPath, email, billing: bill, lines: invLines, subtotal_net: productsNet, discount_net: discount, express_net: expressNet, credit_used: creditUsed, vat_amount: vatAmount, payment_method: payment, paid_at: new Date().toISOString(), checkout_group: group, sent_at: null });
+		await db.from('invoices').insert({ user_id: user?.id ?? null, order_id: firstOrder?.id ?? null, number: invoice.number, issued_at: invoice.issued_at, amount_gross: toPay, pdf_path: pdfPath, email, billing: bill, lines: invoiceLines, payment_terms: payTerms, order_numbers: numbers, subtotal_net: productsNet, discount_net: discount, express_net: expressNet, credit_used: creditUsed, vat_amount: vatAmount, payment_method: payment, paid_at: new Date().toISOString(), checkout_group: group, sent_at: null });
 
 		// dati salvati per la prossima volta
 		if (user) {

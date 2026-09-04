@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import { CATS, categoryFromCode, COUNTRIES, PAYMENT_METHODS_MANUALI, SHIPPING_METHODS, money } from '$lib/dashboard/orders';
+	import { CATS, categoryFromCode, COUNTRIES, SHIPPING_METHODS, money } from '$lib/dashboard/orders';
+	import { computeTerms } from '$lib/dashboard/payments';
 	let { data, form } = $props();
 	interface Item { code: string; description: string; qty: number; price: number; lamination: string; mockup_url: string | null }
 	let items = $state<Item[]>([{ code: '', description: '', qty: 100, price: 0.35, lamination: 'nessuna', mockup_url: null }]);
@@ -8,12 +9,18 @@
 	let shipSame = $state(true);
 	let saving = $state(false);
 	let uploadMsg = $state('');
+	// svelte-ignore state_referenced_locally
+	let paymentId = $state(data.methods[0]?.id ?? '');
+	let orderDate = $state(new Date().toISOString().slice(0, 10));
+	let terms = $state<{ due: string; amount: number; method: string }[]>([{ due: new Date().toISOString().slice(0, 10), amount: 0, method: '' }]);
+	const method = $derived(data.methods.find((m) => m.id === paymentId));
 	const today = new Date().toISOString().slice(0, 10);
 	const qtyTot = $derived(items.reduce((s, i) => s + Number(i.qty || 0), 0));
 	const inserted = $derived(items.reduce((s, i) => s + Number(i.qty || 0) * Number(i.price || 0), 0));
 	const net = $derived(lordi ? inserted / 1.22 : inserted);
 	const iva = $derived(lordi ? inserted - net : inserted * 0.22);
 	const tot = $derived(lordi ? inserted : inserted * 1.22);
+	const preview = $derived(method && !method.custom ? computeTerms(method, tot, orderDate) : []);
 	const catOf = (code: string) => { const s = categoryFromCode(code); return s ? CATS[s].name : ''; };
 	async function mockup(i: number, e: Event) {
 		const input = e.currentTarget as HTMLInputElement;
@@ -71,9 +78,25 @@
 					<div class="row3"><label>Comune<input name="ship_city" /></label><label>CAP<input name="ship_cap" /></label><label>Prov.<input name="ship_province" maxlength="2" /></label></div>
 					<label>Paese<select name="ship_country">{#each Object.entries(COUNTRIES) as [k, v] (k)}<option value={k} selected={k === 'IT'}>{v.flag} {v.name}</option>{/each}</select></label>
 				{/if}
-				<div class="row2"><label>Data ordine<input name="date" type="date" value={today} /></label><label>Spedizione prevista<input name="ship_date" type="date" /></label></div>
+				<div class="row2"><label>Data ordine<input name="date" type="date" bind:value={orderDate} /></label><label>Spedizione prevista<input name="ship_date" type="date" /></label></div>
 				<label>Metodo di spedizione<select name="ship_method">{#each SHIPPING_METHODS as m (m)}<option>{m}</option>{/each}</select></label>
-				<label>Pagamento<select name="payment">{#each PAYMENT_METHODS_MANUALI as m (m)}<option>{m}</option>{/each}</select></label>
+				<label>Pagamento<select name="payment_id" bind:value={paymentId}>{#each data.methods as m (m.id)}<option value={m.id}>{m.name}</option>{/each}</select></label>
+				{#if method?.custom}
+					<input type="hidden" name="terms" value={JSON.stringify(terms)} />
+					<div class="note" style="font-weight:700">Rate personalizzate</div>
+					{#each terms as t, i (i)}
+						<div class="row3" style="grid-template-columns:1fr 1fr 1fr auto;align-items:end">
+							<label>Scadenza<input type="date" bind:value={t.due} /></label>
+							<label>Importo €<input type="number" step="0.01" min="0" bind:value={t.amount} /></label>
+							<label>Metodo<input type="text" bind:value={t.method} placeholder="es. Bonifico" /></label>
+							<button type="button" class="ibtn" onclick={() => (terms = terms.filter((_, k) => k !== i))}>🗑️</button>
+						</div>
+					{/each}
+					<button type="button" class="btn btn--ghost btn--xs" onclick={() => (terms = [...terms, { due: orderDate, amount: 0, method: '' }])}>+ Aggiungi rata</button>
+					<div class="note">Totale rate: {money(terms.reduce((s, t) => s + Number(t.amount || 0), 0))} su {money(tot)}</div>
+				{:else if preview.length}
+					<div class="note">Scadenze: {preview.map((t) => `${new Date(t.due).toLocaleDateString('it-IT')} · ${money(t.amount)}`).join(' · ')}</div>
+				{/if}
 			</div>
 		</div>
 		<div class="dcard">

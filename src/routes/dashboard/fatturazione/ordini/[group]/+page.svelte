@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { ORDER_STATUS, PROD_STAGES, CATS, COUNTRIES, money, dmy, itemMeta, DEVICE_ICON, CHANNEL_ICON } from '$lib/dashboard/orders';
+	import { paymentLabel, paymentIcon } from '$lib/dashboard/payments';
 	let { data, form } = $props();
 	const g = $derived(data.group);
 	const st = (s: string) => ORDER_STATUS[s] ?? { label: s, color: '#6b7280', soft: '#eceef3' };
@@ -40,7 +41,8 @@
 	</div>
 	<div class="dcard">
 		<h3>💳 Pagamento e spedizione</h3>
-		<div class="sumrow"><span>Metodo di pagamento</span><b>{g.payment_method ?? '—'}</b></div>
+		<div class="sumrow"><span>Metodo di pagamento</span><b>{#if paymentIcon(g.payment_method)}<img src={paymentIcon(g.payment_method)} alt="" style="height:18px;vertical-align:middle;margin-right:6px" />{/if}{paymentLabel(g.payment_method)}</b></div>
+		{#if first.payment_terms?.length}{#each first.payment_terms as t, i (i)}<div class="sumrow"><span>Scadenza {i + 1}</span><b>{dmy(t.due)} · {money(t.amount)}</b></div>{/each}{/if}
 		<div class="sumrow"><span>Stato pagamento</span><b>{first.payment_status === 'paid' ? 'Pagato' : first.payment_status === 'test' ? 'Test (nessun addebito)' : 'In attesa'}</b></div>
 		<div class="sumrow"><span>Spedizione</span><b>{g.shipping_method ?? 'Corriere espresso'}</b></div>
 		<div class="sumrow"><span>Spedizione prevista</span><b>{dmy(g.delivery_date)}</b></div>

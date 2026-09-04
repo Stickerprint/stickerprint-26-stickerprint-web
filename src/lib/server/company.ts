@@ -13,6 +13,7 @@ export const COMPANY = {
 	regime: 'RF01',            // regime fiscale FatturaPA (RF01 = ordinario)
 	email: 'info@stickerprint.it',
 	pec: '',
+	iban: '',                  // stampato in fattura per bonifici e ricevute bancarie
 	phone: '',
 	site: 'stickerprint.it',
 	vatRate: 0.22,

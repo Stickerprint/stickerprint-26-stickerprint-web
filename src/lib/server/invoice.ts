@@ -18,7 +18,21 @@ export interface InvoiceData {
 	to_pay: number; // totale pagato
 	payment_method: string;
 	orders: string[];
+	payment_terms?: { due: string; amount: number; method: string }[] | null;
 }
+
+/** Gli sconti (codice o credito Stickerprint) non compaiono in fattura: si riducono i prezzi delle righe in proporzione, così l'imponibile dice già tutto. */
+export function normalizeLines(lines: InvoiceLine[], discountNet: number, creditUsedGross: number, vatRate = COMPANY.vatRate): InvoiceLine[] {
+	const orig = lines.reduce((s, l) => s + l.total_net, 0);
+	const target = orig - discountNet - creditUsedGross / (1 + vatRate);
+	if (orig <= 0 || target <= 0 || Math.abs(target - orig) < 0.005) return lines;
+	const k = target / orig;
+	const out = lines.map((l) => ({ ...l, total_net: Math.round(l.total_net * k * 100) / 100 }));
+	const diff = Math.round((target - out.reduce((s, l) => s + l.total_net, 0)) * 100) / 100;
+	out[out.length - 1].total_net = Math.round((out[out.length - 1].total_net + diff) * 100) / 100;
+	return out.map((l) => ({ ...l, unit_net: Math.round((l.total_net / l.qty) * 10000) / 10000 }));
+}
+export const PAYMENT_TEXT: Record<string, string> = { paypal: 'PayPal', stripe: 'Carta di credito (Stripe)', test: 'Test' };
 
 const eur = (v: number) => `${v.toFixed(2).replace('.', ',')} €`;
 
@@ -68,7 +82,6 @@ export async function buildInvoicePdf(inv: InvoiceData): Promise<Uint8Array> {
 	y -= 24;
 	const rows: [string, string, string, string][] = inv.lines.map((l) => [l.description, String(l.qty), eur(l.unit_net), eur(l.total_net)]);
 	if (inv.express_net > 0) rows.push(['Produzione express (+30%)', '1', eur(inv.express_net), eur(inv.express_net)]);
-	if (inv.discount_net > 0) rows.push([`Sconto codice ${inv.discount_code ?? ''}`.trim(), '', '', `-${eur(inv.discount_net)}`]);
 	for (const [d, q, u, t] of rows) {
 		const desc = d.length > 70 ? d.slice(0, 67) + '…' : d;
 		text(desc, M + 6, y, 10);
@@ -82,15 +95,21 @@ export async function buildInvoicePdf(inv: InvoiceData): Promise<Uint8Array> {
 
 	// totali
 	const tot = (label: string, value: string, strong = false) => { right(label, colUnit, y, 10, strong ? bold : font, strong ? navy : gray); right(value, colTot, y, strong ? 12 : 10, strong ? bold : font); y -= 16; };
-	const taxable = inv.subtotal_net - inv.discount_net + inv.express_net;
+	const taxable = inv.lines.reduce((s, l) => s + l.total_net, 0) + inv.express_net;
+	const vat = Math.round(taxable * COMPANY.vatRate * 100) / 100;
 	tot('Imponibile', eur(taxable));
-	tot(`IVA ${Math.round(COMPANY.vatRate * 100)}%`, eur(inv.vat_amount));
-	tot('Totale', eur(inv.total_gross), true);
-	if (inv.credit_used > 0) tot('Sconto Stickerprint', `-${eur(inv.credit_used)}`);
-	tot('Totale pagato', eur(inv.to_pay), true);
+	tot(`IVA ${Math.round(COMPANY.vatRate * 100)}%`, eur(vat));
+	tot('Totale', eur(Math.round((taxable + vat) * 100) / 100), true);
 	y -= 10;
-	text(`Pagamento: ${inv.payment_method === 'test' ? 'test (nessun addebito)' : inv.payment_method} · Ordini: ${inv.orders.join(', ')}`, M, y, 9, font, gray);
+	// pagamento e scadenze
+	const pm = PAYMENT_TEXT[inv.payment_method] ?? inv.payment_method;
+	text(`Pagamento: ${pm}${inv.payment_method === 'paypal' || inv.payment_method === 'stripe' ? ' · pagato' : ''} · Ordini: ${inv.orders.join(', ')}`, M, y, 9, bold);
 	y -= 14;
+	if (inv.payment_terms?.length) {
+		text('Scadenze', M, y, 9, bold, gray); y -= 13;
+		for (const t of inv.payment_terms) { text(`${new Date(t.due).toLocaleDateString('it-IT')}  ${eur(t.amount)}  ${t.method}`, M, y, 9); y -= 12; }
+		if (COMPANY.iban) { text(`IBAN ${COMPANY.iban} · ${COMPANY.name}`, M, y, 9, font, gray); y -= 12; }
+	}
 	text('Prova di stampa gratuita inviata via email. Spedizione con corriere espresso tracciato.', M, y, 9, font, gray);
 	text('Documento generato automaticamente da stickerprint.it', M, 40, 8, font, gray);
 	return pdf.save();

@@ -1,6 +1,12 @@
 import { fail, redirect } from '@sveltejs/kit';
-import { CATS, categoryFromCode, PAYMENT_METHODS_MANUALI, SHIPPING_METHODS } from '$lib/dashboard/orders';
-import type { Actions } from './$types';
+import { CATS, categoryFromCode, SHIPPING_METHODS } from '$lib/dashboard/orders';
+import { computeTerms, type PaymentMethod, type PaymentTerm } from '$lib/dashboard/payments';
+import type { Actions, PageServerLoad } from './$types';
+
+export const load: PageServerLoad = async ({ locals: { supabase } }) => {
+	const { data } = await supabase.from('payment_methods').select('*').eq('active', true).order('sort');
+	return { methods: (data ?? []) as PaymentMethod[] };
+};
 
 const VAT = 1.22;
 const r2 = (v: number) => Math.round(v * 100) / 100;
@@ -26,7 +32,16 @@ export const actions: Actions = {
 		const shipping = sameShip ? { ...billing } : { company: s('ship_name'), first_name: '', last_name: '', street: s('ship_address'), city: s('ship_city'), zip: s('ship_cap'), province: s('ship_province').toUpperCase().slice(0, 2), country: s('ship_country') || 'IT', phone: s('phone') };
 		const group = crypto.randomUUID();
 		const createdAt = s('date') ? new Date(s('date') + 'T10:00:00').toISOString() : new Date().toISOString();
-		const payment = s('payment') || PAYMENT_METHODS_MANUALI[0];
+		const { data: pm } = await supabase.from('payment_methods').select('*').eq('id', s('payment_id')).maybeSingle();
+		const payment = (pm as PaymentMethod | null)?.name || s('payment') || 'Bonifico bancario';
+		// totale lordo dell'ordine per le scadenze
+		const totalNetAll = items.reduce((sum, it) => sum + (lordi ? Number(it.price) / VAT : Number(it.price)) * Number(it.qty), 0);
+		const totalGrossAll = r2(totalNetAll * VAT);
+		let terms: PaymentTerm[] | null = null;
+		if (pm?.custom) {
+			try { terms = (JSON.parse(String(f.get('terms') ?? '[]')) as { due: string; amount: number; method?: string }[]).filter((t) => t.due && Number(t.amount) > 0).map((t) => ({ due: t.due, amount: r2(Number(t.amount)), method: t.method || payment, xml_code: pm.xml_code })); } catch { terms = null; }
+			if (!terms?.length) return fail(400, { error: 'Inserisci almeno una rata con data e importo.' });
+		} else if (pm) terms = computeTerms(pm, totalGrossAll, s('date') || new Date());
 		const numbers: string[] = [];
 		for (const it of items) {
 			const { data: num, error: ne } = await supabase.rpc('next_order_number');
@@ -41,7 +56,7 @@ export const actions: Actions = {
 				lamination: it.lamination || null, mockup_url: it.mockup_url || null,
 				status: 'in_produzione', prod_stage: 'stampa',
 				customer_name: name, email: s('email') || null, country: billing.country, shipping, billing,
-				payment_method: payment, payment_status: payment === 'Bonifico anticipato' ? 'paid' : 'pending',
+				payment_method: payment, payment_terms: terms, payment_status: pm?.paid_upfront ? 'paid' : 'pending',
 				shipping_method: s('ship_method') || SHIPPING_METHODS[0], delivery_date: s('ship_date') || null,
 				internal_notes: s('notes') || null, created_at: createdAt
 			};

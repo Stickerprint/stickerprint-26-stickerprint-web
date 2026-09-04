@@ -53,6 +53,7 @@ export interface OrderRow {
 	shipping_method: string | null; delivery_date: string | null; customer_name: string | null; country: string; mockup_url: string | null;
 	prod_stage: string | null; internal_notes: string | null; lamination: string | null; created_at: string; updated_at: string;
 	device: string | null; user_agent: string | null; proof_url: string | null; imposition_url: string | null; auto_proof: boolean;
+	payment_terms: { due: string; amount: number; method: string; xml_code: string }[] | null;
 	courier: string | null; shipped_at: string | null; delivered_at: string | null; parcels: number | null; weight_kg: number | null; ddt_id: string | null;
 }
 /** Un "ordine" in dashboard = tutte le righe con lo stesso checkout_group */

@@ -14,7 +14,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase } }) => {
 		let ddtDate: string | null = null;
 		if (inv.ddt_id) { const { data: d } = await supabase.from('ddts').select('issued_at').eq('id', inv.ddt_id).maybeSingle(); ddtDate = d?.issued_at ?? null; }
 		const prog = String(inv.number).replace(/\D/g, '').slice(-5) || String(files.length + 1);
-		const { xml, filename } = buildFatturaPaXml({ number: inv.number, issued_at: inv.issued_at, email: inv.email, billing: inv.billing ?? {}, lines: inv.lines ?? [], discount_net: Number(inv.discount_net ?? 0), express_net: Number(inv.express_net ?? 0), credit_used: Number(inv.credit_used ?? 0), vat_amount: Number(inv.vat_amount ?? 0), amount_gross: Number(inv.amount_gross), payment_method: inv.payment_method, ddt_number: inv.ddt_number, ddt_date: ddtDate, order_numbers: inv.order_numbers }, prog);
+		const { xml, filename } = buildFatturaPaXml({ number: inv.number, issued_at: inv.issued_at, email: inv.email, billing: inv.billing ?? {}, lines: inv.lines ?? [], discount_net: Number(inv.discount_net ?? 0), express_net: Number(inv.express_net ?? 0), credit_used: Number(inv.credit_used ?? 0), vat_amount: Number(inv.vat_amount ?? 0), amount_gross: Number(inv.amount_gross), payment_method: inv.payment_method, ddt_number: inv.ddt_number, ddt_date: ddtDate, order_numbers: inv.order_numbers, payment_terms: inv.payment_terms }, prog);
 		files.push([filename, xml]);
 	}
 	await supabase.from('invoices').update({ xml_generated_at: new Date().toISOString() }).in('id', ids);

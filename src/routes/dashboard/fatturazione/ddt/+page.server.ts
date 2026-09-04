@@ -21,11 +21,11 @@ export const actions: Actions = {
 		const made: string[] = [];
 		for (const d of ddts ?? []) {
 			if (d.invoice_id) continue;
-			const dd = d.data as { customer: Record<string, string>; lines: { description: string; qty: number; unit_net: number; total_net: number }[]; subtotal_net: number; vat_amount: number; total_gross: number; order_numbers: string[]; payment_method: string | null };
+			const dd = d.data as { customer: Record<string, string>; lines: { description: string; qty: number; unit_net: number; total_net: number }[]; subtotal_net: number; vat_amount: number; total_gross: number; order_numbers: string[]; payment_method: string | null; payment_terms?: { due: string; amount: number; method: string; xml_code: string }[] | null };
 			const { data: num } = await supabase.rpc('next_invoice_number');
 			const number = num as string;
 			const issued = new Date().toISOString().slice(0, 10);
-			const inv = { number, issued_at: issued, email: d.email ?? '', billing: dd.customer, lines: dd.lines, subtotal_net: dd.subtotal_net, discount_net: 0, discount_code: null, express_net: 0, credit_used: 0, vat_amount: dd.vat_amount, total_gross: dd.total_gross, to_pay: dd.total_gross, payment_method: dd.payment_method ?? 'Bonifico', orders: dd.order_numbers ?? [d.order_number] };
+			const inv = { number, issued_at: issued, email: d.email ?? '', billing: dd.customer, lines: dd.lines, subtotal_net: dd.subtotal_net, discount_net: 0, discount_code: null, express_net: 0, credit_used: 0, vat_amount: dd.vat_amount, total_gross: dd.total_gross, to_pay: dd.total_gross, payment_method: dd.payment_method ?? 'Bonifico', orders: dd.order_numbers ?? [d.order_number], payment_terms: dd.payment_terms ?? null };
 			let pdfPath: string | null = null;
 			try {
 				const bytes = await buildInvoicePdf(inv);
@@ -34,7 +34,7 @@ export const actions: Actions = {
 				if (!error) pdfPath = path;
 			} catch (e) { console.error('[ddt→fattura] pdf', e); }
 			const { data: order } = await supabase.from('orders').select('user_id').eq('checkout_group', d.checkout_group).limit(1).maybeSingle();
-			const { data: row, error } = await supabase.from('invoices').insert({ user_id: order?.user_id ?? null, number, issued_at: issued, amount_gross: r2(dd.total_gross), pdf_path: pdfPath, email: d.email, billing: dd.customer, lines: dd.lines, subtotal_net: dd.subtotal_net, vat_amount: dd.vat_amount, payment_method: dd.payment_method, checkout_group: d.checkout_group, ddt_id: d.id, ddt_number: d.number, order_numbers: dd.order_numbers ?? [d.order_number] }).select('id').single();
+			const { data: row, error } = await supabase.from('invoices').insert({ user_id: order?.user_id ?? null, number, issued_at: issued, amount_gross: r2(dd.total_gross), pdf_path: pdfPath, email: d.email, billing: dd.customer, lines: dd.lines, subtotal_net: dd.subtotal_net, vat_amount: dd.vat_amount, payment_method: dd.payment_method, payment_terms: dd.payment_terms ?? null, checkout_group: d.checkout_group, ddt_id: d.id, ddt_number: d.number, order_numbers: dd.order_numbers ?? [d.order_number] }).select('id').single();
 			if (error) return fail(400, { error: `Fattura non creata: ${error.message}` });
 			await supabase.from('ddts').update({ invoice_id: row.id }).eq('id', d.id);
 			made.push(number);

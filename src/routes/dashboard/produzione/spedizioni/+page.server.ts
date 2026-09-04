@@ -34,7 +34,7 @@ export const actions: Actions = {
 		const lines = g.items.map((i) => ({ description: `${i.product_name}${i.description ? ' · ' + i.description : ''}${itemMeta(i) && !i.description ? ' · ' + itemMeta(i) : ''}`, qty: i.qty, unit_net: r2(Number(i.unit_net ?? Number(i.total_net) / i.qty)), total_net: r2(Number(i.total_net)) }));
 		const subtotal = r2(lines.reduce((s, l) => s + l.total_net, 0));
 		const ddt = { number: num as string, checkout_group: group, order_number: g.number, issued_at: new Date().toISOString().slice(0, 10), parcels, weight_kg: weight, causale: 'Vendita', trasporto: g.shipping_method ?? 'Consegna diretta Stickerprint', customer_name: g.customer, email: g.email || null,
-			data: { customer: first.billing ?? first.shipping ?? {}, shipping: first.shipping ?? {}, lines, subtotal_net: subtotal, vat_amount: r2(subtotal * 0.22), total_gross: r2(subtotal * 1.22), order_numbers: g.numbers, notes: first.internal_notes ?? null, payment_method: g.payment_method } };
+			data: { customer: first.billing ?? first.shipping ?? {}, shipping: first.shipping ?? {}, lines, subtotal_net: subtotal, vat_amount: r2(subtotal * 0.22), total_gross: r2(subtotal * 1.22), order_numbers: g.numbers, notes: first.internal_notes ?? null, payment_method: g.payment_method, payment_terms: first.payment_terms ?? null } };
 		const { data: row, error } = await supabase.from('ddts').insert(ddt).select('id').single();
 		if (error) return fail(400, { error: `DDT non creato: ${error.message}` });
 		await supabase.from('orders').update({ status: 'spedito', courier: 'Consegna diretta', parcels, weight_kg: weight, shipped_at: new Date().toISOString(), ddt_id: row.id }).eq('checkout_group', group);

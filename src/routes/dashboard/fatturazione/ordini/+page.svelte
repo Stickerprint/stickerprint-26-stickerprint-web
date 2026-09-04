@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { ORDER_STATUS, CATS, COUNTRIES, MONTHS, money, dmy, itemMeta, PRODUCTION_STATUSES, SHIPPING_STATUSES, DEVICE_ICON, CHANNEL_ICON, type OrderGroup } from '$lib/dashboard/orders';
+	import { paymentIcon, paymentLabel } from '$lib/dashboard/payments';
 	let { data } = $props();
 	let search = $state('');
 	let cat = $state('all');
@@ -104,7 +105,7 @@
 					<td>{g.qty.toLocaleString('it-IT')} pz</td>
 					<td>{dmy(g.delivery_date)}</td>
 					<td><span class="st" style="background:{st(g.status).soft};color:{st(g.status).color}">{st(g.status).label}</span></td>
-					<td style="text-align:right"><b>{money(g.net)}</b><div class="osub">{money(g.gross)} IVA incl.</div></td>
+					<td style="text-align:right"><b>{money(g.net)}</b><div class="osub">{money(g.gross)} IVA incl.{#if paymentIcon(g.payment_method)} <img src={paymentIcon(g.payment_method)} alt={paymentLabel(g.payment_method)} title={paymentLabel(g.payment_method)} style="height:14px;vertical-align:middle" />{:else if g.payment_method} · {g.payment_method}{/if}</div></td>
 					<td>
 						<div class="row-actions">
 							<form method="POST" action="?/star" use:enhance><input type="hidden" name="group" value={g.key} /><input type="hidden" name="on" value={g.starred ? '0' : '1'} /><button type="submit" class="ibtn" title="Segna ordine">{g.starred ? '⭐' : '☆'}</button></form>

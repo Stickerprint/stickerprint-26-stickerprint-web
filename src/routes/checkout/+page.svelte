@@ -188,7 +188,7 @@
 
 				<h2 style="margin-top:28px">Metodo di pagamento</h2>
 				<div class="co-pay">
-					<label class="co-pay__opt is-soon"><input type="radio" name="payment" value="card" disabled /><span><b>Carta di credito</b><small>Disponibile a breve</small></span><img src="/icons/footer/visa.webp" alt="" /></label>
+					<label class="co-pay__opt is-soon"><input type="radio" name="payment" value="stripe" disabled /><span><b>Carta di credito</b><small>Pagamento sicuro con Stripe · disponibile a breve</small></span><img src="/icons/pay-stripe.svg" alt="Stripe" /></label>
 					<label class="co-pay__opt is-soon"><input type="radio" name="payment" value="paypal" disabled /><span><b>PayPal</b><small>Disponibile a breve</small></span><img src="/icons/footer/paypal.webp" alt="" /></label>
 					<label class="co-pay__opt"><input type="radio" name="payment" value="test" bind:group={payment} /><span><b>Test (gratuito)</b><small>Crea l’ordine senza pagamento reale</small></span></label>
 				</div>

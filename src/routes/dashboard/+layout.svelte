@@ -24,7 +24,8 @@
 			{ label: 'Ordini', href: '/dashboard/fatturazione/ordini', count: data.counts?.prove },
 			{ label: 'DDT', href: '/dashboard/fatturazione/ddt' },
 			{ label: 'Fatture', href: '/dashboard/fatturazione/fatture' },
-			{ label: 'Preventivi', href: '/dashboard/fatturazione/preventivi' }
+			{ label: 'Preventivi', href: '/dashboard/fatturazione/preventivi' },
+			{ label: 'Metodi di pagamento', href: '/dashboard/fatturazione/metodi-pagamento' }
 		] },
 		{ id: 'anagrafica', title: 'Anagrafica', items: [
 			{ label: 'Clienti', href: '/dashboard/anagrafica/clienti' }
