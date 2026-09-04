@@ -59,6 +59,7 @@
 	let palette = $state<{ hex: string; img?: string }[]>([]);
 	let palIdx = $state(0);
 	let rimuovi = $state(false);
+	let colInput = $state<HTMLInputElement | null>(null);
 	let over = $state(false);
 	let customOpen = $state(false);
 	let customQty = $state<number | ''>('');
@@ -199,6 +200,9 @@
 							{#each palette as c, i (i)}
 								<button type="button" class="cfg__dot" class:is-on={i === palIdx} style={c.img === 'checker' ? 'background:repeating-conic-gradient(#cfd6dd 0 25%,#fff 0 50%) 0 0/10px 10px' : c.img ? `background-image:url(${c.img});background-size:cover` : `background:${c.hex}`} title={c.img ? 'Colore del materiale' : c.hex.toUpperCase()} aria-label="Sfondo {c.hex}" onclick={() => engine?.post('bg', { idx: i })}></button>
 							{/each}
+							<!-- colore libero: il pallino arcobaleno apre il selettore e il colore scelto si aggiunge alla tavolozza -->
+							<button type="button" class="cfg__dot cfg__dot--arc" title="Scegli un colore tuo" aria-label="Scegli un colore di sfondo" onclick={() => colInput?.click()}></button>
+							<input bind:this={colInput} type="color" class="cfg__col" value={palette[palIdx]?.hex ?? '#ffffff'} oninput={(e) => engine?.post('bgcol', { hex: (e.currentTarget as HTMLInputElement).value })} />
 						</div>
 						<button type="button" class="cfg__tool" class:is-on={rimuovi} onclick={() => engine?.post('rimuovi')} title="Toglie lo sfondo del file: resta solo il disegno">✨ Rimuovi sfondo</button>
 					</div>

@@ -2324,7 +2324,16 @@ function inkLayer(ppm){
      nella tavolozza. Del file originale resta solo ciò che sta dentro il
      profilo del disegno — comprese le parti chiare racchiuse dalla grafica,
      come le controforme delle lettere, che grafica sono. */
-  g.drawImage(S.artCanvas||S.work.canvas,S.art.x,S.art.y,S.art.w,S.art.h);
+  /* [sito] sagomato: il tracciato resta quello ricavato a misura piena, il disegno
+     dentro si scala e si sposta attorno al centro dello sticker (fuori resta tagliato
+     dal 'source-atop'). Sulle forme geometriche zoom e spostamento stanno gia' in S.art. */
+  let A=S.art;
+  if($('shp').value==='diecut'){
+    const z=((+$('gsc').value)||100)/100, ddx=+$('gdx').value||0, ddy=+$('gdy').value||0;
+    if(z!==1||ddx||ddy){const cx=S.cutW/2, cy=S.cutH/2;
+      A={x:cx-(cx-A.x)*z+ddx, y:cy-(cy-A.y)*z+ddy, w:A.w*z, h:A.h*z};}
+  }
+  g.drawImage(S.artCanvas||S.work.canvas,A.x,A.y,A.w,A.h);
   g.globalCompositeOperation='source-over';
 
   /* --------------------------------------------------------------------
@@ -3627,7 +3636,8 @@ function applyPreset(recalc){
   $('sem').value=c[1];$('semV').textContent=c[1];
   $('lev').value=c[2];$('levV').textContent=c[2];
   $('shp').value=CL.shape;
-  let rad=P_CORNER[CL.corner];
+  /* [sito] sul resinato gli angoli non si scelgono: restano fissi su 'medio' */
+  let rad=P_CORNER[S.prod==='resin'?1:CL.corner];
   if(S.prod==='resin')rad=Math.max(RESIN_R,rad);   // resinato: mai spigolo vivo
   $('rad').value=rad;
   if(CL.shape==='square'||CL.shape==='rect')$('shp').value='rounded';
@@ -3639,7 +3649,7 @@ function applyPreset(recalc){
   $('cCornerBox').style.display=(CL.shape==='square'||CL.shape==='rect')?'block':'none';
   $('cZoomBox').style.display=(CL.shape!=='diecut')?'block':'none';
   $('cComplBox').style.display='none';   // lo decidiamo noi
-  $('preview').classList.toggle('grab',CL.shape!=='diecut');
+  $('preview').classList.toggle('grab',true);
   syncMatChips();
   renumberSteps();
   if(recalc!==false&&S.src&&S.bbox)redo(0);}
@@ -3696,7 +3706,8 @@ function syncBordChips(){document.querySelectorAll('#cBord .chip').forEach(e=>
 levelSlider('lvCompl','tkCompl',v=>{CL.compl=v;applyPreset();});
 $('lvZoom').addEventListener('input',()=>{
   const v=+$('lvZoom').value;$('zoomV').textContent=v+'%';
-  $('gsc').value=v;$('gscV').textContent=v;redo(90);});
+  $('gsc').value=v;$('gscV').textContent=v;
+  if($('shp').value==='diecut'&&S.src&&S.bbox)deb(()=>{try{draw();computeLayout();}catch(e){}},40); else redo(90);});
 $('gCenter2').onclick=()=>{$('lvZoom').value=100;$('zoomV').textContent='100%';
   $('gsc').value=100;$('gscV').textContent='100';$('gdx').value=0;$('gdy').value=0;redo(0);};
 
@@ -3704,7 +3715,7 @@ $('gCenter2').onclick=()=>{$('lvZoom').value=100;$('zoomV').textContent='100%';
 (function(){
   const cv=$('preview');let drag=null,raf=0;
   const mmPerPx=()=>S.viewTotW/Math.max(1,cv.clientWidth);
-  const geo=()=>$('shp').value!=='diecut'&&S.src&&S.bbox&&!S.wand;
+  const geo=()=>S.src&&S.bbox&&!S.wand;   // [sito] si trascina anche dentro il sagomato
   const pt=e=>e.touches?{x:e.touches[0].clientX,y:e.touches[0].clientY}:{x:e.clientX,y:e.clientY};
   function down(e){ if(!geo())return;
     const p=pt(e);drag={x:p.x,y:p.y,dx:+$('gdx').value||0,dy:+$('gdy').value||0};
@@ -3714,7 +3725,7 @@ $('gCenter2').onclick=()=>{$('lvZoom').value=100;$('zoomV').textContent='100%';
     $('gdx').value=(drag.dx+(p.x-drag.x)*k).toFixed(2);
     $('gdy').value=(drag.dy+(p.y-drag.y)*k).toFixed(2);
     if(!raf)raf=requestAnimationFrame(()=>{raf=0;
-      try{buildCut();draw();}catch(err){}});
+      try{if($('shp').value==='diecut')draw(); else {buildCut();draw();}}catch(err){}});
     e.preventDefault();}
   function up(){ if(!drag)return;drag=null;cv.classList.remove('grabbing');computeLayout();}
   cv.addEventListener('mousedown',down);cv.addEventListener('touchstart',down,{passive:false});
@@ -4139,16 +4150,18 @@ S.showCut=true; anLoop();
 
 (function coloreLibero(){
   const inp=$('ppCol'); if(!inp)return;
-  const applica=()=>{
-    const c=hex2rgb(inp.value);
+  const imposta=hex=>{
+    const c=hex2rgb(hex);
     if(!S.palette)S.palette=[[255,255,255]];
     if(S.palCustom==null||S.palCustom>=S.palette.length){
       S.palette.push(c); S.palCustom=S.palette.length-1;
     } else S.palette[S.palCustom]=c;
     S.palIdx=S.palCustom;
     paintPalette();paintSwatch();ppDots();
-    if(S.src)redo(0);
   };
+  /* [sito] il pallino arcobaleno della barra del sito manda qui il colore scelto */
+  window.__ppColore=hex=>{inp.value=hex;imposta(hex);};
+  const applica=()=>{ imposta(inp.value); if(S.src)redo(0); };
   inp.oninput=applica; inp.onchange=applica;
   /* una tavolozza nuova azzera il colore su misura: i colori del file
      precedente non hanno piu' senso su un file diverso */
@@ -4427,8 +4440,10 @@ document.querySelectorAll('#cLam .chip').forEach(el=>{
 function ppGeoUI(){
   const f=CL.shape, geo=(f!=='diecut');
   const bs=$('ppBordHost'); if(bs&&bs.parentNode)bs.parentNode.style.display=geo?'none':'';
-  const gs=$('ppGeoSec'); if(gs)gs.style.display=geo?'':'none';
-  const as=$('ppAngSec'); if(as)as.style.display=(f==='rect'||f==='square')?'':'none';
+  /* [sito] zoom e centratura su tutte le sagome, sagomato compreso: li' il disegno
+     si ingrandisce o rimpicciolisce dentro il tracciato ricavato a misura piena */
+  const gs=$('ppGeoSec'); if(gs)gs.style.display='';
+  const as=$('ppAngSec'); if(as)as.style.display=((f==='rect'||f==='square')&&S.prod!=='resin')?'':'none';
 }
 (function profilo(){
   const H=id=>{const e=$(id);if(e)e.style.display='none';};
@@ -4548,6 +4563,8 @@ function ppGeoUI(){
     if(d.type==='bg'&&S.src){ const i=Math.max(0,+d.idx||0); S.palIdx=i; try{paintPalette();paintSwatch();}catch(e){}
       busy(true,'Aggiorno…'); setTimeout(()=>{try{buildCut();draw();}catch(e){} window.__busyOff=performance.now(); snapshot(); busy(false);},0); }
     if(d.type==='rimuovi'){ const b=$('ppRimuovi'); if(b)b.click(); }
+    if(d.type==='bgcol'&&S.src&&d.hex){ try{ if(window.__ppColore)window.__ppColore(String(d.hex)); }catch(e){}
+      busy(true,'Aggiorno…'); setTimeout(()=>{try{buildCut();draw();}catch(e){} window.__busyOff=performance.now(); snapshot(); busy(false);},0); }
     if(d.type==='cut'){S.showCut=!!d.on;try{ridipingi();}catch(e){}}
     /* cambio di sagoma, materiale, lamina o misura SENZA ricaricare il motore:
        il file resta caricato e segmentato, si rifanno solo taglio e disegno */
