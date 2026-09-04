@@ -7,6 +7,7 @@ import { quoteWith, PRODUCT_ENGINES } from '$lib/pricing/engine';
 import { checkDiscount } from '$lib/server/discount';
 import { buildInvoicePdf, type InvoiceLine } from '$lib/server/invoice';
 import { sendEmail } from '$lib/server/email';
+import { pushStaff } from '$lib/server/push';
 import { orderConfirmationEmail } from '$lib/server/email-templates';
 import { estimatedShipDate, formatItDate } from '$lib/utils/shipping';
 import { MATERIAL_LABEL } from '$lib/account';
@@ -188,6 +189,7 @@ export const actions: Actions = {
 		sendEmail({ to: email, ...mail, attachments: pdfB64 ? [{ name: `${invoice.number}.pdf`, content: pdfB64, contentType: 'application/pdf' }] : undefined })
 			.then((r) => { if (r.ok && !r.skipped) db.from('invoices').update({ sent_at: new Date().toISOString() }).eq('number', invoice.number).then(() => {}); })
 			.catch((e) => console.error('[checkout] email', e));
+		pushStaff({ title: `Nuovo ordine ${numbers[0]}`, body: `${ship.first_name} ${ship.last_name} · ${invLines.length} ${invLines.length === 1 ? 'articolo' : 'articoli'} · ${toPay.toFixed(2)} €`, url: `/dashboard/fatturazione/ordini/${group}`, tag: numbers[0] }).catch((e) => console.error('[push]', e));
 		return { ok: true, numbers, toPay, invoice: invoice.number };
 	}
 };

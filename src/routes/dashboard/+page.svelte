@@ -2,7 +2,7 @@
 	import { PRODUCT_ENGINES } from '$lib/pricing/engine';
 	let { data } = $props();
 	const areas = [
-		{ title: 'Produzione', desc: 'Ordini in lavorazione, reparti, spedizioni.', href: '/dashboard/produzione/ordini', soon: true },
+		{ title: 'Produzione', desc: 'Ordini in lavorazione, reparti, spedizioni.', href: '/dashboard/fatturazione/ordini', soon: true },
 		{ title: 'Fatturazione', desc: 'Preventivi, ordini cliente, DDT e fatture.', href: '/dashboard/fatturazione/preventivi', soon: true },
 		{ title: 'Marketing', desc: 'Campagne, newsletter, recensioni.', href: '/dashboard/marketing', soon: true },
 		{ title: 'Blog', desc: 'Articoli e novità del laboratorio.', href: '/dashboard/blog', soon: true },

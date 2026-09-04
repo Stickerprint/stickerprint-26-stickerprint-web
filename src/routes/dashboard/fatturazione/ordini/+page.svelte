@@ -9,7 +9,7 @@
 	let star = $state('entrambi');
 	let month = $state<string | null>(null);
 	let expanded = $state<Set<string>>(new Set());
-	const year = new Date().getFullYear();
+	const year = $derived(data.year);
 	const buckets = $derived.by(() => {
 		const b: Record<string, { n: number; amt: number }> = { prev: { n: 0, amt: 0 }, next: { n: 0, amt: 0 } };
 		for (let m = 0; m < 12; m++) b[m] = { n: 0, amt: 0 };
@@ -49,14 +49,17 @@
 <svelte:head><title>Ordini | Dashboard Stickerprint</title></svelte:head>
 
 <div class="toolbar" style="justify-content:space-between">
-	<div><h1>Tutti gli ordini</h1><p class="lead">E-commerce e manuali, in un'unica vista · {list.length} risultati</p></div>
-	<a class="btn btn--green" href="/dashboard/produzione/ordini/nuovo">+ Nuovo ordine</a>
+	<div><h1>Ordini {data.year}</h1><p class="lead">E-commerce e manuali, in un'unica vista · {list.length} risultati</p></div>
+	<div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+		<div class="year-bar">{#each data.years as y (y)}<a href="?anno={y}" class:is-active={y === data.year}>{y}</a>{/each}</div>
+		<a class="btn btn--green" href="/dashboard/fatturazione/ordini/nuovo">+ Nuovo ordine</a>
+	</div>
 </div>
 
 <div class="month-bar">
 	<div class="month-cells">
 		{#each [['prev', 'Preced.'], ...MONTHS.map((m, i) => [String(i), m]), ['next', 'Succ.']] as [k, label] (k)}
-			<button type="button" class="month-cell" class:has-data={buckets[k].n > 0} class:is-active={month === k} class:is-current={k === String(new Date().getMonth())} onclick={() => (month = month === k ? null : k)}>
+			<button type="button" class="month-cell" class:has-data={buckets[k].n > 0} class:is-active={month === k} class:is-current={year === new Date().getFullYear() && k === String(new Date().getMonth())} onclick={() => (month = month === k ? null : k)}>
 				<span class="mc-label">{label}</span><span class="mc-doc">{buckets[k].n} ord.</span><span class="mc-amt">{money(buckets[k].amt)}</span>
 			</button>
 		{/each}
@@ -88,7 +91,7 @@
 				{@const first = g.items[0]}
 				<tr class="orow-main">
 					<td>{COUNTRIES[g.country]?.flag ?? '🌍'}</td>
-					<td><a class="oid" href="/dashboard/produzione/ordini/{g.key}">{g.number}{#if g.items.length > 1} <small>+{g.items.length - 1}</small>{/if}</a><div class="osub">{dmy(g.created_at)} <span title={CHANNEL_ICON[g.channel]?.label}>{CHANNEL_ICON[g.channel]?.icon ?? ''}</span>{#if g.device}<span title="Ordinato da {g.device}">{DEVICE_ICON[g.device] ?? ''}</span>{/if}{#if g.express} <span title="Produzione express">⚡</span>{/if}</div></td>
+					<td><a class="oid" href="/dashboard/fatturazione/ordini/{g.key}">{g.number}{#if g.items.length > 1} <small>+{g.items.length - 1}</small>{/if}</a><div class="osub">{dmy(g.created_at)} <span title={CHANNEL_ICON[g.channel]?.label}>{CHANNEL_ICON[g.channel]?.icon ?? ''}</span>{#if g.device}<span title="Ordinato da {g.device}">{DEVICE_ICON[g.device] ?? ''}</span>{/if}{#if g.express} <span title="Produzione express">⚡</span>{/if}</div></td>
 					<td><b>{g.customer}</b><div class="osub">{g.email}</div></td>
 					<td>
 						<div class="item-cell">

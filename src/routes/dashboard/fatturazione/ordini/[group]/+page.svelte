@@ -13,7 +13,7 @@
 
 <svelte:head><title>Ordine {g.number} | Dashboard</title></svelte:head>
 
-<p class="lead" style="margin:0"><a class="link" href="/dashboard/produzione/ordini">← Torna agli ordini</a></p>
+<p class="lead" style="margin:0"><a class="link" href="/dashboard/fatturazione/ordini">← Torna agli ordini</a></p>
 {#if data.created}<p class="success">Ordine {data.created} creato.</p>{/if}
 {#if form?.error}<p class="error">{form.error}</p>{/if}
 {#if form?.ok}<p class="success">{form.sent ?? 'Salvato.'}</p>{/if}

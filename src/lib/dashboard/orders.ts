@@ -93,3 +93,22 @@ export function itemMeta(i: OrderRow): string {
 
 export const DEVICE_ICON: Record<string, string> = { mobile: '📱', tablet: '📱', desktop: '💻' };
 export const CHANNEL_ICON: Record<string, { icon: string; label: string }> = { ecommerce: { icon: '🛒', label: 'Ordine e-commerce' }, manuale: { icon: '✏️', label: 'Ordine manuale' } };
+
+/** Flusso di produzione per prodotto (la plastifica solo se c'è la lamina) */
+export function stageFlow(item: OrderRow): string[] {
+	const lam = (item.finitura && item.finitura !== 'nessuna') || (item.lamination && item.lamination !== 'nessuna');
+	switch (item.product_slug) {
+		case 'adesivi_resinati': return ['stampa', 'taglio', 'resinatura', 'confezionamento'];
+		case 'adesivi_rilievo':
+		case 'vetrofanie': return ['stampa', 'taglio', 'confezionamento'];
+		case 'campioni': return ['confezionamento'];
+		default: return lam ? ['stampa', 'plastifica', 'taglio', 'confezionamento'] : ['stampa', 'taglio', 'confezionamento'];
+	}
+}
+/** Fase successiva: null quando l'articolo esce dalla produzione (pronto per la spedizione) */
+export function nextStage(item: OrderRow): string | null {
+	const flow = stageFlow(item);
+	const i = flow.indexOf(item.prod_stage ?? '');
+	return i < 0 ? flow[0] : (flow[i + 1] ?? null);
+}
+export const STAGE_ICON: Record<string, string> = { stampa: '🖨️', plastifica: '🧴', taglio: '✂️', resinatura: '💧', confezionamento: '📦', spedizione: '🚀' };

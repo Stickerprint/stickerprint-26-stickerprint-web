@@ -38,10 +38,10 @@
 	<input type="hidden" name="items" value={JSON.stringify(items)} />
 	<input type="hidden" name="price_type" value={lordi ? 'lordi' : 'netti'} />
 	<input type="hidden" name="ship_same" value={shipSame ? 'on' : 'off'} />
-	<p class="lead" style="margin:0"><a class="link" href="/dashboard/produzione/ordini">Ordini</a> › <b>Nuovo ordine manuale</b></p>
+	<p class="lead" style="margin:0"><a class="link" href="/dashboard/fatturazione/ordini">Ordini</a> › <b>Nuovo ordine manuale</b></p>
 	<div class="toolbar" style="justify-content:space-between">
 		<div><h1>Nuovo ordine manuale</h1><p class="lead">Ordine inserito a mano (telefono, email, fiera). Entra subito in produzione.</p></div>
-		<div style="display:flex;gap:8px"><a class="btn btn--ghost btn--xs" href="/dashboard/produzione/ordini">Annulla</a><button class="btn btn--green" type="submit" disabled={saving}>{saving ? 'Salvataggio…' : '💾 Salva e crea ordine'}</button></div>
+		<div style="display:flex;gap:8px"><a class="btn btn--ghost btn--xs" href="/dashboard/fatturazione/ordini">Annulla</a><button class="btn btn--green" type="submit" disabled={saving}>{saving ? 'Salvataggio…' : '💾 Salva e crea ordine'}</button></div>
 	</div>
 	{#if form?.error}<p class="error">{form.error}</p>{/if}
 	{#if uploadMsg}<p class="error">{uploadMsg}</p>{/if}

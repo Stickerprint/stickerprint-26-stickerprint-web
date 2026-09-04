@@ -49,6 +49,6 @@ export const actions: Actions = {
 			if (error) return fail(400, { error: `Ordine non salvato: ${error.message}` });
 			numbers.push(row.number);
 		}
-		redirect(303, `/dashboard/produzione/ordini/${group}?creato=${numbers[0]}`);
+		redirect(303, `/dashboard/fatturazione/ordini/${group}?creato=${numbers[0]}`);
 	}
 };

@@ -15,6 +15,10 @@ export const actions: Actions = {
 		const password = String(form.get('password') ?? '');
 		const privacy = form.get('privacy') === 'on';
 		const newsletter = form.get('newsletter') === 'on';
+		const customerType = form.get('customer_type') === 'azienda' ? 'azienda' : 'privato';
+		const companyName = String(form.get('company_name') ?? '').trim().slice(0, 120);
+		const vatNumber = String(form.get('vat_number') ?? '').trim().slice(0, 20);
+		if (customerType === 'azienda' && (!companyName || !vatNumber)) return fail(400, { fullName, email, error: 'Per un account azienda servono ragione sociale e partita IVA.' });
 		const next = String(form.get('next') ?? '/account');
 
 		if (!firstName || !lastName || !email || !password) return fail(400, { fullName, email, error: 'Compila nome, cognome, email e password.' });
@@ -27,7 +31,7 @@ export const actions: Actions = {
 			password,
 			options: {
 				emailRedirectTo: `${origin}/auth/callback?next=${encodeURIComponent(next)}`,
-				data: { full_name: fullName, phone, marketing_opt_in: newsletter }
+				data: { full_name: fullName, phone, marketing_opt_in: newsletter, customer_type: customerType, company_name: companyName, vat_number: vatNumber }
 			}
 		});
 

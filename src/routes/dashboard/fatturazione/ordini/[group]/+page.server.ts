@@ -50,6 +50,6 @@ export const actions: Actions = {
 	delete: async ({ params, locals: { supabase } }) => {
 		const { error: e } = await supabase.from('orders').delete().eq('checkout_group', params.group);
 		if (e) return fail(400, { error: e.message });
-		redirect(303, '/dashboard/produzione/ordini');
+		redirect(303, '/dashboard/fatturazione/ordini');
 	}
 };

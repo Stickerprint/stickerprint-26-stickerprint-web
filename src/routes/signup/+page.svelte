@@ -2,6 +2,7 @@
 	import { enhance } from '$app/forms';
 	import { page } from '$app/state';
 	let { form } = $props();
+	let kind = $state<'privato' | 'azienda'>('privato');
 	const next = $derived(page.url.searchParams.get('next') ?? '/account');
 	let loading = $state(false);
 </script>
@@ -26,6 +27,16 @@
 			<h2>Crea il tuo account</h2>
 			<form method="POST" use:enhance={() => { loading = true; return async ({ update }) => { loading = false; await update(); }; }}>
 				<input type="hidden" name="next" value={next} />
+				<div class="kind-toggle" role="radiogroup" aria-label="Tipo di cliente">
+					<label class:is-on={kind === 'privato'}><input type="radio" name="customer_type" value="privato" bind:group={kind} /> 👤 Privato</label>
+					<label class:is-on={kind === 'azienda'}><input type="radio" name="customer_type" value="azienda" bind:group={kind} /> 🏢 Azienda</label>
+				</div>
+				{#if kind === 'azienda'}
+					<div class="field-row">
+						<div class="field"><label for="company_name">Ragione sociale</label><input class="input" id="company_name" name="company_name" required /></div>
+						<div class="field"><label for="vat_number">Partita IVA</label><input class="input" id="vat_number" name="vat_number" required /></div>
+					</div>
+				{/if}
 				<div class="field-row">
 					<div class="field">
 						<label for="first_name">Nome</label>
@@ -67,5 +78,9 @@
 
 <style>
 	.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+	.kind-toggle { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 4px; }
+	.kind-toggle label { display: flex; justify-content: center; gap: 8px; padding: 10px; border: 2px solid var(--line); border-radius: 12px; cursor: pointer; font-weight: 800; }
+	.kind-toggle label.is-on { border-color: var(--blue); background: #f4f9ff; }
+	.kind-toggle input { display: none; }
 	@media (max-width: 600px) { .field-row { grid-template-columns: 1fr; } }
 </style>
