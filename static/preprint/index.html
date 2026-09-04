@@ -2208,9 +2208,21 @@ function buildCut(){
     /* [sito] dentro un tondo o un ovale il disegno deve stare INSCRITTO nell'ellisse:
        adattarlo al rettangolo che la contiene fa uscire gli angoli dal cerchio.
        Un rettangolo w×h sta in un'ellisse di assi aw×ah se (w/aw)²+(h/ah)² ≤ 1. */
-    const fit=(sh==='circle'||sh==='ellipse')
-      ? 1/Math.hypot(bb.w/aw,bb.h/ah)
-      : Math.min(aw/bb.w,ah/bb.h);
+    /* [sito] tondo e ovale: il massimo ingrandimento che non taglia NIENTE si
+       misura sui pixel veri del disegno (un logo tondo riempie il tondo; il
+       rettangolo che lo contiene lo terrebbe al 70%). */
+    let fit;
+    if(sh==='circle'||sh==='ellipse'){
+      const ra=aw/2, rb=ah/2, cxm=bb.x+bb.w/2, cym=bb.y+bb.h/2;
+      const step=Math.max(1,Math.floor(Math.max(bb.w,bb.h)/400));
+      let m2=0;
+      if(S.mask&&S.mw){
+        for(let y=bb.y;y<bb.y+bb.h;y+=step){const o=y*S.mw;
+          for(let x=bb.x;x<bb.x+bb.w;x+=step){ if(!S.mask[o+x])continue;
+            const nx=(x-cxm)/ra, ny=(y-cym)/rb, v=nx*nx+ny*ny; if(v>m2)m2=v; }}
+      }
+      fit=m2>0 ? 0.985/Math.sqrt(m2) : 1/Math.hypot(bb.w/aw,bb.h/ah);
+    } else fit=Math.min(aw/bb.w,ah/bb.h);
     const k=fit*(+$('gsc').value/100);
     const cw=bb.w*k,ch=bb.h*k;
     const dx=+$('gdx').value||0, dy=+$('gdy').value||0;
@@ -4409,43 +4421,41 @@ document.querySelectorAll('#cLam .chip').forEach(el=>{
    le ha gia' scelte sul sito. Qui restano solo le decisioni che riguardano
    il suo disegno.
    ========================================================================== */
+/* Quali comandi mostrare per la sagoma corrente: col sagomato la larghezza del
+   bordo; con le forme geometriche zoom/centratura e, su quadrato e rettangolo,
+   gli angoli. Si richiama anche quando la sagoma cambia dal sito. */
+function ppGeoUI(){
+  const f=CL.shape, geo=(f!=='diecut');
+  const bs=$('ppBordHost'); if(bs&&bs.parentNode)bs.parentNode.style.display=geo?'none':'';
+  const gs=$('ppGeoSec'); if(gs)gs.style.display=geo?'':'none';
+  const as=$('ppAngSec'); if(as)as.style.display=(f==='rect'||f==='square')?'':'none';
+}
 (function profilo(){
-  const c=(window.SPPS_CONFIG||{});
-  const f=U_FORMA[String(c.forma||'').toLowerCase()]||CL.shape;
-  const geo=(f!=='diecut');
   const H=id=>{const e=$(id);if(e)e.style.display='none';};
   H('ppMatSec'); H('ppLamSec');
-  if(geo){
-    /* niente bordo: il disegno vive dentro una sagoma gia' data.
-       Al suo posto quanto grande sta dentro, e dove. */
-    const bs=$('ppBordHost'); if(bs&&bs.parentNode)bs.parentNode.style.display='none';
-    const z=$('lvZoom'), host=$('ppZoomHost');
-    if(z&&host){const w=z.closest('.lvwrap')||z; host.appendChild(w);}
-    $('ppGeoSec').style.display='';
-    if(f==='rect'||f==='square'){
-      $('ppAngSec').style.display='';
-      const lv=$('lvCorner');
-      document.querySelectorAll('#cAng .chip').forEach(el=>{
-        el.onclick=()=>{
-          document.querySelectorAll('#cAng .chip').forEach(e=>e.classList.remove('on'));
-          el.classList.add('on');
-          if(lv){lv.value=el.dataset.a;lv.dispatchEvent(new Event('input',{bubbles:true}));}
-        };
-      });
-    }
-    $('ppCentra').onclick=()=>{
-      /* il disegno torna al centro della sagoma, alla misura che ci sta */
-      const g=$('gsc'); if(g)g.value=100;
-      const gv=$('gscV'); if(gv)gv.textContent='100';
-      if($('gdx'))$('gdx').value=0;
-      if($('gdy'))$('gdy').value=0;
-      if(z){z.value=100;z.dispatchEvent(new Event('input',{bubbles:true}));}
-      if(S.src)redo(0);
-      toast('Disegno centrato nella sagoma');
+  /* zoom e centratura nel pannello del sito */
+  const z=$('lvZoom'), host=$('ppZoomHost');
+  if(z&&host){const w=z.closest('.lvwrap')||z; host.appendChild(w);}
+  const lv=$('lvCorner');
+  document.querySelectorAll('#cAng .chip').forEach(el=>{
+    el.onclick=()=>{
+      document.querySelectorAll('#cAng .chip').forEach(e=>e.classList.remove('on'));
+      el.classList.add('on');
+      if(lv){lv.value=el.dataset.a;lv.dispatchEvent(new Event('input',{bubbles:true}));}
     };
-  }
-})();
-</script>
+  });
+  const pc=$('ppCentra'); if(pc)pc.onclick=()=>{
+    /* il disegno torna al centro della sagoma, alla misura che ci sta */
+    const g=$('gsc'); if(g)g.value=100;
+    const gv=$('gscV'); if(gv)gv.textContent='100';
+    if($('gdx'))$('gdx').value=0;
+    if($('gdy'))$('gdy').value=0;
+    if(z){z.value=100;z.dispatchEvent(new Event('input',{bubbles:true}));}
+    if(S.src)redo(0);
+    toast('Disegno centrato nella sagoma');
+  };
+  ppGeoUI();
+})();</script>
 
 <script>
 /* ==========================================================================
@@ -4546,7 +4556,9 @@ document.querySelectorAll('#cLam .chip').forEach(el=>{
         const c=d.config||{}; let geom=false, mat=false;
         if(c.prodotto){const p=String(c.prodotto).toLowerCase().indexOf('resin')>=0?'resin':'sticker'; if(p!==S.prod){setProd(p);geom=true;}}
         const f=U_FORMA[String(c.forma||'').toLowerCase()];
-        if(f&&f!==CL.shape){CL.shape=f;document.querySelectorAll('#cShape .chip').forEach(e=>e.classList.toggle('on',e.dataset.s===f));applyPreset(false);geom=true;}
+        if(f&&f!==CL.shape){CL.shape=f;document.querySelectorAll('#cShape .chip').forEach(e=>e.classList.toggle('on',e.dataset.s===f));applyPreset(false);geom=true;
+          /* nuova sagoma: il disegno riparte grande e centrato, e il pannello mostra i comandi giusti */
+          try{ if($('gsc'))$('gsc').value=100; if($('gscV'))$('gscV').textContent='100'; if($('gdx'))$('gdx').value=0; if($('gdy'))$('gdy').value=0; const z=$('lvZoom'); if(z){z.value=100; const zv=$('zoomV'); if(zv)zv.textContent='100%';} ppGeoUI(); }catch(e){} }
         const m=U_MATER[String(c.materiale||'').toLowerCase()];
         if(m&&$('mat')&&$('mat').value!==m){$('mat').value=m;try{syncMatChips();}catch(e){}mat=true;}
         if(c.lamina){const L=String(c.lamina).toLowerCase();const nl=L.indexOf('op')>=0?'opaca':(L.indexOf('ness')>=0?'nessuna':'lucida');if(nl!==S.lamina){S.lamina=nl;document.querySelectorAll('#cLam .chip').forEach(e=>e.classList.toggle('on',e.dataset.l===S.lamina));mat=true;}}

@@ -102,6 +102,9 @@
 
 	onMount(async () => {
 		if (test) return;
+		// entrando in una pagina prodotto si parte dalla drop zone; il file della home
+		// si riprende solo quando si arriva da "Continua la configurazione" (#configura)
+		if (location.hash !== '#configura') return;
 		const d = await loadDraft();
 		if (d && d.product === product) {
 			file = d.file;
