@@ -120,7 +120,7 @@
 				<li><span class="n">3</span><div><b>Decidi tu</b><span>Conferma, oppure chiedici una modifica</span></div></li>
 				<li><span class="n">4</span><div><b>Controllo finale</b><span>Un umano controllerà manualmente che il tuo file rispetti i nostri standard prima di andare in stampa</span></div></li>
 			</ol>
-			<p class="note preview__beta">Il sistema è attualmente in fase beta solo per Adesivi personalizzati e Adesivi resinati.</p>
+			<p class="note preview__beta">Il sistema è attualmente in fase beta per Adesivi personalizzati, Adesivi resinati ed Etichette in fogli.</p>
 		</div>
 		<div class="preview__right"><UploadPreview /></div>
 	</div>
