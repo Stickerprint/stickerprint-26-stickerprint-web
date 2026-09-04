@@ -188,3 +188,19 @@ che ne contiene di piu' (a parita', il foglio piu' piccolo): priorita' al materi
 foglio (`S._an.sheet`), con il tratteggio di taglio su ogni etichetta. Il messaggio
 `render` porta `foglio:{n,cols,rows,w,h}` e il preventivatore delle etichette lo usa
 per dire "N etichette per foglio → M fogli". Banco: `scratchpad/harness/foglio.html`.
+
+## Adesivi in rilievo (5 settembre 2026)
+
+Con `rilievo=1` (URL) o `config.rilievo=true` il motore dipinge l'effetto rilievo
+(vernice UV spessa, sempre lucida) SOLO sui dettagli del disegno. `rilievoMask()`
+divide il disegno in regioni delimitate dai bordi netti (Sobel su luminanza e
+crominanza, copia a 640 px) e alza una regione se e' sottile (raggio inscritto
+< 8% del lato corto del disegno) o piccola (< 6% dell'area); restano piatti lo
+sfondo del file, il colore di fondo scelto e le campiture larghe (le sfumature
+non hanno bordi netti, quindi restano una regione sola). Se il rilievo supera il
+60% del disegno la soglia dei bordi sale (file complessi). `rilievoApply()` in
+`renderCore` compone: ombra portata in basso a destra, ombra interna sul fianco,
+cresta di luce in alto a sinistra, velo lucido e colori piu' pieni. L'effetto va
+sopra la finitura (UV opaca spegne il resto, il rilievo resta lucido). Banco:
+`scratchpad/harness/rilievo.html`. Sul sito il passo "Finitura" del rilievo ha
+UV opaca (consigliata) e UV lucida (`finishTitle`/`finishNote` nel listino).

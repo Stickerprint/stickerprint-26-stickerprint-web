@@ -21,7 +21,7 @@
 export type EngineKind = 'lamina' | 'resina';
 export interface CostItem { costM2: number; markup: number } // markup 0 = nessun ricarico, 0.5 = +50%
 export interface MaterialOption extends CostItem { id: string; label: string; description?: string; tag?: string; img?: string; visible: boolean }
-export interface FinishOption { id: string; label: string; description?: string; img?: string; laminate: boolean; visible: boolean }
+export interface FinishOption { id: string; label: string; description?: string; tag?: string; img?: string; laminate: boolean; visible: boolean }
 export interface ShapeOption { id: string; label: string; description?: string; img?: string; equal?: boolean; ratio?: number; visible: boolean; presets: number[] } // ratio = proporzione fissa larghezza/altezza (fogli)
 export interface RangeStep { from: number; factor: number }
 /** Avvio produzione a scaglioni: fino a `upTo` pezzi si paga `setup`; oltre l'ultimo scaglione vale `cfg.setup` */
@@ -45,6 +45,8 @@ export interface EngineConfig {
 	shapes: ShapeOption[]; // ogni sagoma ha le sue misure proposte (larghezze in mm)
 	materials: MaterialOption[];
 	finishes: FinishOption[];
+	finishTitle?: string; // titolo del passo finitura (default "Lamina protettiva")
+	finishNote?: string; // nota sotto le finiture (es. rilievo sempre lucido)
 }
 
 const IMG = '/images/estimator';
@@ -137,7 +139,15 @@ const MAT_STICKER = ['bianco', 'olografico', 'glitterato', 'trasparente', 'argen
 /** Listini iniziali, uno per prodotto e indipendenti tra loro (poi ognuno si modifica dalla dashboard) */
 export const DEFAULT_ENGINES: Record<string, EngineConfig> = {
 	adesivi_personalizzati: base({ materials: withMaterials(MAT_STICKER), quantities: QTY_STD }),
-	adesivi_rilievo: base({ materials: withMaterials(MAT_STICKER), shapes: stdShapes(STICKER_IMGS, [50, 80, 100, 125]), quantities: QTY_SMALL, size: { minMm: 20, maxMm: 500 } }),
+	adesivi_rilievo: base({
+		materials: withMaterials(MAT_STICKER), shapes: stdShapes(STICKER_IMGS, [50, 80, 100, 125]), quantities: QTY_SMALL, size: { minMm: 20, maxMm: 500 },
+		// niente lamina sul rilievo: la finitura e' una vernice UV, il rilievo resta sempre lucido
+		finishTitle: 'Finitura', finishNote: "L'effetto rilievo è sempre lucido.",
+		finishes: [
+			{ id: 'uv-opaca', label: 'UV opaca', description: 'Satinata, senza riflessi', tag: 'Consigliato', img: `${IMG}/lamina_opaca.webp`, laminate: true, visible: true },
+			{ id: 'uv-lucida', label: 'UV lucida', description: 'Brillante, riflette la luce', img: `${IMG}/lamina_lucida.webp`, laminate: true, visible: true }
+		]
+	}),
 	etichette: base({ materials: withMaterials(MAT_STICKER), shapes: stdShapes(LABEL_IMGS, [50, 80, 100, 125]), quantities: QTY_SMALL, size: { minMm: 15, maxMm: 300 } }),
 	fogli_adesivi: base({ materials: withMaterials(MAT_STICKER), shapes: clone(SHEET_SHAPES), quantities: QTY_SMALL, recommendedQty: 100, size: { minMm: 50, maxMm: 300 } }),
 	adesivi_resinati: base({

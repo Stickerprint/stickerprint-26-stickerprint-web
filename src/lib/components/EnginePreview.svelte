@@ -13,6 +13,7 @@
 		finitura = 'lucida',
 		prodotto = 'sticker',
 		foglio = false,
+		rilievo = false,
 		w = 0,
 		h = 0,
 		panel = false,
@@ -26,6 +27,7 @@
 		finitura?: string;
 		prodotto?: string;
 		foglio?: boolean;
+		rilievo?: boolean;
 		w?: number;
 		h?: number;
 		panel?: boolean;
@@ -47,6 +49,7 @@
 	function buildSrc() {
 		const q = new URLSearchParams({ embed: '1', forma, materiale, prodotto, lamina: finitura });
 		if (foglio) q.set('foglio', '1');
+		if (rilievo) q.set('rilievo', '1');
 		if (w > 0) q.set('w', String(w));
 		if (h > 0) q.set('h', String(h));
 		if (panel) {
@@ -85,14 +88,14 @@
 	let sentCfg = '';
 	$effect(() => {
 		const f = file;
-		const next = f ? `${prodotto}|${foglio}|${panel}|${stage}` : '';
+		const next = f ? `${prodotto}|${foglio}|${rilievo}|${panel}|${stage}` : '';
 		untrack(() => {
 			if (!f) { src = ''; ready = false; lastSrc = ''; sentFor = null; sentCfg = ''; return; }
 			if (next !== lastSrc) { lastSrc = next; sentFor = null; sentCfg = ''; busy = true; ready = false; src = buildSrc(); }
 		});
 	});
 	$effect(() => {
-		const cfg = JSON.stringify({ forma, materiale, lamina: finitura, w, h, prodotto, foglio });
+		const cfg = JSON.stringify({ forma, materiale, lamina: finitura, w, h, prodotto, foglio, rilievo });
 		untrack(() => {
 			if (!file || !src || cfg === sentCfg) return;
 			clearTimeout(cfgTimer);
@@ -122,7 +125,7 @@
 			if (cfgSentAt) { console.debug('[anteprima] aggiornata in', Math.round(performance.now() - cfgSentAt), 'ms'); cfgSentAt = 0; }
 			busy = false;
 			ready = true;
-			sentCfg = JSON.stringify({ forma, materiale, lamina: finitura, w, h, prodotto, foglio });
+			sentCfg = JSON.stringify({ forma, materiale, lamina: finitura, w, h, prodotto, foglio, rilievo });
 			clearTimeout(retry);
 			onrender?.({ png: d.detail.png, w: d.detail.w ?? 0, h: d.detail.h ?? 0, srcMM: d.detail.srcMM ?? null, palette: d.detail.palette ?? [], palIdx: d.detail.palIdx ?? 0, rimuovi: !!d.detail.rimuovi, foglio: d.detail.foglio ?? null });
 			frame?.contentWindow?.postMessage({ source: 'sito', type: 'cut', on: showCut }, location.origin);

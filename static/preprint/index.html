@@ -1612,7 +1612,7 @@ function computeMask(){
     S.leaked=noLeak(m,w,h,Math.max(2,Math.round(Math.sqrt(w*h)*0.0035)));
     fillHoles(m,w,h);
   }
-  S.mask=m;S.mw=w;S.mh=h;S.Rsafe=null;
+  S.mask=m;S.mw=w;S.mh=h;S.Rsafe=null;S.rilGen=(S.rilGen||0)+1;
   let x0=w,y0=h,x1=-1,y1=-1,kept=0;
   for(let i=0;i<w*h;i++)if(m[i]){kept++;const x=i%w,y=(i/w)|0;
     if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;}
@@ -2327,12 +2327,7 @@ function inkLayer(ppm){
   /* [sito] sagomato: il tracciato resta quello ricavato a misura piena, il disegno
      dentro si scala e si sposta attorno al centro dello sticker (fuori resta tagliato
      dal 'source-atop'). Sulle forme geometriche zoom e spostamento stanno gia' in S.art. */
-  let A=S.art;
-  if($('shp').value==='diecut'){
-    const z=((+$('gsc').value)||100)/100, ddx=+$('gdx').value||0, ddy=+$('gdy').value||0;
-    if(z!==1||ddx||ddy){const cx=S.cutW/2, cy=S.cutH/2;
-      A={x:cx-(cx-A.x)*z+ddx, y:cy-(cy-A.y)*z+ddy, w:A.w*z, h:A.h*z};}
-  }
+  const A=artRect();
   g.drawImage(S.artCanvas||S.work.canvas,A.x,A.y,A.w,A.h);
   g.globalCompositeOperation='source-over';
 
@@ -3094,13 +3089,141 @@ function resinDome(core,ppm){
   return out;}
 
 /* [sito] lamina opaca: colori un filo più scuri e spenti, su ogni materiale */
+/* ==========================================================================
+   [sito] ADESIVI IN RILIEVO
+   Il rilievo (vernice UV spessa, sempre lucida) non copre tutto il pezzo: va
+   sui dettagli — testi, tratti, piccoli elementi — e mai sullo sfondo o sulle
+   campiture larghe. Qui si isolano da soli i dettagli del disegno e ci si
+   dipinge sopra l'effetto: cresta di luce in alto a sinistra, ombra dentro in
+   basso a destra, ombra portata sul piano e un velo lucido.
+
+   Come si scelgono i dettagli: il disegno viene diviso in regioni delimitate
+   dai bordi netti (dove il colore cambia di colpo). Una regione e' "dettaglio"
+   se e' sottile (il cerchio piu' grande che ci sta dentro e' piccolo) oppure
+   piccola rispetto al disegno. Le campiture larghe e lo sfondo restano piatti,
+   e cosi' i colori uguali allo sfondo del file. Le sfumature non hanno bordi
+   netti, quindi una campitura sfumata resta una regione sola: piatta.
+   ========================================================================== */
+S.rilievo=false; S.rilGen=0; S.ril=null;
+function rilievoMask(){
+  if(!S.work||!S.mask||!S.bbox)return null;
+  const key=S.rilGen+'|'+S.palIdx+'|'+(S.rimuoviSfondo?1:0);
+  if(S.ril&&S.ril.key===key)return S.ril;
+  const t0=performance.now();
+  const sm=smallCopy(640), w=sm.w, h=sm.h, d=sm.d, N=w*h;
+  const kx=w/S.mw, ky=h/S.mh;
+  const inArt=new Uint8Array(N);
+  for(let y=0;y<h;y++){const sy=Math.min(S.mh-1,Math.floor(y/ky)),o=y*w;
+    for(let x=0;x<w;x++){const sx=Math.min(S.mw-1,Math.floor(x/kx));
+      if(S.mask[sy*S.mw+sx]&&d[(o+x)*4+3]>60)inArt[o+x]=1;}}
+  /* luminanza e crominanza, sfumate appena per non leggere il rumore come bordo */
+  const L=new Float32Array(N),Ca=new Float32Array(N),Cb=new Float32Array(N);
+  for(let i=0,p=0;i<N;i++,p+=4){L[i]=0.299*d[p]+0.587*d[p+1]+0.114*d[p+2];Ca[i]=(d[p]-d[p+1])*0.6;Cb[i]=(d[p+2]-(d[p]+d[p+1])*0.5)*0.6;}
+  const box=a=>{const o=new Float32Array(N);for(let y=0;y<h;y++)for(let x=0;x<w;x++){let s=0,n=0;
+    for(let dy=-1;dy<=1;dy++){const yy=y+dy;if(yy<0||yy>=h)continue;for(let dx=-1;dx<=1;dx++){const xx=x+dx;if(xx<0||xx>=w)continue;s+=a[yy*w+xx];n++;}}
+    o[y*w+x]=s/n;}return o;};
+  const Ls=box(L),As=box(Ca),Bs=box(Cb);
+  const grad=(a,i,x,y)=>{if(x<1||y<1||x>=w-1||y>=h-1)return 0;
+    const gx=(a[i-w+1]+2*a[i+1]+a[i+w+1])-(a[i-w-1]+2*a[i-1]+a[i+w-1]);
+    const gy=(a[i+w-1]+2*a[i+w]+a[i+w+1])-(a[i-w-1]+2*a[i-w]+a[i-w+1]);
+    return Math.hypot(gx,gy)/4;};
+  const segmenta=(T)=>{
+    const E=new Uint8Array(N);
+    for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=y*w+x;if(!inArt[i])continue;
+      const g=Math.max(grad(Ls,i,x,y),grad(As,i,x,y),grad(Bs,i,x,y));if(g>T)E[i]=1;}
+    /* regioni: componenti connesse del disegno senza i bordi */
+    const lab=new Int32Array(N);let nl=0;const areas=[],sums=[],maxd=[];
+    const inv=new Uint8Array(N);for(let i=0;i<N;i++)inv[i]=(inArt[i]&&!E[i])?0:1;
+    const dist=edt2d(inv,w,h);
+    const st=[];
+    for(let s=0;s<N;s++){if(lab[s]||inv[s])continue;nl++;lab[s]=nl;st.push(s);let area=0,md=0;const sum=[0,0,0];
+      while(st.length){const i=st.pop();area++;if(dist[i]>md)md=dist[i];const p=i*4;sum[0]+=d[p];sum[1]+=d[p+1];sum[2]+=d[p+2];
+        const x=i%w,y=(i/w)|0;
+        if(x>0&&!lab[i-1]&&!inv[i-1]){lab[i-1]=nl;st.push(i-1);}
+        if(x<w-1&&!lab[i+1]&&!inv[i+1]){lab[i+1]=nl;st.push(i+1);}
+        if(y>0&&!lab[i-w]&&!inv[i-w]){lab[i-w]=nl;st.push(i-w);}
+        if(y<h-1&&!lab[i+w]&&!inv[i+w]){lab[i+w]=nl;st.push(i+w);}}
+      areas[nl]=area;sums[nl]=sum;maxd[nl]=Math.sqrt(md);}
+    return {E,lab,nl,areas,sums,maxd};};
+  const bw=S.bbox.w*kx,bh=S.bbox.h*ky, artArea=Math.max(1,bw*bh);
+  const Rthin=Math.max(2,0.08*Math.min(bw,bh)), Asmall=0.06*artArea;
+  /* colori che restano piatti: lo sfondo del file e il colore di fondo scelto */
+  const flat=[];if(S.bgCol)flat.push(S.bgCol);if(S.palette&&S.palette[S.palIdx])flat.push(S.palette[S.palIdx]);
+  const vicino=(c,ref)=>Math.abs(c[0]-ref[0])+Math.abs(c[1]-ref[1])+Math.abs(c[2]-ref[2])<70;
+  let T=30, seg, R, frac=1;
+  for(let tent=0;tent<2;tent++){
+    seg=segmenta(T);
+    const on=new Uint8Array(seg.nl+1);
+    for(let l=1;l<=seg.nl;l++){const a=seg.areas[l],mean=seg.sums[l].map(v=>v/a);
+      if(flat.some(f=>vicino(mean,f)))continue;
+      if(seg.maxd[l]<Rthin||a<Asmall)on[l]=1;}
+    R=new Uint8Array(N);let cnt=0,tot=0;
+    for(let i=0;i<N;i++){if(inArt[i])tot++;if(seg.lab[i]&&on[seg.lab[i]]){R[i]=1;cnt++;}}
+    /* i pixel di bordo appartengono al dettaglio accanto */
+    const R2=Uint8Array.from(R);
+    for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=y*w+x;if(!seg.E[i]||!inArt[i])continue;
+      if((x>0&&R[i-1])||(x<w-1&&R[i+1])||(y>0&&R[i-w])||(y<h-1&&R[i+w]))R2[i]=1;}
+    R=R2;frac=tot?cnt/tot:0;
+    if(frac<=0.6)break;        // troppo rilievo: disegno complesso, si alza la soglia dei bordi
+    T=70;}
+  const c=document.createElement('canvas');c.width=w;c.height=h;
+  const g=c.getContext('2d'),im=g.createImageData(w,h),dd=im.data;
+  for(let i=0,p=0;i<N;i++,p+=4){if(R[i]){dd[p]=0;dd[p+1]=0;dd[p+2]=0;dd[p+3]=255;}}
+  g.putImageData(im,0,0);
+  S.ril={key,canvas:c,w,h,frac};
+  try{console.debug('[rilievo] dettagli:',Math.round(frac*100)+'% del disegno, regioni',seg.nl,'in',Math.round(performance.now()-t0),'ms');}catch(e){}
+  return S.ril;}
+
+/* posizione del disegno dentro il pezzo, in mm (con zoom e spostamento del sagomato) */
+function artRect(){
+  let A=S.art; if(!A)return null;
+  if($('shp').value==='diecut'){
+    const z=((+$('gsc').value)||100)/100, ddx=+$('gdx').value||0, ddy=+$('gdy').value||0;
+    if(z!==1||ddx||ddy){const cx=S.cutW/2, cy=S.cutH/2;
+      A={x:cx-(cx-A.x)*z+ddx, y:cy-(cy-A.y)*z+ddy, w:A.w*z, h:A.h*z};}
+  }
+  return A;}
+
+function rilievoApply(c,ppm){
+  const m=rilievoMask(), A=artRect(); if(!m||!A)return c;
+  const W=c.width,H=c.height;
+  const mk=document.createElement('canvas');mk.width=W;mk.height=H;
+  const gm=mk.getContext('2d');gm.setTransform(ppm,0,0,ppm,0,0);gm.imageSmoothingQuality='high';
+  gm.drawImage(m.canvas,A.x,A.y,A.w,A.h);gm.setTransform(1,0,0,1,0,0);
+  gm.globalCompositeOperation='destination-in';gm.drawImage(c,0,0);
+  const nc=()=>{const t=document.createElement('canvas');t.width=W;t.height=H;return t;};
+  const tint=(src,col)=>{const t=nc(),g=t.getContext('2d');g.drawImage(src,0,0);g.globalCompositeOperation='source-in';g.fillStyle=col;g.fillRect(0,0,W,H);return t;};
+  const meno=(a,b,dx,dy,bl)=>{const t=nc(),g=t.getContext('2d');if(bl)g.filter='blur('+bl+'px)';g.drawImage(a,0,0);g.filter='none';g.globalCompositeOperation='destination-out';g.drawImage(b,dx,dy);return t;};
+  const dd=Math.max(1,0.22*ppm), s=Math.max(1.2,0.32*ppm), bl=Math.max(0.6,0.28*ppm);
+  const out=nc(),o=out.getContext('2d');o.drawImage(c,0,0);
+  /* 1. ombra portata sul piano, in basso a destra, fuori dal rilievo */
+  {const sh=nc(),g=sh.getContext('2d');g.filter='blur('+bl+'px)';g.drawImage(mk,s,s);g.filter='none';
+   g.globalCompositeOperation='destination-out';g.drawImage(mk,0,0);
+   o.globalCompositeOperation='multiply';o.globalAlpha=0.38;o.drawImage(tint(sh,'#000'),0,0);}
+  /* 2. ombra interna in basso a destra: il fianco del rilievo in controluce */
+  {const r=meno(mk,mk,-dd,-dd,dd*0.35);o.globalCompositeOperation='multiply';o.globalAlpha=0.34;o.drawImage(tint(r,'#000'),0,0);}
+  /* 3. cresta di luce in alto a sinistra */
+  {const r=meno(mk,mk,dd,dd,dd*0.35);o.globalCompositeOperation='screen';o.globalAlpha=0.70;o.drawImage(tint(r,'#fff'),0,0);}
+  /* 4. il rilievo e' sempre lucido: velo di luce e colori piu' pieni */
+  {const v=nc(),g=v.getContext('2d');const gr=g.createLinearGradient(0,0,W*0.7,H);
+   gr.addColorStop(0,'rgba(255,255,255,0.30)');gr.addColorStop(0.5,'rgba(255,255,255,0.08)');gr.addColorStop(1,'rgba(255,255,255,0.02)');
+   g.fillStyle=gr;g.fillRect(0,0,W,H);g.globalCompositeOperation='destination-in';g.drawImage(mk,0,0);
+   o.globalCompositeOperation='source-over';o.globalAlpha=1;o.drawImage(v,0,0);
+   const k=nc(),gk=k.getContext('2d');gk.drawImage(c,0,0);gk.globalCompositeOperation='destination-in';gk.drawImage(mk,0,0);
+   o.globalCompositeOperation='overlay';o.globalAlpha=0.28;o.drawImage(k,0,0);}
+  o.globalAlpha=1;o.globalCompositeOperation='destination-in';o.drawImage(c,0,0);
+  o.globalCompositeOperation='source-over';
+  return out;}
+
 function renderCore(ppm,withMat){
-  const c=renderCoreRaw(ppm,withMat);
+  let c=renderCoreRaw(ppm,withMat);
   if(withMat&&S.lamina==='opaca'&&S.prod!=='resin'){
     const o=document.createElement('canvas');o.width=c.width;o.height=c.height;
     const g=o.getContext('2d');g.drawImage(c,0,0);
     g.globalCompositeOperation='source-atop';g.fillStyle='rgba(18,18,28,0.08)';g.fillRect(0,0,o.width,o.height);
-    return o;}
+    c=o;}
+  /* [sito] adesivi in rilievo: l'effetto va sopra la finitura, e resta lucido anche con l'UV opaca */
+  if(withMat&&S.rilievo&&S.prod!=='resin'){try{c=rilievoApply(c,ppm);}catch(e){console.error('[rilievo]',e);}}
   return c;}
 function renderCoreRaw(ppm,withMat){
   const ink=inkLayer(ppm);
@@ -3984,7 +4107,7 @@ const U_MATER={bianco:'white',white:'white',olografico:'holo',holo:'holo',
 function uLeggiConfig(){
   const q=new URLSearchParams(location.search);
   const c=Object.assign({},window.SPPS_CONFIG||{});
-  ['forma','materiale','w','h','qta','prodotto','lamina','foglio'].forEach(k=>{
+  ['forma','materiale','w','h','qta','prodotto','lamina','foglio','rilievo'].forEach(k=>{
     if(c[k]===undefined&&q.get(k)!==null)c[k]=q.get(k);});
   return c;
 }
@@ -3998,6 +4121,7 @@ function uBloccaCombinazione(){
     $('segProd').classList.add('hidden');
   }
   if(c.foglio!==undefined){const v=String(c.foglio).toLowerCase(); S.foglio=!(v===''||v==='0'||v==='false'||v==='no');}
+  if(c.rilievo!==undefined){const v=String(c.rilievo).toLowerCase(); S.rilievo=!(v===''||v==='0'||v==='false'||v==='no');}
   const f=U_FORMA[String(c.forma||'').toLowerCase()];
   if(f){
     CL.shape=f;
@@ -4676,6 +4800,7 @@ function ppGeoUI(){
         const c=d.config||{}; let geom=false, mat=false;
         if(c.prodotto){const p=String(c.prodotto).toLowerCase().indexOf('resin')>=0?'resin':'sticker'; if(p!==S.prod){setProd(p);geom=true;}}
         if(c.foglio!==undefined){const fg=!!c.foglio; if(fg!==S.foglio){S.foglio=fg;geom=true;}}
+        if(c.rilievo!==undefined){const rl=!!c.rilievo; if(rl!==S.rilievo){S.rilievo=rl;mat=true;}}
         const f=U_FORMA[String(c.forma||'').toLowerCase()];
         if(f&&f!==CL.shape){CL.shape=f;document.querySelectorAll('#cShape .chip').forEach(e=>e.classList.toggle('on',e.dataset.s===f));applyPreset(false);geom=true;
           /* nuova sagoma: il disegno riparte grande e centrato, e il pannello mostra i comandi giusti */

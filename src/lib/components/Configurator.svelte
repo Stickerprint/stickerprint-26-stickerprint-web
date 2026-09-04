@@ -62,6 +62,7 @@
 	let colInput = $state<HTMLInputElement | null>(null);
 	// etichette in fogli: il motore mostra il foglio e dice quante etichette ci entrano
 	const foglio = $derived(product === 'etichette');
+	const rilievo = $derived(product === 'adesivi_rilievo');
 	let perSheet = $state<{ n: number; cols: number; rows: number; w: number; h: number } | null>(null);
 	let over = $state(false);
 	let customOpen = $state(false);
@@ -195,7 +196,7 @@
 		<!-- ANTEPRIMA + BARRA COMANDI (sfondo · rimuovi sfondo · cambia file · tracciato) -->
 		<div class="cfg__preview">
 			{#if file}
-				<EnginePreview bind:this={engine} {file} {forma} {materiale} finitura={showFinish ? finitura : 'lucida'} prodotto={engineProduct} {foglio} {w} {h} {showCut} panel stage={foglio ? 440 : 370} onrender={onRender} />
+				<EnginePreview bind:this={engine} {file} {forma} {materiale} finitura={showFinish ? finitura : 'lucida'} prodotto={engineProduct} {foglio} {rilievo} {w} {h} {showCut} panel stage={foglio ? 440 : 370} onrender={onRender} />
 				{#if fileUrl}<img src={fileUrl} alt="" hidden onload={onImgLoad} />{/if}
 				<div class="cfg__bar">
 					<div class="cfg__bar-group">
@@ -299,7 +300,7 @@
 			<div class="step" class:is-open={step === 'finitura'}>
 				<button class="step__head" type="button" onclick={() => (step = 'finitura')} aria-expanded={step === 'finitura'}>
 					<span class="step__n">{#if stepNo(step) > stepNo('finitura')}✓{:else}{stepNo('finitura')}{/if}</span>
-					<span class="step__title">Lamina protettiva {#if step !== 'finitura'}<em>{finish?.label}</em>{/if}</span>
+					<span class="step__title">{cfg.finishTitle ?? 'Lamina protettiva'} {#if step !== 'finitura'}<em>{finish?.label}</em>{/if}</span>
 					<span class="step__edit">{step === 'finitura' ? '' : 'Modifica'}</span>
 				</button>
 				{#if step === 'finitura'}
@@ -307,6 +308,7 @@
 						<div class="pic-grid pic-grid--3 pic-grid--sm">
 							{#each FINISHES as f (f.id)}
 								<button type="button" class="pic" class:is-active={finitura === f.id} onclick={() => choose(() => (finitura = f.id), 'finitura')}>
+									{#if f.tag}<span class="pic__tag">{f.tag}</span>{/if}
 									<img src={f.img} alt="" />
 									<b>{f.label}</b>
 									<small>{f.description ?? ''}</small>
@@ -314,6 +316,7 @@
 							{/each}
 						</div>
 						{#if finitura === 'nessuna'}<p class="step__hint">Ideale se ti servono adesivi di alta qualità per uso promozionale provvisorio. Tradotto: poca spesa, tantissima resa.</p>{/if}
+						{#if cfg.finishNote}<p class="step__hint">{cfg.finishNote}</p>{/if}
 					</div>
 				{/if}
 			</div>
