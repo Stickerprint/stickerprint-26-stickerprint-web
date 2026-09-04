@@ -20,7 +20,8 @@ export const actions: Actions = {
 		const f = await request.formData();
 		const courier = String(f.get('courier') ?? '');
 		if (!COURIERS[courier]) return fail(400, { error: 'Corriere non valido.' });
-		const { error } = await supabase.from('orders').update({ courier, transmitted_at: null }).eq('checkout_group', String(f.get('group')));
+		// cambiando corriere si ricomincia: etichette e tracking del corriere precedente non valgono più
+		const { error } = await supabase.from('orders').update({ courier, transmitted_at: null, labels_generated_at: null, tracking_number: null, courier_label_path: null, manifest_id: null }).eq('checkout_group', String(f.get('group')));
 		if (error) return fail(400, { error: error.message });
 		return { ok: true };
 	},
@@ -34,7 +35,10 @@ export const actions: Actions = {
 		if (!keys.length) return fail(400, { error: `Nessuna spedizione ${courier} da generare.` });
 		try {
 			const r = await generateLabels(supabase, courier, keys);
-			return { ok: true, generated: courier, count: r.count, warnings: r.warnings, labels: `/dashboard/produzione/spedizioni/etichette?groups=${keys.join(',')}&courier=${courier}&day=1` };
+			// il PDF contiene tutte le etichette del corriere non ancora trasmesse (anche quelle generate prima)
+			const { data: all } = await supabase.from('orders').select('*').eq('status', 'pronto').eq('courier', courier).is('transmitted_at', null);
+			const allKeys = groupOrders((all ?? []) as OrderRow[]).filter((g) => deliveryMode(g) === 'ours').map((g) => g.key);
+			return { ok: true, generated: courier, count: r.count, warnings: r.warnings, labels: `/dashboard/produzione/spedizioni/etichette?groups=${allKeys.join(',')}&courier=${courier}&day=1` };
 		} catch (e) { return fail(400, { error: e instanceof Error ? e.message : 'Errore' }); }
 	},
 	/** Trasmetti spedizioni: invio al corriere e manifest da consegnare all'autista */

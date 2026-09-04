@@ -186,9 +186,12 @@
 .transmit-btn img { height: 28px; border-radius: 6px; }
 .ship-head { display: grid; grid-template-columns: 1fr auto; gap: 20px; align-items: start; }
 .ship-cols { display: grid; grid-template-columns: repeat(3, 190px); gap: 12px; }
-.ship-col { background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 14px 12px; display: grid; justify-items: center; gap: 6px; text-align: center; }
+.ship-col { background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 14px 12px; display: grid; grid-template-rows: 40px 34px 32px auto auto auto; align-items: center; justify-items: center; gap: 6px; text-align: center; }
 .ship-col.is-off { opacity: .75; }
-.ship-col img { height: 36px; }
+.ship-col img { height: 34px; }
 .ship-col__n { font-family: var(--font-display); font-size: 30px; line-height: 1; }
-.ship-col .btn { width: 100%; }
+.ship-col__cap { font-size: 11px; color: var(--muted); line-height: 1.25; align-self: start; }
+.ship-col form { width: 100%; }
+.ship-col .btn { width: 100%; box-sizing: border-box; white-space: nowrap; padding-left: 6px; padding-right: 6px; }
+.ship-col__link { font-size: 12px; }
 @media (max-width: 1200px) { .ship-head { grid-template-columns: 1fr; } .ship-cols { grid-template-columns: repeat(3, 1fr); } }

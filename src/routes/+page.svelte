@@ -19,7 +19,23 @@
 		{ name: 'Dolce & Gabbana', img: 'dolcegabbana.png' }, { name: 'Guerlain', img: 'guerlain.png' }, { name: 'Borotalco' }, { name: 'Rapid Bike' }
 	];
 	const IG_URL = 'https://www.instagram.com/stickerprint.it/';
-	const followers = $derived(data.instagram.followers ?? 6455);
+	// feed e follower live: dal server, poi riletti ogni minuto dal browser (contatore che si aggiorna da solo)
+	// svelte-ignore state_referenced_locally
+	let ig = $state(data.instagram);
+	// svelte-ignore state_referenced_locally
+	let shown = $state(data.instagram.followers ?? 6455);
+	const followers = $derived(Math.round(shown));
+	$effect(() => {
+		const target = ig.followers ?? 6455;
+		const from = shown; if (from === target) return;
+		const t0 = performance.now(); const dur = 900;
+		const step = (t: number) => { const k = Math.min(1, (t - t0) / dur); shown = from + (target - from) * (1 - Math.pow(1 - k, 3)); if (k < 1) requestAnimationFrame(step); };
+		requestAnimationFrame(step);
+	});
+	$effect(() => {
+		const id = setInterval(async () => { try { const r = await fetch('/api/instagram'); if (r.ok) ig = await r.json(); } catch { /* si ritenta al giro dopo */ } }, 60000);
+		return () => clearInterval(id);
+	});
 </script>
 
 <svelte:head>
@@ -180,23 +196,21 @@
 </section>
 
 <!-- INSTAGRAM -->
-<section class="section container">
+<section class="section container ig">
 	<div class="ig-head">
-		<div>
-			<h2><span class="hl hl--pink">Più di {followers} creativi sono già con noi.</span></h2>
-			<p class="lead" style="margin-top:14px">Lavorazioni, novità e progetti reali <strong>LIVE</strong> direttamente dal nostro laboratorio.</p>
-		</div>
 		<a class="tag tag--pink" href={IG_URL} target="_blank" rel="noopener" style="text-decoration:none">@stickerprint.it</a>
+		<h2><span class="hl hl--pink">Più di <span class="ig-count" class:is-live={ig.live}>{followers.toLocaleString('it-IT')}</span> creativi sono già con noi.</span></h2>
+		<p class="lead">Lavorazioni, novità e progetti reali <strong>LIVE</strong> direttamente dal nostro laboratorio.</p>
 	</div>
 	<div class="ig-grid">
-		{#each data.instagram.media as m (m.id)}
+		{#each ig.media as m (m.id)}
 			<a href={m.permalink} target="_blank" rel="noopener" title={m.caption || 'Apri su Instagram'}>
 				<img src={m.image} alt={m.caption || 'Post Instagram di Stickerprint'} width="600" height="600" loading="lazy" />
 				{#if m.isVideo}<span class="ig-play" aria-hidden="true">▶</span>{/if}
 			</a>
 		{/each}
 	</div>
-	<p class="center" style="margin-top:26px"><a class="btn btn--pink btn--lg" href={IG_URL} target="_blank" rel="noopener">Seguici su Instagram</a></p>
+<p class="center" style="margin-top:26px"><a class="btn btn--pink btn--lg" href={IG_URL} target="_blank" rel="noopener">Seguici su Instagram</a></p>
 </section>
 
 <!-- FINALE -->

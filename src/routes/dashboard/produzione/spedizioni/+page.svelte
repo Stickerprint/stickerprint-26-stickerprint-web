@@ -33,15 +33,12 @@
 			<div class="ship-col" class:is-off={!c.today}>
 				<img src={COURIERS[c.id].logo} alt={c.id} />
 				<b class="ship-col__n">{c.today}</b>
-				<span class="osub">{c.today === 1 ? 'spedizione affidata oggi' : 'spedizioni affidate oggi'}{#if !c.configured} · <span title="Collega le API in Setup → Corrieri">senza API</span>{/if}</span>
+				<span class="ship-col__cap">{c.today === 1 ? 'spedizione affidata oggi' : 'spedizioni affidate oggi'}{#if !c.configured}<br /><span title="Collega le API in Setup → Corrieri">senza API</span>{/if}</span>
 				<form method="POST" action="?/labels" use:enhance><input type="hidden" name="courier" value={c.id} /><button class="btn btn--blue btn--xs" type="submit" disabled={!c.toGenerate.length} title={c.toGenerate.length ? 'Crea le spedizioni e scarica le etichette' : 'Nessuna spedizione da generare'}>🏷️ Genera spedizioni{#if c.toGenerate.length} ({c.toGenerate.length}){/if}</button></form>
 				{#if c.toTransmit.length}
 					<form method="POST" action="?/transmit" use:enhance><input type="hidden" name="courier" value={c.id} /><button class="btn btn--green btn--xs" type="submit" title="Invia al corriere e scarica il manifest">📤 Trasmetti spedizioni ({c.toTransmit.length})</button></form>
 				{/if}
-				{#if c.transmitted.length}
-					<a class="link" style="font-size:12px" href="/dashboard/produzione/spedizioni/etichette?groups={c.transmitted.join(',')}&courier={c.id}&day=1" target="_blank">⬇ etichette di oggi</a>
-					{#if c.manifestId}<a class="link" style="font-size:12px" href="/dashboard/produzione/spedizioni/manifest/{c.manifestId}" target="_blank">⬇ manifest di oggi</a>{/if}
-				{/if}
+				{#if c.manifestId}<a class="link ship-col__link" href="/dashboard/produzione/spedizioni/manifest/{c.manifestId}" target="_blank">⬇ manifest di oggi</a>{/if}
 			</div>
 		{/each}
 	</div>
