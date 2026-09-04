@@ -29,7 +29,7 @@ export const actions: Actions = {
 		const f = await request.formData();
 		const courier = String(f.get('courier') ?? '');
 		if (!COURIERS[courier]) return fail(400, { error: 'Corriere non valido.' });
-		const { data } = await supabase.from('orders').select('*').eq('status', 'pronto').eq('courier', courier).is('labels_generated_at', null);
+		const { data } = await supabase.from('orders').select('*').eq('status', 'pronto').eq('courier', courier).is('labels_generated_at', null).is('transmitted_at', null);
 		const keys = groupOrders((data ?? []) as OrderRow[]).filter((g) => deliveryMode(g) === 'ours').map((g) => g.key);
 		if (!keys.length) return fail(400, { error: `Nessuna spedizione ${courier} da generare.` });
 		try {

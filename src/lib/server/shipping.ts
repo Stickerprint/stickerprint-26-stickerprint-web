@@ -11,7 +11,7 @@ const isToday = (d: string | null | undefined) => !!d && d.slice(0, 10) === toda
 /** Spedizioni di oggi per corriere: da generare, da trasmettere, trasmesse */
 export function courierDay(groups: OrderGroup[], courier: string) {
 	const mine = groups.filter((g) => g.items[0].courier === courier && deliveryMode(g) === 'ours');
-	const toGenerate = mine.filter((g) => g.status === 'pronto' && !g.items[0].labels_generated_at);
+	const toGenerate = mine.filter((g) => g.status === 'pronto' && !g.items[0].labels_generated_at && !g.items[0].transmitted_at);
 	const toTransmit = mine.filter((g) => g.status === 'pronto' && g.items[0].labels_generated_at && !g.items[0].transmitted_at);
 	const transmitted = mine.filter((g) => isToday(g.items[0].transmitted_at));
 	const generatedToday = mine.filter((g) => isToday(g.items[0].labels_generated_at) || isToday(g.items[0].transmitted_at) || (g.status === 'pronto' && g.items[0].courier));
