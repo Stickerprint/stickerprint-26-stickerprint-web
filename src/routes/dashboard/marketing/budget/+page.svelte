@@ -16,6 +16,9 @@
 	const daPianificare = $derived(Math.max(0, mensile - pianificato));
 	const senzaBudget = $derived(contenuti.filter((c) => c.budget_ads == null && ['approvato', 'programmato', 'in_attesa'].includes(c.status)));
 	const spesaMeta = $derived(campagne?.budget?.spesa?.meta?.valore ?? null);
+	const tiktok = $derived(data.configurato ? data.tiktok : null);
+	const PASSO = 10;
+	const quotaPost = (c: Contenuto, p: string) => (Number(c.budget_ads) || 0) * ((c.budget_split?.[p as 'instagram'] ?? splitPredefinito(c.platforms)[p] ?? 0) / 100);
 	// divisione per piattaforma: somma delle percentuali salvate sui contenuti con budget
 	const perPiattaforma = $derived(PIATTAFORME.map((p) => ({
 		...p,
@@ -51,10 +54,11 @@
 	<div class="mk-err">{data.budget.ok ? '' : data.budget.errore}</div>
 {:else}
 	<div class="mk-stats">
-		<Stat etichetta="Budget mensile" valore={mensile ? euro(mensile) : '—'} nota={mensile ? `Meta ${euro(quota('meta'))} · TikTok ${euro(quota('tiktok'))}` : 'non ancora impostato'} />
+		<Stat etichetta="Budget mensile" valore={mensile ? euro(mensile) : '—'} nota={mensile ? `Meta ${euro(quota('meta'))} · TikTok ${euro(quota('tiktok'))}${quota('google') ? ` · Google ${euro(quota('google'))}` : ''}` : 'non ancora impostato'} />
 		<Stat etichetta="Assegnato ai contenuti" valore={euro(pianificato)} nota={mensile ? `${pct(pianificato, mensile)}% del mensile` : ''} />
 		<Stat etichetta="Ancora da assegnare" valore={mensile ? euro(daPianificare) : '—'} />
 		<Stat etichetta="Speso su Meta a {b.budget.mese}" valore={euro(spesaMeta, 2)} nota={campagne ? 'letto adesso dall\'account pubblicitario' : (data.campagne.ok ? (data.campagne.collegato ? '' : data.campagne.motivo) : data.campagne.errore)} />
+		<Stat etichetta="Speso su TikTok a {b.budget.mese}" valore={tiktok?.ok ? euro(tiktok.spesaMese, 2) : '—'} nota={tiktok?.ok ? 'letto adesso da TikTok Ads' : (tiktok && !tiktok.ok ? tiktok.errore : '')} />
 	</div>
 	{#if mensile}<div class="mk-prog"><i style="width:{Math.min(100, pct(pianificato, mensile))}%"></i></div>{/if}
 	{#if b.budget.totale != null}
@@ -74,7 +78,8 @@
 			{:else}
 				<p class="mk-nota">Nessun budget assegnato ai contenuti: la divisione compare quando ne assegni uno.</p>
 			{/if}
-			<p class="mk-nota" style="margin-top:10px">TikTok Ads non è collegato: la quota si decide, la spesa non si legge.</p>
+			{#if tiktok?.ok}<p class="mk-nota" style="margin-top:10px">TikTok Ads collegato: spesa del mese {euro(tiktok.spesaMese, 2)} · <a class="link" href="/dashboard/marketing/tiktok">campagne e budget →</a></p>{:else}<p class="mk-nota" style="margin-top:10px">TikTok Ads non è collegato: la quota si decide, la spesa non si legge. <a class="link" href="/dashboard/marketing/tiktok">Collegalo →</a></p>{/if}
+			<p class="mk-nota"><a class="link" href="/dashboard/marketing/analytics">Google Analytics 4 →</a> per vedere cosa porta davvero traffico e ordini.</p>
 		</div>
 		<div class="dcard">
 			<h3>Ultimi movimenti</h3>
@@ -109,18 +114,25 @@
 	{#if conBudget.length}
 		<div class="dcard" style="padding:0;overflow-x:auto">
 			<table class="dtable">
-				<thead><tr><th>Contenuto</th><th>Stato</th><th>Budget</th><th>Obiettivo</th><th>Divisione</th><th></th></tr></thead>
+				<thead><tr><th>Contenuto</th><th>Stato</th><th>Budget</th><th>Obiettivo</th><th>Per piattaforma</th><th></th></tr></thead>
 				<tbody>
 					{#each conBudget as c (c.id)}
+						{@const splitJson = JSON.stringify(c.budget_split && Object.keys(c.budget_split).length ? c.budget_split : splitPredefinito(c.platforms))}
 						<tr>
 							<td><b>{c.title}</b></td>
 							<td><span class="mk-chip {statoContenuto(c.status).classe}">{statoContenuto(c.status).label}</span></td>
-							<td><b>{euro(c.budget_ads)}</b></td>
+							<td>
+								<div style="display:flex;gap:4px;align-items:center">
+									<form method="POST" action="?/passo" use:enhance style="display:inline"><input type="hidden" name="id" value={c.id} /><input type="hidden" name="attuale" value={c.budget_ads ?? 0} /><input type="hidden" name="delta" value={-PASSO} /><input type="hidden" name="split" value={splitJson} /><input type="hidden" name="obiettivo" value={c.campaign_objective ?? 'traffico'} /><button class="ibtn" type="submit" title="−{PASSO} €">➖</button></form>
+									<b style="min-width:60px;text-align:center">{euro(c.budget_ads)}</b>
+									<form method="POST" action="?/passo" use:enhance style="display:inline"><input type="hidden" name="id" value={c.id} /><input type="hidden" name="attuale" value={c.budget_ads ?? 0} /><input type="hidden" name="delta" value={PASSO} /><input type="hidden" name="split" value={splitJson} /><input type="hidden" name="obiettivo" value={c.campaign_objective ?? 'traffico'} /><button class="ibtn" type="submit" title="+{PASSO} €">➕</button></form>
+								</div>
+							</td>
 							<td>{OBIETTIVI.find((o) => o.value === c.campaign_objective)?.label ?? '—'}</td>
-							<td class="mk-nota">{Object.entries(c.budget_split ?? {}).map(([p, v]) => `${PIATTAFORMA_LABEL[p] ?? p} ${v}%`).join(' · ') || '—'}</td>
+							<td class="mk-nota">{#each Object.entries(c.budget_split && Object.keys(c.budget_split).length ? c.budget_split : splitPredefinito(c.platforms)) as [p, v] (p)}<div>{PIATTAFORMA_LABEL[p] ?? p} <b>{euro(Math.round(quotaPost(c, p)))}</b> <small>({v}%)</small></div>{/each}</td>
 							<td class="row-actions">
-								<button class="btn btn--xs btn--ghost" type="button" onclick={() => apriAssegna(c)}>Cambia</button>
-								<form method="POST" action="?/rimuovi" use:enhance style="display:inline"><input type="hidden" name="id" value={c.id} /><button class="btn btn--xs btn--white" type="submit">Togli</button></form>
+								<button class="btn btn--xs btn--ghost" type="button" onclick={() => apriAssegna(c)}>Cambia divisione</button>
+								<form method="POST" action="?/rimuovi" use:enhance style="display:inline" onsubmit={(e) => { if (!confirm(`Togliere il budget da “${c.title}”?`)) e.preventDefault(); }}><input type="hidden" name="id" value={c.id} /><button class="btn btn--xs btn--white" type="submit">Togli</button></form>
 							</td>
 						</tr>
 					{/each}

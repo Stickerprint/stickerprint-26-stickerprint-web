@@ -36,6 +36,8 @@
 			{ label: 'Budget & ADV', href: '/dashboard/marketing/budget' },
 			{ label: 'Contenuti', href: '/dashboard/marketing/contenuti' },
 			{ label: 'Risultati', href: '/dashboard/marketing/risultati' },
+			{ label: 'Google Analytics', href: '/dashboard/marketing/analytics' },
+			{ label: 'TikTok Ads', href: '/dashboard/marketing/tiktok' },
 			{ label: 'Approvazioni', href: '/dashboard/marketing/approvazioni', count: data.counts?.approvazioni },
 			{ label: 'Appuntamenti', href: '/dashboard/marketing/appuntamenti' },
 			{ label: 'Notifiche', href: '/dashboard/marketing/notifiche', count: data.counts?.notifiche }
