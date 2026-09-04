@@ -227,3 +227,4 @@
 .qty-custom label { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: var(--muted); }
 .qty-custom input { width: 110px; padding: 9px 10px; border: 1px solid var(--line); border-radius: 8px; font: inherit; font-size: 15px; font-weight: 700; }
 .qty-custom__res { font-size: 14px; }
+.cfg { scroll-margin-top: 84px; }
