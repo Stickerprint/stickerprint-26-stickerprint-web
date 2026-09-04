@@ -4497,12 +4497,16 @@ document.querySelectorAll('#cLam .chip').forEach(el=>{
   let lastH=0; const sendSize=()=>{const app=document.querySelector('.pp-app'); const h=Math.ceil(app?app.getBoundingClientRect().height+8:document.documentElement.scrollHeight); if(h!==lastH){lastH=h;send('size',{h});}};
   setInterval(sendSize,400); addEventListener('load',sendSize);
   const snapshot=()=>{
+    const t0=performance.now();
     fitEmbed();
     try{
       const cv=document.getElementById('preview');
+      const t1=performance.now();
+      const png=(cv&&cv.width&&cv.style.display!=='none')?cv.toDataURL('image/png'):null;
+      const t2=performance.now();
       send('render',{name:S.name||null,w:+((S.cutW||0)).toFixed(1),h:+((S.cutH||0)).toFixed(1),srcMM:S.srcMM||null,
-        materiale:(typeof matKind==='function')?matKind():null,
-        png:(cv&&cv.width&&cv.style.display!=='none')?cv.toDataURL('image/png'):null});
+        materiale:(typeof matKind==='function')?matKind():null,png});
+      try{console.debug('[motore] istantanea: attesa',Math.round(t0-(window.__busyOff||t0)),'ms · inquadratura',Math.round(t1-t0),'ms · png',Math.round(t2-t1),'ms ·',cv.width+'x'+cv.height);}catch(e){}
     }catch(e){}
   };
   addEventListener('message',e=>{
@@ -4547,7 +4551,7 @@ document.querySelectorAll('#cLam .chip').forEach(el=>{
   /* ogni volta che il motore finisce un lavoro (busy(false)) manda l'istantanea */
   try{
     const _busy=busy;
-    busy=function(on){const r=_busy.apply(this,arguments); if(on===false&&S.src)setTimeout(snapshot,30); return r;};
+    busy=function(on){const r=_busy.apply(this,arguments); if(on===false&&S.src){window.__busyOff=performance.now();setTimeout(snapshot,30);} return r;};
   }catch(e){}
   send('ready');
   addEventListener('load',()=>send('ready'));
