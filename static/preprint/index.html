@@ -4548,6 +4548,9 @@ document.querySelectorAll('#cLam .chip').forEach(el=>{
             /* il taglio si rifa' solo se cambiano sagoma o misura; per materiale e lamina basta ridisegnare */
             try{if(geom)buildCut();t1=performance.now();draw();t2=performance.now();}catch(e){}
             try{console.debug('[motore] config',JSON.stringify(c),'taglio',Math.round(t1-t0),'ms · disegno',Math.round(t2-t1),'ms');}catch(e){}
+            /* l'istantanea parte SUBITO, nello stesso passaggio: cosi' il sito
+               la riceve senza aspettare timer e lavori di contorno */
+            window.__busyOff=performance.now(); snapshot();
             busy(false);
             /* foglio di stampa e tavolozza: dopo, non servono all'anteprima */
             setTimeout(()=>{try{computeLayout();if(mat)paintPalette();}catch(e){}},250);
