@@ -654,6 +654,7 @@ function busy(on,txt){$('busy').className='busy'+(on?' on':'');if(txt)$('busyT')
 const RESIN_R=2.0;          // raggio minimo obbligatorio sugli angoli, in mm
 const RESIN_NECK=5.0;       // collo minimo per il resinato, in mm
 const RESIN_BORDER=2.5;     // bordo minimo, così l'arrotondamento non mangia il disegno
+const EMBED=(new URLSearchParams(location.search)).get('embed')==='1';
 const S={prod:'sticker',artClip:null,palette:null,palIdx:0,bgOpaque:true,viewTotW:50,resinR:0,src:null,artCanvas:null,name:'',srcW:0,srcH:0,srcMM:null,work:null,mask:null,mw:0,mh:0,bbox:null,
   bgCol:null,bgSrc:'',cands:[],chosen:-1,ctx0:null,seeds:[],lineSeed:null,wand:false,keptPct:0,
   Rsafe:null,RsafeFor:null,polys:null,pathD:'',cutW:0,cutH:0,bleed:0,art:null,quality:null,
@@ -3217,7 +3218,11 @@ function draw(){
      — file singolo e foglio di stampa — resta al suo posto. */
   const cv=$('preview'),b=0,pad=(S.prod==='resin'&&!S.senzaResina)?Math.max(6,S.bleed+3,0.16*Math.max(S.cutW,S.cutH)):Math.max(5,S.bleed+3);
   const totW=S.cutW+2*b+pad*2,totH=S.cutH+2*b+pad*2;
-  const ppm=Math.min(1400/totW,1000/totH,(S.prod==='resin'&&!S.senzaResina)?12:16);
+  let cap=(S.prod==='resin'&&!S.senzaResina)?12:16;
+  /* dentro il sito l'anteprima e' alta 300-400 px: si disegna a risoluzione
+     retina di quello spazio, non a 16 px/mm — un quarto dei pixel, un quarto del tempo */
+  try{ if(EMBED){const st=$('ppStage'); const big=Math.max(st.clientWidth,st.clientHeight)||400; cap=Math.min(cap,Math.max(6,Math.ceil(2.2*big/Math.max(totW,totH))));} }catch(e){}
+  const ppm=Math.min(1400/totW,1000/totH,cap);
   const tile=renderTile(ppm,true,0);
   cv.width=Math.round(totW*ppm);cv.height=Math.round(totH*ppm);
   cv.style.display='block';$('empty').style.display='none';
@@ -4513,24 +4518,27 @@ document.querySelectorAll('#cLam .chip').forEach(el=>{
        il file resta caricato e segmentato, si rifanno solo taglio e disegno */
     if(d.type==='config'){
       try{
-        const c=d.config||{}; let changed=false;
-        if(c.prodotto){const p=String(c.prodotto).toLowerCase().indexOf('resin')>=0?'resin':'sticker'; if(p!==S.prod){setProd(p);changed=true;}}
+        const c=d.config||{}; let geom=false, mat=false;
+        if(c.prodotto){const p=String(c.prodotto).toLowerCase().indexOf('resin')>=0?'resin':'sticker'; if(p!==S.prod){setProd(p);geom=true;}}
         const f=U_FORMA[String(c.forma||'').toLowerCase()];
-        if(f&&f!==CL.shape){CL.shape=f;document.querySelectorAll('#cShape .chip').forEach(e=>e.classList.toggle('on',e.dataset.s===f));applyPreset(false);changed=true;}
+        if(f&&f!==CL.shape){CL.shape=f;document.querySelectorAll('#cShape .chip').forEach(e=>e.classList.toggle('on',e.dataset.s===f));applyPreset(false);geom=true;}
         const m=U_MATER[String(c.materiale||'').toLowerCase()];
-        if(m&&$('mat')&&$('mat').value!==m){$('mat').value=m;try{syncMatChips();paintPalette();}catch(e){}changed=true;}
-        if(c.lamina){const L=String(c.lamina).toLowerCase();const nl=L.indexOf('op')>=0?'opaca':(L.indexOf('ness')>=0?'nessuna':'lucida');if(nl!==S.lamina){S.lamina=nl;document.querySelectorAll('#cLam .chip').forEach(e=>e.classList.toggle('on',e.dataset.l===S.lamina));changed=true;}}
+        if(m&&$('mat')&&$('mat').value!==m){$('mat').value=m;try{syncMatChips();}catch(e){}mat=true;}
+        if(c.lamina){const L=String(c.lamina).toLowerCase();const nl=L.indexOf('op')>=0?'opaca':(L.indexOf('ness')>=0?'nessuna':'lucida');if(nl!==S.lamina){S.lamina=nl;document.querySelectorAll('#cLam .chip').forEach(e=>e.classList.toggle('on',e.dataset.l===S.lamina));mat=true;}}
         if(c.w){const w=Math.max(8,+c.w||50),h=Math.max(8,+(c.h||c.w)||w);
-          if($('wmm').value!==w.toFixed(1)||$('hmm').value!==h.toFixed(1)){$('wmm').value=w.toFixed(1);$('hmm').value=h.toFixed(1);syncRatio();changed=true;}}
-        if(changed&&S.src&&S.bbox){
+          if($('wmm').value!==w.toFixed(1)||$('hmm').value!==h.toFixed(1)){$('wmm').value=w.toFixed(1);$('hmm').value=h.toFixed(1);syncRatio();geom=true;}}
+        if((geom||mat)&&S.src&&S.bbox){
           busy(true,'Aggiorno…');
           setTimeout(()=>{
             const t0=performance.now(); let t1=t0,t2=t0;
-            try{buildCut();t1=performance.now();draw();t2=performance.now();computeLayout();}catch(e){}
+            /* il taglio si rifa' solo se cambiano sagoma o misura; per materiale e lamina basta ridisegnare */
+            try{if(geom)buildCut();t1=performance.now();draw();t2=performance.now();}catch(e){}
             try{console.debug('[motore] config',JSON.stringify(c),'taglio',Math.round(t1-t0),'ms · disegno',Math.round(t2-t1),'ms');}catch(e){}
             busy(false);
+            /* foglio di stampa e tavolozza: dopo, non servono all'anteprima */
+            setTimeout(()=>{try{computeLayout();if(mat)paintPalette();}catch(e){}},250);
           },0);
-        } else if(changed){try{uSummary();}catch(e){}}
+        } else if(geom||mat){try{uSummary();}catch(e){}}
       }catch(e){}
     }
   });
