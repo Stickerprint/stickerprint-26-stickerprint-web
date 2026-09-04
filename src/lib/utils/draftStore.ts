@@ -72,4 +72,7 @@ export const clearDraft = () => del(STORE, KEY);
 /** File del cliente per una riga del carrello (chiave = id della riga) */
 export const saveCartFile = (id: string, file: File) => put(FILES, id, file);
 export const getCartFile = (id: string) => get<File>(FILES, id);
-export const deleteCartFile = (id: string) => del(FILES, id);
+export const deleteCartFile = (id: string) => Promise.all([del(FILES, id), del(FILES, id + ':preview')]).then(() => {});
+/** Anteprima generata dal sistema (PNG con tracciato di taglio) per una riga del carrello */
+export const saveCartPreview = (id: string, blob: Blob) => put(FILES, id + ':preview', blob);
+export const getCartPreview = (id: string) => get<Blob>(FILES, id + ':preview');

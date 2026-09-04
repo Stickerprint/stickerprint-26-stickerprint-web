@@ -4,7 +4,7 @@
 	import { goto } from '$app/navigation';
 	import { deserialize } from '$app/forms';
 	import { readCart, removeFromCart, updateCartItem, clearCart, type CartItem } from '$lib/cart';
-	import { getCartFile, deleteCartFile } from '$lib/utils/draftStore';
+	import { getCartFile, getCartPreview, deleteCartFile } from '$lib/utils/draftStore';
 	import { PROVINCES } from '$lib/provinces';
 	import { MATERIAL_LABEL, eur, fmtMm } from '$lib/account';
 
@@ -54,7 +54,9 @@
 		for (const it of items) {
 			const f = await getCartFile(it.id);
 			hasFile[it.id] = !!f;
-			if (f && f.type.startsWith('image/')) thumbs[it.id] = URL.createObjectURL(f);
+			const pv = await getCartPreview(it.id);
+			if (pv) thumbs[it.id] = URL.createObjectURL(pv);
+			else if (f && f.type.startsWith('image/')) thumbs[it.id] = URL.createObjectURL(f);
 		}
 		loaded = true;
 	});
@@ -89,7 +91,14 @@
 			const lines = [];
 			for (const it of items) {
 				let filePath = it.filePath ?? null;
+				let previewUrl: string | null = it.previewUrl ?? null;
 				const f = await getCartFile(it.id);
+				const pv = await getCartPreview(it.id);
+				if (pv) {
+					const ppath = `${data.user?.id ?? 'guest'}/${it.id}.png`;
+					const { error: pe } = await data.supabase.storage.from('order-previews').upload(ppath, pv, { contentType: 'image/png', upsert: true });
+					if (!pe) previewUrl = data.supabase.storage.from('order-previews').getPublicUrl(ppath).data.publicUrl;
+				}
 				if (f) {
 					const ext = (f.name.split('.').pop() ?? 'bin').toLowerCase().replace(/[^a-z0-9]/g, '') || 'bin';
 					const path = `${data.user?.id ?? 'guest'}/${it.id}.${ext}`;
@@ -97,7 +106,7 @@
 					if (error) throw new Error(`File non caricato (${f.name}): ${error.message}`);
 					filePath = path;
 				}
-				lines.push({ id: it.id, product: it.product, forma: it.forma, materiale: it.materiale, finitura: it.finitura, w: it.w, h: it.h, qty: it.qty, filePath, fileName: it.fileName ?? null, note: it.note, reorderOf: it.reorderOf ?? null });
+				lines.push({ id: it.id, product: it.product, forma: it.forma, materiale: it.materiale, finitura: it.finitura, w: it.w, h: it.h, qty: it.qty, filePath, fileName: it.fileName ?? null, previewUrl, note: it.note, reorderOf: it.reorderOf ?? null });
 			}
 			const fd = new FormData(formEl);
 			fd.set('items', JSON.stringify(lines));

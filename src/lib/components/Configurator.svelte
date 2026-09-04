@@ -8,7 +8,7 @@
 	 */
 	import { onMount } from 'svelte';
 	import EnginePreview from './EnginePreview.svelte';
-	import { loadDraft, saveDraft, saveCartFile } from '$lib/utils/draftStore';
+	import { loadDraft, saveDraft, saveCartFile, saveCartPreview } from '$lib/utils/draftStore';
 	import { addToCart } from '$lib/cart';
 	import { quoteWith, suggestedSize, roundHalf, eur0, eur2, showFinishStep, showMaterialStep, type EngineConfig } from '$lib/pricing/engine';
 
@@ -54,6 +54,7 @@
 	let note = $state('');
 	let added = $state(false);
 	let fileInput = $state<HTMLInputElement | undefined>();
+	let lastPng: string | null = null; // ultima anteprima generata dal motore (con tracciato di taglio)
 
 	// valori iniziali coerenti con il listino (anche quando il listino cambia sotto, in dashboard)
 	$effect(() => {
@@ -100,7 +101,8 @@
 		}
 	});
 
-	function onRender(s: { w: number; h: number; srcMM: { w: number; h: number } | null }) {
+	function onRender(s: { png?: string | null; w: number; h: number; srcMM: { w: number; h: number } | null }) {
+		if (s.png) lastPng = s.png;
 		const key = `${file?.name ?? ''}|${file?.size ?? 0}|${forma}`;
 		if (key === sizeKey) return;
 		sizeKey = key;
@@ -144,6 +146,10 @@
 		const it = addToCart({ product, productName: productName.replace(/^(i tuoi|le tue) /, ''), engineProduct, forma, materiale, finitura: showFinish ? finitura : undefined, w, h, qty, net: q.net, gross: q.gross, fileName: file.name, note });
 		try {
 			await saveCartFile(it.id, file);
+			if (lastPng) {
+				const blob = await (await fetch(lastPng)).blob();
+				await saveCartPreview(it.id, blob);
+			}
 		} catch {
 			/* senza IndexedDB il file andrà ricaricato al checkout */
 		}

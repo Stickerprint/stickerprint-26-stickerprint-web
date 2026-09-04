@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import { ORDER_STATUS, CATS, COUNTRIES, MONTHS, money, dmy, itemMeta, PRODUCTION_STATUSES, SHIPPING_STATUSES, type OrderGroup } from '$lib/dashboard/orders';
+	import { ORDER_STATUS, CATS, COUNTRIES, MONTHS, money, dmy, itemMeta, PRODUCTION_STATUSES, SHIPPING_STATUSES, DEVICE_ICON, CHANNEL_ICON, type OrderGroup } from '$lib/dashboard/orders';
 	let { data } = $props();
 	let search = $state('');
 	let cat = $state('all');
@@ -88,11 +88,11 @@
 				{@const first = g.items[0]}
 				<tr class="orow-main">
 					<td>{COUNTRIES[g.country]?.flag ?? '🌍'}</td>
-					<td><a class="oid" href="/dashboard/produzione/ordini/{g.key}">{g.number}{#if g.items.length > 1} <small>+{g.items.length - 1}</small>{/if}</a><div class="osub">{dmy(g.created_at)} · <span class="chan chan--{g.channel}">{g.channel === 'manuale' ? '✍️ Manuale' : '🛒 E-commerce'}</span>{#if g.express} · ⚡ express{/if}</div></td>
+					<td><a class="oid" href="/dashboard/produzione/ordini/{g.key}">{g.number}{#if g.items.length > 1} <small>+{g.items.length - 1}</small>{/if}</a><div class="osub">{dmy(g.created_at)} <span title={CHANNEL_ICON[g.channel]?.label}>{CHANNEL_ICON[g.channel]?.icon ?? ''}</span>{#if g.device}<span title="Ordinato da {g.device}">{DEVICE_ICON[g.device] ?? ''}</span>{/if}{#if g.express} <span title="Produzione express">⚡</span>{/if}</div></td>
 					<td><b>{g.customer}</b><div class="osub">{g.email}</div></td>
 					<td>
 						<div class="item-cell">
-							{#if first.preview_url || first.mockup_url}<img src={first.mockup_url ?? first.preview_url} alt="" />{:else}<span class="thumb-ph" style="background:{CATS[first.product_slug]?.soft ?? '#eee'}"></span>{/if}
+							{#if first.proof_url || first.preview_url || first.mockup_url}<img src={first.proof_url ?? first.preview_url ?? first.mockup_url} alt="" />{:else}<span class="thumb-ph" style="background:{CATS[first.product_slug]?.soft ?? '#eee'}"></span>{/if}
 							<div><b>{first.product_name}</b><div class="osub">{itemMeta(first)}</div></div>
 						</div>
 						{#if g.items.length > 1}<button type="button" class="link-btn" style="font-size:12px" onclick={() => toggle(g.key)}>{expanded.has(g.key) ? 'Nascondi' : `Mostra altri ${g.items.length - 1}`}</button>{/if}

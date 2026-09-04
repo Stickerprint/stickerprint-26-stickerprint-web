@@ -52,11 +52,12 @@ export interface OrderRow {
 	channel: string; starred: boolean; product_code: string | null; description: string | null; unit_net: number | null; price_type: string;
 	shipping_method: string | null; delivery_date: string | null; customer_name: string | null; country: string; mockup_url: string | null;
 	prod_stage: string | null; internal_notes: string | null; lamination: string | null; created_at: string; updated_at: string;
+	device: string | null; user_agent: string | null; proof_url: string | null; imposition_url: string | null; auto_proof: boolean;
 }
 /** Un "ordine" in dashboard = tutte le righe con lo stesso checkout_group */
 export interface OrderGroup {
 	key: string; number: string; numbers: string[]; channel: string; country: string; customer: string; email: string;
-	created_at: string; delivery_date: string | null; status: string; starred: boolean; items: OrderRow[];
+	created_at: string; delivery_date: string | null; status: string; starred: boolean; items: OrderRow[]; device: string | null;
 	qty: number; net: number; gross: number; paid: number; express: boolean; payment_method: string | null; shipping_method: string | null;
 }
 export function groupOrders(rows: OrderRow[]): OrderGroup[] {
@@ -76,7 +77,7 @@ export function groupOrders(rows: OrderRow[]): OrderGroup[] {
 		const status = items.map((i) => i.status).sort((a, b) => order.indexOf(a) - order.indexOf(b))[0];
 		return {
 			key, number: f.number, numbers: items.map((i) => i.number), channel: f.channel, country: f.country ?? 'IT', customer, email: f.email ?? '',
-			created_at: f.created_at, delivery_date: f.delivery_date, status, starred: items.some((i) => i.starred), items,
+			created_at: f.created_at, delivery_date: f.delivery_date, status, starred: items.some((i) => i.starred), items, device: f.device,
 			qty: items.reduce((s, i) => s + i.qty, 0), net: items.reduce((s, i) => s + Number(i.total_net), 0), gross: items.reduce((s, i) => s + Number(i.total_gross), 0),
 			paid: items.reduce((s, i) => s + Number(i.total_paid ?? 0), 0), express: items.some((i) => i.express), payment_method: f.payment_method, shipping_method: f.shipping_method
 		};
@@ -89,3 +90,6 @@ export function itemMeta(i: OrderRow): string {
 	const parts = [i.forma, i.materiale, i.finitura && i.finitura !== 'nessuna' ? `lamina ${i.finitura}` : '', i.width_mm && i.height_mm ? `${i.width_mm}×${i.height_mm} mm` : ''].filter(Boolean);
 	return parts.join(' · ');
 }
+
+export const DEVICE_ICON: Record<string, string> = { mobile: '📱', tablet: '📱', desktop: '💻' };
+export const CHANNEL_ICON: Record<string, { icon: string; label: string }> = { ecommerce: { icon: '🛒', label: 'Ordine e-commerce' }, manuale: { icon: '✏️', label: 'Ordine manuale' } };

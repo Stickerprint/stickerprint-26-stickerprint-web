@@ -37,7 +37,14 @@ export const load: PageServerLoad = async ({ locals: { supabase, user } }) => {
 	return { ...base, profile, addresses: addresses ?? [], credit: Number(credit ?? 0), loyalty };
 };
 
-interface Line { id: string; product: string; forma: string; materiale: string; finitura?: string; w: number; h: number; qty: number; filePath: string | null; fileName: string | null; note?: string; reorderOf?: string | null }
+interface Line { id: string; product: string; forma: string; materiale: string; finitura?: string; w: number; h: number; qty: number; filePath: string | null; fileName: string | null; previewUrl?: string | null; note?: string; reorderOf?: string | null }
+/** Prodotti con prova di stampa automatica (il file generato dal sistema è quello confermato dal cliente) */
+const AUTO_PROOF = new Set(['adesivi_personalizzati', 'adesivi_resinati', 'etichette', 'campioni']);
+function deviceFrom(ua: string): 'mobile' | 'tablet' | 'desktop' {
+	if (/iPad|Tablet|PlayBook|Silk/i.test(ua) || (/Android/i.test(ua) && !/Mobile/i.test(ua))) return 'tablet';
+	if (/Mobi|iPhone|Android|Windows Phone/i.test(ua)) return 'mobile';
+	return 'desktop';
+}
 const r2 = (v: number) => Math.round(v * 100) / 100;
 function toBase64(bytes: Uint8Array): string {
 	let bin = '';
@@ -47,6 +54,8 @@ function toBase64(bytes: Uint8Array): string {
 
 export const actions: Actions = {
 	order: async ({ request, locals: { supabase, user } }) => {
+		const ua = request.headers.get('user-agent') ?? '';
+		const device = deviceFrom(ua);
 		const admin = adminClient();
 		if (!user && !admin) return fail(401, { error: 'Accedi o registrati per completare l’ordine.' });
 		const db = user ? supabase : admin!; // ospite: chiave di servizio
@@ -126,7 +135,11 @@ export const actions: Actions = {
 				forma: l.forma, materiale: l.materiale, finitura: l.finitura ?? null,
 				width_mm: l.w, height_mm: l.h, qty: l.qty,
 				total_net: l.net, total_gross: l.gross,
-				status: 'in_attesa',
+				status: AUTO_PROOF.has(l.product) ? 'in_produzione' : 'attesa_prova',
+				prod_stage: AUTO_PROOF.has(l.product) && l.product !== 'campioni' ? 'stampa' : null,
+				auto_proof: AUTO_PROOF.has(l.product),
+				preview_url: l.previewUrl ?? null, proof_url: l.previewUrl ?? null,
+				device, user_agent: ua.slice(0, 500),
 				file_path: l.filePath?.startsWith('riordino:') || l.filePath === 'campioni' ? null : l.filePath,
 				notes: [l.reorderOf ? `Riordino di ${l.reorderOf}` : '', l.note ?? ''].filter(Boolean).join(' · ') || null,
 				email, shipping: ship, billing: bill,

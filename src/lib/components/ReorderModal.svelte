@@ -17,7 +17,7 @@
 	const q = $derived(quoteWith(cfg, { w, h, forma: order.forma ?? 'sagomato', materiale: order.materiale ?? 'bianco', finitura: order.finitura ?? 'nessuna', qty: n, vatIncluded: true }));
 
 	function reorder() {
-		addToCart({ product: order.product_slug, productName: order.product_name, forma: order.forma ?? 'sagomato', materiale: order.materiale ?? 'bianco', finitura: order.finitura ?? undefined, w, h, qty: n, net: q.net, gross: q.gross, fileName: order.file_path ? order.file_path.split('/').pop() : `Ordine ${order.number}`, filePath: order.file_path ?? `riordino:${order.number}`, reorderOf: order.number, note: `Riordino dell'ordine ${order.number}` });
+		addToCart({ product: order.product_slug, productName: order.product_name, forma: order.forma ?? 'sagomato', materiale: order.materiale ?? 'bianco', finitura: order.finitura ?? undefined, w, h, qty: n, net: q.net, gross: q.gross, fileName: order.file_path ? order.file_path.split('/').pop() : `Ordine ${order.number}`, filePath: order.file_path ?? `riordino:${order.number}`, reorderOf: order.number, previewUrl: order.preview_url ?? null, note: `Riordino dell'ordine ${order.number}` });
 		added = true;
 	}
 	function onkey(e: KeyboardEvent) {

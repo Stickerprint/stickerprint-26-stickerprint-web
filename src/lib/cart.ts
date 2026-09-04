@@ -17,6 +17,7 @@ export interface CartItem {
 	gross: number; // IVA inclusa
 	fileName?: string | null;
 	filePath?: string | null; // file già su Storage (riordino di un ordine precedente)
+	previewUrl?: string | null; // anteprima generata dal sistema già pubblicata (riordino)
 	reorderOf?: string | null;
 	note?: string;
 	addedAt: number;
