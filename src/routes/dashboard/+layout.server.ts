@@ -1,6 +1,7 @@
 import { redirect } from '@sveltejs/kit';
 import { PUBLIC_VAPID_KEY } from '$env/static/public';
 import type { LayoutServerLoad } from './$types';
+import { periz, perizConfigurato } from '$lib/server/periz';
 
 /** Tutta l'area /dashboard richiede un profilo staff o admin. */
 export const load: LayoutServerLoad = async ({ locals: { supabase, session, user }, url }) => {
@@ -19,6 +20,13 @@ export const load: LayoutServerLoad = async ({ locals: { supabase, session, user
 		if (r.status === 'in_produzione' && r.prod_stage) counts[r.prod_stage] = (counts[r.prod_stage] ?? 0) + 1;
 		if (r.status === 'pronto' || r.status === 'in_spedizione') counts.spedizione = (counts.spedizione ?? 0) + 1;
 		if (r.status === 'attesa_prova' || r.status === 'in_attesa') counts.prove = (counts.prove ?? 0) + 1;
+	}
+	// contatori della sezione Marketing (dashboard PERIZ): letti solo se la chiave c'è,
+	// e senza far aspettare il resto se la dashboard non risponde
+	if (perizConfigurato()) {
+		const [c, n] = await Promise.all([periz.contenuti(), periz.notifiche(50)]);
+		if (c.ok && c.conteggi.in_attesa) counts.approvazioni = c.conteggi.in_attesa;
+		if (n.ok && n.nonLette) counts.notifiche = n.nonLette;
 	}
 	return { role: profile.role as 'admin' | 'staff', fullName: profile.full_name as string | null, counts, vapid: PUBLIC_VAPID_KEY };
 };
