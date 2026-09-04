@@ -2,9 +2,9 @@ import { COMPANY } from './company';
 
 export interface FpaInvoice {
 	number: string; issued_at: string; email: string | null; billing: Record<string, string>;
-	lines: { description: string; qty: number; unit_net: number; total_net: number }[];
+	lines: { description: string; qty: number; unit_net: number; total_net: number; ddt?: string | null; ddt_date?: string | null }[];
 	discount_net: number; discount_code?: string | null; express_net: number; credit_used: number; vat_amount: number; amount_gross: number;
-	payment_method: string | null; ddt_number?: string | null; ddt_date?: string | null; order_numbers?: string[] | null;
+	payment_method: string | null; ddt_number?: string | null; ddt_date?: string | null; order_numbers?: string[] | null; ddt_numbers?: string[] | null; ddt_dates?: Record<string, string> | null;
 	payment_terms?: { due: string; amount: number; method: string; xml_code?: string }[] | null;
 }
 const PAY_LABEL: Record<string, string> = { paypal: 'PayPal', stripe: 'carta di credito (Stripe)', test: 'test' };
@@ -23,17 +23,23 @@ export function buildFatturaPaXml(inv: FpaInvoice, progressivo: string): { xml: 
 	const payMode = /bonifico|ricevuta/i.test(inv.payment_method ?? '') ? 'MP05' : 'MP08';
 	// righe: prodotti, express, sconto codice (negativo), credito Stickerprint come sconto (negativo, scorporato)
 	// le righe arrivano già al netto di sconti e credito (normalizeLines): in fattura non compaiono voci di sconto
-	const lines = inv.lines.map((l) => ({ d: l.description, q: l.qty, u: l.unit_net, t: l.total_net }));
-	if (inv.express_net > 0) lines.push({ d: 'Produzione express (+30%)', q: 1, u: inv.express_net, t: inv.express_net });
+	const lines = inv.lines.map((l) => ({ d: l.description, q: l.qty, u: l.unit_net, t: l.total_net, ddt: l.ddt ?? null, ddtDate: l.ddt_date ?? null }));
+	if (inv.express_net > 0) lines.push({ d: 'Produzione express (+30%)', q: 1, u: inv.express_net, t: inv.express_net, ddt: null, ddtDate: null });
 	const imponibile = lines.reduce((s, l) => s + l.t, 0);
 	const imposta = imponibile * VAT;
 	const totale = imponibile + imposta;
 	const dettaglio = lines.map((l, i) => `<DettaglioLinee><NumeroLinea>${i + 1}</NumeroLinea><Descrizione>${esc(l.d).slice(0, 1000)}</Descrizione><Quantita>${n2(l.q)}</Quantita><PrezzoUnitario>${n8(l.u)}</PrezzoUnitario><PrezzoTotale>${n2(l.t)}</PrezzoTotale><AliquotaIVA>${n2(VAT * 100)}</AliquotaIVA></DettaglioLinee>`).join('');
 	const anagrafica = isCompany || b.company ? `<Denominazione>${esc(b.company || `${b.first_name ?? ''} ${b.last_name ?? ''}`.trim())}</Denominazione>` : `<Nome>${esc(b.first_name ?? '')}</Nome><Cognome>${esc(b.last_name ?? '')}</Cognome>`;
 	const fiscal = `${isCompany ? `<IdFiscaleIVA><IdPaese>${esc(b.country || 'IT')}</IdPaese><IdCodice>${esc(b.vat.replace(/^IT/i, ''))}</IdCodice></IdFiscaleIVA>` : ''}${b.fiscal_code ? `<CodiceFiscale>${esc(b.fiscal_code.toUpperCase())}</CodiceFiscale>` : ''}`;
-	const ddt = inv.ddt_number ? `<DatiDDT><NumeroDDT>${esc(inv.ddt_number)}</NumeroDDT><DataDDT>${inv.ddt_date ?? inv.issued_at}</DataDDT></DatiDDT>` : '';
+	// DDT collegati: uno per documento, con il riferimento alle righe che ne derivano
+	const ddtList = inv.ddt_numbers?.length ? inv.ddt_numbers : inv.ddt_number ? [inv.ddt_number] : [];
+	const ddt = ddtList.map((n) => {
+		const refs = lines.map((l, i) => (l.ddt === n ? i + 1 : 0)).filter(Boolean);
+		const date = lines.find((l) => l.ddt === n)?.ddtDate ?? inv.ddt_dates?.[n] ?? inv.ddt_date ?? inv.issued_at;
+		return `<DatiDDT><NumeroDDT>${esc(n)}</NumeroDDT><DataDDT>${date}</DataDDT>${refs.map((r) => `<RiferimentoNumeroLinea>${r}</RiferimentoNumeroLinea>`).join('')}</DatiDDT>`;
+	}).join('');
 	const payText = PAY_LABEL[inv.payment_method ?? ''] ?? inv.payment_method ?? '';
-	const causale = `<Causale>${esc([inv.order_numbers?.length ? `Ordine ${inv.order_numbers.join(', ')}` : '', payText && (inv.payment_method === 'paypal' || inv.payment_method === 'stripe') ? `Pagato con ${payText}` : payText ? `Pagamento: ${payText}` : ''].filter(Boolean).join(' - ') || 'Vendita')}</Causale>`;
+	const causale = `<Causale>${esc([ddtList.length ? `DDT collegati: ${ddtList.join(', ')}` : '', inv.order_numbers?.length ? `Ordine ${inv.order_numbers.join(', ')}` : '', payText && (inv.payment_method === 'paypal' || inv.payment_method === 'stripe') ? `Pagato con ${payText}` : payText ? `Pagamento: ${payText}` : ''].filter(Boolean).join(' - ') || 'Vendita')}</Causale>`;
 	const terms = inv.payment_terms?.length ? inv.payment_terms : [{ due: inv.issued_at, amount: 0, method: payText, xml_code: payMode }];
 	const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <p:FatturaElettronica versione="FPR12" xmlns:p="http://ivaservizi.agenziaentrate.gov.it/docs/xsd/fatture/v1.2" xmlns:ds="http://www.w3.org/2000/09/xmldsig#" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://ivaservizi.agenziaentrate.gov.it/docs/xsd/fatture/v1.2 http://www.fatturapa.gov.it/export/fatturazione/sdi/fatturapa/v1.2/Schema_del_file_xml_FatturaPA_versione_1.2.xsd">

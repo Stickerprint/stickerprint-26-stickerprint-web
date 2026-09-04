@@ -123,3 +123,49 @@
 .piano ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; font-size: 13px; }
 .piano li a { color: var(--blue); text-decoration: none; font-weight: 700; }
 @media (max-width: 1100px) { .piano { grid-template-columns: 1fr; } }
+
+/* Popup della dashboard (classe propria: la .modal del sito ha max-width 560px) */
+.dmodal-bg { position: fixed; inset: 0; background: rgba(10,12,40,.55); z-index: 1000; display: grid; place-items: center; padding: 20px; overflow-y: auto; }
+.dmodal { background: #fff; border-radius: 18px; padding: 22px 24px; display: grid; gap: 12px; width: 100%; max-width: 760px; max-height: calc(100vh - 40px); overflow: auto; box-sizing: border-box; box-shadow: 0 30px 80px rgba(0,0,0,.35); }
+.dmodal--sm { max-width: 460px; } .dmodal--lg { max-width: 980px; }
+.dmodal > *, .dmodal form > * { min-width: 0; }
+.dmodal h3 { margin: 0; font-size: 20px; }
+.dmodal .dtable td, .dmodal .dtable th { padding: 8px 8px; }
+.dmodal .tscroll { overflow-x: auto; }
+.courier-opts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.courier-opts label { display: flex; justify-content: center; gap: 8px; padding: 10px 6px; border: 2px solid var(--line); border-radius: 12px; cursor: pointer; font-family: var(--font-display); font-weight: 800; }
+.courier-opts label.is-on { border-color: var(--blue); background: #f4f9ff; }
+.courier-opts input { display: none; }
+.note { font-size: 12px; color: var(--muted); }
+.row3 > *, .row2 > * { min-width: 0; }
+
+/* Anteprime articoli: più grandi, e per gli ordini multipli le miniature una accanto all'altra */
+.item-cell img, .thumb-ph { width: 56px; height: 56px; border-radius: 10px; }
+.thumbs { display: flex; align-items: center; gap: 12px; }
+.thumbs__stack { display: flex; }
+.thumbs__stack img, .thumbs__stack .thumb-ph { width: 56px; height: 56px; border-radius: 10px; object-fit: cover; background: #f4f5fa; border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.12); margin-left: -18px; flex: 0 0 auto; }
+.thumbs__stack > :first-child { margin-left: 0; }
+.thumbs__more { width: 56px; height: 56px; border-radius: 10px; display: grid; place-items: center; background: #eef2ff; color: var(--blue); font-weight: 800; font-size: 13px; margin-left: -18px; border: 2px solid #fff; }
+.thumbs__txt b { display: block; font-size: 14px; }
+.thumbs__txt .osub { margin-top: 0; }
+.thumbs__txt .link-btn { text-decoration: none; font-size: 12px; }
+.thumbs--lg .thumbs__stack img, .thumbs--lg .thumbs__stack .thumb-ph, .thumbs--lg .thumbs__more { width: 72px; height: 72px; }
+.orow-sub .item-cell img { width: 64px; height: 64px; }
+
+/* Editor ordine / fattura */
+.editor { display: grid; gap: 18px; }
+.editor .dcard h3 { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.riepilogo { display: grid; grid-template-columns: 1.4fr 1fr; gap: 20px; align-items: start; }
+.terms { display: grid; gap: 8px; }
+.term-row { display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: 8px; align-items: end; }
+.term-row label { display: grid; gap: 3px; font-size: 11.5px; font-weight: 700; color: var(--muted); }
+.term-row input, .term-row select { padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; font: inherit; font-size: 13.5px; min-width: 0; background: #fff; }
+.tot-box { border: 1px solid var(--line); border-radius: 14px; padding: 12px 16px; background: #fafbfe; }
+.tot-box .sumrow--tot b { font-size: 24px; }
+.editor-actions { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; align-items: center; }
+.pick { position: relative; }
+.pick__list { position: absolute; left: 0; right: 0; top: 100%; z-index: 20; background: #fff; border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 12px 30px rgba(11,11,59,.12); max-height: 260px; overflow: auto; }
+.pick__list button { display: block; width: 100%; text-align: left; background: none; border: 0; padding: 8px 12px; font: inherit; font-size: 13px; cursor: pointer; border-bottom: 1px solid var(--line); }
+.pick__list button:hover { background: #f4f7ff; }
+.readonly-note { background: #fef6db; color: #7a5a00; padding: 8px 12px; border-radius: 10px; font-size: 13px; font-weight: 700; }
+@media (max-width: 1000px) { .riepilogo { grid-template-columns: 1fr; } .term-row { grid-template-columns: 1fr 1fr; } }

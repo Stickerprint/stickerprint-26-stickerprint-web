@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import { ORDER_STATUS, CATS, COUNTRIES, MONTHS, money, dmy, itemMeta, PRODUCTION_STATUSES, SHIPPING_STATUSES, DEVICE_ICON, CHANNEL_ICON, type OrderGroup } from '$lib/dashboard/orders';
+	import { ORDER_STATUS, CATS, COUNTRIES, MONTHS, money, dmy, itemMeta, thumbOf, PRODUCTION_STATUSES, SHIPPING_STATUSES, DEVICE_ICON, CHANNEL_ICON, type OrderGroup } from '$lib/dashboard/orders';
 	import { paymentIcon, paymentLabel } from '$lib/dashboard/payments';
+	import ItemsCell from '$lib/components/dashboard/ItemsCell.svelte';
 	let { data } = $props();
 	let search = $state('');
 	let cat = $state('all');

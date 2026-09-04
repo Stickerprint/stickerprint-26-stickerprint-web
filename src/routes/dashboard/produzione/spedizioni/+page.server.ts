@@ -3,7 +3,7 @@ import { groupOrders, itemMeta, type OrderRow } from '$lib/dashboard/orders';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals: { supabase } }) => {
-	const { data } = await supabase.from('orders').select('*').in('status', ['pronto', 'in_spedizione', 'spedito', 'in_consegna']).order('created_at', { ascending: true });
+	const { data } = await supabase.from('orders').select('*').in('status', ['pronto', 'in_spedizione', 'spedito', 'in_consegna']).order('created_at', { ascending: false });
 	return { groups: groupOrders((data ?? []) as OrderRow[]) };
 };
 const r2 = (v: number) => Math.round(v * 100) / 100;

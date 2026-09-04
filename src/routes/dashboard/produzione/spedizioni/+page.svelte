@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import { ORDER_STATUS, COUNTRIES, dmy, money, itemMeta } from '$lib/dashboard/orders';
+	import { ORDER_STATUS, COUNTRIES, dmy, money, itemMeta, thumbOf, CATS } from '$lib/dashboard/orders';
+	import ItemsCell from '$lib/components/dashboard/ItemsCell.svelte';
 	let { data, form } = $props();
 	const st = (s: string) => ORDER_STATUS[s] ?? { label: s, color: '#6b7280', soft: '#eceef3' };
 	let selected = $state<Set<string>>(new Set());
@@ -20,9 +21,11 @@
 	function openDdt(g: (typeof data.groups)[number]) { ddtPopup = g.key; ddtParcels = 1; ddtWeight = null; ddtQty = Object.fromEntries(g.items.map((i) => [i.id, i.qty])); ddtCourier = 'GLS'; }
 	function toggle(k: string) { const s = new Set(selected); s.has(k) ? s.delete(k) : s.add(k); selected = s; }
 	function toggleAll() { selected = selected.size === selectableAll.length ? new Set() : new Set(selectableAll); }
+	let expanded = $state<Set<string>>(new Set());
+	function toggleRow(k: string) { const s = new Set(expanded); s.has(k) ? s.delete(k) : s.add(k); expanded = s; }
 	$effect(() => {
-		// dopo la creazione: scarica le etichette e chiudi i popup
-		if (form?.ok && form.labels) { window.open(form.labels, '_blank'); courierPopup = false; ddtPopup = null; selected = new Set(); }
+		// dopo la creazione: scarica le etichette e chiudi i popup (se il browser blocca la finestra resta il link nel messaggio)
+		if (form?.ok && form.labels) { try { window.open(form.labels, '_blank'); } catch { /* link nel messaggio */ } courierPopup = false; ddtPopup = null; selected = new Set(); }
 	});
 </script>
 
@@ -33,7 +36,7 @@
 	<button type="button" class="btn btn--green" disabled={selected.size === 0} onclick={() => (courierPopup = true)}>📦 Crea spedizione ({selected.size})</button>
 </div>
 {#if form?.error}<p class="error">{form.error}</p>{/if}
-{#if form?.ok && form.ddt}<p class="success">DDT {form.ddt} creato. Le etichette si sono aperte in una nuova scheda.</p>{/if}
+{#if form?.ok && form.labels}<p class="success">{#if form.ddt}DDT {form.ddt} creato. {/if}Spedizione pronta: <a class="link" href={form.labels} target="_blank" rel="noopener">⬇ scarica le etichette 10×15</a> (si aprono anche in una nuova scheda).</p>{/if}
 
 <div class="dcard" style="padding:0;overflow-x:auto">
 	<table class="dtable">
@@ -44,8 +47,8 @@
 				{@const f = g.items[0]}
 				<tr>
 					<td>{#if g.status === 'pronto' && g.channel !== 'manuale'}<input type="checkbox" checked={selected.has(g.key)} onchange={() => toggle(g.key)} />{/if}</td>
-					<td>{#if f.proof_url || f.preview_url || f.mockup_url}<img src={f.proof_url ?? f.preview_url ?? f.mockup_url} alt="" style="width:64px;height:64px;object-fit:contain;border-radius:8px;background:#f4f5fa" />{:else}<span class="thumb-ph"></span>{/if}{#if g.items.length > 1}<div class="osub">+{g.items.length - 1}</div>{/if}</td>
-					<td><a class="oid" href="/dashboard/fatturazione/ordini/{g.key}">{g.number}</a><div class="osub">{dmy(g.created_at)} · {g.qty} pz · {money(g.gross)}</div><div class="osub">{f.product_name} · {itemMeta(f)}</div></td>
+					<td><ItemsCell items={g.items} size="lg" expanded={expanded.has(g.key)} ontoggle={() => toggleRow(g.key)} /></td>
+					<td><a class="oid" href="/dashboard/fatturazione/ordini/{g.key}">{g.number}</a><div class="osub">{dmy(g.created_at)} · {g.qty.toLocaleString('it-IT')} pz · {money(g.gross)}</div></td>
 					<td><b>{g.customer}</b><div class="osub">{g.email}</div></td>
 					<td>{COUNTRIES[g.country]?.flag ?? ''} {ship.city ?? ''} {ship.province ? `(${ship.province})` : ''}<div class="osub">{ship.street ?? ''}</div></td>
 					<td>{#if isDirect(g)}<b>Consegna diretta SP</b>{:else}{g.items[0].courier ?? g.shipping_method ?? 'Corriere'}{/if}{#if g.items[0].parcels}<div class="osub">{g.items[0].parcels} {g.items[0].parcels === 1 ? 'collo' : 'colli'}</div>{/if}{#if g.express}<div class="osub">⚡ express</div>{/if}</td>
@@ -71,6 +74,11 @@
 						{/if}
 					</td>
 				</tr>
+				{#if expanded.has(g.key)}
+					{#each g.items as it (it.id)}
+						<tr class="orow-sub"><td></td><td><div class="item-cell">{#if thumbOf(it)}<img src={thumbOf(it)} alt="" />{:else}<span class="thumb-ph" style="background:{CATS[it.product_slug]?.soft ?? '#eee'}"></span>{/if}<div><b>{it.product_name}</b><div class="osub">{itemMeta(it)}</div></div></div></td><td><span class="osub">{it.number}</span></td><td colspan="6">{it.qty.toLocaleString('it-IT')} pz · {money(Number(it.total_net))}</td></tr>
+					{/each}
+				{/if}
 			{:else}
 				<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:30px">Nessun ordine da spedire.</td></tr>
 			{/each}
@@ -79,7 +87,7 @@
 </div>
 
 {#if courierPopup}
-	<div class="modal-bg"><div class="modal" style="width:min(460px,100%)">
+	<div class="dmodal-bg"><div class="dmodal dmodal--sm">
 		<h3>Con quale corriere?</h3>
 		<form method="POST" action="?/ship" use:enhance style="display:grid;gap:12px">
 			<input type="hidden" name="groups" value={[...selected].join(',')} />
@@ -93,20 +101,20 @@
 	</div></div>
 {/if}
 {#if ddtPopup && ddtGroup}
-	<div class="modal-bg"><div class="modal" style="width:min(760px,100%)">
+	<div class="dmodal-bg"><div class="dmodal">
 		<h3>DDT per l'ordine {ddtGroup.number} · {ddtGroup.customer}</h3>
 		<p class="note">Controlla le voci: puoi cambiare solo le quantità (es. ordinate 1.000, prodotte 1.200). Importi e fattura seguiranno le quantità consegnate.</p>
 		<form method="POST" action="?/ddt" use:enhance style="display:grid;gap:12px">
 			<input type="hidden" name="group" value={ddtPopup} />
 			<input type="hidden" name="qtys" value={JSON.stringify(ddtQty)} />
 			{#if !isDirect(ddtGroup)}<input type="hidden" name="courier" value={ddtCourier} />{/if}
-			<table class="dtable">
+			<div class="tscroll"><table class="dtable">
 				<thead><tr><th>Articolo</th><th>Q.tà ordinata</th><th>Q.tà consegnata</th><th>Prezzo unit.</th><th style="text-align:right">Imponibile</th></tr></thead>
 				<tbody>
 					{#each ddtGroup.items as it (it.id)}
 						{@const unit = Number(it.unit_net ?? Number(it.total_net) / it.qty)}
 						<tr>
-							<td><b>{it.product_name}</b><div class="osub">{it.description ?? itemMeta(it)}</div></td>
+							<td><div class="item-cell">{#if thumbOf(it)}<img src={thumbOf(it)} alt="" />{/if}<div><b>{it.product_name}</b><div class="osub">{itemMeta(it)}</div></div></div></td>
 							<td>{it.qty.toLocaleString('it-IT')}</td>
 							<td><input type="number" min="1" class="sel-sm" style="width:100px" bind:value={ddtQty[it.id]} /></td>
 							<td>{money(unit)}</td>
@@ -115,8 +123,8 @@
 					{/each}
 				</tbody>
 				<tfoot><tr><td colspan="4"><b>Imponibile</b> · IVA {money(ddtTotal * 0.22)} · totale {money(ddtTotal * 1.22)}</td><td style="text-align:right"><b>{money(ddtTotal)}</b></td></tr></tfoot>
-			</table>
-			<div class="row3" style="grid-template-columns:1fr 1fr 2fr">
+			</table></div>
+			<div class="row3" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,2fr)">
 				<label>Colli<input type="number" name="parcels" min="1" bind:value={ddtParcels} /></label>
 				<label>Peso (kg)<input type="number" name="weight" step="0.1" min="0" bind:value={ddtWeight} placeholder="es. 2.4" /></label>
 				{#if isDirect(ddtGroup)}
@@ -131,12 +139,3 @@
 	</div></div>
 {/if}
 
-<style>
-	.modal-bg { position: fixed; inset: 0; background: rgba(10,12,40,.55); z-index: 100; display: grid; place-items: center; padding: 20px; }
-	.modal { background: #fff; border-radius: 18px; padding: 22px 24px; display: grid; gap: 12px; }
-	.courier-opts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-	.courier-opts label { display: flex; justify-content: center; gap: 8px; padding: 12px; border: 2px solid var(--line); border-radius: 12px; cursor: pointer; font-family: var(--font-display); font-weight: 800; }
-	.courier-opts label.is-on { border-color: var(--blue); background: #f4f9ff; }
-	.courier-opts input { display: none; }
-	.note { font-size: 12px; color: var(--muted); }
-</style>

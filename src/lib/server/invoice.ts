@@ -2,7 +2,7 @@ import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import { COMPANY } from './company';
 import { LOGO_PNG_B64 } from './logo-b64';
 
-export interface InvoiceLine { description: string; qty: number; unit_net: number; total_net: number }
+export interface InvoiceLine { description: string; qty: number; unit_net: number; total_net: number; ddt?: string | null; ddt_date?: string | null }
 export interface InvoiceData {
 	number: string;
 	issued_at: string; // ISO date
@@ -20,6 +20,8 @@ export interface InvoiceData {
 	payment_method: string;
 	orders: string[];
 	payment_terms?: { due: string; amount: number; method: string }[] | null;
+	ddt_numbers?: string[] | null;
+	notes?: string | null;
 }
 
 /** Gli sconti (codice o credito Stickerprint) non compaiono in fattura: si riducono i prezzi delle righe in proporzione, così l'imponibile dice già tutto. */
@@ -85,9 +87,12 @@ export async function buildInvoicePdf(inv: InvoiceData): Promise<Uint8Array> {
 	right('Prezzo unit.', colUnit, y, 9, bold, gray);
 	right('Imponibile', colTot, y, 9, bold, gray);
 	y -= 24;
-	const rows: [string, string, string, string][] = inv.lines.map((l) => [l.description, String(l.qty), eur(l.unit_net), eur(l.total_net)]);
-	if (inv.express_net > 0) rows.push(['Produzione express (+30%)', '1', eur(inv.express_net), eur(inv.express_net)]);
-	for (const [d, q, u, t] of rows) {
+	const rows: [string, string, string, string, string | null][] = inv.lines.map((l) => [l.description, l.qty.toLocaleString('it-IT'), eur(l.unit_net), eur(l.total_net), l.ddt ? `DDT ${l.ddt}${l.ddt_date ? ' del ' + new Date(l.ddt_date).toLocaleDateString('it-IT') : ''}` : null]);
+	if (inv.express_net > 0) rows.push(['Produzione express (+30%)', '1', eur(inv.express_net), eur(inv.express_net), null]);
+	const multiDdt = new Set(rows.map((r) => r[4]).filter(Boolean)).size > 1;
+	let lastDdt: string | null = null;
+	for (const [d, q, u, t, ddt] of rows) {
+		if (multiDdt && ddt && ddt !== lastDdt) { text(ddt, M + 6, y, 8.5, bold, gray); y -= 14; lastDdt = ddt; }
 		const desc = d.length > 70 ? d.slice(0, 67) + '…' : d;
 		text(desc, M + 6, y, 10);
 		right(q, colQty, y, 10);
@@ -108,13 +113,15 @@ export async function buildInvoicePdf(inv: InvoiceData): Promise<Uint8Array> {
 	y -= 10;
 	// pagamento e scadenze
 	const pm = PAYMENT_TEXT[inv.payment_method] ?? inv.payment_method;
-	text(`Pagamento: ${pm}${inv.payment_method === 'paypal' || inv.payment_method === 'stripe' ? ' · pagato' : ''} · Ordini: ${inv.orders.join(', ')}`, M, y, 9, bold);
+	text(`Pagamento: ${pm}${inv.payment_method === 'paypal' || inv.payment_method === 'stripe' ? ' · pagato' : ''}${inv.orders.length ? ` · Ordini: ${inv.orders.join(', ')}` : ''}`, M, y, 9, bold);
 	y -= 14;
+	if (inv.ddt_numbers?.length) { text(`DDT collegati: ${inv.ddt_numbers.join(', ')}`, M, y, 9, bold); y -= 14; }
 	if (inv.payment_terms?.length) {
 		text('Scadenze', M, y, 9, bold, gray); y -= 13;
 		for (const t of inv.payment_terms) { text(`${new Date(t.due).toLocaleDateString('it-IT')}  ${eur(t.amount)}  ${t.method}`, M, y, 9); y -= 12; }
 		if (COMPANY.iban) { text(`IBAN ${COMPANY.iban} · ${COMPANY.name}`, M, y, 9, font, gray); y -= 12; }
 	}
+	if (inv.notes) { text(`Note: ${inv.notes}`.slice(0, 140), M, y, 9, font, gray); y -= 13; }
 	text('Prova di stampa gratuita inviata via email. Spedizione con corriere espresso tracciato.', M, y, 9, font, gray);
 	text('Documento generato automaticamente da stickerprint.it', M, 40, 8, font, gray);
 	return pdf.save();

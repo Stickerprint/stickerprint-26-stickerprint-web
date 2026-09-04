@@ -1,7 +1,6 @@
 import { error, fail, redirect } from '@sveltejs/kit';
-import { groupOrders, ORDER_STATUS, money, type OrderRow } from '$lib/dashboard/orders';
-import { sendEmail } from '$lib/server/email';
-import { orderConfirmationEmail } from '$lib/server/email-templates';
+import { groupOrders, ORDER_STATUS, type OrderRow } from '$lib/dashboard/orders';
+import { loadEditorData, parseDraft, saveOrderDraft, sendOrderConfirmation, upsertContact } from '$lib/server/orders';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ params, url, locals: { supabase } }) => {
@@ -17,11 +16,44 @@ export const load: PageServerLoad = async ({ params, url, locals: { supabase } }
 			if (s) files[it.id] = s.signedUrl;
 		}
 	}
-	const { data: invoices } = await supabase.from('invoices').select('id, number, issued_at, amount_gross, pdf_path').eq('checkout_group', group.key);
-	return { group, files, invoices: invoices ?? [], created: url.searchParams.get('creato') };
+	const [{ data: invoices }, { data: ddts }, editor] = await Promise.all([
+		supabase.from('invoices').select('id, number, issued_at, amount_gross').eq('checkout_group', group.key),
+		supabase.from('ddts').select('id, number, issued_at').eq('checkout_group', group.key),
+		loadEditorData(supabase)
+	]);
+	return { group, files, invoices: invoices ?? [], ddts: ddts ?? [], created: url.searchParams.get('creato'), mail: url.searchParams.get('mail'), ...editor };
 };
 
 export const actions: Actions = {
+	save: async ({ request, params, locals: { supabase } }) => {
+		const f = await request.formData();
+		const d = parseDraft(f.get('payload'));
+		if (!d) return fail(400, { error: 'Dati non leggibili.' });
+		const ed = await loadEditorData(supabase);
+		const r = await saveOrderDraft(supabase, d, params.group, ed);
+		if (r.error) return fail(400, { error: r.error });
+		return { ok: true, saved: true, message: 'Ordine salvato.' };
+	},
+	confirm: async ({ request, params, locals: { supabase } }) => {
+		const f = await request.formData();
+		const d = parseDraft(f.get('payload'));
+		if (d) {
+			const ed = await loadEditorData(supabase);
+			const r = await saveOrderDraft(supabase, d, params.group, ed);
+			if (r.error) return fail(400, { error: r.error });
+		}
+		const m = await sendOrderConfirmation(supabase, params.group);
+		if (!m.ok) return fail(400, { error: m.message });
+		return { ok: true, saved: !!d, message: m.message };
+	},
+	contact: async ({ request, locals: { supabase } }) => {
+		const f = await request.formData();
+		const d = parseDraft(f.get('payload'));
+		if (!d) return fail(400, { error: 'Dati non leggibili.' });
+		const r = await upsertContact(supabase, d.customer, d.contact_id);
+		if (r.error) return fail(400, { error: r.error });
+		return { ok: true, contactId: r.id, contactMsg: 'Cliente salvato in anagrafica.' };
+	},
 	status: async ({ request, params, locals: { supabase } }) => {
 		const f = await request.formData();
 		const status = String(f.get('status'));
@@ -30,22 +62,13 @@ export const actions: Actions = {
 		const q = f.get('item') ? supabase.from('orders').update({ status, prod_stage: stage }).eq('id', String(f.get('item'))) : supabase.from('orders').update({ status, prod_stage: stage }).eq('checkout_group', params.group);
 		const { error: e } = await q;
 		if (e) return fail(400, { error: e.message });
-		return { ok: true };
+		return { ok: true, message: 'Stato aggiornato.' };
 	},
 	tracking: async ({ request, params, locals: { supabase } }) => {
 		const f = await request.formData();
-		const { error: e } = await supabase.from('orders').update({ tracking_url: String(f.get('tracking') ?? '').trim() || null, delivery_date: String(f.get('delivery_date') ?? '') || null, internal_notes: String(f.get('internal_notes') ?? '').trim() || null }).eq('checkout_group', params.group);
+		const { error: e } = await supabase.from('orders').update({ tracking_url: String(f.get('tracking') ?? '').trim() || null }).eq('checkout_group', params.group);
 		if (e) return fail(400, { error: e.message });
-		return { ok: true };
-	},
-	confirm: async ({ params, locals: { supabase } }) => {
-		const { data } = await supabase.from('orders').select('*').eq('checkout_group', params.group);
-		const g = data?.length ? groupOrders(data as OrderRow[])[0] : null;
-		if (!g?.email) return fail(400, { error: 'L’ordine non ha un indirizzo email.' });
-		const mail = orderConfirmationEmail({ name: g.customer, numbers: g.numbers, invoiceNumber: '—', total: money(g.gross), lines: g.items.map((i) => `${i.qty} × ${i.product_name}${i.description ? ' · ' + i.description : ''}`), shipDate: g.delivery_date ? new Date(g.delivery_date).toLocaleDateString('it-IT') : 'da confermare', accountUrl: null });
-		const r = await sendEmail({ to: g.email, ...mail, subject: `Conferma d'ordine ${g.number} – Stickerprint` });
-		if (!r.ok) return fail(400, { error: r.error ?? 'Email non inviata.' });
-		return { ok: true, sent: r.skipped ? 'Postmark non configurato: email non inviata (simulata).' : `Conferma inviata a ${g.email}.` };
+		return { ok: true, message: 'Tracking salvato.' };
 	},
 	delete: async ({ params, locals: { supabase } }) => {
 		const { error: e } = await supabase.from('orders').delete().eq('checkout_group', params.group);

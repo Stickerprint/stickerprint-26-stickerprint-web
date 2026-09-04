@@ -95,3 +95,44 @@ export async function buildDdtPdf(d: DdtData): Promise<Uint8Array> {
 	t('Documento generato da stickerprint.it', M, 40, 8, font, gray);
 	return pdf.save();
 }
+
+export interface OrderDocData { number: string; numbers: string[]; issued_at: string; customer: Record<string, string>; shipping: Record<string, string>; email: string | null; lines: { description: string; qty: number; unit_net: number; total_net: number }[]; subtotal_net: number; vat_amount: number; total_gross: number; payment_method: string; payment_terms: { due: string; amount: number; method: string }[]; shipping_method: string; delivery_date: string | null; notes?: string | null }
+
+/** Conferma d'ordine A4: articoli, riepilogo con totali e scadenze di pagamento */
+export async function buildOrderPdf(d: OrderDocData): Promise<Uint8Array> {
+	const pdf = await PDFDocument.create();
+	const page = pdf.addPage([595.28, 841.89]);
+	const font = await pdf.embedFont(StandardFonts.Helvetica); const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
+	const logo = await pdf.embedPng(b64(LOGO_PNG_B64));
+	docHeader(page, font, bold, logo, "CONFERMA D'ORDINE", d.number, new Date(d.issued_at).toLocaleDateString('it-IT'));
+	const M = 48; let y = 700;
+	const t = (txt: string, x: number, yy: number, size = 10, f: PDFFont = font, color = navy) => page.drawText(txt, { x, y: yy, size, font: f, color });
+	const rt = (txt: string, xr: number, yy: number, size = 10, f: PDFFont = font, color = navy) => page.drawText(txt, { x: xr - f.widthOfTextAtSize(txt, size), y: yy, size, font: f, color });
+	t('Cliente', M, y, 8.5, bold, gray); t('Spedizione', 320, y, 8.5, bold, gray); y -= 14;
+	const L = addrLines(d.customer), R = addrLines(d.shipping);
+	if (d.email) L.push(d.email);
+	for (let i = 0; i < Math.max(L.length, R.length); i++) { if (L[i]) t(L[i], M, y, i === 0 ? 11 : 10, i === 0 ? bold : font); if (R[i]) t(R[i], 320, y, i === 0 ? 11 : 10, i === 0 ? bold : font); y -= 13; }
+	y -= 8;
+	t(`Spedizione: ${d.shipping_method}${d.delivery_date ? ` · prevista il ${new Date(d.delivery_date).toLocaleDateString('it-IT')}` : ''}`, M, y, 9, font, gray); y -= 22;
+	page.drawRectangle({ x: M, y: y - 6, width: 499, height: 20, color: rgb(0.96, 0.97, 0.99) });
+	t('Descrizione', M + 6, y, 9, bold, gray); rt('Q.tà', 380, y, 9, bold, gray); rt('Prezzo unit.', 460, y, 9, bold, gray); rt('Imponibile', 547, y, 9, bold, gray); y -= 24;
+	for (const l of d.lines) {
+		t(l.description.length > 72 ? l.description.slice(0, 69) + '…' : l.description, M + 6, y, 10);
+		rt(l.qty.toLocaleString('it-IT'), 380, y, 10); rt(eur(l.unit_net), 460, y, 10); rt(eur(l.total_net), 547, y, 10, bold);
+		y -= 18; page.drawLine({ start: { x: M, y: y + 6 }, end: { x: 547, y: y + 6 }, thickness: 0.5, color: rgb(0.9, 0.91, 0.94) });
+	}
+	y -= 10;
+	// riepilogo: scadenze a sinistra, totali a destra
+	const top = y;
+	t('Scadenze di pagamento', M, y, 9, bold, gray); y -= 14;
+	for (const p of d.payment_terms) { t(`${new Date(p.due).toLocaleDateString('it-IT')}   ${eur(p.amount)}   ${p.method}`, M, y, 10); y -= 13; }
+	if (!d.payment_terms.length) { t(d.payment_method || '—', M, y, 10); y -= 13; }
+	if (COMPANY.iban) { t(`IBAN ${COMPANY.iban} · ${COMPANY.name}`, M, y, 9, font, gray); y -= 13; }
+	let yy = top;
+	const tot = (label: string, value: string, strong = false) => { rt(label, 460, yy, 10, strong ? bold : font, strong ? navy : gray); rt(value, 547, yy, strong ? 12 : 10, strong ? bold : font); yy -= 16; };
+	tot('Imponibile', eur(d.subtotal_net)); tot('IVA 22%', eur(d.vat_amount)); tot('Totale IVA inclusa', eur(d.total_gross), true);
+	y = Math.min(y, yy) - 10;
+	if (d.notes) { t(`Note: ${d.notes}`.slice(0, 140), M, y, 9, font, gray); y -= 13; }
+	t('Documento generato da stickerprint.it', M, 40, 8, font, gray);
+	return pdf.save();
+}

@@ -1,69 +1,35 @@
 import { fail, redirect } from '@sveltejs/kit';
-import { CATS, categoryFromCode, SHIPPING_METHODS } from '$lib/dashboard/orders';
-import { computeTerms, type PaymentMethod, type PaymentTerm } from '$lib/dashboard/payments';
+import { loadEditorData, parseDraft, saveOrderDraft, sendOrderConfirmation, upsertContact } from '$lib/server/orders';
 import type { Actions, PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ locals: { supabase } }) => {
-	const { data } = await supabase.from('payment_methods').select('*').eq('active', true).order('sort');
-	return { methods: (data ?? []) as PaymentMethod[] };
-};
-
-const VAT = 1.22;
-const r2 = (v: number) => Math.round(v * 100) / 100;
-interface Item { code: string; description: string; qty: number; price: number; lamination: string; mockup_url: string | null }
+export const load: PageServerLoad = async ({ locals: { supabase } }) => loadEditorData(supabase);
 
 export const actions: Actions = {
-	default: async ({ request, locals: { supabase } }) => {
+	save: async ({ request, locals: { supabase } }) => {
 		const f = await request.formData();
-		const s = (k: string) => String(f.get(k) ?? '').trim();
-		let items: Item[];
-		try {
-			items = JSON.parse(String(f.get('items') ?? '[]'));
-		} catch {
-			return fail(400, { error: 'Articoli non leggibili.' });
-		}
-		const name = s('name');
-		if (!name) return fail(400, { error: 'Inserisci almeno il nome del cliente.' });
-		items = items.filter((i) => i && (i.code || i.description) && Number(i.qty) > 0);
-		if (!items.length) return fail(400, { error: 'Aggiungi almeno un articolo.' });
-		const lordi = s('price_type') === 'lordi';
-		const sameShip = f.get('ship_same') !== 'off';
-		const billing = { company: name, first_name: s('first_name'), last_name: s('last_name'), street: s('address'), city: s('city'), zip: s('cap'), province: s('province').toUpperCase().slice(0, 2), country: s('country') || 'IT', vat: s('piva'), fiscal_code: s('cf'), sdi: s('sdi'), pec: s('pec'), phone: s('phone') };
-		const shipping = sameShip ? { ...billing } : { company: s('ship_name'), first_name: '', last_name: '', street: s('ship_address'), city: s('ship_city'), zip: s('ship_cap'), province: s('ship_province').toUpperCase().slice(0, 2), country: s('ship_country') || 'IT', phone: s('phone') };
-		const group = crypto.randomUUID();
-		const createdAt = s('date') ? new Date(s('date') + 'T10:00:00').toISOString() : new Date().toISOString();
-		const { data: pm } = await supabase.from('payment_methods').select('*').eq('id', s('payment_id')).maybeSingle();
-		const payment = (pm as PaymentMethod | null)?.name || s('payment') || 'Bonifico bancario';
-		// totale lordo dell'ordine per le scadenze
-		const totalNetAll = items.reduce((sum, it) => sum + (lordi ? Number(it.price) / VAT : Number(it.price)) * Number(it.qty), 0);
-		const totalGrossAll = r2(totalNetAll * VAT);
-		let terms: PaymentTerm[] | null = null;
-		if (pm?.custom) {
-			try { terms = (JSON.parse(String(f.get('terms') ?? '[]')) as { due: string; amount: number; method?: string }[]).filter((t) => t.due && Number(t.amount) > 0).map((t) => ({ due: t.due, amount: r2(Number(t.amount)), method: t.method || payment, xml_code: pm.xml_code })); } catch { terms = null; }
-			if (!terms?.length) return fail(400, { error: 'Inserisci almeno una rata con data e importo.' });
-		} else if (pm) terms = computeTerms(pm, totalGrossAll, s('date') || new Date());
-		const numbers: string[] = [];
-		for (const it of items) {
-			const { data: num, error: ne } = await supabase.rpc('next_order_number');
-			if (ne || !num) return fail(400, { error: 'Numero d’ordine non disponibile.' });
-			const slug = categoryFromCode(it.code) ?? 'adesivi_personalizzati';
-			const unitNet = lordi ? Number(it.price) / VAT : Number(it.price);
-			const net = r2(unitNet * Number(it.qty));
-			const row = {
-				user_id: null, number: num as string, checkout_group: group, channel: 'manuale',
-				product_slug: slug, product_name: CATS[slug]?.name ?? slug, product_code: (it.code || '').toUpperCase().slice(0, 8) || null, description: it.description || null,
-				qty: Number(it.qty), unit_net: Math.round(unitNet * 10000) / 10000, total_net: net, total_gross: r2(net * VAT), price_type: lordi ? 'lordi' : 'netti',
-				lamination: it.lamination || null, mockup_url: it.mockup_url || null,
-				status: 'in_produzione', prod_stage: 'stampa',
-				customer_name: name, email: s('email') || null, country: billing.country, shipping, billing,
-				payment_method: payment, payment_terms: terms, payment_status: pm?.paid_upfront ? 'paid' : 'pending',
-				shipping_method: s('ship_method') || SHIPPING_METHODS[0], delivery_date: s('ship_date') || null,
-				internal_notes: s('notes') || null, created_at: createdAt
-			};
-			const { error } = await supabase.from('orders').insert(row);
-			if (error) return fail(400, { error: `Ordine non salvato: ${error.message}` });
-			numbers.push(row.number);
-		}
-		redirect(303, `/dashboard/fatturazione/ordini/${group}?creato=${numbers[0]}`);
+		const d = parseDraft(f.get('payload'));
+		if (!d) return fail(400, { error: 'Dati non leggibili.' });
+		const ed = await loadEditorData(supabase);
+		const r = await saveOrderDraft(supabase, d, null, ed);
+		if (r.error) return fail(400, { error: r.error });
+		redirect(303, `/dashboard/fatturazione/ordini/${r.group}?creato=${r.numbers[0]}`);
+	},
+	confirm: async ({ request, locals: { supabase } }) => {
+		const f = await request.formData();
+		const d = parseDraft(f.get('payload'));
+		if (!d) return fail(400, { error: 'Dati non leggibili.' });
+		const ed = await loadEditorData(supabase);
+		const r = await saveOrderDraft(supabase, d, null, ed);
+		if (r.error) return fail(400, { error: r.error });
+		const m = await sendOrderConfirmation(supabase, r.group);
+		redirect(303, `/dashboard/fatturazione/ordini/${r.group}?creato=${r.numbers[0]}&mail=${encodeURIComponent(m.message)}`);
+	},
+	contact: async ({ request, locals: { supabase } }) => {
+		const f = await request.formData();
+		const d = parseDraft(f.get('payload'));
+		if (!d) return fail(400, { error: 'Dati non leggibili.' });
+		const r = await upsertContact(supabase, d.customer, d.contact_id);
+		if (r.error) return fail(400, { error: r.error });
+		return { ok: true, contactId: r.id, contactMsg: 'Cliente salvato in anagrafica.' };
 	}
 };

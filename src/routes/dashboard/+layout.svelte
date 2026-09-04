@@ -24,16 +24,19 @@
 			{ label: 'Ordini', href: '/dashboard/fatturazione/ordini', count: data.counts?.prove },
 			{ label: 'DDT', href: '/dashboard/fatturazione/ddt' },
 			{ label: 'Fatture', href: '/dashboard/fatturazione/fatture' },
-			{ label: 'Preventivi', href: '/dashboard/fatturazione/preventivi' },
-			{ label: 'Metodi di pagamento', href: '/dashboard/fatturazione/metodi-pagamento' }
+			{ label: 'Preventivi', href: '/dashboard/fatturazione/preventivi' }
 		] },
 		{ id: 'anagrafica', title: 'Anagrafica', items: [
 			{ label: 'Clienti', href: '/dashboard/anagrafica/clienti' }
 		] },
 		{ id: 'marketing', title: 'Marketing', items: [{ label: 'Panoramica', href: '/dashboard/marketing' }] },
 		{ id: 'blog', title: 'Blog', items: [{ label: 'Articoli', href: '/dashboard/blog' }] },
-		{ id: 'sconti', title: 'Codici sconto', items: [{ label: 'Gestione codici', href: '/dashboard/codici-sconto' }] },
-		{ id: 'preventivatori', title: 'Preventivatori', items: PRODUCT_ENGINES.map((p) => ({ label: p.name, href: `/dashboard/preventivatori/${p.slug}` })) }
+		{ id: 'preventivatori', title: 'Preventivatori', items: PRODUCT_ENGINES.map((p) => ({ label: p.name, href: `/dashboard/preventivatori/${p.slug}` })) },
+		{ id: 'setup', title: 'Setup', items: [
+			{ label: 'Metodi di pagamento', href: '/dashboard/setup/metodi-pagamento' },
+			{ label: 'Codici sconto', href: '/dashboard/setup/codici-sconto' },
+			{ label: 'Codici prodotto', href: '/dashboard/setup/codici-prodotto' }
+		] }
 	]);
 	const active = (href: string) => path === href || path.startsWith(href + '/');
 

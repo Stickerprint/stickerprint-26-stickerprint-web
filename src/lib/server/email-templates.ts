@@ -115,3 +115,18 @@ ${opts.accountUrl ? `<p>Trovi ordine e fattura anche nella tua <a href="${opts.a
 <p>A presto,<br>Il team Stickerprint</p>`
 	};
 }
+
+/** Conferma d'ordine per gli ordini inseriti dalla dashboard (con PDF allegato) */
+export function manualOrderEmail(opts: { name?: string | null; number: string; total: string; lines: string[]; shipDate: string; terms: string[] }) {
+	return {
+		subject: `Conferma d'ordine ${opts.number} – Stickerprint`,
+		tag: 'order-confirmation-manual',
+		html: `<p>Ciao ${opts.name || ''},</p>
+<p>ti confermiamo l'ordine <strong>${opts.number}</strong>. In allegato trovi il riepilogo in PDF.</p>
+<ul>${opts.lines.map((l) => `<li>${l}</li>`).join('')}</ul>
+<p><strong>Totale IVA inclusa:</strong> ${opts.total}<br><strong>Spedizione prevista:</strong> ${opts.shipDate}</p>
+${opts.terms.length ? `<p><strong>Scadenze di pagamento</strong><br>${opts.terms.join('<br>')}</p>` : ''}
+<p>Per qualsiasi modifica rispondi a questa email.</p>
+<p>A presto,<br>Il team Stickerprint</p>`
+	};
+}

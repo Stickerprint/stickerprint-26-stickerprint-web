@@ -55,6 +55,7 @@ export interface OrderRow {
 	device: string | null; user_agent: string | null; proof_url: string | null; imposition_url: string | null; auto_proof: boolean;
 	payment_terms: { due: string; amount: number; method: string; xml_code: string }[] | null;
 	courier: string | null; shipped_at: string | null; delivered_at: string | null; parcels: number | null; weight_kg: number | null; ddt_id: string | null;
+	contact_id?: string | null;
 }
 /** Un "ordine" in dashboard = tutte le righe con lo stesso checkout_group */
 export interface OrderGroup {
@@ -88,11 +89,14 @@ export function groupOrders(rows: OrderRow[]): OrderGroup[] {
 export const money = (v: number) => new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(v);
 export const dmy = (d: string | null) => (d ? new Intl.DateTimeFormat('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(d)) : '—');
 export function itemMeta(i: OrderRow): string {
-	if (i.channel === 'manuale') return i.description ?? '';
+	if (i.description) return i.description;
+	if (i.channel === 'manuale') return '';
 	const parts = [i.forma, i.materiale, i.finitura && i.finitura !== 'nessuna' ? `lamina ${i.finitura}` : '', i.width_mm && i.height_mm ? `${i.width_mm}×${i.height_mm} mm` : ''].filter(Boolean);
 	return parts.join(' · ');
 }
 
+/** Immagine da mostrare per un articolo: prova generata, anteprima o mockup */
+export const thumbOf = (i: Pick<OrderRow, 'proof_url' | 'preview_url' | 'mockup_url'>) => i.proof_url ?? i.preview_url ?? i.mockup_url ?? null;
 export const DEVICE_ICON: Record<string, string> = { mobile: '📱', tablet: '📱', desktop: '💻' };
 export const CHANNEL_ICON: Record<string, { icon: string; label: string }> = { ecommerce: { icon: '🛒', label: 'Ordine e-commerce' }, manuale: { icon: '✏️', label: 'Ordine manuale' } };
 

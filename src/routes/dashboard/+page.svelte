@@ -6,7 +6,7 @@
 		{ title: 'Fatturazione', desc: 'Preventivi, ordini cliente, DDT e fatture.', href: '/dashboard/fatturazione/preventivi', soon: true },
 		{ title: 'Marketing', desc: 'Campagne, newsletter, recensioni.', href: '/dashboard/marketing', soon: true },
 		{ title: 'Blog', desc: 'Articoli e novità del laboratorio.', href: '/dashboard/blog', soon: true },
-		{ title: 'Codici sconto', desc: 'Crea, attiva e spegni i codici promozionali.', href: '/dashboard/codici-sconto' },
+		{ title: 'Codici sconto', desc: 'Crea, attiva e spegni i codici promozionali.', href: '/dashboard/setup/codici-sconto' },
 		{ title: 'Preventivatori', desc: `Listini e motori di calcolo di ${PRODUCT_ENGINES.length} prodotti, modificabili in qualsiasi momento.`, href: '/dashboard/preventivatori' }
 	];
 </script>
