@@ -37,7 +37,7 @@
 		if (f.size > 25 * 1024 * 1024) { error = 'Il file supera i 25 MB.'; return; }
 		saving = true;
 		try {
-			await saveDraft({ product: promo.product_slug, forma: promo.forma, materiale: promo.materiale, file: f, preview: null, widthMm: size?.w ?? 50, heightMm: size?.h ?? size?.w ?? 50, qty: promo.qty, lockSize: !!size, savedAt: Date.now() });
+			await saveDraft({ product: promo.product_slug, forma: promo.forma, materiale: promo.materiale, file: f, preview: null, widthMm: size?.w ?? 50, heightMm: size?.h ?? size?.w ?? 50, qty: promo.qty, lockSize: !!size, promo: { id: promo.id, price, qty: promo.qty, w: size?.w ?? 50, h: size?.h ?? size?.w ?? 50 }, savedAt: Date.now() });
 			await goto(`${href}?forma=${promo.forma}&materiale=${promo.materiale}#configura`);
 		} finally { saving = false; }
 	}

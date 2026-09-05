@@ -11,6 +11,7 @@ export interface Draft {
 	widthMm?: number;
 	qty?: number;            // dalle offerte: quantità dell'offerta
 	lockSize?: boolean;      // dalle offerte: la misura non va ricalcolata dal file
+	promo?: { id: string; price: number; qty: number; w: number; h: number }; // prezzo bloccato dell'offerta
 	heightMm?: number;
 	savedAt: number;
 }

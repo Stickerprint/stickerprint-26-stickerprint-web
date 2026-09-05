@@ -47,6 +47,7 @@
 	let showCut = $state(true);
 	let sizeKey = '';
 	let sizeLocked = false;   // misura fissata dall'offerta: il file non la ricalcola
+	let promo = $state<{ id: string; price: number; qty: number; w: number; h: number } | null>(null);
 	let qty = $state(500);
 	let step = $state('forma');
 	let vatIncluded = $state(true);
@@ -86,7 +87,16 @@
 	const ratio = $derived(shape?.equal ? 1 : (shape?.ratio ?? cutRatio ?? fileRatio ?? 1));
 	// rettangolo e ovale: le misure sono solo proposte, il cliente puo' scrivere la sua (lati indipendenti)
 	const freeSize = $derived(forma === 'rettangolo' || forma === 'ovale');
-	const q = $derived(quoteWith(cfg, { w, h, forma, materiale, finitura: fin, qty, vatIncluded }));
+	const qListino = $derived(quoteWith(cfg, { w, h, forma, materiale, finitura: fin, qty, vatIncluded }));
+	/* offerta: il prezzo promo vale finché quantità e misura restano quelle dell'offerta;
+	   cambiandole si torna al listino (e il checkout ricontrolla comunque sul server) */
+	const promoOk = $derived(!!promo && qty === promo.qty && Math.abs(w - promo.w) < 0.6 && Math.abs(h - promo.h) < 0.6);
+	const q = $derived.by(() => {
+		if (!promoOk || !promo) return qListino;
+		const gross = promo.price, net = Math.round((gross / cfg.vat) * 100) / 100;
+		const shown = vatIncluded ? gross : net;
+		return { ...qListino, net, gross, perPiece: shown / qty, perPieceNet: net / qty, credit: net * cfg.creditRate };
+	});
 	const progress = $derived((stepNo(step) / steps.length) * 100);
 	const suggested = $derived(suggestedSize(ratio));
 	const shapePresets = $derived(shape?.presets?.length ? shape.presets : [30, 50, 70, 100]);
@@ -120,6 +130,7 @@
 			// dalle offerte: quantità e misura decise dall'offerta
 			if (d.qty && d.qty > 0) { qty = d.qty; custom = !cfg.quantities.includes(d.qty); customQty = custom ? d.qty : ''; }
 			if (d.lockSize && d.widthMm) { w = clamp(d.widthMm); h = clamp(d.heightMm ?? d.widthMm); sizeLocked = true; }
+			if (d.promo) promo = d.promo;
 			// arrivando dalla home con il file gia' caricato si atterra direttamente sul preventivatore:
 			// si ripete perche' le foto della pagina, caricandosi, spostano il blocco verso il basso
 			if (location.hash === '#configura') for (const ms of [200, 900, 2000, 3500]) setTimeout(() => document.getElementById('configura')?.scrollIntoView({ behavior: ms > 500 ? 'auto' : 'smooth', block: 'start' }), ms);
@@ -193,7 +204,7 @@
 	// si può ordinare solo con un file caricato
 	async function addCart() {
 		if (!file) return;
-		const it = addToCart({ product, productName: productName.replace(/^(i tuoi|le tue) /, ''), engineProduct, forma, materiale, finitura: showFinish ? finitura : undefined, w, h, qty, net: q.net, gross: q.gross, fileName: file.name, note });
+		const it = addToCart({ product, productName: productName.replace(/^(i tuoi|le tue) /, ''), engineProduct, forma, materiale, finitura: showFinish ? finitura : undefined, w, h, qty, net: q.net, gross: q.gross, promoId: promoOk && promo ? promo.id : undefined, fileName: file.name, note });
 		try {
 			await saveCartFile(it.id, file);
 			if (lastPng) {
@@ -411,7 +422,7 @@
 		</div>
 		<div class="sum sum--total">
 			<div class="sum__text">
-				<span class="sum__label">Totale {vatIncluded ? 'IVA inclusa' : 'IVA esclusa'}</span>
+				<span class="sum__label">{promoOk ? 'Prezzo offerta · ' : 'Totale '}{vatIncluded ? 'IVA inclusa' : 'IVA esclusa'}</span>
 				<span class="sum__value sum__value--big">{eur0(vatIncluded ? q.gross : q.net)}</span>
 				<div class="vat-toggle">
 					<span class:active={!vatIncluded}>IVA esclusa</span>

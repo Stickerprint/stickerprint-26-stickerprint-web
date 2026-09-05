@@ -106,7 +106,7 @@
 					if (error) throw new Error(`File non caricato (${f.name}): ${error.message}`);
 					filePath = path;
 				}
-				lines.push({ id: it.id, product: it.product, forma: it.forma, materiale: it.materiale, finitura: it.finitura, w: it.w, h: it.h, qty: it.qty, filePath, fileName: it.fileName ?? null, previewUrl, note: it.note, reorderOf: it.reorderOf ?? null });
+				lines.push({ id: it.id, product: it.product, forma: it.forma, materiale: it.materiale, finitura: it.finitura, w: it.w, h: it.h, qty: it.qty, filePath, fileName: it.fileName ?? null, previewUrl, note: it.note, reorderOf: it.reorderOf ?? null, promoId: it.promoId ?? null });
 			}
 			const fd = new FormData(formEl);
 			fd.set('items', JSON.stringify(lines));

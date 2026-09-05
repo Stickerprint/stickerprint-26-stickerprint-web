@@ -15,6 +15,7 @@ export interface CartItem {
 	qty: number;
 	net: number; // imponibile
 	gross: number; // IVA inclusa
+	promoId?: string; // offerta applicata (il checkout la verifica e usa il suo prezzo)
 	fileName?: string | null;
 	filePath?: string | null; // file già su Storage (riordino di un ordine precedente)
 	previewUrl?: string | null; // anteprima generata dal sistema già pubblicata (riordino)

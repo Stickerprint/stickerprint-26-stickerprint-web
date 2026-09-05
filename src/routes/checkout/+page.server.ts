@@ -97,7 +97,18 @@ export const actions: Actions = {
 			}
 			engines[l.product] ??= (await loadEngine(supabase, l.product)).config;
 			const q = quoteWith(engines[l.product], { w: Number(l.w), h: Number(l.h), forma: l.forma, materiale: l.materiale, finitura: l.finitura ?? 'nessuna', qty: Number(l.qty), vatIncluded: true });
-			const baseNet = q.net;
+			let baseNet = q.net;
+			// offerta: prezzo promo se l'offerta e' ancora attiva e quantita' e misura sono quelle dell'offerta
+			const promoId = String((l as { promoId?: string }).promoId ?? '');
+			if (promoId) {
+				const { data: pr } = await supabase.from('promos').select('*').eq('id', promoId).eq('active', true).maybeSingle();
+				if (pr && pr.product_slug === l.product && Number(pr.qty) === Number(l.qty) && (!pr.ends_at || new Date(pr.ends_at).getTime() > Date.now())) {
+					const sizes = Array.isArray(pr.sizes) ? (pr.sizes as { w: number; h?: number; price: number }[]) : [];
+					const hit = sizes.find((s) => Math.abs(Number(s.w) - Number(l.w)) < 0.6 && Math.abs(Number(s.h ?? s.w) - Number(l.h)) < 0.6);
+					const gross = hit ? Number(hit.price) : sizes.length ? NaN : Number(pr.price);
+					if (Number.isFinite(gross) && gross > 0) baseNet = r2(gross / VAT);
+				}
+			}
 			const net = r2(express ? baseNet * (1 + EXPRESS_RATE) : baseNet);
 			priced.push({ ...l, baseNet, net, gross: r2(net * VAT), expressNet: r2(net - baseNet) });
 		}
