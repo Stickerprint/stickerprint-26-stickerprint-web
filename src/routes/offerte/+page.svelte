@@ -46,7 +46,7 @@
 
 <svelte:head>
 	<title>Offerte: adesivi personalizzati a prezzo promo | Stickerprint</title>
-	<meta name="description" content="Offerte a tempo sugli adesivi personalizzati: quantità fissa, prezzo bloccato, anteprima immediata e spedizione in 5 giorni." />
+	<meta name="description" content="Offerte a tempo sugli adesivi personalizzati: quantità fissa, prezzo bloccato, prova automatica immediata e pronti per la spedizione in pochi giorni." />
 </svelte:head>
 
 {#if promo}
@@ -141,7 +141,7 @@
 	<div class="howto" style="text-align:left">
 		<div class="howto__step"><div class="howto__n">1</div><b>Carica il tuo file</b><p>PNG, PDF, JPG, SVG. Va bene anche se non è pronto per la stampa: lo sistemiamo noi.</p></div>
 		<div class="howto__step"><div class="howto__n">2</div><b>Anteprima immediata</b><p>Vedi subito sagoma e linea di taglio, prima di pagare. Nessun salto nel buio.</p></div>
-		<div class="howto__step"><div class="howto__n">3</div><b>Approvi, stampiamo</b><p>Un controllo umano sul file, poi in produzione. Pronti in media in 5 giorni.</p></div>
+		<div class="howto__step"><div class="howto__n">3</div><b>Approvi, stampiamo</b><p>Un controllo umano sul file, poi in produzione. Pronti per la spedizione entro <b>{data.shipDate}</b>.</p></div>
 		<div class="howto__step"><div class="howto__n">4</div><b>Ricevi gli adesivi</b><p>Corriere espresso tracciato. E quando arrivano, ci lasci una recensione come gli altri.</p></div>
 	</div>
 </section>

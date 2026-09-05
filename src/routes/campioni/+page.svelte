@@ -46,7 +46,7 @@
 			<span class="kit-buy__price">10€</span>
 			<button type="button" class="btn btn--green btn--lg" onclick={add}>Aggiungi al carrello</button>
 		</div>
-		<p class="note" style="margin-top:10px">🚀 Pronti per la spedizione il <b>{data.shipDate}</b> · nessun file da caricare</p>
+		<p class="note" style="margin-top:10px">🚀 Pronti per la spedizione entro <b>{data.shipDate}</b> · nessun file da caricare</p>
 	</div>
 	<div class="reels reels--kit">
 		{#if REELS.length}

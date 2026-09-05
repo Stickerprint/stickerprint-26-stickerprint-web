@@ -107,7 +107,7 @@ function base(over: Partial<EngineConfig> = {}): EngineConfig {
 		version: 3,
 		kind: 'lamina',
 		vat: 1.22,
-		creditRate: 0.05,
+		creditRate: 0.02, // livello Creator; Partner 4%, Ambassador 6% (loyalty_levels)
 		setup: 50,
 		setupTiers: [{ upTo: 20, setup: 20 }, { upTo: 50, setup: 30 }],
 		print: { costM2: 4, markup: 0 },

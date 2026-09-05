@@ -14,5 +14,5 @@ export function estimatedShipDate(businessDays = 5, from = new Date()): Date {
 }
 
 export function formatItDate(d: Date): string {
-	return new Intl.DateTimeFormat('it-IT', { weekday: 'short', day: 'numeric', month: 'long' }).format(d);
+	return new Intl.DateTimeFormat('it-IT', { weekday: 'long', day: 'numeric', month: 'long' }).format(d);
 }

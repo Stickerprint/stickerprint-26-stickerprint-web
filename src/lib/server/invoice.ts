@@ -122,7 +122,7 @@ export async function buildInvoicePdf(inv: InvoiceData): Promise<Uint8Array> {
 		if (COMPANY.iban) { text(`IBAN ${COMPANY.iban} · ${COMPANY.name}`, M, y, 9, font, gray); y -= 12; }
 	}
 	if (inv.notes) { text(`Note: ${inv.notes}`.slice(0, 140), M, y, 9, font, gray); y -= 13; }
-	text('Prova di stampa gratuita inviata via email. Spedizione con corriere espresso tracciato.', M, y, 9, font, gray);
+	text('Prova automatica immediata inviata via email. Spedizione con corriere espresso tracciato.', M, y, 9, font, gray);
 	text('Documento generato automaticamente da stickerprint.it', M, 40, 8, font, gray);
 	return pdf.save();
 }

@@ -186,7 +186,7 @@
 			<label>Quantità mostrate al cliente (separate da virgola)<input type="text" value={qtyText} onchange={(e) => setQty((e.currentTarget as HTMLInputElement).value)} /></label>
 			<label>Quantità consigliata<input type="number" min="1" bind:value={cfg.recommendedQty} /></label>
 			<label>Coefficiente IVA (1,22 = 22%)<input type="number" step="0.01" min="1" bind:value={cfg.vat} /></label>
-			<label>Credito Stickerprint (0,05 = 5% del netto)<input type="number" step="0.01" min="0" bind:value={cfg.creditRate} /></label>
+			<label>Credito Stickerprint (0,02 = 2% del netto, livello Creator)<input type="number" step="0.01" min="0" bind:value={cfg.creditRate} /></label>
 			<label>Misura minima di questo prodotto (mm)<input type="number" min="1" bind:value={cfg.size.minMm} /></label>
 			<label>Misura massima di questo prodotto (mm)<input type="number" min="1" bind:value={cfg.size.maxMm} /></label>
 		</div>

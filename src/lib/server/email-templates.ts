@@ -109,7 +109,7 @@ export function orderConfirmationEmail(opts: { name?: string | null; numbers: st
 		tag: 'order-confirmation',
 		html: `<p>Ciao ${opts.name || ''},</p>
 <p>grazie per il tuo ordine! Abbiamo ricevuto il pagamento e stiamo già preparando la <strong>prova di stampa</strong>, che ti invieremo a breve via email.</p>
-<p><strong>Ordine:</strong> ${opts.numbers.join(', ')}<br><strong>Fattura:</strong> ${opts.invoiceNumber} (in allegato)<br><strong>Totale pagato:</strong> ${opts.total}<br><strong>Pronti per la spedizione:</strong> ${opts.shipDate}</p>
+<p><strong>Ordine:</strong> ${opts.numbers.join(', ')}<br><strong>Fattura:</strong> ${opts.invoiceNumber} (in allegato)<br><strong>Totale pagato:</strong> ${opts.total}<br><strong>Pronti per la spedizione entro:</strong> ${opts.shipDate}</p>
 <ul>${items}</ul>
 ${opts.accountUrl ? `<p>Trovi ordine e fattura anche nella tua <a href="${opts.accountUrl}">area personale</a>.</p>` : '<p>Vuoi seguire l’ordine e guadagnare credito sul prossimo? <a href="https://stickerprint.it/signup">Crea il tuo account</a> con questa stessa email: ordine e fattura saranno già lì.</p>'}
 <p>A presto,<br>Il team Stickerprint</p>`
@@ -124,7 +124,7 @@ export function manualOrderEmail(opts: { name?: string | null; number: string; t
 		html: `<p>Ciao ${opts.name || ''},</p>
 <p>ti confermiamo l'ordine <strong>${opts.number}</strong>. In allegato trovi il riepilogo in PDF.</p>
 <ul>${opts.lines.map((l) => `<li>${l}</li>`).join('')}</ul>
-<p><strong>Totale IVA inclusa:</strong> ${opts.total}<br><strong>Spedizione prevista:</strong> ${opts.shipDate}</p>
+<p><strong>Totale IVA inclusa:</strong> ${opts.total}<br><strong>Pronti per la spedizione entro:</strong> ${opts.shipDate}</p>
 ${opts.terms.length ? `<p><strong>Scadenze di pagamento</strong><br>${opts.terms.join('<br>')}</p>` : ''}
 <p>Per qualsiasi modifica rispondi a questa email.</p>
 <p>A presto,<br>Il team Stickerprint</p>`

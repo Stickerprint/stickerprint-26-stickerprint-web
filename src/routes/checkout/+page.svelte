@@ -219,7 +219,7 @@
 						</div>
 					{/each}
 					<div class="co-row"><span>Prova di stampa</span><b>Gratis</b></div>
-					<div class="co-ship">🚀 Pronti per la spedizione il <b>{express ? data.expressDate : data.shipDate}</b></div>
+					<div class="co-ship">🚀 Pronti per la spedizione entro <b>{express ? data.expressDate : data.shipDate}</b>.</div>
 
 					<label class="co-code__label" for="code">Hai un codice sconto o un codice referral da utilizzare?</label>
 					<div class="co-code"><input id="code" placeholder="Inserisci codice" bind:value={code} /><button type="button" class="btn btn--blue btn--xs" onclick={applyCode} disabled={!code}>Applica</button></div>
