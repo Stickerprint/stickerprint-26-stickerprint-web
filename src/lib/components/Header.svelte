@@ -61,6 +61,10 @@
 
 <header class="header">
 	<div class="container header__inner">
+		<div class="header__left">
+		<button class="icon-btn burger" aria-label="Menu" aria-expanded={open} onclick={() => (open = !open)}>
+			<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
+		</button>
 		<nav aria-label="Principale">
 			<ul class="nav nav--desktop">
 				{#each links as l (l.label)}
@@ -85,6 +89,7 @@
 				{/each}
 			</ul>
 		</nav>
+		</div>
 
 		<a class="header__logo" href="/" aria-label="Stickerprint, home">
 			<img src="/images/splogo-400.png" alt="Stickerprint" width="400" height="320" />
@@ -107,9 +112,6 @@
 				<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" /><path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6" /></svg>
 				{#if cart}<span class="badge">{cart}</span>{/if}
 			</a>
-			<button class="icon-btn burger" aria-label="Menu" aria-expanded={open} onclick={() => (open = !open)}>
-				<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
-			</button>
 		</div>
 	</div>
 </header>

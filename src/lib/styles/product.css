@@ -231,3 +231,31 @@
 .qty-custom input { width: 110px; padding: 9px 10px; border: 1px solid var(--line); border-radius: 8px; font: inherit; font-size: 15px; font-weight: 700; }
 .qty-custom__res { font-size: 14px; }
 .cfg { scroll-margin-top: 84px; }
+
+/* ==========================================================================
+   MOBILE: barra prezzo fissa in basso (sotto i 1000 px)
+   ========================================================================== */
+.cfg__mobar { display: none; }
+@media (max-width: 1000px) {
+	.cfg > * { min-width: 0; }
+	.cfg__preview, .cfg__steps { padding: 14px 14px 18px; }
+	.cfg__summary { position: static; padding: 12px 14px; }
+	.cfg__mobar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px)); background: #fff; border-top: 2px solid var(--line); box-shadow: 0 -10px 30px rgba(11,11,59,.14); }
+	.mobar__qty { display: inline-flex; align-items: center; border: 2px solid var(--line); border-radius: 999px; overflow: hidden; }
+	.mobar__step { width: 36px; height: 40px; border: 0; background: #fff; font-size: 22px; font-weight: 800; color: var(--blue); cursor: pointer; padding: 0; }
+	.mobar__n { border: 0; background: var(--sky); height: 40px; padding: 0 10px; font: inherit; font-weight: 800; font-size: 14px; white-space: nowrap; color: var(--ink); }
+	.mobar__price { border: 0; background: none; text-align: left; display: grid; gap: 2px; line-height: 1.1; padding: 0; min-width: 0; cursor: pointer; }
+	.mobar__price b { font-family: var(--font-display); font-weight: 800; font-size: 24px; letter-spacing: -0.02em; color: var(--ink); }
+	.mobar__price small { font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+	.mobar__cta { min-height: 44px; padding: 0 14px; font-size: 14px; border-radius: 12px; white-space: nowrap; }
+	body:has(.cfg__mobar) { padding-bottom: 88px; }
+	.step--qty { scroll-margin-top: 80px; }
+	.cfg__bar { gap: 8px; }
+	.cfg__bar-group { flex-wrap: wrap; }
+	.qty-custom { flex-wrap: wrap; }
+	.pic-grid--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+	.pic-grid--3 .pic { padding: 8px 6px; }
+	.pic-grid--3 .pic img { width: 44px; height: 44px; }
+	.pic-grid--3 .pic b { font-size: 12px; }
+	.size-btn { font-size: 13px; }
+}

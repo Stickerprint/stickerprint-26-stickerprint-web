@@ -491,3 +491,28 @@ body { overflow-x: clip; }
 .account__card { border: 2px solid var(--line); border-radius: var(--radius); padding: 22px; }
 .account__card b { display: block; font-size: 28px; letter-spacing: -0.03em; }
 @media (max-width: 800px) { .account__cards { grid-template-columns: 1fr; } }
+
+/* --------------------------------------------------------------------------
+   Mobile: niente sbordi, tutto nella larghezza dello schermo
+   -------------------------------------------------------------------------- */
+@media (max-width: 900px) {
+  html, body { overflow-x: hidden; }
+  .container * { min-width: 0; }
+  img, video, canvas, iframe, svg { max-width: 100%; }
+  h1 { overflow-wrap: anywhere; }
+  .hero { padding-top: 24px; }
+  .hero__ship { font-size: 14.5px; padding: 8px 14px 8px 10px; gap: 10px; }
+  .hero__ship .hero__rocket { font-size: 24px; }
+  .hero__ship b { font-size: 16px; }
+  .hero__pill { font-size: 13px; padding: 10px 16px; gap: 6px 16px; border-radius: 18px; }
+  .hero__ctas .btn { flex: 1 1 auto; text-align: center; }
+  .products { gap: 14px; }
+  .form2 .row { grid-template-columns: 1fr; }
+  .footer__col--left, .footer__col--right { justify-items: center; text-align: center; }
+  .footer__col--left .footer__head { justify-items: center; }
+  .footer__col--left .footer__logos { justify-content: center; }
+  .footer__meta { justify-self: center; margin-left: 0; }
+  .newsletter { justify-self: center; }
+  /* header: menu a tre trattini a sinistra, logo al centro, account e carrello a destra */
+  .header__left { display: flex; align-items: center; }
+}

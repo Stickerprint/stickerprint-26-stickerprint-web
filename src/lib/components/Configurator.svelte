@@ -122,6 +122,18 @@
 		}
 	});
 	const minQty = $derived(cfg.quantities[0] ?? 15);
+	/* barra mobile: −/+ scorre le fasce del listino; il prezzo porta al passo quantità */
+	function stepQty(dir: number) {
+		const list = cfg.quantities;
+		if (!list.length) return;
+		let i = list.findIndex((n) => n >= qty);
+		if (i < 0) i = list.length - 1;
+		if (dir > 0) i = list[i] === qty ? Math.min(list.length - 1, i + 1) : i;
+		else i = Math.max(0, i - 1);
+		custom = false; qty = list[i];
+	}
+	function goQty() { document.getElementById('qty-step')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+	function goFile() { document.getElementById('configura')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); fileInput?.click(); }
 	function applyCustom() {
 		const n = Math.max(minQty, Math.round(Number(customQty) || 0));
 		customQty = n; custom = true; qty = n;
@@ -347,7 +359,7 @@
 
 		<!-- quantità -->
 		<!-- sempre aperto: il cliente vede tutti i prezzi a colpo d'occhio -->
-		<div class="step is-open step--qty">
+		<div class="step is-open step--qty" id="qty-step">
 			<div class="step__head" role="presentation">
 				<span class="step__n">{stepNo('qty')}</span>
 				<span class="step__title">Scegli quantità <em>{qty.toLocaleString('it-IT')} pezzi · {eur0(vatIncluded ? q.gross : q.net)}</em></span>
@@ -413,6 +425,22 @@
 			<button class="btn btn--green btn--cart" type="button" onclick={addCart} disabled={!file} title={file ? '' : 'Carica il tuo file per ordinare'}>{file ? 'Aggiungi al carrello →' : 'Carica il file per ordinare'}</button>
 		{/if}
 	</div>
+	{#if !test}
+		<!-- MOBILE: barra prezzo fissa in basso. Il prezzo resta sempre visibile mentre si scorre;
+		     −/+ cambia la quantità sulle fasce del listino, il prezzo porta al passo quantità -->
+		<div class="cfg__mobar" role="region" aria-label="Prezzo e quantità">
+			<div class="mobar__qty">
+				<button type="button" class="mobar__step" onclick={() => stepQty(-1)} aria-label="Meno pezzi">−</button>
+				<button type="button" class="mobar__n" onclick={goQty}>{qty.toLocaleString('it-IT')} pz</button>
+				<button type="button" class="mobar__step" onclick={() => stepQty(1)} aria-label="Più pezzi">+</button>
+			</div>
+			<button type="button" class="mobar__price" onclick={goQty}>
+				<b>{eur0(vatIncluded ? q.gross : q.net)}</b>
+				<small>{q.perPiece.toFixed(2).replace('.', ',')} €/pz · {vatIncluded ? 'IVA inclusa' : 'IVA esclusa'}</small>
+			</button>
+			<button type="button" class="btn btn--green mobar__cta" onclick={file ? addCart : goFile}>{file ? 'Al carrello →' : 'Carica il file'}</button>
+		</div>
+	{/if}
 </section>
 
 {#if !test}
