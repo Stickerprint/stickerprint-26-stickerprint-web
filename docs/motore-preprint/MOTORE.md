@@ -210,3 +210,15 @@ e si trascina per spostarsi. L'effetto va
 sopra la finitura (UV opaca spegne il resto, il rilievo resta lucido). Banco:
 `scratchpad/harness/rilievo.html`. Sul sito il passo "Finitura" del rilievo ha
 UV opaca (consigliata) e UV lucida (`finishTitle`/`finishNote` nel listino).
+
+## Tratti sottili e controforme (5 settembre 2026)
+
+Bug storico in `buildArtCanvas`: nella rampa di bordo il colore "vero" del disegno
+veniva propagato da qualsiasi pixel interno alla maschera lontano dal bordo, comprese
+le controforme (il buco della A, della O, della P) che sono sfondo del file rimasto
+dentro. I tratti sottili accanto prendevano quel bianco e sparivano: restavano solo le
+lettere senza buchi ("S LV I A LI"). Ora un pixel fa da fonte di colore solo se dista
+dal colore di sfondo piu' di 26 (RGB). Vale per tutti i prodotti.
+Rilievo: due misure. Elementi sottili (raggio inscritto < 0,9 mm) ricevono ombre corte,
+luci fini, niente cupola larga ne' velo/overlay (rompevano l'antialias delle scritte
+piccole); elementi grandi la cupola piena. Banco: `rilievo.html?art=trainer`.

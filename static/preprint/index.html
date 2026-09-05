@@ -1791,10 +1791,17 @@ function buildArtCanvas(){
   if(!S.giaScont){
     const Fr=new Float32Array(w*h),Fg=new Float32Array(w*h),Fb=new Float32Array(w*h);
     const noto=new Uint8Array(w*h); const rampa=[];
+    /* [sito] un pixel "noto" e' una fonte di colore VERO del disegno: deve avere un
+       colore diverso dallo sfondo del file. Le controforme (il buco della A, della O,
+       della P) sono sfondo rimasto dentro la maschera: se facessero da fonte, i tratti
+       sottili delle lettere accanto prenderebbero il loro bianco e sparirebbero.
+       Era esattamente cio' che succedeva: restavano solo le lettere senza buchi. */
+    const stacco2=26*26;
     for(let i=0,q=0;i<w*h;i++,q+=4){
       if(S.mask[i]){
-        if(g2[i]>b2){Fr[i]=dd[q];Fg[i]=dd[q+1];Fb[i]=dd[q+2];noto[i]=1;}
-        else rampa.push(i);
+        const br=dd[q]-B[0],bg=dd[q+1]-B[1],bb=dd[q+2]-B[2];
+        if(g2[i]>b2&&(br*br+bg*bg+bb*bb)>stacco2){Fr[i]=dd[q];Fg[i]=dd[q+1];Fb[i]=dd[q+2];noto[i]=1;}
+        else if(g2[i]<=b2) rampa.push(i);
       }else if(gOut[i]<=b2) rampa.push(i);   /* appena fuori: candidato al recupero */
       continue;
     }
@@ -3178,7 +3185,13 @@ function rilievoMask(){
   const g=c.getContext('2d'),im=g.createImageData(w,h),dd=im.data;
   for(let i=0,p=0;i<N;i++,p+=4){if(R[i]){dd[p]=0;dd[p+1]=0;dd[p+2]=0;dd[p+3]=255;}}
   g.putImageData(im,0,0);
-  S.ril={key,canvas:c,w,h,frac};
+  /* spessore locale: il raggio inscritto della regione di ogni pixel (i pixel di bordo
+     aggiunti prendono quello del vicino), per dosare ombre e luci in proporzione */
+  const md=new Float32Array(N);
+  for(let i=0;i<N;i++){ if(!R[i])continue; let l=seg.lab[i];
+    if(!l){const x=i%w,y=(i/w)|0; l=(x>0&&seg.lab[i-1])||(x<w-1&&seg.lab[i+1])||(y>0&&seg.lab[i-w])||(y<h-1&&seg.lab[i+w])||0;}
+    md[i]=l?seg.maxd[l]:0; }
+  S.ril={key,canvas:c,w,h,frac,on:R,md};
   try{ if(S.rilDebug){const on=new Uint8Array(seg.nl+1);for(let i=0;i<N;i++)if(seg.lab[i]&&R[i])on[seg.lab[i]]=1; S.ril.regs=[]; for(let l=1;l<=seg.nl;l++)S.ril.regs.push({l,area:+(seg.areas[l]/artArea).toFixed(3),maxd:Math.round(seg.maxd[l]),on:!!on[l],col:seg.sums[l].map(v=>Math.round(v/seg.areas[l]))}); S.ril.regs.sort((x,y)=>y.area-x.area); S.ril.regs.length=Math.min(14,S.ril.regs.length); S.ril.Rthin=Rthin; S.ril.T=T;} }catch(e){}
   try{console.debug('[rilievo] dettagli:',Math.round(frac*100)+'% del disegno, regioni',seg.nl,'in',Math.round(performance.now()-t0),'ms');}catch(e){}
   return S.ril;}
@@ -3196,62 +3209,76 @@ function artRect(){
 function rilievoApply(c,ppm){
   const m=rilievoMask(), A=artRect(); if(!m||!A)return c;
   const W=c.width,H=c.height;
-  const mk=document.createElement('canvas');mk.width=W;mk.height=H;
-  const gm=mk.getContext('2d');gm.setTransform(ppm,0,0,ppm,0,0);gm.imageSmoothingQuality='high';
-  gm.drawImage(m.canvas,A.x,A.y,A.w,A.h);gm.setTransform(1,0,0,1,0,0);
-  gm.globalCompositeOperation='destination-in';gm.drawImage(c,0,0);
   const nc=()=>{const t=document.createElement('canvas');t.width=W;t.height=H;return t;};
   const tint=(src,col)=>{const t=nc(),g=t.getContext('2d');g.drawImage(src,0,0);g.globalCompositeOperation='source-in';g.fillStyle=col;g.fillRect(0,0,W,H);return t;};
   const meno=(a,b,dx,dy,bl)=>{const t=nc(),g=t.getContext('2d');if(bl)g.filter='blur('+bl+'px)';g.drawImage(a,0,0);g.filter='none';g.globalCompositeOperation='destination-out';g.drawImage(b,dx,dy);return t;};
+  /* maschera portata sul pezzo (in pixel del tile), ritagliata sulla sagoma */
+  const porta=(src)=>{const mk=nc();const gm=mk.getContext('2d');gm.setTransform(ppm,0,0,ppm,0,0);gm.imageSmoothingQuality='high';
+    gm.drawImage(src,A.x,A.y,A.w,A.h);gm.setTransform(1,0,0,1,0,0);gm.globalCompositeOperation='destination-in';gm.drawImage(c,0,0);return mk;};
+  /* --------------------------------------------------------------------
+     DUE MISURE DI RILIEVO
+     Le ombre e le luci vanno in proporzione allo spessore dell'elemento: su una
+     scritta piccola le stesse ombre di una lettera grande la impastano e le
+     lettere si fondono fra loro. Gli elementi sottili (raggio inscritto sotto
+     0,9 mm) ricevono ombre corte e luci fini; quelli grandi la cupola piena.
+     -------------------------------------------------------------------- */
+  const mmSm=A.w/m.w;                       // mm per pixel della maschera ridotta
+  const soglia=0.9/mmSm;                    // raggio inscritto in pixel ridotti
+  const split=(thin)=>{const t=document.createElement('canvas');t.width=m.w;t.height=m.h;const g=t.getContext('2d');
+    const im=g.createImageData(m.w,m.h),dd=im.data;
+    for(let i=0,p=0;i<m.w*m.h;i++,p+=4){ if(!m.on[i])continue; const th=m.md[i]<soglia; if(th===thin){dd[p]=0;dd[p+1]=0;dd[p+2]=0;dd[p+3]=255;} }
+    g.putImageData(im,0,0);return t;};
+  const mkThin=porta(split(true)), mkThick=porta(split(false));
   const K=(S.rilForza||1.0);   // intensita' dell'effetto (1 = standard)
-  const dd=Math.max(1,0.30*ppm), s=Math.max(1.5,0.50*ppm), bl=Math.max(0.8,0.40*ppm);
   const out=nc(),o=out.getContext('2d');o.drawImage(c,0,0);
-  /* 1. ombra portata sul piano, in basso a destra, fuori dal rilievo */
-  {const sh=nc(),g=sh.getContext('2d');g.filter='blur('+bl+'px)';g.drawImage(mk,s,s);g.filter='none';
-   g.globalCompositeOperation='destination-out';g.drawImage(mk,0,0);
-   o.globalCompositeOperation='multiply';o.globalAlpha=Math.min(1,0.72*K);o.drawImage(tint(sh,'#000'),0,0);}
-  /* 2. ombra interna in basso a destra: il fianco del rilievo in controluce */
-  {const r=meno(mk,mk,-dd,-dd,dd*0.35);o.globalCompositeOperation='multiply';o.globalAlpha=Math.min(1,0.62*K);o.drawImage(tint(r,'#000'),0,0);
-   const r2=meno(mk,mk,-dd*0.45,-dd*0.45,0);o.globalAlpha=Math.min(1,0.45*K);o.drawImage(tint(r2,'#000'),0,0);
-   /* base d'appoggio: un'ombra sottile tutt'attorno, non direzionale, che stacca il rilievo dal piano */
-   const ao=nc(),ga=ao.getContext('2d');ga.filter='blur('+(dd*0.6)+'px)';ga.drawImage(mk,0,0);ga.filter='none';ga.globalCompositeOperation='destination-out';ga.drawImage(mk,0,0);
-   o.globalAlpha=Math.min(1,0.30*K);o.drawImage(tint(ao,'#000'),0,0);}
-  /* 3. cresta di luce in alto a sinistra */
-  {const r=meno(mk,mk,dd,dd,dd*0.35);o.globalCompositeOperation='overlay';o.globalAlpha=Math.min(1,0.70*K);o.drawImage(tint(r,'#fff'),0,0);
-   /* filo di luce netto sul ciglio: e' quello che fa leggere lo spessore (tenue, non bianco pieno) */
-   const r2=meno(mk,mk,dd*0.45,dd*0.45,0);o.globalCompositeOperation='screen';o.globalAlpha=Math.min(1,0.50*K);o.drawImage(tint(r2,'#fff'),0,0);}
-  /* 3b. SUPERFICIE BOMBATA: il rilievo e' pieno, non un filo sul bordo. Dalla
-     maschera sfumata (due raggi: uno per i tratti sottili, uno per le lettere
-     grandi) si ricava un'altezza a cupola; il versante verso la luce (alto a
-     sinistra) si schiarisce, quello opposto si scurisce, con pendenze morbide
-     che attraversano tutta la superficie dell'elemento. */
-  {const dome=(r)=>{const t=nc(),g=t.getContext('2d');g.filter='blur('+r+'px)';g.drawImage(mk,0,0);g.filter='none';
-     g.globalCompositeOperation='destination-in';g.drawImage(mk,0,0);return t;};
-   const H1=dome(Math.max(1,0.7*ppm)), H2=dome(Math.max(2,2.2*ppm));
-   const dl=Math.max(1,0.45*ppm);
-   for(const [Hc,aL,aD] of [[H1,0.60,0.50],[H2,0.55,0.42]]){
-     const lit=meno(Hc,Hc,dl,dl,0), dark=meno(Hc,Hc,-dl,-dl,0);
-     o.globalCompositeOperation='overlay';o.globalAlpha=Math.min(1,aL*K);o.drawImage(tint(lit,'#fff'),0,0);
-     o.globalCompositeOperation='multiply';o.globalAlpha=Math.min(1,aD*K);o.drawImage(tint(dark,'#000'),0,0);}
-   /* banda di riflesso che attraversa in diagonale tutta la superficie in rilievo */
-   const b=nc(),gb=b.getContext('2d');const gr=gb.createLinearGradient(0,0,W,H*0.9);
+  const strato=(mk,P)=>{
+    const dd=Math.max(P.min,P.dd*ppm), s=Math.max(P.min*1.3,P.s*ppm), bl=Math.max(P.min*0.8,P.bl*ppm), a=P.a;
+    /* 1. ombra portata sul piano, in basso a destra, fuori dal rilievo */
+    {const sh=nc(),g=sh.getContext('2d');g.filter='blur('+bl+'px)';g.drawImage(mk,s,s);g.filter='none';
+     g.globalCompositeOperation='destination-out';g.drawImage(mk,0,0);
+     o.globalCompositeOperation='multiply';o.globalAlpha=Math.min(1,0.72*K*a);o.drawImage(tint(sh,'#000'),0,0);}
+    /* 2. ombra interna in basso a destra: il fianco del rilievo in controluce */
+    {const r=meno(mk,mk,-dd,-dd,dd*0.35);o.globalCompositeOperation='multiply';o.globalAlpha=Math.min(1,0.62*K*a);o.drawImage(tint(r,'#000'),0,0);
+     const r2=meno(mk,mk,-dd*0.45,-dd*0.45,0);o.globalAlpha=Math.min(1,0.45*K*a);o.drawImage(tint(r2,'#000'),0,0);
+     if(P.ao){/* base d'appoggio: un'ombra sottile tutt'attorno, non direzionale */
+       const ao=nc(),ga=ao.getContext('2d');ga.filter='blur('+(dd*0.6)+'px)';ga.drawImage(mk,0,0);ga.filter='none';ga.globalCompositeOperation='destination-out';ga.drawImage(mk,0,0);
+       o.globalAlpha=Math.min(1,0.30*K*a);o.drawImage(tint(ao,'#000'),0,0);}}
+    /* 3. cresta di luce in alto a sinistra + filo netto sul ciglio */
+    {const r=meno(mk,mk,dd,dd,dd*0.35);o.globalCompositeOperation='overlay';o.globalAlpha=Math.min(1,0.70*K*a);o.drawImage(tint(r,'#fff'),0,0);
+     const r2=meno(mk,mk,dd*0.45,dd*0.45,0);o.globalCompositeOperation='screen';o.globalAlpha=Math.min(1,0.50*K*a);o.drawImage(tint(r2,'#fff'),0,0);}
+    /* 3b. superficie bombata: altezza a cupola dalla maschera sfumata, versante
+       verso la luce schiarito e versante opposto scurito su tutta la superficie */
+    {const dome=(r)=>{const t=nc(),g=t.getContext('2d');g.filter='blur('+r+'px)';g.drawImage(mk,0,0);g.filter='none';
+       g.globalCompositeOperation='destination-in';g.drawImage(mk,0,0);return t;};
+     const dl=Math.max(P.min,P.dl*ppm);
+     const cupole=[[dome(Math.max(P.min,P.r1*ppm)),0.60,0.50]];
+     if(P.r2)cupole.push([dome(Math.max(P.min*2,P.r2*ppm)),0.55,0.42]);
+     for(const [Hc,aL,aD] of cupole){
+       const lit=meno(Hc,Hc,dl,dl,0), dark=meno(Hc,Hc,-dl,-dl,0);
+       o.globalCompositeOperation='overlay';o.globalAlpha=Math.min(1,aL*K*a);o.drawImage(tint(lit,'#fff'),0,0);
+       o.globalCompositeOperation='multiply';o.globalAlpha=Math.min(1,aD*K*a);o.drawImage(tint(dark,'#000'),0,0);}}
+  };
+  strato(mkThick,{dd:0.30,s:0.50,bl:0.40,r1:0.7,r2:2.2,dl:0.45,min:1,a:1,ao:true});
+  /* elementi sottili: effetto minimo e stretto, la scritta deve restare leggibile e nitida */
+  strato(mkThin, {dd:0.06,s:0.10,bl:0.08,r1:0.12,r2:0,dl:0.08,min:0.6,a:0.55,ao:false});
+  /* 4. solo sugli elementi grandi: banda di riflesso in diagonale, velo lucido, colori piu' pieni
+     (sui tratti sottili questi strati rompono l'antialias e le lettere sembrano spezzate) */
+  {const b=nc(),gb=b.getContext('2d');const gr=gb.createLinearGradient(0,0,W,H*0.9);
    gr.addColorStop(0,'rgba(255,255,255,0)');gr.addColorStop(0.22,'rgba(255,255,255,0.04)');gr.addColorStop(0.36,'rgba(255,255,255,0.22)');
    gr.addColorStop(0.46,'rgba(255,255,255,0.06)');gr.addColorStop(0.7,'rgba(255,255,255,0)');gr.addColorStop(1,'rgba(255,255,255,0)');
-   gb.fillStyle=gr;gb.fillRect(0,0,W,H);gb.globalCompositeOperation='destination-in';gb.drawImage(mk,0,0);
-   o.globalCompositeOperation='overlay';o.globalAlpha=Math.min(1,0.9*K);o.drawImage(b,0,0);}
-  /* 4. il rilievo e' sempre lucido: velo di luce e colori piu' pieni */
-  {const v=nc(),g=v.getContext('2d');const gr=g.createLinearGradient(0,0,W*0.7,H);
-   gr.addColorStop(0,'rgba(255,255,255,0.20)');gr.addColorStop(0.5,'rgba(255,255,255,0.06)');gr.addColorStop(1,'rgba(255,255,255,0.02)');
-   g.fillStyle=gr;g.fillRect(0,0,W,H);g.globalCompositeOperation='destination-in';g.drawImage(mk,0,0);
+   gb.fillStyle=gr;gb.fillRect(0,0,W,H);gb.globalCompositeOperation='destination-in';gb.drawImage(mkThick,0,0);
+   o.globalCompositeOperation='overlay';o.globalAlpha=Math.min(1,0.9*K);o.drawImage(b,0,0);
+   const v=nc(),g=v.getContext('2d');const gr2=g.createLinearGradient(0,0,W*0.7,H);
+   gr2.addColorStop(0,'rgba(255,255,255,0.20)');gr2.addColorStop(0.5,'rgba(255,255,255,0.06)');gr2.addColorStop(1,'rgba(255,255,255,0.02)');
+   g.fillStyle=gr2;g.fillRect(0,0,W,H);g.globalCompositeOperation='destination-in';g.drawImage(mkThick,0,0);
    o.globalCompositeOperation='source-over';o.globalAlpha=1;o.drawImage(v,0,0);
-   const k=nc(),gk=k.getContext('2d');gk.drawImage(c,0,0);gk.globalCompositeOperation='destination-in';gk.drawImage(mk,0,0);
+   const k=nc(),gk=k.getContext('2d');gk.drawImage(c,0,0);gk.globalCompositeOperation='destination-in';gk.drawImage(mkThick,0,0);
    o.globalCompositeOperation='overlay';o.globalAlpha=0.55;o.drawImage(k,0,0);}
-  /* debug: ?rildebug=1 tinge di rosso la maschera del rilievo */
-  if(S.rilDebug){o.globalCompositeOperation='source-over';o.globalAlpha=0.45;o.drawImage(tint(mk,'#ff0000'),0,0);}
+  /* debug: ?rildebug=1 tinge la maschera (rosso = grande, blu = sottile) */
+  if(S.rilDebug){o.globalCompositeOperation='source-over';o.globalAlpha=0.45;o.drawImage(tint(mkThick,'#ff0000'),0,0);o.drawImage(tint(mkThin,'#0040ff'),0,0);}
   o.globalAlpha=1;o.globalCompositeOperation='destination-in';o.drawImage(c,0,0);
   o.globalCompositeOperation='source-over';
   return out;}
-
 function renderCore(ppm,withMat){
   let c=renderCoreRaw(ppm,withMat);
   if(withMat&&S.lamina==='opaca'&&S.prod!=='resin'){
