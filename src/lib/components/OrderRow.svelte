@@ -21,6 +21,6 @@
 	</div>
 	<div class="orow__right">
 		<span class="orow__price">{eur(o.total_gross)}</span>
-		<button type="button" class="btn btn--ghost btn--xs" onclick={() => onreorder(o)}>⟳ Riordina</button>
+		<button type="button" class="btn btn--yellow btn--xs" onclick={() => onreorder(o)}>⟳ Riordina</button>
 	</div>
 </div>

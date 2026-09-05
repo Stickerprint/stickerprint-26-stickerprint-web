@@ -19,7 +19,7 @@
 				</div>
 				<div class="orow__right">
 					<span class="orow__price">{eur(f.amount_gross)}</span>
-					{#if f.pdf_path}<a class="btn btn--ghost btn--xs" href="/account/fatture/{f.id}">⬇ Scarica PDF</a>{:else}<span class="sub">PDF in arrivo</span>{/if}
+					{#if f.pdf_path}<a class="btn btn--blue btn--xs" href="/account/fatture/{f.id}">⬇ Scarica PDF</a>{:else}<span class="sub">PDF in arrivo</span>{/if}
 				</div>
 			</div>
 		{/each}

@@ -2,8 +2,7 @@
    Area personale cliente (stessi colori dell'area amministratore)
    ========================================================================== */
 .acc { display: grid; grid-template-columns: 260px 1fr; align-items: stretch; min-height: calc(100vh - var(--header-h)); background: #f4f5fa; }
-.acc__side { background: var(--navy); color: #fff; padding: 26px 14px 20px; display: grid; gap: 16px; align-content: start; }
-.acc__side > * { position: sticky; top: calc(var(--header-h) + 16px); }
+.acc__side { background: var(--navy); color: #fff; padding: 26px 14px 20px; display: grid; gap: 16px; align-content: start; position: sticky; top: var(--header-h); align-self: start; height: calc(100vh - var(--header-h)); overflow: hidden; }
 .acc__who { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: center; padding: 0 8px 16px; border-bottom: 1px solid rgba(255,255,255,.12); }
 .acc__avatar { position: relative; width: 52px; height: 52px; }
 .acc__avatar img { width: 52px; height: 52px; border-radius: 50%; object-fit: cover; }
@@ -60,11 +59,13 @@
 .stat small { color: var(--muted); font-size: 12.5px; }
 .two { display: grid; grid-template-columns: 1.5fr 1fr; gap: 16px; }
 .orow { display: grid; grid-template-columns: 64px 1fr auto auto; gap: 16px; align-items: center; padding: 14px 0; border-top: 1px solid var(--line); }
-.orow__track { display: flex; align-items: center; gap: 4px; }
+.orow__track { display: flex; align-items: center; gap: 4px; margin-right: 12px; padding-bottom: 18px; }
 .tk { display: grid; justify-items: center; gap: 3px; position: relative; }
 .tk i { width: 10px; height: 10px; border-radius: 50%; background: #d7dbe3; display: block; }
 .tk--done i { background: var(--green); } .tk--current i { background: var(--blue); box-shadow: 0 0 0 4px rgba(14,139,255,.18); }
 .tk small { position: absolute; top: 14px; white-space: nowrap; font-size: 10px; font-weight: 800; color: var(--blue); }
+.tk:last-child small { right: 0; }
+.tk:first-child small { left: 0; }
 .orow:first-of-type { border-top: 0; }
 .orow__thumb { width: 64px; height: 64px; border-radius: 14px; object-fit: cover; background: linear-gradient(135deg, var(--blue), var(--navy)); display: grid; place-items: center; color: #fff; font-family: var(--font-display); font-weight: 800; font-size: 13px; overflow: hidden; }
 .orow__thumb img { width: 100%; height: 100%; object-fit: cover; }
@@ -116,7 +117,7 @@
 .reorder-credit img { width: 40px; height: auto; filter: drop-shadow(0 3px 5px rgba(0,0,0,.2)); }
 @media (max-width: 900px) {
 	.acc { grid-template-columns: 1fr; }
-	.acc__side > * { position: static; }
+	.acc__side { position: static; height: auto; overflow: visible; }
 	.credit-hero { grid-template-columns: 1fr; }
 	.credit-hero .side { border-left: 0; padding-left: 0; border-top: 1px solid rgba(255,255,255,.18); padding-top: 14px; }
 	.stat3, .two, .modal__row, .loy, .loy__levels { grid-template-columns: 1fr; }

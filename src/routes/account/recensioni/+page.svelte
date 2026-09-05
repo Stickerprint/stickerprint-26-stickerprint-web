@@ -21,7 +21,7 @@
 		{#each data.toReview as o (o.id)}
 			<div class="orow" style="grid-template-columns:1fr auto">
 				<div><div class="orow__meta">Ordine {o.number} · {dateIt(o.created_at, true)}</div><div class="orow__title">{o.product_name}</div><div class="orow__spec">{o.qty.toLocaleString('it-IT')} pz</div></div>
-				<button type="button" class="btn btn--ghost btn--xs" onclick={() => { open = open === o.id ? null : o.id; stars = 5; }}>{open === o.id ? 'Chiudi' : '⭐ Scrivi recensione'}</button>
+				<button type="button" class="btn btn--yellow btn--xs" onclick={() => { open = open === o.id ? null : o.id; stars = 5; }}>{open === o.id ? 'Chiudi' : '⭐ Scrivi recensione'}</button>
 				{#if open === o.id}
 					<form class="aform" method="POST" use:enhance style="grid-column:1/-1;padding:8px 0 4px">
 						<input type="hidden" name="order_id" value={o.id} />
