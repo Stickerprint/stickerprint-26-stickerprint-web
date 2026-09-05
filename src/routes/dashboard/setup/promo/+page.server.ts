@@ -22,7 +22,8 @@ function leggi(f: FormData) {
 			product_slug: s('product_slug') || 'adesivi_personalizzati',
 			product_label: s('product_label') || 'adesivi personalizzati',
 			subtitle: s('subtitle') || null,
-			ends_at: ends ? new Date(ends + 'T23:59:59').toISOString() : null,
+			// fine giornata in Italia (21:59 UTC = 23:59 ora legale), cosi' la data non slitta al giorno dopo
+			ends_at: ends ? new Date(ends + 'T21:59:59Z').toISOString() : null,
 			forma: s('forma') || 'sagomato', materiale: s('materiale') || 'bianco', finitura: s('finitura') || null,
 			chips: s('chips').split('\n').map((c) => c.trim()).filter(Boolean),
 			includes: parseLines(s('includes'), ['label', 'normally']),

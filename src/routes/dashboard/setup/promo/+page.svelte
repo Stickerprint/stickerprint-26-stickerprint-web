@@ -7,8 +7,8 @@
 	const vuota: Promo = { id: '', active: true, sort: 0, qty: 250, product_slug: 'adesivi_personalizzati', product_label: 'adesivi personalizzati', price: 79, price_normal: null, subtitle: '', ends_at: null, forma: 'sagomato', materiale: 'bianco', finitura: null, chips: [], includes: [], perks: [], save_text: '', sizes: [], cta: 'Carica il file per continuare' };
 	const lines = (l: object[], a: string, b: string) => l.map((i) => { const r = i as Record<string, unknown>; return `${r[a] ?? ''} | ${r[b] ?? ''}`; }).join('\n');
 	const sizesText = (s: Promo['sizes']) => s.map((x) => `${x.label} | ${x.w} | ${x.h} | ${x.price}`).join('\n');
-	const dateInput = (d: string | null) => (d ? new Date(d).toISOString().slice(0, 10) : '');
-	const fmtDate = (d: string | null) => (d ? new Date(d).toLocaleDateString('it-IT') : '—');
+	const dateInput = (d: string | null) => (d ? new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Rome' }).format(new Date(d)) : '');
+	const fmtDate = (d: string | null) => (d ? new Date(d).toLocaleDateString('it-IT', { timeZone: 'Europe/Rome' }) : '—');
 	const eur = (v: number | null) => (v == null ? '—' : v.toLocaleString('it-IT', { maximumFractionDigits: 2 }) + ' €');
 </script>
 
