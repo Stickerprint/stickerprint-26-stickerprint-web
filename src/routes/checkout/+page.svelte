@@ -115,7 +115,7 @@
 			if (result.type === 'success' && result.data?.numbers) {
 				for (const it of items) deleteCartFile(it.id);
 				clearCart();
-				await goto(`/checkout/grazie?n=${encodeURIComponent((result.data.numbers as string[]).join(','))}`);
+				await goto(`/checkout/grazie?n=${encodeURIComponent((result.data.numbers as string[]).join(','))}${express ? '&e=1' : ''}`);
 				return;
 			}
 			err = result.type === 'failure' ? String(result.data?.error ?? 'Ordine non inviato.') : 'Ordine non inviato, riprova.';
