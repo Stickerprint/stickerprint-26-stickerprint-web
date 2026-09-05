@@ -23,7 +23,8 @@
 	<h1 class="launch-title" style="font-size:clamp(30px,4vw,46px);margin-top:26px">Ottimo! <span class="hl hl--green">Il tuo ordine è andato correttamente in produzione</span></h1>
 
 	<div class="launch-rest">
-		<p class="lead" style="margin-top:14px">e dovrebbe essere pronto per la spedizione entro <b>{data.shipDate}</b>.{#if numbers.length} Numero ordine: <b>{numbers.join(', ')}</b>.{/if}</p>
+		<p class="lead" style="margin-top:14px">e dovrebbe essere pronto per la spedizione entro <b>{data.shipDate}</b>.</p>
+		{#if numbers.length}<p class="lead" style="margin-top:6px">Numero ordine: <b>{numbers.join(', ')}</b></p>{/if}
 		{#if data.loggedIn}
 			<p class="lead" style="margin-top:8px">Nel frattempo puoi controllare lo stato della produzione dalla tua <a class="link" href="/account/ordini" style="color:var(--blue)">area personale</a>.</p>
 		{:else}
