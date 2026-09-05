@@ -222,3 +222,15 @@ dal colore di sfondo piu' di 26 (RGB). Vale per tutti i prodotti.
 Rilievo: due misure. Elementi sottili (raggio inscritto < 0,9 mm) ricevono ombre corte,
 luci fini, niente cupola larga ne' velo/overlay (rompevano l'antialias delle scritte
 piccole); elementi grandi la cupola piena. Banco: `rilievo.html?art=trainer`.
+
+## Resina: cupola vera vista dall'alto (5 settembre 2026)
+
+In `resinDome` alle luci dipinte dei mockup si aggiunge un modello fisico: dal campo di
+distanza (sfumato, cosi' quadrati e rettangoli non fanno creste a piramide) si ricava
+un'altezza a menisco `h=1-(1-t)^3`, la normale e l'ombreggiatura con luce in alto a
+sinistra (`AMB` 0,78; il versante opposto si scurisce, rinforzato sui fondi chiari
+`kShade=1+0,4*lum`, cosi' la cupola si vede anche sul bianco). Il riflesso e' Blinn-Phong
+(pow 60) e NON e' bianco puro: sui colori prende fino al 38% del colore del fondo. Le luci
+dipinte (mezzaluna, alone, luce secondaria) restano al 50% sui tondi/sagomati e al 12% su
+quadrati e rettangoli (li' facevano una cornice interna a L). Resinati sagomati: il bordo
+"piccolo" e' nascosto (solo medio e grande), `ppGeoUI()`.

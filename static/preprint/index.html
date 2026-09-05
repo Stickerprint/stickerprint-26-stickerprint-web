@@ -3047,8 +3047,38 @@ function resinDome(core,ppm){
     dist[i]=v; if(v>dmax)dmax=v;
   }
   if(dmax<4)return core;
-  /* direzione del bordo: gradiente della distanza sfocata A PIENA risoluzione
-     (la versione ridotta a un quarto lasciava scalini lungo i bordi curvi) */
+  /* --------------------------------------------------------------------
+     [sito] CUPOLA VERA, VISTA DALL'ALTO
+     Oltre alle luci "dipinte" dei mockup, il pezzo ha un'altezza: dal bordo
+     sale ripida e si appiattisce verso il centro (profilo del menisco di
+     resina). Dalla pendenza si ricava la normale e da questa l'ombreggiatura
+     con una luce in alto a sinistra: il versante verso la luce si schiarisce,
+     quello opposto si scurisce, e sulla pendenza giusta compare il riflesso.
+     Su un fondo bianco la cupola si legge grazie all'ombra del versante
+     opposto; sui fondi colorati il riflesso prende il colore del fondo, non
+     e' bianco pieno. Quadrati e rettangoli: la distanza dal bordo viene
+     sfumata, cosi' le quattro pendenze si raccordano senza creste a piramide.
+     -------------------------------------------------------------------- */
+  const Rd=Math.max(4,dmax);
+  const distB=(()=>{const r=Math.max(2,Math.round(0.16*2*dmax));
+    const a=new Float32Array(dist), b=new Float32Array(N);
+    const pass=(src,dst)=>{ // box orizzontale
+      for(let y=0;y<H;y++){const o=y*W;let acc=0;for(let x=-r;x<=r;x++)acc+=src[o+Math.min(W-1,Math.max(0,x))];
+        for(let x=0;x<W;x++){dst[o+x]=acc/(2*r+1);const xo=x-r,xi=x+r+1;acc+=src[o+Math.min(W-1,xi)]-src[o+Math.max(0,xo)];}}};
+    const passV=(src,dst)=>{
+      for(let x=0;x<W;x++){let acc=0;for(let y=-r;y<=r;y++)acc+=src[Math.min(H-1,Math.max(0,y))*W+x];
+        for(let y=0;y<H;y++){dst[y*W+x]=acc/(2*r+1);const yo=y-r,yi=y+r+1;acc+=src[Math.min(H-1,yi)*W+x]-src[Math.max(0,yo)*W+x];}}};
+    pass(a,b);passV(b,a);pass(a,b);passV(b,a);return a;})();
+  const hOf=t=>{t=Math.max(0,Math.min(1,t));const u=1-t;return 1-u*u*u;};   // ripida al bordo, piatta al centro
+  const hPr=t=>{t=Math.max(0,Math.min(1,t));const u=1-t;return 3*u*u;};    // derivata
+  const ZK=0.62*Rd;                                   // altezza della cupola in px "virtuali"
+  const Lx=-0.50,Ly=-0.58,Lz=0.64; const Ln=Math.hypot(Lx,Ly,Lz); const lx=Lx/Ln,ly=Ly/Ln,lz=Lz/Ln;
+  const Hn=Math.hypot(lx,ly,lz+1); const hx=lx/Hn,hy=ly/Hn,hz=(lz+1)/Hn;   // mezzo vettore luce-vista
+  const AMB=0.78;
+  /* le luci dipinte dei mockup (mezzaluna, alone, luce secondaria) sono nate sui tondi: su quadrati e
+     rettangoli diventano una cornice interna a L; li' resta quasi solo il modello fisico */
+  const paintK=($('shp').value==='rounded')?0.12:0.5;
+  const lumOf=(p)=>(d[p]*0.299+d[p+1]*0.587+d[p+2]*0.114)/255;
   const dS=null;
   const P=RESM, gauss=t=>Math.exp(-0.5*t*t);
   const aw=(a,c,sig)=>{let da=a-c; da=((da+180)%360+360)%360-180; return Math.exp(-0.5*(da/sig)*(da/sig));};
@@ -3080,18 +3110,37 @@ function resinDome(core,ppm){
     const trh=ss(rel,P.trIn,P.trIn*2)*(1-ss(rel,P.trOut,P.trOut*1.4))*tr;
     const shade=Math.exp(-Math.pow(rel/P.shadeR,2))*br;
     const sheen=Math.max(0,Math.min(1,0.5-0.5*(nx*0.6+ny*0.6)));
+    /* normale della cupola dal campo di distanza sfumato */
+    const xl=x>0?i-1:i, xr=x<W-1?i+1:i, yu=y>0?i-W:i, yd=y<H-1?i+W:i;
+    const tt=distB[i]/Rd, hp=hPr(tt)*ZK/Rd;
+    const gx=(distB[xr]-distB[xl])*0.5*hp, gy=(distB[yd]-distB[yu])*0.5*hp;
+    const nn=1/Math.hypot(gx,gy,1); const nX=-gx*nn,nY=-gy*nn,nZ=nn;
+    const ndl=Math.max(0,nX*lx+nY*ly+nZ*lz);
+    const ndh=Math.max(0,nX*hx+nY*hy+nZ*hz);
+    const diff=AMB+(1-AMB)*ndl;                       // 0.60 sul versante in ombra, 1 verso la luce
+    const spec=Math.pow(ndh,60)*0.70+Math.pow(ndh,6)*0.10;
+    const lum=lumOf(p);
+    /* sui fondi chiari l'ombra del versante opposto e' cio' che fa vedere la cupola: la rinforzo;
+       sui fondi scuri conta il riflesso */
+    const kShade=1+0.40*lum;
     let mul=P.base-P.contK*contact*(0.8+0.3*br)
-             -P.shadeK*shade
+             -P.shadeK*shade*kShade
              -P.gradK*(nx*1.0+ny*0.6);
-    let hi=P.rimK*rim*(0.5+0.5*tl)
-          +P.glK*glare
-          +P.glowK*glow
-          +P.trK*trh
-          +P.sheenK*sheen*(1-contact);
+    mul*=1-(1-diff)*kShade;
+    /* le luci "dipinte" dei mockup restano a meta' intensita': il resto lo fa il riflesso vero */
+    let hi=(P.rimK*rim*(0.5+0.5*tl)
+          +paintK*P.glK*glare
+          +paintK*P.glowK*glow
+          +paintK*P.trK*trh
+          +P.sheenK*sheen*(1-contact))*(1-0.42*lum);   // sul bianco le luci dipinte non servono
     if(hi>P.glMax)hi=P.glMax; if(mul<0)mul=0;
+    /* il riflesso non e' bianco puro: sui colori prende un po' del fondo */
+    const cR=d[p]/255,cG=d[p+1]/255,cB=d[p+2]/255; const mixK=0.38*(1-lum);
+    const specC=[1-(1-cR)*mixK,1-(1-cG)*mixK,1-(1-cB)*mixK];
     for(let c=0;c<3;c++){
       let v=d[p+c]/255*mul;
       v=v+(1-v)*hi;
+      v=v+(specC[c]-v)*Math.min(1,spec)*(0.55+0.45*(1-lum));
       o[p+c]=v>1?255:v<0?0:Math.round(v*255);
     }
     o[p+3]=d[p+3];
@@ -4716,6 +4765,10 @@ document.querySelectorAll('#cLam .chip').forEach(el=>{
    gli angoli. Si richiama anche quando la sagoma cambia dal sito. */
 function ppGeoUI(){
   const f=CL.shape, geo=(f!=='diecut');
+  /* [sito] resinati sagomati: il bordo "piccolo" non si offre (la resina vuole spazio) */
+  try{ const pic=document.querySelector('#cBord .chip[data-b="0"]');
+    if(pic)pic.style.display=(S.prod==='resin')?'none':'';
+    if(S.prod==='resin'&&CL.bord===0){CL.bord=1;applyPreset(false);} }catch(e){}
   const bs=$('ppBordHost'); if(bs&&bs.parentNode)bs.parentNode.style.display=geo?'none':'';
   /* [sito] zoom e centratura su tutte le sagome, sagomato compreso: li' il disegno
      si ingrandisce o rimpicciolisce dentro il tracciato ricavato a misura piena */
@@ -4880,7 +4933,7 @@ function ppGeoUI(){
     if(d.type==='config'){
       try{
         const c=d.config||{}; let geom=false, mat=false;
-        if(c.prodotto){const p=String(c.prodotto).toLowerCase().indexOf('resin')>=0?'resin':'sticker'; if(p!==S.prod){setProd(p);geom=true;}}
+        if(c.prodotto){const p=String(c.prodotto).toLowerCase().indexOf('resin')>=0?'resin':'sticker'; if(p!==S.prod){setProd(p);geom=true;try{ppGeoUI();}catch(e){}}}
         if(c.foglio!==undefined){const fg=!!c.foglio; if(fg!==S.foglio){S.foglio=fg;geom=true;}}
         if(c.rilievo!==undefined){const rl=!!c.rilievo; if(rl!==S.rilievo){S.rilievo=rl;mat=true;}}
         const f=U_FORMA[String(c.forma||'').toLowerCase()];
