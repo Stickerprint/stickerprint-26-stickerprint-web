@@ -246,7 +246,7 @@
 	.mobar__n { border: 0; background: var(--sky); height: 40px; padding: 0 10px; font: inherit; font-weight: 800; font-size: 14px; white-space: nowrap; color: var(--ink); }
 	.mobar__price { border: 0; background: none; text-align: left; display: grid; gap: 2px; line-height: 1.1; padding: 0; min-width: 0; cursor: pointer; }
 	.mobar__price b { font-family: var(--font-display); font-weight: 800; font-size: 24px; letter-spacing: -0.02em; color: var(--ink); }
-	.mobar__price small { font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+	.mobar__price small { font-size: 11px; color: var(--muted); line-height: 1.2; }
 	.mobar__cta { min-height: 44px; padding: 0 14px; font-size: 14px; border-radius: 12px; white-space: nowrap; }
 	body:has(.cfg__mobar) { padding-bottom: 88px; }
 	.sum__value { white-space: normal; }
