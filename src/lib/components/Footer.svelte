@@ -77,15 +77,15 @@
 			</div>
 		</div>
 
-		<!-- al posto della linea: i link del sito, centrati -->
-		<nav class="footer__nav" aria-label="Footer">
-			<a href="/chi-siamo">Chi Siamo</a>
-			<a href="/blog">Blog</a>
-			<a href="/support">Supporto</a>
-			<a href="/resi">Resi</a>
-		</nav>
-
+		<!-- seconda riga sulle stesse tre colonne: menu sotto i pagamenti, copyright sotto i corrieri,
+		     lingua e social sotto la newsletter -->
 		<div class="footer__bottom">
+			<nav class="footer__nav" aria-label="Footer">
+				<a href="/chi-siamo">Chi Siamo</a>
+				<a href="/blog">Blog</a>
+				<a href="/support">Supporto</a>
+				<a href="/resi">Resi</a>
+			</nav>
 			<p class="footer__copy">© {new Date().getFullYear()} Stickerprint Srl</p>
 			<div class="footer__meta">
 				<details class="footer__lang">
