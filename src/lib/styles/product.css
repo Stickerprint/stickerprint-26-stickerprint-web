@@ -249,6 +249,11 @@
 	.mobar__price small { font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 	.mobar__cta { min-height: 44px; padding: 0 14px; font-size: 14px; border-radius: 12px; white-space: nowrap; }
 	body:has(.cfg__mobar) { padding-bottom: 88px; }
+	.sum__value { white-space: normal; }
+}
+@media (max-width: 600px) {
+	.cfg__summary { grid-template-columns: 1fr; gap: 10px; }
+	.sum { min-height: 0; }
 	.step--qty { scroll-margin-top: 80px; }
 	.cfg__bar { gap: 8px; }
 	.cfg__bar-group { flex-wrap: wrap; }

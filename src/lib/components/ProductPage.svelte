@@ -30,7 +30,7 @@
 		<p class="ph__label">Su ogni ordine:</p>
 		<ul class="ph__list">
 			{#each p.checks as c (c)}
-				<li><span class="ck">✓</span>{#if c.includes('{ship}')}{c.split('{ship}')[0]} <em>{shipShort}</em>{:else}{c}{/if}</li>
+				<li><span class="ck">✓</span><span>{#if c.includes('{ship}')}{c.split('{ship}')[0]} <em>{shipShort}</em>{:else}{c}{/if}</span></li>
 			{/each}
 		</ul>
 		<a class="ph__go" href="#configura">Configura {p.cta} qui sotto ↓</a>

@@ -436,7 +436,7 @@
 			</div>
 			<button type="button" class="mobar__price" onclick={goQty}>
 				<b>{eur0(vatIncluded ? q.gross : q.net)}</b>
-				<small>{q.perPiece.toFixed(2).replace('.', ',')} €/pz · {vatIncluded ? 'IVA inclusa' : 'IVA esclusa'}</small>
+				<small>{q.perPiece.toFixed(2).replace('.', ',')} €/pz · {vatIncluded ? 'IVA incl.' : 'IVA escl.'}</small>
 			</button>
 			<button type="button" class="btn btn--green mobar__cta" onclick={file ? addCart : goFile}>{file ? 'Al carrello →' : 'Carica il file'}</button>
 		</div>
