@@ -35,6 +35,10 @@
 	<div>
 		<h1>Produzioni importanti.<br /><span class="hl hl--yellow">Nessuna improvvisazione.</span></h1>
 		<p class="lead">Produzioni strutturate, grandi volumi, o richieste speciali. Quando il configuratore non basta, entriamo in gioco noi.</p>
+		<div class="pills">
+			<div class="pills__row"><span class="pill pill--blue">Project Manager dedicato</span><span class="pill pill--yellow">Tutto sotto controllo</span></div>
+			<div class="pills__row"><span class="pill pill--green">Preventivi su misura</span></div>
+		</div>
 		<div class="hero2__cta">
 			<a class="btn btn--green btn--lg" href="#contatto">Parla con noi</a>
 			<a class="btn btn--ghost btn--lg" href="#processo">Vedi come lavoriamo</a>
@@ -47,9 +51,6 @@
 <section class="section container center">
 	<h2>Produzioni vere. <span class="hl hl--blue">Non mockup.</span></h2>
 	<p class="lead" style="margin-top:12px;max-width:720px;margin-inline:auto">Brand, agenzie e team che ci hanno scelto per progetti strutturati e produzioni che non ammettono improvvisazioni.</p>
-	<div class="logos">
-		{#each [1, 2, 3, 4, 5, 6, 7] as n (n)}<img src="/images/aziende/logo/{n}.png" alt="" loading="lazy" />{/each}
-	</div>
 	<div class="reels-wrap" role="region" aria-label="Reel dei clienti" onmouseenter={() => (paused = true)} onmouseleave={() => (paused = false)}>
 		{#if REELS.length > VISIBILI}
 			<button type="button" class="reels__arrow reels__arrow--prev" onclick={prev} aria-label="Reel precedenti">‹</button>
@@ -71,14 +72,6 @@
 		{#if REELS.length > VISIBILI}
 			<div class="reels__dots" aria-hidden="true">{#each REELS as _, i (i)}<i class:is-on={i === start}></i>{/each}</div>
 		{/if}
-	</div>
-</section>
-
-<section class="section container">
-	<div class="feat3">
-		<div class="card"><h3>Non sei solo nel progetto</h3><p class="lead" style="font-size:15.5px">Parli con una persona reale, che segue tutto, dall’idea alla consegna.</p></div>
-		<div class="card"><h3>Tutto sotto controllo</h3><p class="lead" style="font-size:15.5px">Materiali, stampa, tempi. Ogni scelta è verificata prima di produrre.</p></div>
-		<div class="card"><h3>Preventivi su misura</h3><p class="lead" style="font-size:15.5px">Ogni proposta nasce dal tuo progetto, non da un listino standard.</p></div>
 	</div>
 </section>
 

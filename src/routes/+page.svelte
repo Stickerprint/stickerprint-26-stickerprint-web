@@ -66,7 +66,7 @@
 				<a class="btn btn--blue btn--lg" href="/adesivi-personalizzati">Stampa ora</a>
 				<a class="btn btn--yellow btn--lg" href="/campioni">Campioni</a>
 			</div>
-			<div class="hero__pill"><span>✦ Anteprima immediata</span><span>✦ Fino al 6% di Credito Stickerprint</span></div>
+			<div class="pills"><div class="pills__row"><span class="pill pill--blue">✦ Anteprima immediata</span><span class="pill pill--yellow">✦ Fino al 6% di Credito Stickerprint</span></div></div>
 			<p class="hero__ship"><span class="hero__rocket" aria-hidden="true">🚀</span><span>Ordina ora: pronti per la spedizione il <b>{data.shipDate}</b></span></p>
 		</div>
 		<div class="hero__visual">

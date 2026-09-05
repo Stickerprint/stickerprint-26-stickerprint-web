@@ -40,7 +40,7 @@ async function chiama<T>(metodo: 'GET' | 'POST', percorso: string, corpo?: unkno
 	let res: Response;
 	try {
 		res = await fetch(base() + percorso, {
-			signal: AbortSignal.timeout(4000),
+			signal: AbortSignal.timeout(15000),
 			method: metodo,
 			headers: {
 				Authorization: `Bearer ${env.PERIZ_API_KEY}`,

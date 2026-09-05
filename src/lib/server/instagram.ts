@@ -12,7 +12,7 @@ export interface IgMedia { id: string; permalink: string; image: string; caption
 export interface IgData { username: string; profileUrl: string; followers: number | null; media: IgMedia[]; live: boolean; source: 'periz' | 'graph' | 'static'; updatedAt: string }
 
 const PROFILE = 'https://www.instagram.com/stickerprint.it/';
-const TTL_MS = 10 * 60 * 1000;          // il feed si rinnova ogni 10 minuti, in sottofondo
+const TTL_MS = 30 * 60 * 1000;          // il feed si rinnova ogni 30 minuti, in sottofondo
 let refreshing: Promise<void> | null = null;
 const FALLBACK: IgData = { username: 'stickerprint.it', profileUrl: PROFILE, followers: null, media: [1, 2, 3, 4, 5, 6, 7, 8].map((i) => ({ id: `static-${i}`, permalink: PROFILE, image: `/images/ig-${i}.jpg`, caption: '', isVideo: false })), live: false, source: 'static', updatedAt: new Date(0).toISOString() };
 let cache: { at: number; data: IgData } | null = null;
@@ -68,9 +68,9 @@ export async function getInstagram(opts: { attendi?: boolean } = {}): Promise<Ig
 	if (!refreshing) refreshing = aggiorna().finally(() => { refreshing = null; });
 	if (cache) return cache.data;
 	/* la pagina non aspetta (mostra il feed statico e il browser lo rilegge subito da
-	   /api/instagram); l'API invece aspetta l'agenzia fino a 6 secondi */
+	   /api/instagram); l'API invece aspetta l'agenzia, che risponde lenta, fino a 14 secondi */
 	if (!opts.attendi) return FALLBACK;
-	await Promise.race([refreshing, new Promise((r) => setTimeout(r, 6000))]);
+	await Promise.race([refreshing, new Promise((r) => setTimeout(r, 14000))]);
 	const dopo = cache as { at: number; data: IgData } | null;
 	return dopo?.data ?? FALLBACK;
 }
