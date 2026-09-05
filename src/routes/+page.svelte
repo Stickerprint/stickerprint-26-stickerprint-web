@@ -15,7 +15,7 @@
 
 	// loghi dei brand: immagine in /images/brands, oppure solo il nome se il logo non c'è ancora
 	const brands: { name: string; img?: string }[] = [
-		{ name: 'VeraLab', img: 'veralab.png' }, { name: 'Samsung', img: 'samsung.png' }, { name: 'Jordan' }, { name: 'Moscot NY', img: 'moscot.png' },
+		{ name: 'VeraLab', img: 'veralab.png' }, { name: 'Samsung', img: 'samsung.png' }, { name: 'Jordan', img: 'jordan.png' }, { name: 'Moscot NY', img: 'moscot.png' },
 		{ name: 'Sephora', img: 'sephora.png' }, { name: 'Golden Goose', img: 'goldengoose.png' }, { name: 'Red Bull', img: 'redbull.png' }, { name: 'Würth', img: 'wurth.png' },
 		{ name: 'Tiffany & Co.', img: 'tiffany.png' }, { name: 'Technogym', img: 'technogym.png' }, { name: 'Ralph Lauren', img: 'ralphlauren.png' }, { name: 'MAC Cosmetics', img: 'maccosmetics.png' },
 		{ name: 'Dolce & Gabbana', img: 'dolcegabbana.png' }, { name: 'Guerlain', img: 'guerlain.png' }, { name: 'Borotalco' }, { name: 'Rapid Bike' }
@@ -64,7 +64,7 @@
 				<a class="btn btn--yellow btn--lg" href="/campioni">Campioni</a>
 			</div>
 			<div class="hero__pill"><span>✦ Anteprima immediata</span><span>✦ Fino al 6% di Credito Stickerprint</span></div>
-			<p class="hero__ship">🚀 Ordina ora: pronti per la spedizione il <b>{data.shipDate}</b></p>
+			<p class="hero__ship"><span class="hero__rocket" aria-hidden="true">🚀</span><span>Ordina ora: pronti per la spedizione il <b>{data.shipDate}</b></span></p>
 		</div>
 		<div class="hero__visual">
 			<img src="/images/ig-3.jpg" alt="Adesivi fustellati Bubu's Smashburger stampati da Stickerprint" width="600" height="600" />
@@ -79,7 +79,7 @@
 	<h2><span class="hl hl--purple">Abbiamo stampato per</span></h2>
 	<div class="marquee" aria-hidden="true">
 		<div class="marquee__track">
-			{#each [...brands, ...brands] as b, k (k)}{#if b.img}<img src="/images/brands/{b.img}" alt={b.name} title={b.name} />{:else}<span>{b.name}</span>{/if}{/each}
+			{#each [...brands, ...brands] as b, k (k)}{#if b.img}<img src="/images/brands/{b.img}" alt={b.name} title={b.name} onerror={(e) => { const el = e.currentTarget as HTMLImageElement; const s = document.createElement('span'); s.textContent = b.name; el.replaceWith(s); }} />{:else}<span>{b.name}</span>{/if}{/each}
 		</div>
 	</div>
 </section>
