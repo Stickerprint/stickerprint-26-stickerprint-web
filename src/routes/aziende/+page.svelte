@@ -50,7 +50,7 @@
 	<div class="logos">
 		{#each [1, 2, 3, 4, 5, 6, 7] as n (n)}<img src="/images/aziende/logo/{n}.png" alt="" loading="lazy" />{/each}
 	</div>
-	<div class="reels-wrap" onmouseenter={() => (paused = true)} onmouseleave={() => (paused = false)}>
+	<div class="reels-wrap" role="region" aria-label="Reel dei clienti" onmouseenter={() => (paused = true)} onmouseleave={() => (paused = false)}>
 		{#if REELS.length > VISIBILI}
 			<button type="button" class="reels__arrow reels__arrow--prev" onclick={prev} aria-label="Reel precedenti">‹</button>
 			<button type="button" class="reels__arrow reels__arrow--next" onclick={next} aria-label="Reel successivi">›</button>

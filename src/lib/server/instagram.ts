@@ -63,10 +63,14 @@ async function aggiorna(): Promise<void> {
 /* La home non aspetta mai l'agenzia: se c'e' un feed in cache (anche vecchio) lo
    restituisce subito e lo rinnova in sottofondo; alla prima richiesta aspetta al
    massimo 2,5 secondi, poi mostra il feed statico e continua a caricare. */
-export async function getInstagram(): Promise<IgData> {
+export async function getInstagram(opts: { attendi?: boolean } = {}): Promise<IgData> {
 	if (cache && Date.now() - cache.at < TTL_MS) return cache.data;
 	if (!refreshing) refreshing = aggiorna().finally(() => { refreshing = null; });
 	if (cache) return cache.data;
-	await Promise.race([refreshing, new Promise((r) => setTimeout(r, 2500))]);
-	return cache?.data ?? FALLBACK;
+	/* la pagina non aspetta (mostra il feed statico e il browser lo rilegge subito da
+	   /api/instagram); l'API invece aspetta l'agenzia fino a 6 secondi */
+	if (!opts.attendi) return FALLBACK;
+	await Promise.race([refreshing, new Promise((r) => setTimeout(r, 6000))]);
+	const dopo = cache as { at: number; data: IgData } | null;
+	return dopo?.data ?? FALLBACK;
 }

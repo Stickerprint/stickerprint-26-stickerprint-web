@@ -35,7 +35,10 @@
 		requestAnimationFrame(step);
 	});
 	$effect(() => {
-		const id = setInterval(async () => { try { const r = await fetch('/api/instagram'); if (r.ok) ig = await r.json(); } catch { /* si ritenta al giro dopo */ } }, 60000);
+		const leggi = async () => { try { const r = await fetch('/api/instagram'); if (r.ok) ig = await r.json(); } catch { /* si ritenta al giro dopo */ } };
+		// il server non aspetta l'agenzia: se ha mandato il feed statico, il browser legge subito quello vero
+		if (ig.source === 'static') leggi();
+		const id = setInterval(leggi, 60000);
 		return () => clearInterval(id);
 	});
 </script>
