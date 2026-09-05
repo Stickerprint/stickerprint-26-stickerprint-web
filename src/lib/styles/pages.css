@@ -55,14 +55,23 @@
 @media (max-width: 600px) { .feat3, .gallery9, .blog-grid { grid-template-columns: 1fr; } }
 
 /* Reel video (aziende) */
-.reels { display: grid; grid-template-columns: repeat(3, minmax(0, 280px)); justify-content: center; gap: 18px; margin-top: 34px; }
+.reels-wrap { position: relative; margin-top: 34px; }
+.reels { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; }
+.reel-card { display: grid; gap: 10px; }
+.reel-card__brand { height: 44px; display: grid; place-items: center; }
+.reel-card__brand img { max-height: 40px; max-width: 140px; width: auto; object-fit: contain; }
+.reel-card__caso { font-size: 13.5px; color: var(--ink-soft); line-height: 1.45; text-align: center; }
+.reels__arrow { position: absolute; top: 50%; transform: translateY(-50%); z-index: 2; width: 44px; height: 44px; border-radius: 50%; border: 0; background: #fff; color: var(--ink); box-shadow: 0 8px 20px rgba(11,11,59,.18); font-size: 26px; line-height: 1; cursor: pointer; }
+.reels__arrow--prev { left: -12px; } .reels__arrow--next { right: -12px; }
+.reels__dots { display: flex; justify-content: center; gap: 6px; margin-top: 16px; }
+.reels__dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--line); } .reels__dots i.is-on { background: var(--blue); }
 .reel { width: 100%; aspect-ratio: 9 / 16; border: 0; border-radius: 20px; background: #0b0b3b; }
 .reel--soon { display: grid; place-items: center; align-content: center; gap: 8px; color: #fff; background: linear-gradient(160deg, var(--navy), #1449c8); }
 .reel--soon span { font-size: 34px; opacity: .8; } .reel--soon small { font-weight: 700; letter-spacing: .04em; text-transform: uppercase; font-size: 12px; opacity: .8; }
 .hero2 img.photo, .split2 img.photo { aspect-ratio: 4 / 3; object-fit: cover; }
 .hero2--about h1 { font-size: clamp(30px, 3.8vw, 48px); }
 .hero2--about .lead { font-size: 16px; }
-@media (max-width: 800px) { .reels { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 800px) { .reels { grid-template-columns: repeat(2, 1fr); } .reels__arrow--prev { left: 0; } .reels__arrow--next { right: 0; } }
 
 /* Liste con spunta e carosello (copiati dalle pagine prodotto) */
 .carousel { position: relative; border-radius: 22px; overflow: hidden; aspect-ratio: 4 / 3; background: var(--peach); }

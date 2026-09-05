@@ -38,26 +38,30 @@
 	<div class="container">
 		<div class="footer__grid">
 			<div class="footer__col footer__col--left">
-				<div class="footer__head">
-					<img src="/icons/footer/lock.webp" alt="" width="26" height="26" />
-					<p>Metodi di pagamento sicuri</p>
-				</div>
-				<div class="footer__logos">
-					<img src="/icons/footer/paypal.webp" alt="PayPal" />
-					<img src="/icons/footer/visa.webp" alt="Visa" />
-					<img src="/icons/footer/mastercard.webp" alt="MasterCard" />
-					<img src="/icons/footer/amex.webp" alt="American Express" />
+				<div class="footer__block">
+					<div class="footer__head">
+						<img src="/icons/footer/lock.webp" alt="" width="26" height="26" />
+						<p>Metodi di pagamento sicuri</p>
+					</div>
+					<div class="footer__logos">
+						<img src="/icons/footer/paypal.webp" alt="PayPal" />
+						<img src="/icons/footer/visa.webp" alt="Visa" />
+						<img src="/icons/footer/mastercard.webp" alt="MasterCard" />
+						<img src="/icons/footer/amex.webp" alt="American Express" />
+					</div>
 				</div>
 			</div>
 			<div class="footer__col">
-				<div class="footer__head">
-					<img src="/icons/footer/furgowh.svg" alt="" width="26" height="26" />
-					<p>Spedizioni Tracciate</p>
-				</div>
-				<div class="footer__logos footer__logos--ship">
-					<img src="/icons/footer/brt.webp" alt="BRT" />
-					<img src="/icons/footer/ups.webp" alt="UPS" />
-					<img src="/icons/footer/fedex.webp" alt="FedEx" />
+				<div class="footer__block">
+					<div class="footer__head">
+						<img src="/icons/footer/furgowh.svg" alt="" width="26" height="26" />
+						<p>Spedizioni Tracciate</p>
+					</div>
+					<div class="footer__logos footer__logos--ship">
+						<img src="/icons/footer/brt.webp" alt="BRT" />
+						<img src="/icons/footer/ups.webp" alt="UPS" />
+						<img src="/icons/footer/fedex.webp" alt="FedEx" />
+					</div>
 				</div>
 			</div>
 			<div class="footer__col footer__col--right">
@@ -73,14 +77,16 @@
 			</div>
 		</div>
 
+		<!-- al posto della linea: i link del sito, centrati -->
+		<nav class="footer__nav" aria-label="Footer">
+			<a href="/chi-siamo">Chi Siamo</a>
+			<a href="/blog">Blog</a>
+			<a href="/support">Supporto</a>
+			<a href="/resi">Resi</a>
+		</nav>
+
 		<div class="footer__bottom">
-			<nav class="footer__nav" aria-label="Footer">
-				<a href="/chi-siamo">Chi Siamo</a>
-				<a href="/blog">Blog</a>
-				<a href="/support">Supporto</a>
-				<a href="/resi">Resi</a>
-			</nav>
-			<p class="footer__copy">© 2023 - {new Date().getFullYear()} Stickerprint Srl</p>
+			<p class="footer__copy">© {new Date().getFullYear()} Stickerprint Srl</p>
 			<div class="footer__meta">
 				<details class="footer__lang">
 					<summary>

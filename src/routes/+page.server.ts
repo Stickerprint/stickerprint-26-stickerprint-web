@@ -7,15 +7,16 @@ import { lowestPrice } from '$lib/pricing/engine';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals: { supabase } }) => {
-	const { reviews, stats } = await loadReviews(supabase);
-
-	const instagram = await getInstagram();
-
+	// tutto in parallelo: recensioni, feed Instagram (con cache) e listini (con cache)
+	const SLUGS = ['adesivi_resinati', 'adesivi_personalizzati', 'adesivi_rilievo', 'etichette'];
+	const [{ reviews, stats }, instagram, engines] = await Promise.all([
+		loadReviews(supabase),
+		getInstagram(),
+		Promise.all(SLUGS.map((slug) => loadEngine(supabase, slug).then((e) => [slug, lowestPrice(e.config)] as const).catch((e) => { console.warn('[home] prezzo minimo non disponibile', slug, e); return null; })))
+	]);
 	// "a partire da" sulle card dei prodotti: dal listino attivo di ogni prodotto
 	const fromPrices: Record<string, number> = {};
-	for (const slug of ['adesivi_resinati', 'adesivi_personalizzati', 'adesivi_rilievo', 'etichette']) {
-		try { fromPrices[slug] = lowestPrice((await loadEngine(supabase, slug)).config); } catch (e) { console.warn('[home] prezzo minimo non disponibile', slug, e); }
-	}
+	for (const e of engines) if (e) fromPrices[e[0]] = e[1];
 
 	return {
 		reviews,

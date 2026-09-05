@@ -1,6 +1,13 @@
 import { fail } from '@sveltejs/kit';
 import { saveRequest } from '$lib/server/requests';
-import type { Actions } from './$types';
+import { loadReviews } from '$lib/server/reviews';
+import type { Actions, PageServerLoad } from './$types';
+
+// le stelle sotto "+580 aziende servite": stesse recensioni della home
+export const load: PageServerLoad = async ({ locals: { supabase } }) => {
+	const { stats } = await loadReviews(supabase);
+	return { stats };
+};
 
 export const actions: Actions = {
 	default: async ({ request, locals: { supabase } }) => {

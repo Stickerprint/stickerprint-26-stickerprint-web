@@ -48,7 +48,20 @@ export interface ReviewsResult {
  * Recensioni pubbliche da Supabase (tabella `reviews`), con fallback statico.
  * `productType` limita alle recensioni di un prodotto (es. adesivi_personalizzati).
  */
+/* cache in memoria (5 minuti, rinnovo in sottofondo): le recensioni non cambiano ogni secondo
+   e la home non deve aspettare il database a ogni visita */
+const REV_MS = 5 * 60 * 1000;
+const revCache = new Map<string, { at: number; value: ReviewsResult }>();
 export async function loadReviews(supabase: SupabaseClient, productType?: string): Promise<ReviewsResult> {
+	const key = productType ?? '*';
+	const hit = revCache.get(key);
+	if (hit && Date.now() - hit.at < REV_MS) return hit.value;
+	const p = loadReviewsFresh(supabase, productType).then((v) => { revCache.set(key, { at: Date.now(), value: v }); return v; });
+	if (hit) { p.catch(() => {}); return hit.value; }
+	return p;
+}
+
+async function loadReviewsFresh(supabase: SupabaseClient, productType?: string): Promise<ReviewsResult> {
 	let reviews = productType ? FALLBACK.filter((r) => r.productType === productType) : FALLBACK;
 	if (productType && reviews.length < 3) reviews = [...reviews, ...FALLBACK.filter((r) => r.productType !== productType)].slice(0, 6);
 	let stats = productType ? { total: 15, average: 4.9 } : { total: 225, average: 4.9 };

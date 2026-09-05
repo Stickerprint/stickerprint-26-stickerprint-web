@@ -173,7 +173,7 @@
 			<p>Dalla prima prova alla produzione in quantità: affianchiamo aziende, agenzie e retail con un referente dedicato.</p>
 			<p style="margin-top:30px"><a class="btn btn--periwinkle" href="/aziende">Scopri di più</a></p>
 		</div>
-		<div class="business__visual"><img src="/images/ig-4.jpg" alt="Etichette Gravelland in produzione" width="600" height="600" loading="lazy" /></div>
+		<div class="business__visual"><img src="/images/home/business.webp" alt="Lo studio Stickerprint con la parete di adesivi" width="2000" height="1526" loading="lazy" /></div>
 	</div>
 </section>
 

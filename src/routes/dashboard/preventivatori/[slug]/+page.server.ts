@@ -1,6 +1,6 @@
 import { error, fail } from '@sveltejs/kit';
 import { PRODUCT_ENGINES, mergeConfig, type EngineConfig } from '$lib/pricing/engine';
-import { defaultEngine, loadEngine } from '$lib/server/pricing';
+import { defaultEngine, invalidateEngine, loadEngine } from '$lib/server/pricing';
 import { estimatedShipDate, formatItDate } from '$lib/utils/shipping';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -43,6 +43,7 @@ export const actions: Actions = {
 		const name = PRODUCT_ENGINES.find((p) => p.slug === params.slug)?.name ?? params.slug;
 		const active = f.get('active') === 'on';
 		const { error: e } = await supabase.from('pricing_engines').upsert({ slug: params.slug, name, config: cfg, active, updated_by: user?.id });
+		invalidateEngine(params.slug);
 		if (e) return fail(400, { error: e.message });
 		return { ok: true };
 	},
@@ -53,6 +54,7 @@ export const actions: Actions = {
 		const { data: prev } = await supabase.from('pricing_engines').select('config').eq('slug', params.slug).maybeSingle();
 		if (prev?.config && Object.keys(prev.config).length) await supabase.from('pricing_engine_history').insert({ slug: params.slug, config: prev.config, changed_by: user?.id });
 		const { error: e } = await supabase.from('pricing_engines').update({ config: h.config, updated_by: user?.id }).eq('slug', params.slug);
+		invalidateEngine(params.slug);
 		if (e) return fail(400, { error: e.message });
 		return { ok: true };
 	},
@@ -60,6 +62,7 @@ export const actions: Actions = {
 		const { data: prev } = await supabase.from('pricing_engines').select('config').eq('slug', params.slug).maybeSingle();
 		if (prev?.config && Object.keys(prev.config).length) await supabase.from('pricing_engine_history').insert({ slug: params.slug, config: prev.config, changed_by: user?.id });
 		const { error: e } = await supabase.from('pricing_engines').update({ config: {}, updated_by: user?.id }).eq('slug', params.slug);
+		invalidateEngine(params.slug);
 		if (e) return fail(400, { error: e.message });
 		return { ok: true };
 	}

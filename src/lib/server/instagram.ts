@@ -12,7 +12,8 @@ export interface IgMedia { id: string; permalink: string; image: string; caption
 export interface IgData { username: string; profileUrl: string; followers: number | null; media: IgMedia[]; live: boolean; source: 'periz' | 'graph' | 'static'; updatedAt: string }
 
 const PROFILE = 'https://www.instagram.com/stickerprint.it/';
-const TTL_MS = 60 * 1000;
+const TTL_MS = 10 * 60 * 1000;          // il feed si rinnova ogni 10 minuti, in sottofondo
+let refreshing: Promise<void> | null = null;
 const FALLBACK: IgData = { username: 'stickerprint.it', profileUrl: PROFILE, followers: null, media: [1, 2, 3, 4, 5, 6, 7, 8].map((i) => ({ id: `static-${i}`, permalink: PROFILE, image: `/images/ig-${i}.jpg`, caption: '', isVideo: false })), live: false, source: 'static', updatedAt: new Date(0).toISOString() };
 let cache: { at: number; data: IgData } | null = null;
 
@@ -52,11 +53,20 @@ async function fromGraph(): Promise<IgData | null> {
 	return { username: profile.username ?? 'stickerprint.it', profileUrl: PROFILE, followers: profile.followers_count ?? null, media: list.length >= 4 ? list : FALLBACK.media, live: true, source: 'graph', updatedAt: new Date().toISOString() };
 }
 
-export async function getInstagram(): Promise<IgData> {
-	if (cache && Date.now() - cache.at < TTL_MS) return cache.data;
+async function aggiorna(): Promise<void> {
 	try {
 		const data = (await fromPeriz()) ?? (await fromGraph());
-		if (data) { cache = { at: Date.now(), data }; return data; }
+		if (data) cache = { at: Date.now(), data };
 	} catch (e) { console.warn('[instagram] uso il feed statico:', e); }
+}
+
+/* La home non aspetta mai l'agenzia: se c'e' un feed in cache (anche vecchio) lo
+   restituisce subito e lo rinnova in sottofondo; alla prima richiesta aspetta al
+   massimo 2,5 secondi, poi mostra il feed statico e continua a caricare. */
+export async function getInstagram(): Promise<IgData> {
+	if (cache && Date.now() - cache.at < TTL_MS) return cache.data;
+	if (!refreshing) refreshing = aggiorna().finally(() => { refreshing = null; });
+	if (cache) return cache.data;
+	await Promise.race([refreshing, new Promise((r) => setTimeout(r, 2500))]);
 	return cache?.data ?? FALLBACK;
 }
