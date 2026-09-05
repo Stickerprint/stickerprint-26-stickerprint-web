@@ -43,19 +43,26 @@
 		</div>
 
 		<div class="modal__row">
-			<div class="qty-box">
-				<span class="sub">Quantità</span>
-				<input type="number" min="1" step="1" bind:value={qty} disabled={added} aria-label="Quantità" />
+			<div class="rbox">
+				<span class="rbox__label">Quantità</span>
+				<div class="qty-step">
+					<button type="button" onclick={() => (qty = Math.max(1, n - 50))} disabled={added} aria-label="Meno pezzi">−</button>
+					<input type="number" min="1" step="1" bind:value={qty} disabled={added} aria-label="Quantità" />
+					<button type="button" onclick={() => (qty = n + 50)} disabled={added} aria-label="Più pezzi">+</button>
+				</div>
+				<span class="rbox__hint">pezzi · {q.perPiece.toFixed(2).replace('.', ',')} € cad.</span>
 			</div>
-			<div class="reorder-cta">
-				{#if added}
-					<a class="btn btn--green" href="/checkout">Vai al checkout →</a>
-					<a class="alt" href="/prodotti">oppure continua gli acquisti</a>
-				{:else}
-					<button type="button" class="btn btn--green" onclick={reorder}>Riordina · {eur0(q.gross)} <small>{q.perPiece.toFixed(2).replace('.', ',')} € cad.</small></button>
-					<small class="sub">Totale IVA inclusa · {eur(q.net)} + IVA</small>
-				{/if}
+			<div class="rbox rbox--total">
+				<span class="rbox__label">Totale</span>
+				<b class="rbox__big">{eur0(q.gross)}</b>
+				<span class="rbox__vat"><span class="is-on">IVA inclusa</span><span class="sep"></span><span>{eur(q.net)} + IVA</span></span>
 			</div>
+			{#if added}
+				<a class="btn btn--green rbtn" href="/checkout">Vai al checkout →</a>
+				<a class="rbox__alt" href="/prodotti">oppure continua gli acquisti</a>
+			{:else}
+				<button type="button" class="btn btn--green rbtn" onclick={reorder}>Riordina ora · {eur0(q.gross)} →</button>
+			{/if}
 		</div>
 
 		<div class="reorder-credit">
