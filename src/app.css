@@ -436,6 +436,10 @@ body { overflow-x: clip; }
 @media (max-width: 700px) { .ig-grid { grid-template-columns: repeat(2, 1fr); } }
 
 /* CTA finale */
+.offer-final { background: var(--navy); color: #fff; border-radius: 26px; padding: clamp(36px, 5vw, 60px) clamp(20px, 4vw, 56px); text-align: center; }
+.offer-final h2 { font-size: clamp(30px, 4.2vw, 54px); line-height: 1.08; }
+.offer-final p { margin-top: 14px; color: #d9dcf2; font-size: 17px; }
+.offer-final .btn { width: 100%; max-width: none; }
 .final { background: var(--navy); color: #fff; border-radius: 22px; padding: clamp(44px, 6vw, 80px) clamp(20px, 4vw, 56px); text-align: center; }
 .final h2 { font-size: clamp(36px, 4.8vw, 66px); }
 .final .kicker { font-size: 16px; color: #d9dcf2; margin-bottom: 14px; }

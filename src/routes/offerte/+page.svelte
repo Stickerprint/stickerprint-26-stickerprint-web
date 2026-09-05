@@ -2,6 +2,7 @@
 	import '$lib/styles/promo.css';
 	import { goto } from '$app/navigation';
 	import ReviewsCarousel from '$lib/components/ReviewsCarousel.svelte';
+	import FinalCta from '$lib/components/FinalCta.svelte';
 	import { saveDraft } from '$lib/utils/draftStore';
 	import { PRODUCT_ENGINES } from '$lib/pricing/engine';
 	import type { Promo } from '$lib/server/promos';
@@ -156,10 +157,4 @@
 </section>
 
 <!-- CHIUSURA -->
-<section class="section container">
-	<div class="offer-final">
-		<h2>Non essere l'attività della tua città<br /><span class="hl hl--green">senza adesivi.</span></h2>
-		<p>Ordina oggi: pronti per la spedizione <b>{data.shipDate}</b>. E inizia a far girare il tuo brand.</p>
-		<p style="margin-top:22px"><a class="btn btn--yellow btn--xl" href={promo ? `${href}?forma=${promo.forma}&materiale=${promo.materiale}` : '/adesivi-personalizzati'}>Voglio i miei adesivi</a></p>
-	</div>
-</section>
+<FinalCta shipDate={data.shipDate} href={promo ? `${href}?forma=${promo.forma}&materiale=${promo.materiale}` : '/adesivi-personalizzati'} />

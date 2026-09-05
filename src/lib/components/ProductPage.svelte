@@ -4,7 +4,9 @@
 	import Configurator from '$lib/components/Configurator.svelte';
 	import Faq from '$lib/components/Faq.svelte';
 	import ReviewsCarousel from '$lib/components/ReviewsCarousel.svelte';
-	import { KIT, type ProductContent } from '$lib/products';
+	import { type ProductContent } from '$lib/products';
+	import SamplesBlock from '$lib/components/SamplesBlock.svelte';
+	import FinalCta from '$lib/components/FinalCta.svelte';
 	import type { EngineConfig } from '$lib/pricing/engine';
 	import type { HomeReview } from '$lib/server/reviews';
 
@@ -78,23 +80,8 @@
 	</div>
 </section>
 
-<!-- KIT CAMPIONI -->
-<section class="section container">
-	<div class="panel panel--peach kit">
-		<div class="kit__copy">
-			<p class="eyebrow">Offerta speciale</p>
-			<h2>Prova i nostri adesivi. <span class="hl hl--yellow">Kit campioni a {KIT.price}</span></h2>
-			<ul class="checks">
-				{#each KIT.checks as c (c)}<li><span class="ck">✓</span>{c}</li>{/each}
-			</ul>
-			<div class="kit__cta">
-				<a class="btn btn--yellow btn--lg" href="/campioni">Prova ora il kit →</a>
-				<small>Li recuperi sul primo ordine</small>
-			</div>
-		</div>
-		<img class="kit__img" src={KIT.img} alt="Kit campioni Stickerprint" loading="lazy" />
-	</div>
-</section>
+<!-- KIT CAMPIONI (stesso blocco della home) -->
+<SamplesBlock />
 
 <!-- FAQ -->
 <section class="section container">
@@ -108,10 +95,4 @@
 </section>
 
 <!-- CTA FINALE -->
-<section class="section container center">
-	<div class="final-cta">
-		<h2>Carica il tuo file, <span class="hl hl--green">al resto pensiamo noi.</span></h2>
-		<p class="lead" style="margin-top:12px">Stampa ora: pronti per la spedizione il <b>{shipShort}</b>.</p>
-		<a class="btn btn--green btn--lg" style="margin-top:22px" href="#configura">Inizia subito →</a>
-	</div>
-</section>
+<FinalCta {shipDate} href="#configura" />

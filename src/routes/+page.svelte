@@ -1,6 +1,8 @@
 <script lang="ts">
 	import UploadPreview from '$lib/components/UploadPreview.svelte';
 	import ReviewsCarousel from '$lib/components/ReviewsCarousel.svelte';
+	import SamplesBlock from '$lib/components/SamplesBlock.svelte';
+	import FinalCta from '$lib/components/FinalCta.svelte';
 
 	let { data } = $props();
 
@@ -181,26 +183,7 @@
 </section>
 
 <!-- CAMPIONI -->
-<section class="section--tight container">
-	<div class="samples">
-		<div class="samples__pile"><img src="/images/sticker-pile.png" alt="Pila di adesivi campione Stickerprint" loading="lazy" /></div>
-		<div class="samples__body">
-			<span class="tag tag--yellow">Tocca con mano la qualità</span>
-			<h2 style="margin-top:14px">Prova i nostri <span class="hl hl--yellow">adesivi</span></h2>
-			<ul class="samples__list">
-				<li><span class="ck">✓</span>Ricevi i nostri migliori adesivi</li>
-				<li><span class="ck">✓</span>Tocchi con mano la nostra qualità</li>
-				<li><span class="ck">✓</span>Provi tutti i nostri prodotti</li>
-				<li><span class="ck">✓</span>Scegli il materiale perfetto per te</li>
-				<li><span class="ck">✓</span>Li recuperi subito sul primo ordine</li>
-			</ul>
-		</div>
-		<div class="samples__cta">
-			<a class="btn btn--yellow btn--lg" href="/campioni">Ordina il kit</a>
-			<div class="samples__price"><b>10€</b><span>Li recuperi <strong>subito</strong><br />sul primo ordine</span></div>
-		</div>
-	</div>
-</section>
+<SamplesBlock />
 
 <!-- INSTAGRAM -->
 <section class="section container ig">
@@ -221,14 +204,4 @@
 </section>
 
 <!-- FINALE -->
-<section class="section--tight container">
-	<div class="final">
-		<p class="kicker">Pronto a vederli dal vivo?</p>
-		<h2>Carica il file.<br />Guarda subito l’anteprima.</h2>
-		<p class="lead">Conferma quando sei soddisfatto. E con l’ordine, guadagni già credito per il prossimo.</p>
-		<div class="final__cta">
-			<a class="btn btn--blue btn--lg" href="/adesivi-personalizzati">Ordina ora</a>
-			<div class="final__date">Spedizione prevista: <b>{data.shipDate}</b></div>
-		</div>
-	</div>
-</section>
+<FinalCta shipDate={data.shipDate} />

@@ -46,8 +46,5 @@
 .faq3 details { border: 2px solid var(--line); border-radius: 16px; padding: 16px 20px; }
 .faq3 summary { font-family: var(--font-display); font-weight: 800; font-size: 17px; cursor: pointer; }
 .faq3 p { margin-top: 10px; color: var(--ink-soft); }
-.offer-final { background: var(--navy); color: #fff; border-radius: 26px; padding: clamp(36px, 5vw, 60px); text-align: center; }
-.offer-final h2 { font-size: clamp(32px, 4.5vw, 54px); }
-.offer-final p { margin-top: 14px; color: #d9dcf2; font-size: 17px; }
 @media (max-width: 900px) { .howto { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 560px) { .howto { grid-template-columns: 1fr; } .offer__sizes { grid-auto-flow: row; } .offer h1 mark { padding: 0 8px; } }
