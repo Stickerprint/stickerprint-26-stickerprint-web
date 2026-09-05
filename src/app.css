@@ -209,9 +209,9 @@ body { overflow-x: clip; }
 .pill--yellow { background: var(--yellow); color: var(--navy); }
 .pill--green { background: var(--green); color: var(--navy); }
 .pill--pink { background: var(--pink); color: #fff; }
-.hero__ship { margin-top: 16px; display: inline-flex; align-items: center; gap: 12px; background: var(--sky); border-radius: 999px; padding: 10px 20px 10px 12px; font-size: 17px; font-weight: 700; }
+.hero__ship { margin-top: 16px; display: inline-flex; align-items: center; gap: 12px; background: var(--sky); border-radius: 999px; padding: 10px 20px 10px 12px; font-size: 16px; font-weight: 700; max-width: 100%; }
 .hero__ship .hero__rocket { font-size: 30px; line-height: 1; }
-.hero__ship b { color: var(--blue); font-family: var(--font-display); font-weight: 800; font-size: 19px; }
+.hero__ship b { color: var(--blue); font-family: var(--font-display); font-weight: 800; font-size: 17px; white-space: nowrap; }
 .hero__perks { display: flex; flex-wrap: wrap; gap: 22px 38px; margin: 30px 0 0; padding: 0; font-weight: 700; font-size: 15px; }
 .hero__perks li { list-style: none; display: flex; align-items: center; gap: 8px; }
 .hero__perks ul { padding: 0; margin: 0; }
