@@ -5,7 +5,7 @@
 
 <section class="section container">
 	<div class="offer-final">
-		<h2>Fatti riconoscere, ovunque.<br /><span class="hl hl--green">Il tuo brand merita adesivi impossibili da ignorare.</span></h2>
+		<h2>Fatti riconoscere, ovunque.<br />Il tuo brand merita adesivi <span class="hl hl--green">impossibili da ignorare.</span></h2>
 		<p>Ordina oggi: pronti per la spedizione <b>{shipDate}</b>. E inizia a far girare il tuo brand.</p>
 		<p style="margin-top:22px"><a class="btn btn--yellow btn--xl" {href}>{label}</a></p>
 	</div>
