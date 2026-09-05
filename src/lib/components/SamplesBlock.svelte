@@ -4,7 +4,7 @@
 		<div class="samples__pile"><img src="/images/sticker-pile.png" alt="Pila di adesivi campione Stickerprint" loading="lazy" /></div>
 		<div class="samples__body">
 			<span class="tag tag--yellow">Tocca con mano la qualità</span>
-			<h2 style="margin-top:14px">Prova i nostri <span class="hl hl--yellow">adesivi</span></h2>
+			<h2 style="margin-top:14px">Prova i <span class="hl hl--yellow">nostri adesivi</span></h2>
 			<ul class="samples__list">
 				<li><span class="ck">✓</span>Ricevi i nostri migliori adesivi</li>
 				<li><span class="ck">✓</span>Tocchi con mano la nostra qualità</li>
@@ -15,7 +15,7 @@
 		</div>
 		<div class="samples__cta">
 			<a class="btn btn--yellow btn--lg" href="/campioni">Ordina il kit</a>
-			<div class="samples__price"><b>10€</b><span>Li recuperi <strong>subito</strong><br />sul primo ordine</span></div>
+			<div class="samples__price hl hl--yellow"><b>10€</b><span>Li recuperi <strong>subito</strong><br />sul primo ordine</span></div>
 		</div>
 	</div>
 </section>

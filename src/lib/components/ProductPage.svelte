@@ -2,16 +2,16 @@
 	import '$lib/styles/product.css';
 	import Carousel from '$lib/components/Carousel.svelte';
 	import Configurator from '$lib/components/Configurator.svelte';
-	import Faq from '$lib/components/Faq.svelte';
 	import ReviewsCarousel from '$lib/components/ReviewsCarousel.svelte';
 	import { type ProductContent } from '$lib/products';
 	import SamplesBlock from '$lib/components/SamplesBlock.svelte';
 	import FinalCta from '$lib/components/FinalCta.svelte';
+	import FaqList from '$lib/components/FaqList.svelte';
 	import type { EngineConfig } from '$lib/pricing/engine';
 	import type { HomeReview } from '$lib/server/reviews';
 
-	let { p, engine, reviews, stats, shipDate, shipShort }: {
-		p: ProductContent; engine: EngineConfig; reviews: HomeReview[]; stats: { total: number; average: number }; shipDate: string; shipShort: string;
+	let { p, engine, reviews, stats, shipDate, shipShort, faq = [] }: {
+		p: ProductContent; engine: EngineConfig; reviews: HomeReview[]; stats: { total: number; average: number }; shipDate: string; shipShort: string; faq?: { q: string; a: string }[];
 	} = $props();
 	const avg = $derived(stats.average.toLocaleString('it-IT', { minimumFractionDigits: 1, maximumFractionDigits: 1 }));
 	const [big, s1, s2] = $derived([p.others[0] ?? p.gallery[0], p.others[1] ?? p.gallery[1], p.others[2] ?? p.gallery[2]]);
@@ -83,16 +83,8 @@
 <!-- KIT CAMPIONI (stesso blocco della home) -->
 <SamplesBlock />
 
-<!-- FAQ -->
-<section class="section container">
-	<div class="faq-wrap">
-		<div>
-			<h2>{p.faqTitle.replace(/ (sugli|sulle|sui) .*$/, '')} <span class="hl hl--blue">{p.title}</span></h2>
-			<p class="lead" style="margin-top:16px">Cerchi risposte? Dai un’occhiata a queste domande correlate o cerca nella nostra <a class="link" href="/support" style="color:var(--blue)">sezione di supporto</a>.</p>
-		</div>
-		<Faq items={p.faq} />
-	</div>
-</section>
+<!-- FAQ (stile della pagina Offerte; dal database se in dashboard c'e' la categoria del prodotto) -->
+<FaqList items={faq.length ? faq : p.faq} title="Le domande" hl="più frequenti." intro={`Cerchi altre risposte? Guarda la nostra <a class="link" href="/support" style="color:var(--blue)">sezione di supporto</a>.`} />
 
 <!-- CTA FINALE -->
 <FinalCta {shipDate} href="#configura" />

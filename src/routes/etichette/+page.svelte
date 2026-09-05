@@ -3,4 +3,4 @@
 	let { data } = $props();
 </script>
 
-<ProductPage p={data.product} engine={data.engine} reviews={data.reviews} stats={data.stats} shipDate={data.shipDate} shipShort={data.shipShort} />
+<ProductPage p={data.product} engine={data.engine} reviews={data.reviews} stats={data.stats} shipDate={data.shipDate} shipShort={data.shipShort} faq={data.faq} />
