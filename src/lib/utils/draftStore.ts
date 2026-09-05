@@ -9,6 +9,8 @@ export interface Draft {
 	file: File;
 	preview?: string | null; // data URL PNG dell'anteprima
 	widthMm?: number;
+	qty?: number;            // dalle offerte: quantità dell'offerta
+	lockSize?: boolean;      // dalle offerte: la misura non va ricalcolata dal file
 	heightMm?: number;
 	savedAt: number;
 }

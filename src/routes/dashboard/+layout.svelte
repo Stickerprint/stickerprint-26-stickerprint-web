@@ -46,6 +46,7 @@
 		{ id: 'preventivatori', title: 'Preventivatori', items: PRODUCT_ENGINES.map((p) => ({ label: p.name, href: `/dashboard/preventivatori/${p.slug}` })) },
 		{ id: 'setup', title: 'Setup', items: [
 			{ label: 'Metodi di pagamento', href: '/dashboard/setup/metodi-pagamento' },
+			{ label: 'Offerte (Promo)', href: '/dashboard/setup/promo' },
 			{ label: 'Codici sconto', href: '/dashboard/setup/codici-sconto' },
 			{ label: 'Codici prodotto', href: '/dashboard/setup/codici-prodotto' },
 			{ label: 'Corrieri', href: '/dashboard/setup/corrieri' }

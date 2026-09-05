@@ -46,6 +46,7 @@
 	let cutRatio = $state<number | null>(null);
 	let showCut = $state(true);
 	let sizeKey = '';
+	let sizeLocked = false;   // misura fissata dall'offerta: il file non la ricalcola
 	let qty = $state(500);
 	let step = $state('forma');
 	let vatIncluded = $state(true);
@@ -116,6 +117,9 @@
 			fileUrl = URL.createObjectURL(d.file);
 			if (SHAPES.some((s) => s.id === d.forma)) forma = d.forma;
 			if (MATERIALS.some((m) => m.id === d.materiale)) materiale = d.materiale;
+			// dalle offerte: quantità e misura decise dall'offerta
+			if (d.qty && d.qty > 0) { qty = d.qty; custom = !cfg.quantities.includes(d.qty); customQty = custom ? d.qty : ''; }
+			if (d.lockSize && d.widthMm) { w = clamp(d.widthMm); h = clamp(d.heightMm ?? d.widthMm); sizeLocked = true; }
 			// arrivando dalla home con il file gia' caricato si atterra direttamente sul preventivatore:
 			// si ripete perche' le foto della pagina, caricandosi, spostano il blocco verso il basso
 			if (location.hash === '#configura') for (const ms of [200, 900, 2000, 3500]) setTimeout(() => document.getElementById('configura')?.scrollIntoView({ behavior: ms > 500 ? 'auto' : 'smooth', block: 'start' }), ms);
@@ -147,6 +151,7 @@
 		const key = `${file?.name ?? ''}|${file?.size ?? 0}|${forma}`;
 		if (key === sizeKey) return;
 		sizeKey = key;
+		if (sizeLocked) return;
 		const r = shape?.equal ? 1 : (shape?.ratio ?? (s.h > 0 ? s.w / s.h : (fileRatio ?? 1)));
 		cutRatio = r;
 		// la misura dal file vale per il sagomato (segue la proporzione del disegno); sulle sagome
