@@ -122,11 +122,15 @@
 </header>
 
 {#if open}
-	<div class="mobile-menu">
-		<div class="container">
+	<div class="mobile-menu" role="dialog" aria-label="Menu">
+		<!-- barra propria: logo e X, cosi' il menu copre tutto lo schermo e si chiude da qui -->
+		<div class="mobile-menu__bar container">
+			<a href="/" aria-label="Stickerprint, home"><img src="/images/splogo-400.png" alt="Stickerprint" width="400" height="320" /></a>
 			<button type="button" class="mobile-menu__close" aria-label="Chiudi il menu" onclick={() => (open = false)}>
 				<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 6l12 12M18 6L6 18" /></svg>
 			</button>
+		</div>
+		<div class="container">
 			{#each links as l (l.label)}
 				{#if l.items}
 					<p class="mobile-menu__group">{l.label}</p>
