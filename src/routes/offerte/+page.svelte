@@ -44,7 +44,8 @@
 		if (f.size > 25 * 1024 * 1024) { error = 'Il file supera i 25 MB.'; return; }
 		file = f; startKey += 1;
 		await tick();
-		setTimeout(() => document.getElementById('configura')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
+		// il preventivatore si apre sotto: ci si arriva subito, e si ripete perche' l'anteprima caricandosi sposta la pagina
+		for (const ms of [80, 700, 1800]) setTimeout(() => document.getElementById('promo-configura')?.scrollIntoView({ behavior: ms > 100 ? 'auto' : 'smooth', block: 'start' }), ms);
 	}
 </script>
 
@@ -97,8 +98,8 @@
 					<input bind:this={fileInput} type="file" accept={ACCEPT.join(',')} onchange={(e) => pick((e.currentTarget as HTMLInputElement).files?.[0])} />
 					<div>
 						<div class="dropzone__icon"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 16V4m0 0l-4 4m4-4l4 4" /><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" /></svg></div>
-						<div class="dropzone__title">{saving ? 'Un attimo…' : 'Trascina qui il tuo file'}</div>
-						<div class="dropzone__sub">oppure clicca per sceglierlo · PNG, JPG, SVG, PDF · anteprima immediata</div>
+						<div class="dropzone__title">{file ? `✓ ${file.name}` : saving ? 'Un attimo…' : 'Trascina qui il tuo file'}</div>
+						<div class="dropzone__sub">{file ? 'File caricato: il preventivatore è qui sotto · clicca per cambiarlo' : 'oppure clicca per sceglierlo · PNG, JPG, SVG, PDF · anteprima immediata'}</div>
 					</div>
 				</label>
 				{#if error}<p class="error" style="margin-top:10px">{error}</p>{/if}
@@ -118,7 +119,7 @@
 		</div>
 	</section>
 	{#if file && engine && promo}
-		<section class="section container" id="promo-configura">
+		<section class="section container" id="promo-configura" style="scroll-margin-top:72px">
 			<h2 class="center">Il tuo <span class="hl hl--green">{promo.qty.toLocaleString('it-IT')} × {promo.product_label}</span> a {eur(price)}</h2>
 			<p class="lead center" style="margin-top:8px">Quantità e misura dell'offerta sono già impostate. Controlla l'anteprima, scegli sagoma e materiale e aggiungi al carrello.</p>
 			{#key startKey}

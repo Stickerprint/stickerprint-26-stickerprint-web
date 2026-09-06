@@ -1,4 +1,5 @@
 <script lang="ts">
+	import '$lib/styles/product.css';
 	/**
 	 * Preventivatore prodotto (adesivi, etichette, vetrofanie…).
 	 * Sinistra: il logo del cliente con i comandi del motore di anteprima.
