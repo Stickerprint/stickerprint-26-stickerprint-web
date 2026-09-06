@@ -1,3 +1,6 @@
+/* la pagina e' blu da cima a fondo, anche sugli schermi alti dove il contenuto e' piu' corto */
+main:has(.thanks) { background: var(--navy); }
+
 /* ==========================================================================
    Pagina "grazie" dopo il pagamento: il razzo con il logo Stickerprint parte a
    velocita' supersonica (scie, bang, stelle), poi si posa e compare il titolo.
