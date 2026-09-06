@@ -190,7 +190,10 @@ body { overflow-x: clip; }
   .burger { display: inline-flex; }
   .header__logo { width: 92px; }
 }
-.mobile-menu { background: var(--navy); color: #fff; padding: 10px 0 18px; border-top: 1px solid rgba(255,255,255,.12); }
+/* menu mobile: si apre sopra la pagina, sotto l'header, da qualunque punto si stia leggendo; scorre da solo */
+.mobile-menu { position: fixed; top: var(--header-h); left: 0; right: 0; bottom: 0; z-index: 49; overflow-y: auto; -webkit-overflow-scrolling: touch; background: var(--navy); color: #fff; padding: 10px 0 40px; border-top: 1px solid rgba(255,255,255,.12); }
+.mobile-menu .container { position: relative; }
+.mobile-menu__close { position: absolute; right: 0; top: 6px; width: 40px; height: 40px; border-radius: 50%; border: 0; background: rgba(255,255,255,.12); color: #fff; display: grid; place-items: center; cursor: pointer; }
 .mobile-menu a { display: block; padding: 12px 0; font-family: var(--font-display); font-weight: 800; font-size: 18px; letter-spacing: -0.02em; text-decoration: none; }
 
 /* --------------------------------------------------------------------------

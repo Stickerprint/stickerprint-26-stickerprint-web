@@ -57,13 +57,18 @@
 		page.url.pathname;
 		open = false;
 	});
+	$effect(() => {
+		// col menu aperto scorre solo il menu, non la pagina sotto
+		document.body.style.overflow = open ? 'hidden' : '';
+		return () => { document.body.style.overflow = ''; };
+	});
 </script>
 
 <header class="header">
 	<div class="container header__inner">
 		<div class="header__left">
-		<button class="icon-btn burger" aria-label="Menu" aria-expanded={open} onclick={() => (open = !open)}>
-			<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
+		<button class="icon-btn burger" aria-label={open ? 'Chiudi il menu' : 'Menu'} aria-expanded={open} onclick={() => (open = !open)}>
+			{#if open}<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 6l12 12M18 6L6 18" /></svg>{:else}<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 7h16M4 12h16M4 17h16" /></svg>{/if}
 		</button>
 		<nav aria-label="Principale">
 			<ul class="nav nav--desktop">
@@ -119,6 +124,9 @@
 {#if open}
 	<div class="mobile-menu">
 		<div class="container">
+			<button type="button" class="mobile-menu__close" aria-label="Chiudi il menu" onclick={() => (open = false)}>
+				<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 6l12 12M18 6L6 18" /></svg>
+			</button>
 			{#each links as l (l.label)}
 				{#if l.items}
 					<p class="mobile-menu__group">{l.label}</p>
