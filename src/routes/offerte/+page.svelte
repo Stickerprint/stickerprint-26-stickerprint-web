@@ -119,7 +119,7 @@
 		</div>
 	</section>
 	{#if file && engine && promo}
-		<section class="section container" id="promo-configura" style="scroll-margin-top:72px">
+		<section class="section container" id="promo-configura" style="scroll-margin-top:72px;overflow-anchor:none">
 			<h2 class="center">Il tuo <span class="hl hl--green">{promo.qty.toLocaleString('it-IT')} × {promo.product_label}</span> a {eur(price)}</h2>
 			<p class="lead center" style="margin-top:8px">Quantità e misura dell'offerta sono già impostate. Controlla l'anteprima, scegli sagoma e materiale e aggiungi al carrello.</p>
 			{#key startKey}

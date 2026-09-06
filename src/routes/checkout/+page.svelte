@@ -218,7 +218,7 @@
 							</div>
 						</div>
 					{/each}
-					<div class="co-row"><span>Prova di stampa</span><b>Gratis</b></div>
+					<div class="co-row"><span>Prova automatica immediata</span><b>Inclusa</b></div>
 					<div class="co-ship">🚀 Pronti per la spedizione entro <b>{express ? data.expressDate : data.shipDate}</b>.</div>
 
 					<label class="co-code__label" for="code">Hai un codice sconto o un codice referral da utilizzare?</label>
