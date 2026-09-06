@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { PRODUCT_ENGINES } from '$lib/pricing/engine';
-	import { PROMO_ENGINES, type Promo } from '$lib/server/promos';
+	import type { Promo } from '$lib/server/promos';
+	import { PROMO_ENGINES } from '$lib/pricing/promoEngines';
 	let { data, form } = $props();
 	let editing = $state<string | 'new' | null>(null);
 	const vuota: Promo = { id: '', active: true, sort: 0, qty: 250, product_slug: 'adesivi_personalizzati', product_label: 'adesivi personalizzati', price: 79, price_normal: null, subtitle: '', ends_at: null, forma: 'sagomato', materiale: 'bianco', finitura: 'lucida', chips: [], includes: [], perks: [], save_text: '', sizes: [], cta: 'Carica il file per continuare', w: 50, h: 50 };
