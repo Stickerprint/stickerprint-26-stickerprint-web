@@ -25,7 +25,7 @@
 		<h1 class="launch-title thanks__ottimo">Ottimo!</h1>
 		<div class="launch-rest">
 			<p class="thanks__sub">Il tuo ordine è andato correttamente in produzione</p>
-			<p class="thanks__line">e dovrebbe arrivare il <mark>{data.shipDate}</mark></p>
+			<p class="thanks__line">e dovrebbe essere pronto per la spedizione <mark>{data.shipDate}</mark></p>
 			{#if numbers.length}<p class="thanks__line">Numero d'ordine <mark>{numbers.join(', ')}</mark></p>{/if}
 			<p class="thanks__meanwhile">Nel frattempo puoi controllare lo stato della produzione dalla tua<a href={areaHref}>area personale</a></p>
 
