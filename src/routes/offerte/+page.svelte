@@ -45,7 +45,7 @@
 		file = f; startKey += 1;
 		await tick();
 		// il preventivatore si apre sotto: ci si arriva subito, e si ripete perche' l'anteprima caricandosi sposta la pagina
-		for (const ms of [80, 700, 1800]) setTimeout(() => document.getElementById('promo-configura')?.scrollIntoView({ behavior: ms > 100 ? 'auto' : 'smooth', block: 'start' }), ms);
+		for (const ms of [80, 700, 1800]) setTimeout(() => document.getElementById('promo-configura')?.scrollIntoView({ behavior: ms > 100 ? 'instant' : 'smooth', block: 'start' }), ms);
 	}
 </script>
 
