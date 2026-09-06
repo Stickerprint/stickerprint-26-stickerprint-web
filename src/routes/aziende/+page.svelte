@@ -30,7 +30,7 @@
 </script>
 
 <svelte:head>
-	<title>Aziende: produzioni importanti, nessuna improvvisazione | Stickerprint</title>
+	<title>Aziende: nessuna improvvisazione | Stickerprint</title>
 	<meta name="description" content="Produzioni strutturate, grandi volumi o richieste speciali: quando il configuratore non basta, entriamo in gioco noi." />
 </svelte:head>
 
