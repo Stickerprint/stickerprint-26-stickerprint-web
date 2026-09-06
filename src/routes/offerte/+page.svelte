@@ -1,9 +1,9 @@
 <script lang="ts">
 	import '$lib/styles/promo.css';
-	import { goto } from '$app/navigation';
 	import ReviewsCarousel from '$lib/components/ReviewsCarousel.svelte';
 	import FinalCta from '$lib/components/FinalCta.svelte';
-	import { saveDraft } from '$lib/utils/draftStore';
+	import { tick } from 'svelte';
+	import Configurator from '$lib/components/Configurator.svelte';
 	import { PRODUCT_ENGINES } from '$lib/pricing/engine';
 	import type { Promo } from '$lib/server/promos';
 
@@ -28,19 +28,23 @@
 	let over = $state(false);
 	let saving = $state(false);
 	let error = $state('');
+	// il file caricato apre il preventivatore del prodotto in offerta qui sotto, con quantita', misura e prezzo dell'offerta
+	let file = $state<File | null>(null);
+	let startKey = $state(0);
+	const engineInfo = $derived(PRODUCT_ENGINES.find((p) => p.slug === promo?.product_slug));
+	const engine = $derived(promo ? data.engines[promo.product_slug] : null);
+	let fileInput = $state<HTMLInputElement | null>(null);
 	const ACCEPT = ['image/png', 'image/jpeg', 'image/svg+xml', 'application/pdf'];
 
-	/* il file va al preventivatore del prodotto con sagoma, materiale, misura e quantità dell'offerta */
+	/* il file apre il preventivatore qui sotto: si ordina senza lasciare la pagina */
 	async function pick(f: File | undefined) {
 		error = '';
 		if (!f || !promo) return;
 		if (!ACCEPT.includes(f.type)) { error = 'Formati accettati: PNG, JPG, SVG, PDF.'; return; }
 		if (f.size > 25 * 1024 * 1024) { error = 'Il file supera i 25 MB.'; return; }
-		saving = true;
-		try {
-			await saveDraft({ product: promo.product_slug, forma: promo.forma, materiale: promo.materiale, file: f, preview: null, widthMm: size?.w ?? 50, heightMm: size?.h ?? size?.w ?? 50, qty: promo.qty, lockSize: !!size, promo: { id: promo.id, price, qty: promo.qty, w: size?.w ?? 50, h: size?.h ?? size?.w ?? 50 }, savedAt: Date.now() });
-			await goto(`${href}?forma=${promo.forma}&materiale=${promo.materiale}#configura`);
-		} finally { saving = false; }
+		file = f; startKey += 1;
+		await tick();
+		setTimeout(() => document.getElementById('configura')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
 	}
 </script>
 
@@ -90,7 +94,7 @@
 					ondragover={(e) => { e.preventDefault(); over = true; }}
 					ondragleave={() => (over = false)}
 					ondrop={(e) => { e.preventDefault(); over = false; pick(e.dataTransfer?.files[0]); }}>
-					<input type="file" accept={ACCEPT.join(',')} onchange={(e) => pick((e.currentTarget as HTMLInputElement).files?.[0])} />
+					<input bind:this={fileInput} type="file" accept={ACCEPT.join(',')} onchange={(e) => pick((e.currentTarget as HTMLInputElement).files?.[0])} />
 					<div>
 						<div class="dropzone__icon"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 16V4m0 0l-4 4m4-4l4 4" /><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" /></svg></div>
 						<div class="dropzone__title">{saving ? 'Un attimo…' : 'Trascina qui il tuo file'}</div>
@@ -99,7 +103,7 @@
 				</label>
 				{#if error}<p class="error" style="margin-top:10px">{error}</p>{/if}
 			</div>
-			<div class="offer__cta"><a class="btn btn--green btn--xl" href="{href}?forma={promo.forma}&materiale={promo.materiale}">{promo.cta}</a></div>
+			<div class="offer__cta"><button type="button" class="btn btn--green btn--xl" onclick={() => fileInput?.click()}>{promo.cta}</button></div>
 
 			{#if promos.length > 1}
 				<div class="offer__more">
@@ -113,6 +117,16 @@
 			{/if}
 		</div>
 	</section>
+	{#if file && engine && promo}
+		<section class="section container" id="promo-configura">
+			<h2 class="center">Il tuo <span class="hl hl--green">{promo.qty.toLocaleString('it-IT')} × {promo.product_label}</span> a {eur(price)}</h2>
+			<p class="lead center" style="margin-top:8px">Quantità e misura dell'offerta sono già impostate. Controlla l'anteprima, scegli sagoma e materiale e aggiungi al carrello.</p>
+			{#key startKey}
+				<Configurator cfg={engine} product={promo.product_slug} productName={engineInfo?.name ?? promo.product_label} engineProduct={engineInfo?.engineProduct ?? 'sticker'} shipDate={data.shipDate}
+					start={{ file, forma: promo.forma, materiale: promo.materiale, promo: { id: promo.id, price, qty: promo.qty, w: size?.w ?? 50, h: size?.h ?? size?.w ?? 50 } }} />
+			{/key}
+		</section>
+	{/if}
 {:else}
 	<section class="section container center">
 		<h1>Nessuna offerta attiva <span class="hl hl--yellow">in questo momento.</span></h1>

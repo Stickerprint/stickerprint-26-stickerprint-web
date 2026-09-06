@@ -18,8 +18,13 @@
 		product = 'adesivi_personalizzati',
 		productName = 'i tuoi adesivi',
 		engineProduct = 'sticker',
-		test = false
-	}: { shipDate: string; cfg: EngineConfig; product?: string; productName?: string; engineProduct?: 'sticker' | 'resinati'; test?: boolean } = $props();
+		test = false,
+		start = null
+	}: {
+		shipDate: string; cfg: EngineConfig; product?: string; productName?: string; engineProduct?: 'sticker' | 'resinati'; test?: boolean;
+		/** avvio diretto (pagina Offerte): file gia' scelto, sagoma/materiale e offerta con quantita', misura e prezzo bloccati */
+		start?: { file: File; forma?: string; materiale?: string; promo?: { id: string; price: number; qty: number; w: number; h: number } } | null;
+	} = $props();
 
 	const SHAPES = $derived(cfg.shapes.filter((s) => s.visible));
 	const MATERIALS = $derived(cfg.materials.filter((m) => m.visible));
@@ -123,6 +128,19 @@
 
 	onMount(async () => {
 		if (test) return;
+		// pagina Offerte: il file e l'offerta arrivano direttamente dalla pagina
+		if (start?.file) {
+			file = start.file;
+			fileUrl = URL.createObjectURL(start.file);
+			if (start.forma && SHAPES.some((s) => s.id === start.forma)) forma = start.forma;
+			if (start.materiale && MATERIALS.some((m) => m.id === start.materiale)) materiale = start.materiale;
+			if (start.promo) {
+				promo = start.promo;
+				qty = start.promo.qty; custom = !cfg.quantities.includes(start.promo.qty); customQty = custom ? start.promo.qty : '';
+				w = clamp(start.promo.w); h = clamp(start.promo.h); sizeLocked = true;
+			}
+			return;
+		}
 		// entrando in una pagina prodotto si parte dalla drop zone; il file della home
 		// si riprende solo quando si arriva da "Continua la configurazione" (#configura)
 		if (location.hash !== '#configura') return;
