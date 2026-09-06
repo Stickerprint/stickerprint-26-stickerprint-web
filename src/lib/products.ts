@@ -3,7 +3,7 @@ export interface ProductContent {
 	slug: string; route: string; name: string; title: string; sub: string; desc: string; checks: string[]; cosa: string;
 	gallery: string[]; others: string[]; faq: { q: string; a: string }[]; faqTitle: string;
 	engineProduct: 'sticker' | 'resinati'; cta: string;
-	compare?: { rows: { label: string; us: string; them: string }[]; closing: string };
+	compare?: import('$lib/components/CompareBlock.svelte').CompareData;
 	care: { title: string; hl: string; intro: string; checks: string[]; closing: string };
 	reviewsTitle: string; reviewsHl: string; reviewsSub: string;
 }
@@ -29,14 +29,19 @@ export const PRODUCTS: Record<string, ProductContent> = {
 		faqTitle: 'Domande frequenti sugli Adesivi personalizzati',
 		engineProduct: 'sticker', cta: 'i tuoi Adesivi personalizzati',
 		compare: {
+			titlePre: 'Non tutti gli adesivi sono fatti per', titleHl: 'durare.', hl: 'blue',
+			sub: "C'è chi risparmia sui materiali. Noi preferiamo non risparmiare sul tuo risultato.",
+			usHead: 'Adesivi Stickerprint', themHead: 'Adesivi economici',
 			rows: [
-				{ label: 'Cosa ricevi', us: 'Adesivi personalizzati di alta qualità', them: 'Adesivi economici sempre in promo' },
-				{ label: 'Anteprima del file', us: 'Immediata, ancora prima di pagare', them: 'A pagamento o assente' },
-				{ label: 'Produzione', us: '5 giorni', them: '7-15 giorni' },
-				{ label: 'Materiali', us: 'Materiali premium', them: 'Materiali economici' },
-				{ label: 'Stampa', us: 'Stampa resistente che non sbiadisce', them: 'Sbiadisce dopo pochi giorni' }
+				{ icon: 'layers', label: 'Materiali', us: 'Vinili premium selezionati', them: 'Materiali economici' },
+				{ icon: 'print', label: 'Stampa', us: 'Non sbiadisce, anche senza lamina', them: 'Sbiaditi dopo pochi giorni' },
+				{ icon: 'shield', label: 'Protezione', us: 'Lamina protettiva extra disponibile', them: 'Assente e non disponibile' },
+				{ icon: 'cut', label: 'Taglio', us: 'Preciso, anche su sagoma personalizzata', them: 'Formati più standardizzati' },
+				{ icon: 'sliders', label: 'Personalizzazione', us: 'Misure, finiture e materiali personalizzabili', them: 'Formati standard, materiali standard' },
+				{ icon: 'people', label: 'Esperienza', us: '19 anni di esperienza nella stampa', them: 'Non sempre dichiarata' }
 			],
-			closing: 'Se cerchi competenza tecnica e adesivi di alta qualità, Stickerprint è il posto giusto dove ordinare i tuoi adesivi. Se invece cerchi adesivi sempre in promozione, di bassa qualità, che si rovinano dopo pochi giorni, purtroppo non ti possiamo aiutare :('
+			closing: 'Un adesivo economico costa meno una volta. Un adesivo fatto bene vale di più ogni giorno.',
+			cta: 'Crea i tuoi adesivi →', href: '#preventivatore'
 		},
 		care: { title: 'Zero ansia.', hl: 'Ci pensiamo noi.', intro: 'È il tuo primo ordine? Non ti preoccupare. Ecco la checklist che eseguiamo su ogni ordine:', checks: ['Controllo manuale di ogni file', 'Se serve, sistemiamo il file prima di stampare', 'Ti mandiamo una prova da approvare', 'Vedrai esattamente come realizzeremo il tuo prodotto', 'Solo dopo il tuo ok andiamo in stampa'], closing: '' },
 		reviewsTitle: 'Cosa dicono di', reviewsHl: 'questi adesivi.', reviewsSub: 'Ordini reali. Risultati concreti.'

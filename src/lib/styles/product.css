@@ -271,15 +271,3 @@
 .promo-fixed__list { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; font-size: 14px; color: var(--ink-soft); }
 .promo-fixed__list li { background: var(--sky); border-radius: 10px; padding: 10px 12px; }
 .promo-fixed__list b { color: var(--ink); }
-
-/* Perche' Stickerprint: tabella di confronto */
-.cmp { max-width: 860px; margin: 28px auto 0; background: var(--navy); color: #fff; border-radius: 22px; padding: 22px 26px; text-align: left; }
-.cmp__head, .cmp__row { display: grid; grid-template-columns: 1.1fr 1.3fr 1.3fr; gap: 14px; align-items: center; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,.12); }
-.cmp__head { padding-top: 0; font-family: var(--font-display); font-weight: 800; font-size: 15px; letter-spacing: .04em; text-transform: uppercase; color: #8fb8ff; }
-.cmp__head b:first-of-type { color: var(--green); }
-.cmp__row:last-of-type { border-bottom: 0; }
-.cmp__label { font-family: var(--font-display); font-weight: 800; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: #8fb8ff; }
-.cmp__us { font-weight: 700; color: #fff; }
-.cmp__them { color: #b8bce0; }
-.cmp__closing { margin-top: 18px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,.12); color: #d9dcf2; font-size: 15px; line-height: 1.6; }
-@media (max-width: 600px) { .cmp__head { display: none; } .cmp__row { grid-template-columns: 1fr; gap: 4px; } .cmp__us::before { content: "Stickerprint: "; color: var(--green); font-weight: 800; } .cmp__them::before { content: "Competitor: "; font-weight: 800; } }

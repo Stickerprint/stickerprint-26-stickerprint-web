@@ -7,6 +7,7 @@
 	import SamplesBlock from '$lib/components/SamplesBlock.svelte';
 	import FinalCta from '$lib/components/FinalCta.svelte';
 	import FaqList from '$lib/components/FaqList.svelte';
+	import CompareBlock from '$lib/components/CompareBlock.svelte';
 	import type { EngineConfig } from '$lib/pricing/engine';
 	import type { HomeReview } from '$lib/server/reviews';
 
@@ -41,7 +42,7 @@
 </section>
 
 <!-- PREVENTIVATORE -->
-<section class="container">
+<section class="container" id="preventivatore" style="scroll-margin-top:80px">
 	<Configurator {shipDate} cfg={engine} product={p.slug} productName={p.cta.replace(/^(i tuoi|le tue) /, '')} engineProduct={p.engineProduct} />
 </section>
 
@@ -81,17 +82,7 @@
 </section>
 
 {#if p.compare}
-	<!-- PERCHE' STICKERPRINT: confronto, nello stile del riquadro "cosa ricevi" delle offerte -->
-	<section class="section container center">
-		<h2>Perché <span class="hl hl--yellow">Stickerprint?</span></h2>
-		<div class="cmp">
-			<div class="cmp__head"><span></span><b>Stickerprint</b><b>Competitor</b></div>
-			{#each p.compare.rows as r (r.label)}
-				<div class="cmp__row"><span class="cmp__label">{r.label}</span><span class="cmp__us">✓ {r.us}</span><span class="cmp__them">✕ {r.them}</span></div>
-			{/each}
-			<p class="cmp__closing">{p.compare.closing}</p>
-		</div>
-	</section>
+	<CompareBlock data={p.compare} />
 {/if}
 
 <!-- KIT CAMPIONI (stesso blocco della home) -->
