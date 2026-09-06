@@ -1,10 +1,18 @@
 import { fail } from '@sveltejs/kit';
-import { loadPromos, parseLines, parseSizes } from '$lib/server/promos';
+import { loadPromos, parseLines } from '$lib/server/promos';
+import { loadEngine } from '$lib/server/pricing';
+import { PRODUCT_ENGINES } from '$lib/pricing/engine';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals: { supabase } }) => {
 	const promos = await loadPromos(supabase, true);
-	return { promos };
+	// materiali e finiture di ogni prodotto, per i menu a tendina dell'offerta
+	const opzioni: Record<string, { materials: { id: string; label: string }[]; finishes: { id: string; label: string }[] }> = {};
+	for (const e of PRODUCT_ENGINES) {
+		const { config } = await loadEngine(supabase, e.slug);
+		opzioni[e.slug] = { materials: config.materials.filter((m) => m.visible).map((m) => ({ id: m.id, label: m.label })), finishes: config.finishes.filter((f) => f.visible).map((f) => ({ id: f.id, label: f.label })) };
+	}
+	return { promos, opzioni };
 };
 
 function leggi(f: FormData) {
@@ -29,7 +37,8 @@ function leggi(f: FormData) {
 			includes: parseLines(s('includes'), ['label', 'normally']),
 			perks: parseLines(s('perks'), ['label', 'saves']),
 			save_text: s('save_text') || null,
-			sizes: parseSizes(s('sizes')),
+			sizes: [],
+			w_mm: num('w_mm') ?? 50, h_mm: num('h_mm') ?? num('w_mm') ?? 50,
 			cta: s('cta') || 'Carica il file per continuare',
 			sort: Math.round(num('sort') ?? 0),
 			active: f.get('active') === 'on',

@@ -80,6 +80,20 @@
 	</div>
 </section>
 
+{#if p.compare}
+	<!-- PERCHE' STICKERPRINT: confronto, nello stile del riquadro "cosa ricevi" delle offerte -->
+	<section class="section container center">
+		<h2>Perché <span class="hl hl--yellow">Stickerprint?</span></h2>
+		<div class="cmp">
+			<div class="cmp__head"><span></span><b>Stickerprint</b><b>Competitor</b></div>
+			{#each p.compare.rows as r (r.label)}
+				<div class="cmp__row"><span class="cmp__label">{r.label}</span><span class="cmp__us">✓ {r.us}</span><span class="cmp__them">✕ {r.them}</span></div>
+			{/each}
+			<p class="cmp__closing">{p.compare.closing}</p>
+		</div>
+	</section>
+{/if}
+
 <!-- KIT CAMPIONI (stesso blocco della home) -->
 <SamplesBlock />
 

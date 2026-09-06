@@ -12,9 +12,7 @@
 	const promos: Promo[] = data.promos;
 	let cur = $state(0);
 	const promo = $derived(promos[cur]);
-	let sizeIdx = $state(0);
-	const size = $derived(promo?.sizes[sizeIdx] ?? promo?.sizes[0] ?? null);
-	const price = $derived(size ? size.price : (promo?.price ?? 0));
+	const price = $derived(promo?.price ?? 0);
 	const eur = (v: number) => v.toLocaleString('it-IT', { maximumFractionDigits: v % 1 ? 2 : 0 }) + ' €';
 	const href = $derived(PRODUCT_ENGINES.find((p) => p.slug === promo?.product_slug)?.href ?? '/adesivi-personalizzati');
 	const avg = $derived((data.stats?.average ?? 4.9).toLocaleString('it-IT', { minimumFractionDigits: 1, maximumFractionDigits: 1 }));
@@ -45,7 +43,7 @@
 		file = f; startKey += 1;
 		await tick();
 		// il preventivatore si apre sotto: ci si arriva subito, e si ripete perche' l'anteprima caricandosi sposta la pagina
-		for (const ms of [80, 700, 1800]) setTimeout(() => document.getElementById('promo-configura')?.scrollIntoView({ behavior: ms > 100 ? 'instant' : 'smooth', block: 'start' }), ms);
+		for (const ms of [80, 700, 1800]) setTimeout(() => document.getElementById('promo-cfg')?.scrollIntoView({ behavior: ms > 100 ? 'instant' : 'smooth', block: 'start' }), ms);
 	}
 </script>
 
@@ -66,6 +64,8 @@
 			<div class="offer__stars"><span class="stars">★★★★★</span> {avg} su 5 · recensioni verificate</div>
 			{#if promo.chips.length}<div class="offer__chips">{#each promo.chips as c (c)}<span>{c}</span>{/each}</div>{/if}
 
+			<div class="offer__grid" class:has-file={!!file && !!engine}>
+			<div class="offer__left">
 			{#if promo.includes.length || promo.perks.length}
 				<div class="offer__box">
 					{#if promo.includes.length}
@@ -81,13 +81,6 @@
 				</div>
 			{/if}
 
-			{#if promo.sizes.length > 1}
-				<div class="offer__sizes" role="tablist" aria-label="Misura">
-					{#each promo.sizes as s, i (s.label)}
-						<button type="button" class="offer__size" class:is-on={i === sizeIdx} role="tab" aria-selected={i === sizeIdx} onclick={() => (sizeIdx = i)}>{s.label}<span>{eur(s.price)}</span></button>
-					{/each}
-				</div>
-			{/if}
 
 			<div class="offer__drop">
 				<label class="dropzone dropzone--compact" class:is-over={over}
@@ -105,11 +98,22 @@
 				{#if error}<p class="error" style="margin-top:10px">{error}</p>{/if}
 			</div>
 			<div class="offer__cta"><button type="button" class="btn btn--green btn--xl" onclick={() => fileInput?.click()}>{promo.cta}</button></div>
+			</div>
+			{#if file && engine}
+				<!-- anteprima e scelta della sagoma: qui, a destra, su fondo blu -->
+				<div class="offer__cfg" id="promo-cfg">
+					{#key startKey}
+						<Configurator cfg={engine} product={promo.product_slug} productName={engineInfo?.name ?? promo.product_label} engineProduct={engineInfo?.engineProduct ?? 'sticker'} shipDate={data.shipDate} promoOnly
+							start={{ file, forma: promo.forma, materiale: promo.materiale, finitura: promo.finitura, promo: { id: promo.id, price, qty: promo.qty, w: promo.w, h: promo.h } }} />
+					{/key}
+				</div>
+			{/if}
+			</div>
 
 			{#if promos.length > 1}
 				<div class="offer__more">
 					{#each promos as p, i (p.id)}
-						<button type="button" class="offer__card" class:is-on={i === cur} onclick={() => { cur = i; sizeIdx = 0; }}>
+						<button type="button" class="offer__card" class:is-on={i === cur} onclick={() => { cur = i; file = null; }}>
 							<b>{p.qty.toLocaleString('it-IT')} × {eur(p.price)}</b>
 							<small>{p.product_label}{#if p.price_normal} · invece di {eur(p.price_normal)}{/if}</small>
 						</button>
@@ -118,16 +122,6 @@
 			{/if}
 		</div>
 	</section>
-	{#if file && engine && promo}
-		<section class="section container" id="promo-configura" style="scroll-margin-top:72px;overflow-anchor:none">
-			<h2 class="center">Il tuo <span class="hl hl--green">{promo.qty.toLocaleString('it-IT')} × {promo.product_label}</span> a {eur(price)}</h2>
-			<p class="lead center" style="margin-top:8px">Quantità e misura dell'offerta sono già impostate. Controlla l'anteprima, scegli sagoma e materiale e aggiungi al carrello.</p>
-			{#key startKey}
-				<Configurator cfg={engine} product={promo.product_slug} productName={engineInfo?.name ?? promo.product_label} engineProduct={engineInfo?.engineProduct ?? 'sticker'} shipDate={data.shipDate}
-					start={{ file, forma: promo.forma, materiale: promo.materiale, promo: { id: promo.id, price, qty: promo.qty, w: size?.w ?? 50, h: size?.h ?? size?.w ?? 50 } }} />
-			{/key}
-		</section>
-	{/if}
 {:else}
 	<section class="section container center">
 		<h1>Nessuna offerta attiva <span class="hl hl--yellow">in questo momento.</span></h1>

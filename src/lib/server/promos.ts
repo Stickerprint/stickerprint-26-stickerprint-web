@@ -9,7 +9,15 @@ export interface Promo {
 	price: number; price_normal: number | null; subtitle: string | null; ends_at: string | null;
 	forma: string; materiale: string; finitura: string | null;
 	chips: string[]; includes: PromoInclude[]; perks: PromoPerk[]; save_text: string | null; sizes: PromoSize[]; cta: string;
+	w: number; h: number; // misura unica dell'offerta (mm)
 }
+
+/** Motori dedicati alle offerte: uno per famiglia di prodotto. Il cliente sceglie solo la sagoma;
+ *  materiale, finitura, misura, quantita' e prezzo li decide il backend. */
+export const PROMO_ENGINES: Record<string, string> = {
+	adesivi_resinati: 'promores', adesivi_personalizzati: 'promostick', adesivi_rilievo: 'promouv',
+	fogli_adesivi: 'promofg', etichette: 'promoet', vetrofanie: 'promovet'
+};
 
 const arr = <T>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);
 
@@ -22,7 +30,8 @@ export function normalizePromo(r: Record<string, unknown>): Promo {
 		forma: String(r.forma ?? 'sagomato'), materiale: String(r.materiale ?? 'bianco'), finitura: (r.finitura as string) ?? null,
 		chips: arr<string>(r.chips).map(String), includes: arr<PromoInclude>(r.includes), perks: arr<PromoPerk>(r.perks), save_text: (r.save_text as string) ?? null,
 		sizes: arr<PromoSize>(r.sizes).map((s) => ({ label: String(s.label), w: Number(s.w), h: Number(s.h ?? s.w), price: Number(s.price) })),
-		cta: String(r.cta ?? 'Carica il file per continuare')
+		cta: String(r.cta ?? 'Carica il file per continuare'),
+		w: Number(r.w_mm ?? 50) || 50, h: Number(r.h_mm ?? r.w_mm ?? 50) || 50
 	};
 }
 

@@ -20,11 +20,14 @@
 		productName = 'i tuoi adesivi',
 		engineProduct = 'sticker',
 		test = false,
-		start = null
+		start = null,
+		promoOnly = false
 	}: {
 		shipDate: string; cfg: EngineConfig; product?: string; productName?: string; engineProduct?: 'sticker' | 'resinati'; test?: boolean;
 		/** avvio diretto (pagina Offerte): file gia' scelto, sagoma/materiale e offerta con quantita', misura e prezzo bloccati */
-		start?: { file: File; forma?: string; materiale?: string; promo?: { id: string; price: number; qty: number; w: number; h: number } } | null;
+		start?: { file: File; forma?: string; materiale?: string; finitura?: string | null; promo?: { id: string; price: number; qty: number; w: number; h: number } } | null;
+		/** offerte: il cliente sceglie solo la sagoma; materiale, finitura, misura, quantita' e prezzo sono fissati dall'offerta */
+		promoOnly?: boolean;
 	} = $props();
 
 	const SHAPES = $derived(cfg.shapes.filter((s) => s.visible));
@@ -36,7 +39,7 @@
 
 	// passi visibili, numerati in ordine
 	const steps = $derived(
-		([['forma', true], ['materiale', showMaterials], ['finitura', showFinish], ['misura', true], ['qty', true]] as [string, boolean][])
+		([['forma', true], ['materiale', showMaterials && !promoOnly], ['finitura', showFinish && !promoOnly], ['misura', !promoOnly], ['qty', !promoOnly]] as [string, boolean][])
 			.filter(([, on]) => on)
 			.map(([id]) => id)
 	);
@@ -94,7 +97,7 @@
 	const shape = $derived(SHAPES.find((s) => s.id === forma) ?? SHAPES[0]);
 	const material = $derived(MATERIALS.find((m) => m.id === materiale) ?? cfg.materials[0]);
 	const finish = $derived(FINISHES.find((f) => f.id === finitura));
-	const fin = $derived(showFinish ? finitura : 'nessuna');
+	const fin = $derived(promoOnly ? finitura : showFinish ? finitura : 'nessuna');
 	const ratio = $derived(shape?.equal ? 1 : (shape?.ratio ?? cutRatio ?? fileRatio ?? 1));
 	// rettangolo e ovale: le misure sono solo proposte, il cliente puo' scrivere la sua (lati indipendenti)
 	const freeSize = $derived(forma === 'rettangolo' || forma === 'ovale');
@@ -135,6 +138,7 @@
 			fileUrl = URL.createObjectURL(start.file);
 			if (start.forma && SHAPES.some((s) => s.id === start.forma)) forma = start.forma;
 			if (start.materiale && MATERIALS.some((m) => m.id === start.materiale)) materiale = start.materiale;
+			if (start.finitura) finitura = start.finitura;
 			if (start.promo) {
 				promo = start.promo;
 				qty = start.promo.qty; custom = !cfg.quantities.includes(start.promo.qty); customQty = custom ? start.promo.qty : '';
@@ -323,7 +327,7 @@
 		</div>
 
 		<!-- materiale -->
-		{#if showMaterials}
+		{#if showMaterials && !promoOnly}
 			<div class="step" class:is-open={step === 'materiale'}>
 				<button class="step__head" type="button" onclick={() => (step = 'materiale')} aria-expanded={step === 'materiale'}>
 					<span class="step__n">{#if stepNo(step) > stepNo('materiale')}✓{:else}{stepNo('materiale')}{/if}</span>
@@ -348,7 +352,7 @@
 		{/if}
 
 		<!-- finitura (solo prodotti con lamina) -->
-		{#if showFinish}
+		{#if showFinish && !promoOnly}
 			<div class="step" class:is-open={step === 'finitura'}>
 				<button class="step__head" type="button" onclick={() => (step = 'finitura')} aria-expanded={step === 'finitura'}>
 					<span class="step__n">{#if stepNo(step) > stepNo('finitura')}✓{:else}{stepNo('finitura')}{/if}</span>
@@ -375,6 +379,7 @@
 		{/if}
 
 		<!-- misura -->
+		{#if !promoOnly}
 		<div class="step" class:is-open={step === 'misura'}>
 			<button class="step__head" type="button" onclick={() => (step = 'misura')} aria-expanded={step === 'misura'}>
 				<span class="step__n">{#if stepNo(step) > stepNo('misura')}✓{:else}{stepNo('misura')}{/if}</span>
@@ -397,8 +402,23 @@
 			{/if}
 		</div>
 
+		{/if}
+		{#if promoOnly && promo}
+			<!-- offerta: quantita', misura, materiale e finitura sono fissi -->
+			<div class="step is-open step--qty promo-fixed">
+				<div class="step__head" role="presentation"><span class="step__n">{stepNo('forma') + 1}</span><span class="step__title">La tua offerta</span></div>
+				<div class="step__body">
+					<ul class="promo-fixed__list">
+						<li><b>{promo.qty.toLocaleString('it-IT')} pezzi</b> · quantità dell'offerta</li>
+						<li><b>{fmt(w)} × {fmt(h)} mm</b> · misura dell'offerta</li>
+						<li><b>{material?.label ?? materiale}</b>{#if finish}, {finish.label}{/if} · materiale e finitura dell'offerta</li>
+					</ul>
+				</div>
+			</div>
+		{/if}
 		<!-- quantità -->
 		<!-- sempre aperto: il cliente vede tutti i prezzi a colpo d'occhio -->
+		{#if !promoOnly}
 		<div class="step is-open step--qty" id="qty-step">
 			<div class="step__head" role="presentation">
 				<span class="step__n">{stepNo('qty')}</span>
@@ -431,6 +451,7 @@
 					{/if}
 				</div>
 		</div>
+		{/if}
 
 	</aside>
 
@@ -470,9 +491,9 @@
 		     −/+ cambia la quantità sulle fasce del listino, il prezzo porta al passo quantità -->
 		<div class="cfg__mobar" role="region" aria-label="Prezzo e quantità">
 			<div class="mobar__qty">
-				<button type="button" class="mobar__step" onclick={() => stepQty(-1)} aria-label="Meno pezzi">−</button>
+				{#if !promoOnly}<button type="button" class="mobar__step" onclick={() => stepQty(-1)} aria-label="Meno pezzi">−</button>{/if}
 				<button type="button" class="mobar__n" onclick={goQty}>{qty.toLocaleString('it-IT')} pz</button>
-				<button type="button" class="mobar__step" onclick={() => stepQty(1)} aria-label="Più pezzi">+</button>
+				{#if !promoOnly}<button type="button" class="mobar__step" onclick={() => stepQty(1)} aria-label="Più pezzi">+</button>{/if}
 			</div>
 			<button type="button" class="mobar__price" onclick={goQty}>
 				<b>{eur0(vatIncluded ? q.gross : q.net)}</b>

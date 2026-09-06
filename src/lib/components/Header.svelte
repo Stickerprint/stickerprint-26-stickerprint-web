@@ -120,7 +120,7 @@
 				</div>
 			{:else}
 				<div class="header__auth">
-					<a class="btn btn--white btn--sm" href="/login">Accedi</a>
+					<a class="btn btn--blue btn--sm" href="/login">Accedi</a>
 					<a class="btn btn--yellow btn--sm" href="/signup">Registrati</a>
 				</div>
 				<a class="nav header__auth-icon" href="/login" style="text-decoration:none" title="Accedi">
@@ -167,8 +167,8 @@
 	.nav__item { position: relative; }
 	.dropdown {
 		position: absolute; top: 100%; left: -14px; margin-top: 14px; min-width: 290px;
-		background: #fff; color: var(--ink); border-radius: 18px; padding: 14px 16px;
-		box-shadow: 0 18px 40px rgba(10, 14, 60, 0.22); display: grid; gap: 4px; z-index: 40;
+		background: var(--navy); color: #fff; border-radius: 18px; padding: 14px 16px;
+		box-shadow: 0 18px 40px rgba(10, 14, 60, 0.35); display: grid; gap: 4px; z-index: 40;
 		opacity: 0; visibility: hidden; transform: translateY(6px); transition: opacity .18s ease, transform .18s ease, visibility .18s;
 	}
 	/* zona invisibile tra voce e pannello, così il mouse non "cade" fuori */
@@ -178,12 +178,14 @@
 		display: flex; align-items: center; gap: 16px; padding: 12px 14px; border-radius: 12px;
 		font-family: var(--font-display); font-weight: 800; font-size: 15px; color: #4b5563; text-decoration: none; white-space: nowrap;
 	}
-	.dropdown__item:hover { background: #f3f4f6; color: var(--ink); }
+	.dropdown__item { color: #fff; }
+	.dropdown__item:hover { background: rgba(255,255,255,.08); color: #fff; }
+	.dropdown__item:hover span { text-decoration: underline; text-decoration-color: var(--yellow); text-decoration-thickness: 3px; text-underline-offset: 5px; }
 	.dropdown--right { left: auto; right: 0; }
 	.dropdown--user { min-width: 240px; padding: 8px; }
-	.dropdown__link { display: block; width: 100%; text-align: left; padding: 10px 12px; border-radius: 8px; color: var(--ink); text-decoration: none; font-family: var(--font-display); font-weight: 800; font-size: 15px; background: none; border: 0; cursor: pointer; }
-	.dropdown__link:hover { background: #f3f4f6; }
-	.dropdown__link--out { color: #b3261e; border-top: 1px solid var(--line); border-radius: 0; margin-top: 4px; padding-top: 12px; }
+	.dropdown__link { display: block; width: 100%; text-align: left; padding: 10px 12px; border-radius: 8px; color: #fff; text-decoration: none; font-family: var(--font-display); font-weight: 800; font-size: 15px; background: none; border: 0; cursor: pointer; }
+	.dropdown__link:hover { background: rgba(255,255,255,.08); text-decoration: underline; text-decoration-color: var(--yellow); text-decoration-thickness: 3px; text-underline-offset: 5px; }
+	.dropdown__link--out { color: #ffb3ad; border-top: 1px solid rgba(255,255,255,.15); border-radius: 0; margin-top: 4px; padding-top: 12px; }
 	.header__auth { display: flex; gap: 8px; align-items: center; }
 	.header__auth .btn--sm { padding: 9px 14px; font-size: 13.5px; }
 	.header__auth-icon { display: none; }

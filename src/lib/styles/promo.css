@@ -4,6 +4,18 @@
    ========================================================================== */
 .offer { background: var(--navy); color: #fff; padding: clamp(36px, 5vw, 64px) 0 clamp(40px, 5vw, 64px); position: relative; overflow: hidden; }
 .offer__inner { max-width: 760px; margin: 0 auto; text-align: center; position: relative; }
+/* col file caricato la testata si allarga: a sinistra "cosa ricevi", a destra l'anteprima */
+.offer__grid { display: grid; grid-template-columns: 1fr; gap: 24px; }
+.offer__grid.has-file { grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); align-items: start; text-align: left; }
+.offer__inner:has(.offer__grid.has-file) { max-width: 1240px; }
+.offer__grid.has-file .offer__box, .offer__grid.has-file .offer__sizes, .offer__grid.has-file .offer__drop, .offer__grid.has-file .offer__cta { margin-left: 0; margin-right: 0; max-width: none; }
+.offer__cfg { background: #fff; color: var(--ink); border-radius: 22px; padding: 6px; box-shadow: 0 24px 60px rgba(0,0,0,.35); scroll-margin-top: 80px; overflow-anchor: none; }
+.offer__cfg .cfg { grid-template-columns: 1fr; margin-top: 0; border: 0; }
+.offer__cfg .cfg__preview { border-right: 0; border-bottom: 2px solid var(--line); }
+.offer__cfg .cfg__summary { grid-template-columns: 1fr 1fr; position: static; }
+.offer__cfg .sum--total, .offer__cfg .btn--cart { grid-column: 1 / -1; }
+.offer__cfg .special { display: none; }
+@media (max-width: 900px) { .offer__grid.has-file { grid-template-columns: 1fr; } }
 .offer h1 { font-size: clamp(38px, 5.4vw, 68px); line-height: 1.05; letter-spacing: -0.03em; }
 .offer h1 mark { background: var(--green); color: var(--navy); padding: 0 12px; border-radius: 6px; }
 .offer__ends { margin-top: 18px; font-weight: 700; font-size: 16px; color: #d9dcf2; }

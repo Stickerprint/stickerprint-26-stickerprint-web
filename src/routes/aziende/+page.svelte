@@ -42,15 +42,14 @@
 
 <section class="container hero2">
 	<div>
-		<h1 class="hero2__big"><span class="hl hl--yellow">Nessuna improvvisazione.</span></h1>
+		<h1 class="hero2__big"><span class="hl hl--yellow">Nessuna</span><br /><span class="hl hl--yellow">improvvisazione.</span></h1>
 		<p class="lead">Produzioni strutturate, grandi volumi, o richieste speciali. Quando il configuratore non basta, entriamo in gioco noi.</p>
 		<div class="pills">
-			<div class="pills__row"><span class="pill pill--blue">Project Manager dedicato</span><span class="pill pill--yellow">Tutto sotto controllo</span></div>
-			<div class="pills__row"><span class="pill pill--green">Preventivi su misura</span></div>
+			<div class="pills__row"><span class="pill pill--pink">Project Manager dedicato</span><span class="pill pill--purple">Tutto sotto controllo</span></div>
+			<div class="pills__row"><span class="pill pill--orange">Preventivi su misura</span></div>
 		</div>
 		<div class="hero2__cta">
-			<a class="btn btn--green btn--lg hero2__cta-a" href="#contatto">Parla con noi</a>
-			<a class="btn btn--ghost btn--lg hero2__cta-b" href="#processo">Vedi come lavoriamo</a>
+			<a class="btn btn--blue btn--lg" href="#contatto">Parla con noi</a>
 		</div>
 	</div>
 	<img class="photo" src="/images/aziende/hero.webp" alt="Produzione Stickerprint per aziende" />
@@ -102,7 +101,7 @@
 <section class="section container">
 	<div class="split2">
 		<div>
-			<h2 class="h2-big">Quando ha senso<br /><span class="hl hl--green">contattarci.</span></h2>
+			<h2 class="h2-big">Quando ha senso<br /><span class="hl hl--blue">contattarci.</span></h2>
 			<p class="lead">Qui seguiamo progetti e produzioni che richiedono attenzione, esperienza e confronto. Perfetto se:</p>
 			<ul class="checks">
 				<li><span class="ck">✓</span>Hai grosse produzioni</li>

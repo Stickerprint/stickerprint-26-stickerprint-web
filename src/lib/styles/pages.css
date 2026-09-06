@@ -83,9 +83,7 @@
 @media (max-width: 600px) {
 	.pills__row { flex-wrap: nowrap; } .pills__row .pill { flex: 1 1 0; justify-content: center; font-size: 12.5px; padding: 10px 8px; white-space: nowrap; }
 	.pills__row:last-child .pill { flex: 0 1 auto; }
-	.hero2__cta { flex-wrap: nowrap; gap: 8px; } .hero2__cta .btn { flex: 1 1 0; text-align: center; white-space: nowrap; padding: 14px 8px; font-size: 13px; }
-	/* da mobile i due bottoni cambiano colore: blu e giallo */
-	.hero2__cta-a { background: var(--blue); color: #fff; } .hero2__cta-b { background: var(--yellow); color: var(--ink); border-color: var(--yellow); }
+	.hero2__cta .btn { width: 100%; text-align: center; }
 	.stat-big { font-size: 40px; } .stat-big span { font-size: .6em; }
 }
 

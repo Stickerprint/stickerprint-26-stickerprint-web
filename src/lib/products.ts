@@ -3,6 +3,7 @@ export interface ProductContent {
 	slug: string; route: string; name: string; title: string; sub: string; desc: string; checks: string[]; cosa: string;
 	gallery: string[]; others: string[]; faq: { q: string; a: string }[]; faqTitle: string;
 	engineProduct: 'sticker' | 'resinati'; cta: string;
+	compare?: { rows: { label: string; us: string; them: string }[]; closing: string };
 	care: { title: string; hl: string; intro: string; checks: string[]; closing: string };
 	reviewsTitle: string; reviewsHl: string; reviewsSub: string;
 }
@@ -27,6 +28,16 @@ export const PRODUCTS: Record<string, ProductContent> = {
 		],
 		faqTitle: 'Domande frequenti sugli Adesivi personalizzati',
 		engineProduct: 'sticker', cta: 'i tuoi Adesivi personalizzati',
+		compare: {
+			rows: [
+				{ label: 'Cosa ricevi', us: 'Adesivi personalizzati di alta qualità', them: 'Adesivi economici sempre in promo' },
+				{ label: 'Anteprima del file', us: 'Immediata, ancora prima di pagare', them: 'A pagamento o assente' },
+				{ label: 'Produzione', us: '5 giorni', them: '7-15 giorni' },
+				{ label: 'Materiali', us: 'Materiali premium', them: 'Materiali economici' },
+				{ label: 'Stampa', us: 'Stampa resistente che non sbiadisce', them: 'Sbiadisce dopo pochi giorni' }
+			],
+			closing: 'Se cerchi competenza tecnica e adesivi di alta qualità, Stickerprint è il posto giusto dove ordinare i tuoi adesivi. Se invece cerchi adesivi sempre in promozione, di bassa qualità, che si rovinano dopo pochi giorni, purtroppo non ti possiamo aiutare :('
+		},
 		care: { title: 'Zero ansia.', hl: 'Ci pensiamo noi.', intro: 'È il tuo primo ordine? Non ti preoccupare. Ecco la checklist che eseguiamo su ogni ordine:', checks: ['Controllo manuale di ogni file', 'Se serve, sistemiamo il file prima di stampare', 'Ti mandiamo una prova da approvare', 'Vedrai esattamente come realizzeremo il tuo prodotto', 'Solo dopo il tuo ok andiamo in stampa'], closing: '' },
 		reviewsTitle: 'Cosa dicono di', reviewsHl: 'questi adesivi.', reviewsSub: 'Ordini reali. Risultati concreti.'
 	},
