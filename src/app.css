@@ -539,7 +539,9 @@ body { overflow-x: clip; }
   .hero__ship b { font-size: 16px; }
   .hero__pill { font-size: 13px; padding: 10px 16px; gap: 6px 16px; border-radius: 18px; }
   .hero__ctas .btn { flex: 1 1 auto; text-align: center; }
-  .samples__price.hl::before { bottom: -12px; height: 9px; clip-path: polygon(0 40%, 100% 0, 100% 70%, 0 100%); }
+  /* campioni: su mobile la riga gialla sta sotto al prezzo, non dietro le cifre */
+  .samples__price.hl { display: flex; background: none; padding: 0 0 14px; position: relative; }
+  .samples__price.hl::before { display: block; bottom: 0; height: 9px; left: -6px; right: -6px; clip-path: polygon(0 40%, 100% 0, 100% 70%, 0 100%); }
   .pill { font-size: 13.5px; padding: 10px 14px; }
   /* i tre numeri restano su una riga sola */
   .stats { flex-wrap: nowrap; gap: 8px; margin-top: 24px; }

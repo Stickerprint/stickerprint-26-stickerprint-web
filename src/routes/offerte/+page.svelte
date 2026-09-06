@@ -97,7 +97,7 @@
 				</label>
 				{#if error}<p class="error" style="margin-top:10px">{error}</p>{/if}
 			</div>
-			<div class="offer__cta"><button type="button" class="btn btn--green btn--xl" onclick={() => fileInput?.click()}>{promo.cta}</button></div>
+			{#if !file}<div class="offer__cta"><button type="button" class="btn btn--green btn--xl" onclick={() => fileInput?.click()}>{promo.cta}</button></div>{/if}
 			</div>
 			{#if file && engine}
 				<!-- anteprima e scelta della sagoma: qui, a destra, su fondo blu -->
