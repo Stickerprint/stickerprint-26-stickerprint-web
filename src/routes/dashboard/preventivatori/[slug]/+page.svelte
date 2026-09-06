@@ -189,6 +189,8 @@
 			<label>Credito Stickerprint (0,02 = 2% del netto, livello Creator)<input type="number" step="0.01" min="0" bind:value={cfg.creditRate} /></label>
 			<label>Misura minima di questo prodotto (mm)<input type="number" min="1" bind:value={cfg.size.minMm} /></label>
 			<label>Misura massima di questo prodotto (mm)<input type="number" min="1" bind:value={cfg.size.maxMm} /></label>
+			<label>Misura di partenza selezionata (mm)<input type="number" min="1" bind:value={cfg.size.defaultMm} /></label>
+			<label>Minimo per il sagomato (mm, vuoto = come il minimo)<input type="number" min="1" bind:value={cfg.size.minMmDiecut} /></label>
 		</div>
 	</div>
 

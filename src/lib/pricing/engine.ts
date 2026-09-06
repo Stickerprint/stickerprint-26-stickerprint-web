@@ -41,7 +41,7 @@ export interface EngineConfig {
 	priceRange: RangeStep[]; // per quantità
 	quantities: number[]; // fasce mostrate al cliente
 	recommendedQty: number;
-	size: { minMm: number; maxMm: number };
+	size: { minMm: number; maxMm: number; defaultMm?: number; minMmDiecut?: number }; // defaultMm: misura di partenza; minMmDiecut: minimo per il sagomato
 	shapes: ShapeOption[]; // ogni sagoma ha le sue misure proposte (larghezze in mm)
 	materials: MaterialOption[];
 	finishes: FinishOption[];
@@ -117,7 +117,7 @@ function base(over: Partial<EngineConfig> = {}): EngineConfig {
 		priceRange: clone(PRICE_RANGE),
 		quantities: [50, 100, 200, 300, 500, 1000, 2000, 3000, 5000],
 		recommendedQty: 500,
-		size: { minMm: 10, maxMm: 500 },
+		size: { minMm: 10, maxMm: 500, defaultMm: 50 },
 		shapes: clone(ALL_SHAPES),
 		materials: clone(ALL_MATERIALS),
 		finishes: clone(ALL_FINISHES),
@@ -133,6 +133,7 @@ function withFinishes(ids: string[]): FinishOption[] {
 }
 
 const QTY_STD = [15, 50, 100, 200, 300, 500, 1000, 2000, 3000, 5000];
+const QTY_RESIN = [50, 100, 200, 300, 500, 1000, 2000, 3000, 5000]; // resinati: minimo 50 pezzi
 const QTY_SMALL = [15, 50, 100, 200, 300, 500, 1000, 2000, 3000];
 const MAT_STICKER = ['bianco', 'olografico', 'glitterato', 'trasparente', 'argento', 'oro'];
 
@@ -155,8 +156,8 @@ export const DEFAULT_ENGINES: Record<string, EngineConfig> = {
 		materials: withMaterials(['bianco', 'super', 'trasparente', 'argento', 'oro']),
 		finishes: withFinishes([]),
 		shapes: stdShapes(RES_IMGS, [25, 50, 80, 100]),
-		quantities: QTY_STD,
-		size: { minMm: 10, maxMm: 200 }
+		quantities: QTY_RESIN,
+		size: { minMm: 10, maxMm: 200, defaultMm: 25, minMmDiecut: 40 }
 	}),
 	vetrofanie: base({
 		materials: withMaterials(['trasparente']),

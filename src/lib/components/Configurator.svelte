@@ -26,7 +26,6 @@
 	const FINISHES = $derived(cfg.finishes.filter((f) => f.visible));
 	const showFinish = $derived(showFinishStep(cfg));
 	const showMaterials = $derived(showMaterialStep(cfg));
-	const MIN_MM = $derived(cfg.size.minMm);
 	const MAX_MM = $derived(cfg.size.maxMm);
 
 	// passi visibili, numerati in ordine
@@ -38,17 +37,23 @@
 	const stepNo = (id: string) => steps.indexOf(id) + 1;
 
 	let forma = $state('sagomato');
+	// sul sagomato puo' valere un minimo piu' alto (resinati: 40 mm)
+	const MIN_MM = $derived(forma === 'sagomato' ? Math.max(cfg.size.minMm, cfg.size.minMmDiecut ?? 0) : cfg.size.minMm);
 	let materiale = $state('bianco');
 	let finitura = $state('lucida');
-	let w = $state(50);
-	let h = $state(50);
+	// svelte-ignore state_referenced_locally
+	let w = $state(cfg.size.defaultMm ?? 50);
+	// svelte-ignore state_referenced_locally
+	let h = $state(cfg.size.defaultMm ?? 50);
 	let fileRatio = $state<number | null>(null);
 	let cutRatio = $state<number | null>(null);
 	let showCut = $state(true);
 	let sizeKey = '';
 	let sizeLocked = false;   // misura fissata dall'offerta: il file non la ricalcola
 	let promo = $state<{ id: string; price: number; qty: number; w: number; h: number } | null>(null);
-	let qty = $state(500);
+	// si parte sempre dalla quantita' piu' bassa: il prezzo d'ingresso non deve spaventare
+	// svelte-ignore state_referenced_locally
+	let qty = $state(cfg.quantities[0] ?? 15);
 	let step = $state('forma');
 	let vatIncluded = $state(true);
 	let file = $state<File | null>(null);
@@ -76,7 +81,7 @@
 		if (!SHAPES.some((s) => s.id === forma)) forma = SHAPES[0]?.id ?? 'sagomato';
 		if (!MATERIALS.some((m) => m.id === materiale)) materiale = MATERIALS[0]?.id ?? 'bianco';
 		if (!FINISHES.some((f) => f.id === finitura)) finitura = FINISHES.find((f) => f.laminate)?.id ?? FINISHES[0]?.id ?? 'nessuna';
-		if (!custom && !cfg.quantities.includes(qty)) qty = cfg.quantities.includes(cfg.recommendedQty) ? cfg.recommendedQty : cfg.quantities[0];
+		if (!custom && !cfg.quantities.includes(qty)) qty = cfg.quantities[0];
 		if (!steps.includes(step)) step = steps[0];
 	});
 
