@@ -3,6 +3,7 @@
 	import ReviewsCarousel from '$lib/components/ReviewsCarousel.svelte';
 	import SamplesBlock from '$lib/components/SamplesBlock.svelte';
 	import FinalCta from '$lib/components/FinalCta.svelte';
+	import CompareBlock from '$lib/components/CompareBlock.svelte';
 
 	let { data } = $props();
 
@@ -148,6 +149,9 @@
 </section>
 
 <!-- CREDITO -->
+<!-- PERCHE' STICKERPRINT -->
+<CompareBlock />
+
 <section class="section container">
 	<div class="credit">
 		<div class="credit__visual"><img src="/images/credit-card.png" alt="Portafoglio Credito Stickerprint" width="492" height="423" loading="lazy" /></div>
