@@ -129,6 +129,7 @@ body { overflow-x: clip; }
 .btn--green { background: var(--green); color: var(--ink); }
 .btn--periwinkle { background: var(--periwinkle); color: var(--ink); }
 .btn--pink { background: var(--pink); color: #fff; }
+.btn--purple { background: #7c4dff; color: #fff; }
 .btn--white { background: #fff; color: var(--ink); }
 .btn--ghost { background: transparent; color: var(--ink); border: 2px solid var(--ink); }
 .btn--lg { padding: 17px 34px; font-size: 18px; }
