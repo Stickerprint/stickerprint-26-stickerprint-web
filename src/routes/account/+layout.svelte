@@ -23,6 +23,8 @@
 		{ href: '/account/recensioni', label: 'Recensioni', icon: 'M12 3l2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.3 6.4 20.2l1.1-6.2L3 9.6l6.2-.9z', count: data.counts.toReview }
 	]);
 	const active = (it: { href: string; exact?: boolean }) => (it.exact ? path === it.href : path.startsWith(it.href));
+	let navOpen = $state(false);
+	$effect(() => { path; navOpen = false; });   // cambiando pagina il menu si richiude
 
 	// foto profilo: caricata nel bucket "avatars" nella cartella dell'utente
 	let avatarInput = $state<HTMLInputElement | undefined>();
@@ -46,7 +48,7 @@
 </script>
 
 <div class="acc">
-	<aside class="acc__side">
+	<aside class="acc__side" class:is-open={navOpen}>
 		<div class="acc__who">
 			<div class="acc__avatar">
 				{#if data.profile.avatar}<img src={data.profile.avatar} alt="" />{:else}<span class="avatar" style="width:52px;height:52px;font-size:16px">{initials}</span>{/if}
@@ -62,6 +64,11 @@
 			</div>
 			{#if avatarMsg}<small style="grid-column:1/-1;color:#ffb3ad">{avatarMsg}</small>{/if}
 		</div>
+		<!-- da mobile il menu si apre e si chiude da qui -->
+		<button type="button" class="acc__toggle" aria-expanded={navOpen} onclick={() => (navOpen = !navOpen)}>
+			<span>{items.find((i) => active(i))?.label ?? 'Area personale'}</span>
+			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+		</button>
 		<nav class="acc__nav" aria-label="Area personale">
 			{#each items as it (it.href)}
 				<a href={it.href} class:is-active={active(it)}>

@@ -10,15 +10,18 @@
 	type Reel = { brand: string; logo: string; url?: string; caso?: string };
 	const REELS: Reel[] = [1, 2, 3, 4, 5, 6, 7].map((n) => ({ brand: `Cliente ${n}`, logo: `/images/aziende/logo/${n}.png` }));
 	const ytId = (u: string) => u.match(/(?:v=|youtu\.be\/|shorts\/|embed\/)([\w-]{6,})/)?.[1] ?? u;
-	const VISIBILI = 4;
 	let start = $state(0);
 	let paused = $state(false);
-	const shown = $derived(Array.from({ length: Math.min(VISIBILI, REELS.length) }, (_, i) => REELS[(start + i) % REELS.length]));
+	const reel = $derived(REELS[start]);
 	const next = () => (start = (start + 1) % REELS.length);
 	const prev = () => (start = (start - 1 + REELS.length) % REELS.length);
+	// swipe a sinistra o a destra per sfogliare
+	let touchX = 0;
+	const tStart = (e: TouchEvent) => { touchX = e.touches[0].clientX; paused = true; };
+	const tEnd = (e: TouchEvent) => { const dx = e.changedTouches[0].clientX - touchX; if (dx < -40) next(); else if (dx > 40) prev(); paused = false; };
 	onMount(() => {
-		if (REELS.length <= VISIBILI) return;
-		const t = setInterval(() => { if (!paused) next(); }, 4500);
+		if (REELS.length <= 1) return;
+		const t = setInterval(() => { if (!paused) next(); }, 7000);
 		return () => clearInterval(t);
 	});
 	let sending = $state(false);
@@ -33,15 +36,15 @@
 
 <section class="container hero2">
 	<div>
-		<h1>Produzioni importanti.<br /><span class="hl hl--yellow">Nessuna improvvisazione.</span></h1>
+		<h1 class="hero2__big"><span class="hl hl--yellow">Nessuna improvvisazione.</span></h1>
 		<p class="lead">Produzioni strutturate, grandi volumi, o richieste speciali. Quando il configuratore non basta, entriamo in gioco noi.</p>
 		<div class="pills">
 			<div class="pills__row"><span class="pill pill--blue">Project Manager dedicato</span><span class="pill pill--yellow">Tutto sotto controllo</span></div>
 			<div class="pills__row"><span class="pill pill--green">Preventivi su misura</span></div>
 		</div>
 		<div class="hero2__cta">
-			<a class="btn btn--green btn--lg" href="#contatto">Parla con noi</a>
-			<a class="btn btn--ghost btn--lg" href="#processo">Vedi come lavoriamo</a>
+			<a class="btn btn--blue btn--lg" href="#contatto">Parla con noi</a>
+			<a class="btn btn--yellow btn--lg" href="#processo">Vedi come lavoriamo</a>
 		</div>
 	</div>
 	<img class="photo" src="/images/aziende/hero.webp" alt="Produzione Stickerprint per aziende" />
@@ -49,27 +52,25 @@
 
 <!-- subito sotto la testata: chi ci ha scelto e i reel dei progetti -->
 <section class="section container center">
-	<h2>Produzioni vere. <span class="hl hl--blue">Non mockup.</span></h2>
+	<h2>Produzioni vere.<br /><span class="hl hl--blue">Non mockup.</span></h2>
 	<p class="lead" style="margin-top:12px;max-width:720px;margin-inline:auto">Brand, agenzie e team che ci hanno scelto per progetti strutturati e produzioni che non ammettono improvvisazioni.</p>
-	<div class="reels-wrap" role="region" aria-label="Reel dei clienti" onmouseenter={() => (paused = true)} onmouseleave={() => (paused = false)}>
-		{#if REELS.length > VISIBILI}
-			<button type="button" class="reels__arrow reels__arrow--prev" onclick={prev} aria-label="Reel precedenti">‹</button>
-			<button type="button" class="reels__arrow reels__arrow--next" onclick={next} aria-label="Reel successivi">›</button>
+	<div class="reels-wrap reels-wrap--one" role="region" aria-label="Reel dei clienti" onmouseenter={() => (paused = true)} onmouseleave={() => (paused = false)} ontouchstart={tStart} ontouchend={tEnd}>
+		{#if REELS.length > 1}
+			<button type="button" class="reels__arrow reels__arrow--prev" onclick={prev} aria-label="Reel precedente">‹</button>
+			<button type="button" class="reels__arrow reels__arrow--next" onclick={next} aria-label="Reel successivo">›</button>
 		{/if}
-		<div class="reels">
-			{#each shown as r (r.logo)}
-				<article class="reel-card">
-					<div class="reel-card__brand"><img src={r.logo} alt={r.brand} loading="lazy" /></div>
-					{#if r.url}
-						<iframe class="reel" src="https://www.youtube.com/embed/{ytId(r.url)}" title="Reel {r.brand}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe>
-					{:else}
-						<div class="reel reel--soon"><span>▶</span><small>Reel in arrivo</small></div>
-					{/if}
-					{#if r.caso}<p class="reel-card__caso">{r.caso}</p>{/if}
-				</article>
-			{/each}
-		</div>
-		{#if REELS.length > VISIBILI}
+		{#key start}
+			<article class="reel-card reel-card--big">
+				<div class="reel-card__brand"><img src={reel.logo} alt={reel.brand} loading="lazy" /></div>
+				{#if reel.url}
+					<iframe class="reel" src="https://www.youtube.com/embed/{ytId(reel.url)}" title="Reel {reel.brand}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe>
+				{:else}
+					<div class="reel reel--soon"><span>▶</span><small>Reel in arrivo</small></div>
+				{/if}
+				{#if reel.caso}<p class="reel-card__caso">{reel.caso}</p>{/if}
+			</article>
+		{/key}
+		{#if REELS.length > 1}
 			<div class="reels__dots" aria-hidden="true">{#each REELS as _, i (i)}<i class:is-on={i === start}></i>{/each}</div>
 		{/if}
 	</div>
@@ -78,7 +79,7 @@
 <section class="section container">
 	<div class="split2">
 		<div>
-			<h2>Quando ha senso <span class="hl hl--green">contattarci.</span></h2>
+			<h2 class="h2-big">Quando ha senso<br /><span class="hl hl--green">contattarci.</span></h2>
 			<p class="lead">Qui seguiamo progetti e produzioni che richiedono attenzione, esperienza e confronto. Perfetto se:</p>
 			<ul class="checks">
 				<li><span class="ck">✓</span>Hai grosse produzioni</li>
@@ -96,7 +97,7 @@
 	<div class="split2">
 		<img src="/images/aziende/bus2.webp" alt="Il processo di produzione Stickerprint" loading="lazy" />
 		<div>
-			<h2>Un processo chiaro. <span class="hl hl--yellow">Senza sorprese.</span></h2>
+			<h2 class="h2-big">Un processo chiaro.<br /><span class="hl hl--yellow">Senza sorprese.</span></h2>
 			<p class="lead">Quando serve, ci sediamo, guardiamo il progetto e costruiamo la soluzione migliore.</p>
 			<ul class="checks">
 				<li><span class="ck">✓</span>Analisi del progetto e dei file</li>
@@ -113,7 +114,7 @@
 <section class="section container" id="contatto">
 	<div class="split2">
 		<div>
-			<h2>Raccontaci il progetto. <span class="hl hl--green">Al resto pensiamo noi.</span></h2>
+			<h2 class="h2-big">Raccontaci il progetto.<br /><span class="hl hl--green">Al resto pensiamo noi.</span></h2>
 			<p class="lead">Che siano 4000 o 400.000 pezzi, partiamo sempre da una cosa: capire cosa serve davvero. Ti rispondiamo con una proposta chiara, realistica e su misura.</p>
 			<ul class="checks">
 				<li><span class="ck">✓</span>Volumi importanti o produzioni programmate</li>
@@ -122,7 +123,7 @@
 				<li><span class="ck">✓</span>Tempi stretti e scadenze da rispettare</li>
 				<li><span class="ck">✓</span>Dubbi tecnici? Li risolviamo prima di stampare</li>
 			</ul>
-			<p class="stat-big" style="margin-top:26px">+580 <span style="font-size:.5em;color:var(--ink)">aziende servite</span></p>
+			<p class="stat-big" style="margin-top:26px"><mark>+580</mark> <span>aziende servite</span></p>
 			<div class="hero__stars" style="margin-top:10px"><span class="stars">★★★★★</span> {avg} su 5 · recensioni verificate</div>
 		</div>
 		<div class="card" style="padding:28px">

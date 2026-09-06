@@ -102,11 +102,28 @@
 
 		<div class="header__right">
 			{#if user}
-				<a class="nav" href="/account" style="text-decoration:none" title="Il tuo account">
-					<span class="avatar">{initials}</span>
-				</a>
+				<!-- passando col mouse sull'iniziale (o sulla foto) si apre il menu dell'area personale -->
+				<div class="nav__item has-menu header__user">
+					<a class="nav" href="/account" style="text-decoration:none" title="Il tuo account" aria-haspopup="true">
+						<span class="avatar">{initials}</span>
+					</a>
+					<div class="dropdown dropdown--right dropdown--user">
+						<a class="dropdown__link" href="/account">Panoramica</a>
+						<a class="dropdown__link" href="/account/ordini">I miei ordini</a>
+						<a class="dropdown__link" href="/account/credito">Credito Stickerprint</a>
+						<a class="dropdown__link" href="/account/fatture">Fatture</a>
+						<a class="dropdown__link" href="/account/dati">Dati e indirizzi</a>
+						<a class="dropdown__link" href="/account/pagamenti">Pagamenti</a>
+						<a class="dropdown__link" href="/account/recensioni">Recensioni</a>
+						<form method="POST" action="/logout"><button class="dropdown__link dropdown__link--out" type="submit">Esci dall'account</button></form>
+					</div>
+				</div>
 			{:else}
-				<a class="nav" href="/login" style="text-decoration:none" title="Accedi">
+				<div class="header__auth">
+					<a class="btn btn--white btn--sm" href="/login">Accedi</a>
+					<a class="btn btn--yellow btn--sm" href="/signup">Registrati</a>
+				</div>
+				<a class="nav header__auth-icon" href="/login" style="text-decoration:none" title="Accedi">
 					<span class="avatar" aria-hidden="true">
 						<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="12" cy="8" r="4" /><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7" /></svg>
 					</span>
@@ -162,6 +179,15 @@
 		font-family: var(--font-display); font-weight: 800; font-size: 15px; color: #4b5563; text-decoration: none; white-space: nowrap;
 	}
 	.dropdown__item:hover { background: #f3f4f6; color: var(--ink); }
+	.dropdown--right { left: auto; right: 0; }
+	.dropdown--user { min-width: 240px; padding: 8px; }
+	.dropdown__link { display: block; width: 100%; text-align: left; padding: 10px 12px; border-radius: 8px; color: var(--ink); text-decoration: none; font-family: var(--font-display); font-weight: 800; font-size: 15px; background: none; border: 0; cursor: pointer; }
+	.dropdown__link:hover { background: #f3f4f6; }
+	.dropdown__link--out { color: #b3261e; border-top: 1px solid var(--line); border-radius: 0; margin-top: 4px; padding-top: 12px; }
+	.header__auth { display: flex; gap: 8px; align-items: center; }
+	.header__auth .btn--sm { padding: 9px 14px; font-size: 13.5px; }
+	.header__auth-icon { display: none; }
+	@media (max-width: 900px) { .header__auth { display: none; } .header__auth-icon { display: inline-flex; } .header__user .dropdown { display: none; } }
 	.dropdown__item img { width: 52px; height: 52px; object-fit: contain; flex: 0 0 auto; }
 	.mobile-menu__group { font-family: var(--font-display); font-weight: 800; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--blue); margin: 14px 0 6px; }
 	.mobile-menu__sub { display: flex; align-items: center; gap: 12px; }
