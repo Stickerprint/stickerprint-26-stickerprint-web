@@ -42,7 +42,7 @@
 			{#each rows as r (r.label)}
 				<div class="cmp2__cell cmp2__us">
 					<span class="cmp2__ok" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 12.5l4 4 8-9"/></svg></span>
-					<span><b class="cmp2__mlabel">{r.label}:</b> {r.us}</span>
+					<span><b class="cmp2__mlabel">{r.label.replace("?", "")}:</b> {r.us}</span>
 				</div>
 			{/each}
 		</div>
@@ -52,7 +52,7 @@
 			{#each rows as r (r.label)}
 				<div class="cmp2__cell cmp2__them">
 					<span class="cmp2__no" aria-hidden="true"></span>
-					<span><b class="cmp2__mlabel">{r.label}:</b> {r.them}</span>
+					<span><b class="cmp2__mlabel">{r.label.replace("?", "")}:</b> {r.them}</span>
 				</div>
 			{/each}
 		</div>
