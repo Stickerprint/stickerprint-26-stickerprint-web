@@ -2,7 +2,6 @@
 .hero2 { display: grid; grid-template-columns: 1fr 1.15fr; gap: clamp(28px, 5vw, 72px); align-items: center; padding: clamp(24px, 4vw, 56px) 0 8px; }
 .hero2 h1 { font-size: clamp(30px, 3.6vw, 46px); line-height: 1.05; letter-spacing: -0.03em; }
 .hero2 h1.hero2__big { font-size: clamp(40px, 5.6vw, 72px); }   /* come il titolo della home */
-.hero2__cta .btn { flex: 1 1 0; text-align: center; white-space: nowrap; }
 .split2 h2.h2-big { font-size: clamp(30px, 3.8vw, 50px); }
 .stat-big mark { background: var(--green); color: var(--navy); padding: 2px 12px; border-radius: 8px; }
 .stat-big span { font-size: .55em; color: var(--ink); }
@@ -62,11 +61,9 @@
 
 /* Reel video (aziende) */
 .reels-wrap { position: relative; margin-top: 34px; }
-/* un reel solo, grande: scorre ogni 7 secondi o con lo swipe */
-.reels-wrap--one { max-width: 480px; margin-inline: auto; touch-action: pan-y; }
-.reel-card--big { max-width: 480px; margin: 0 auto; }
-.reel-card--big .reel { max-height: 82vh; }
-.reel-card--big .reel-card__brand { height: 56px; } .reel-card--big .reel-card__brand img { max-height: 50px; max-width: 180px; }
+/* desktop: quattro reel come prima; mobile: un reel solo, grande, ogni 7 secondi o con lo swipe */
+.reels--mobile { display: none; }
+.reels-wrap { touch-action: pan-y; }
 .reels { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; }
 .reel-card { display: grid; gap: 10px; }
 .reel-card__brand { height: 44px; display: grid; place-items: center; }
@@ -82,11 +79,13 @@
 .hero2 img.photo, .split2 img.photo { aspect-ratio: 4 / 3; object-fit: cover; }
 .hero2--about h1 { font-size: clamp(30px, 3.8vw, 48px); }
 .hero2--about .lead { font-size: 16px; }
-@media (max-width: 800px) { .reels { grid-template-columns: repeat(2, 1fr); } .reels__arrow--prev { left: 0; } .reels__arrow--next { right: 0; } .reels-wrap--one { max-width: none; } .reel-card--big { max-width: none; } .reel-card--big .reel { max-height: none; } }
+@media (max-width: 800px) { .reels--desktop { display: none; } .reels--mobile { display: block; } .reels__arrow--prev { left: 0; } .reels__arrow--next { right: 0; } .reel-card--big .reel-card__brand { height: 56px; } .reel-card--big .reel-card__brand img { max-height: 50px; max-width: 180px; } }
 @media (max-width: 600px) {
 	.pills__row { flex-wrap: nowrap; } .pills__row .pill { flex: 1 1 0; justify-content: center; font-size: 12.5px; padding: 10px 8px; white-space: nowrap; }
 	.pills__row:last-child .pill { flex: 0 1 auto; }
-	.hero2__cta { flex-wrap: nowrap; gap: 8px; } .hero2__cta .btn { padding: 14px 8px; font-size: 13px; }
+	.hero2__cta { flex-wrap: nowrap; gap: 8px; } .hero2__cta .btn { flex: 1 1 0; text-align: center; white-space: nowrap; padding: 14px 8px; font-size: 13px; }
+	/* da mobile i due bottoni cambiano colore: blu e giallo */
+	.hero2__cta-a { background: var(--blue); color: #fff; } .hero2__cta-b { background: var(--yellow); color: var(--ink); border-color: var(--yellow); }
 	.stat-big { font-size: 40px; } .stat-big span { font-size: .6em; }
 }
 

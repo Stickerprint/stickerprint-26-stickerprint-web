@@ -10,9 +10,11 @@
 	type Reel = { brand: string; logo: string; url?: string; caso?: string };
 	const REELS: Reel[] = [1, 2, 3, 4, 5, 6, 7].map((n) => ({ brand: `Cliente ${n}`, logo: `/images/aziende/logo/${n}.png` }));
 	const ytId = (u: string) => u.match(/(?:v=|youtu\.be\/|shorts\/|embed\/)([\w-]{6,})/)?.[1] ?? u;
+	const VISIBILI = 4;
 	let start = $state(0);
 	let paused = $state(false);
 	const reel = $derived(REELS[start]);
+	const shown = $derived(Array.from({ length: Math.min(VISIBILI, REELS.length) }, (_, i) => REELS[(start + i) % REELS.length]));
 	const next = () => (start = (start + 1) % REELS.length);
 	const prev = () => (start = (start - 1 + REELS.length) % REELS.length);
 	// swipe a sinistra o a destra per sfogliare
@@ -21,8 +23,12 @@
 	const tEnd = (e: TouchEvent) => { const dx = e.changedTouches[0].clientX - touchX; if (dx < -40) next(); else if (dx > 40) prev(); paused = false; };
 	onMount(() => {
 		if (REELS.length <= 1) return;
-		const t = setInterval(() => { if (!paused) next(); }, 7000);
-		return () => clearInterval(t);
+		// desktop: 4 reel affiancati che scorrono ogni 4,5 s; mobile: un reel solo ogni 7 s
+		const mobile = () => window.matchMedia('(max-width: 800px)').matches;
+		let t = setInterval(() => { if (!paused) next(); }, mobile() ? 7000 : 4500);
+		const onResize = () => { clearInterval(t); t = setInterval(() => { if (!paused) next(); }, mobile() ? 7000 : 4500); };
+		window.addEventListener('resize', onResize);
+		return () => { clearInterval(t); window.removeEventListener('resize', onResize); };
 	});
 	let sending = $state(false);
 	const gallery = ['1.jpg', '2.webp', '3.jpg', '4.jpg', '5.jpg', '6.jpg', '7.jpg', '8.jpg', '9.jpg'].map((g) => `/images/aziende/gallery/${g}`);
@@ -43,8 +49,8 @@
 			<div class="pills__row"><span class="pill pill--green">Preventivi su misura</span></div>
 		</div>
 		<div class="hero2__cta">
-			<a class="btn btn--blue btn--lg" href="#contatto">Parla con noi</a>
-			<a class="btn btn--yellow btn--lg" href="#processo">Vedi come lavoriamo</a>
+			<a class="btn btn--green btn--lg hero2__cta-a" href="#contatto">Parla con noi</a>
+			<a class="btn btn--ghost btn--lg hero2__cta-b" href="#processo">Vedi come lavoriamo</a>
 		</div>
 	</div>
 	<img class="photo" src="/images/aziende/hero.webp" alt="Produzione Stickerprint per aziende" />
@@ -54,22 +60,39 @@
 <section class="section container center">
 	<h2>Produzioni vere.<br /><span class="hl hl--blue">Non mockup.</span></h2>
 	<p class="lead" style="margin-top:12px;max-width:720px;margin-inline:auto">Brand, agenzie e team che ci hanno scelto per progetti strutturati e produzioni che non ammettono improvvisazioni.</p>
-	<div class="reels-wrap reels-wrap--one" role="region" aria-label="Reel dei clienti" onmouseenter={() => (paused = true)} onmouseleave={() => (paused = false)} ontouchstart={tStart} ontouchend={tEnd}>
+	<div class="reels-wrap" role="region" aria-label="Reel dei clienti" onmouseenter={() => (paused = true)} onmouseleave={() => (paused = false)} ontouchstart={tStart} ontouchend={tEnd}>
 		{#if REELS.length > 1}
 			<button type="button" class="reels__arrow reels__arrow--prev" onclick={prev} aria-label="Reel precedente">‹</button>
 			<button type="button" class="reels__arrow reels__arrow--next" onclick={next} aria-label="Reel successivo">›</button>
 		{/if}
-		{#key start}
-			<article class="reel-card reel-card--big">
-				<div class="reel-card__brand"><img src={reel.logo} alt={reel.brand} loading="lazy" /></div>
-				{#if reel.url}
-					<iframe class="reel" src="https://www.youtube.com/embed/{ytId(reel.url)}" title="Reel {reel.brand}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe>
-				{:else}
-					<div class="reel reel--soon"><span>▶</span><small>Reel in arrivo</small></div>
-				{/if}
-				{#if reel.caso}<p class="reel-card__caso">{reel.caso}</p>{/if}
-			</article>
-		{/key}
+		<!-- desktop: quattro reel affiancati, come prima -->
+		<div class="reels reels--desktop">
+			{#each shown as r (r.logo)}
+				<article class="reel-card">
+					<div class="reel-card__brand"><img src={r.logo} alt={r.brand} loading="lazy" /></div>
+					{#if r.url}
+						<iframe class="reel" src="https://www.youtube.com/embed/{ytId(r.url)}" title="Reel {r.brand}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe>
+					{:else}
+						<div class="reel reel--soon"><span>▶</span><small>Reel in arrivo</small></div>
+					{/if}
+					{#if r.caso}<p class="reel-card__caso">{r.caso}</p>{/if}
+				</article>
+			{/each}
+		</div>
+		<!-- mobile: un reel solo, grande, con lo swipe -->
+		<div class="reels--mobile">
+			{#key start}
+				<article class="reel-card reel-card--big">
+					<div class="reel-card__brand"><img src={reel.logo} alt={reel.brand} loading="lazy" /></div>
+					{#if reel.url}
+						<iframe class="reel" src="https://www.youtube.com/embed/{ytId(reel.url)}" title="Reel {reel.brand}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe>
+					{:else}
+						<div class="reel reel--soon"><span>▶</span><small>Reel in arrivo</small></div>
+					{/if}
+					{#if reel.caso}<p class="reel-card__caso">{reel.caso}</p>{/if}
+				</article>
+			{/key}
+		</div>
 		{#if REELS.length > 1}
 			<div class="reels__dots" aria-hidden="true">{#each REELS as _, i (i)}<i class:is-on={i === start}></i>{/each}</div>
 		{/if}
