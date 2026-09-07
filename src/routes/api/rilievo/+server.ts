@@ -23,12 +23,14 @@ Come ragiona un grafico:
 - Il CORPO PRINCIPALE di un personaggio o di una figura grande resta opaco (e' la base su cui i dettagli in rilievo risaltano), a meno che l'intero disegno sia un logo/lettering: allora le lettere vanno in rilievo per intero e i loro fori restano opachi.
 - Non mettere in rilievo un filo di contorno attorno alle lettere se le lettere stesse sono in rilievo: il rilievo segue la lettera.
 - Le zone segnate come "tratto sottile" sono linee: il contorno nero di un personaggio o di un oggetto resta opaco (e' solo un bordo); vanno invece in rilievo le linee che SONO il disegno (illustrazione a linee, tatuaggio, ghirigori, ornamenti, venature).
-- Meglio poche zone giuste che tante zone a caso: il rilievo deve avere un senso visivo.
+- Se un elemento e' diviso in piu' zone numerate (un teschio tagliato da linee nere, una lettera in due colori), scegli TUTTE le sue zone: mezzo elemento in rilievo e' un errore.
+- Le zone G1, G2… sono GRUPPI di pezzi piccoli dello stesso colore (scritte piccole, pallini, stelline, nocche, foglioline, dettagli minuti). Scegliendo un gruppo alzi tutti i suoi pezzi. Se il gruppo ha il colore dello sfondo (i fori delle lettere, gli spazi fra i dettagli) NON sceglierlo; se ha il colore delle scritte e dei dettagli, scegli il gruppo cosi' le scritte piccole e i dettagli sono in rilievo.
+- Meglio poche zone giuste che tante zone a caso: il rilievo deve avere un senso visivo. Ma ogni scritta e ogni dettaglio caratterizzante deve esserci.
 
 Rispondi SOLO con un oggetto JSON, senza altro testo:
-{"rilievo":[numeri delle zone], "motivo":"una frase in italiano che spiega la scelta"}`;
+{"rilievo":[numeri delle zone e sigle dei gruppi, es. 3, 7, "G2"], "motivo":"una frase in italiano che spiega la scelta"}`;
 
-type Zona = { id: number; colore: string; area: number; pos: string; sottile?: boolean; bordo?: boolean };
+type Zona = { id: number | string; colore: string; area: number; pos: string; sottile?: boolean; bordo?: boolean; pezzi?: number };
 
 function admin() {
 	const service = env.SUPABASE_SERVICE_ROLE_KEY;
@@ -36,7 +38,7 @@ function admin() {
 	return createClient(PUBLIC_SUPABASE_URL, service, { auth: { persistSession: false } });
 }
 
-function estraiJson(testo: string): { rilievo: number[]; motivo: string } | null {
+function estraiJson(testo: string): { rilievo: string[]; motivo: string } | null {
 	// il modello puo' avvolgere il JSON in un blocco ```json … ``` o aggiungere testo: si prende l'oggetto che contiene "rilievo"
 	const pulito = testo.replace(/```(?:json)?/gi, '');
 	const inizio = pulito.indexOf('{');
@@ -44,13 +46,13 @@ function estraiJson(testo: string): { rilievo: number[]; motivo: string } | null
 	if (inizio < 0 || fine <= inizio) return null;
 	try {
 		const o = JSON.parse(pulito.slice(inizio, fine + 1));
-		const rilievo = Array.isArray(o.rilievo) ? o.rilievo.map((n: unknown) => Number(n)).filter((n: number) => Number.isFinite(n)) : [];
+		const rilievo = Array.isArray(o.rilievo) ? o.rilievo.map((n: unknown) => String(n).trim().toUpperCase()).filter((n: string) => /^(G\d+|\d+)$/.test(n)) : [];
 		return { rilievo, motivo: String(o.motivo ?? '') };
 	} catch {
 		/* JSON sbagliato (una parentesi al posto di un'altra): si leggono i numeri dell'elenco e la frase */
 		const m = pulito.match(/"rilievo"\s*:\s*\[([^\]}]*)[\]}]/);
 		if (!m) return null;
-		const rilievo = m[1].split(/[^0-9]+/).filter(Boolean).map(Number).filter((n) => Number.isFinite(n));
+		const rilievo = (m[1].toUpperCase().match(/G\d+|\d+/g) ?? []);
 		const mm = pulito.match(/"motivo"\s*:\s*"([^"]*)"/);
 		return { rilievo, motivo: mm ? mm[1] : '' };
 	}
@@ -71,7 +73,7 @@ export const POST: RequestHandler = async ({ request }) => {
 	const b64 = (u: string) => u.replace(/^data:image\/\w+;base64,/, '');
 	const tipo = (u: string) => (/^data:image\/png/.test(u) ? 'image/png' : 'image/jpeg');
 	const lista = body.zone
-		.map((z) => `${z.id}: colore ${z.colore}, ${z.area}% dell'area, ${z.pos}${z.sottile ? ', tratto sottile' : ''}${z.bordo ? ', tocca il bordo esterno' : ''}`)
+		.map((z) => `${z.id}: colore ${z.colore}, ${z.area}% dell'area, ${z.pos}${z.pezzi ? `, gruppo di ${z.pezzi} pezzi piccoli` : ''}${z.sottile ? ', tratto sottile' : ''}${z.bordo ? ', tocca il bordo esterno' : ''}`)
 		.join('\n');
 
 	const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -109,7 +111,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		const blocchi = (out?.content ?? []).map((c) => `${c.type}:${(c.text ?? (c as { thinking?: string }).thinking ?? '').length}`).join(' ');
 		return json({ ok: false, motivo: 'risposta non leggibile', dettaglio: `stop=${out?.stop_reason ?? '?'} blocchi=[${blocchi}] testo=${testo.slice(0, 300)}` }, { status: 502 });
 	}
-	const valide = new Set(body.zone.map((z) => z.id));
+	const valide = new Set(body.zone.map((z) => String(z.id).toUpperCase()));
 	scelta.rilievo = scelta.rilievo.filter((n) => valide.has(n));
 	if (db) await db.from('rilievo_ai').upsert({ hash: body.hash, zone: scelta, modello: MODELLO });
 	return json({ ok: true, ...scelta });

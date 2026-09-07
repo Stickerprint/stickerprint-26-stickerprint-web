@@ -3418,48 +3418,48 @@ function rilievoHash(){
   const src=S.src||S.work.canvas; const c=document.createElement('canvas');c.width=48;c.height=48;
   const g=c.getContext('2d',{willReadFrequently:true});g.drawImage(src,0,0,48,48);const q=g.getImageData(0,0,48,48).data;
   let h1=2166136261,h2=0x9e3779b9;for(let i=0;i<q.length;i+=4){h1=Math.imul(h1^q[i],16777619);h2=Math.imul(h2^q[i+1]^(q[i+2]<<8)^(q[i+3]<<16),2246822519);}
-  return (h1>>>0).toString(16)+(h2>>>0).toString(16)+'-'+src.width+'x'+src.height+'-z2';}
+  return (h1>>>0).toString(16)+(h2>>>0).toString(16)+'-'+src.width+'x'+src.height+'-z3';}
 function rilievoAI(seg,d,w,h,inArt,artArea,bw,bh,fill,mmpx){
   const N=w*h, hash=rilievoHash();
   const q=new URLSearchParams(location.search);
   if(S.rilAI&&S.rilAI.hash===hash){
     if(S.rilAI.stato==='ok'&&S.rilAI.lab&&S.rilAI.lab.length===N){
-      const R=new Uint8Array(N);const ids=S.rilAI.ids;const lab=S.rilAI.lab;
-      for(let i=0;i<N;i++)if(inArt[i]&&ids.has(lab[i]))R[i]=1;
+      const R=new Uint8Array(N);const ids=S.rilAI.ids,gids=S.rilAI.gids,lab=S.rilAI.lab,zid=S.rilAI.zoneId,gof=S.rilAI.grpOf;
+      for(let i=0;i<N;i++){if(!inArt[i])continue;const l=lab[i];if(!l)continue;if((zid[l]&&ids.has(zid[l]))||(gof[l]&&gids.has(gof[l])))R[i]=1;}
       return R;}
     return null;   // in attesa, o fallita: valgono le regole di riserva
   }
-  /* ---- zone: regioni simili e adiacenti fuse insieme ---- */
+  const R0=Math.max(2,0.015*Math.min(bw,bh));
+  const dcol=(a,b)=>Math.abs(a[0]-b[0])+Math.abs(a[1]-b[1])+Math.abs(a[2]-b[2]);
+  /* ---- 1. regioni simili e adiacenti fuse insieme ---- */
   const K=seg.nl+1;
   const par=new Int32Array(K);for(let i=0;i<K;i++)par[i]=i;
   const find=a=>{while(par[a]!==a){par[a]=par[par[a]];a=par[a];}return a;};
   const uni=(a,b)=>{a=find(a);b=find(b);if(a!==b)par[b]=a;};
-  const mean=l=>{const a=seg.areas[l];return [seg.sums[l][0]/a,seg.sums[l][1]/a,seg.sums[l][2]/a];};
-  const dcol=(a,b)=>Math.abs(a[0]-b[0])+Math.abs(a[1]-b[1])+Math.abs(a[2]-b[2]);
-  const means=new Array(K);for(let l=1;l<K;l++)means[l]=mean(l);
-  const tryUni=(a,b)=>{if(!a||!b||a===b)return;if(dcol(means[a],means[b])<40)uni(a,b);};
+  const means=new Array(K);for(let l=1;l<K;l++){const a=seg.areas[l];means[l]=[seg.sums[l][0]/a,seg.sums[l][1]/a,seg.sums[l][2]/a];}
+  const tryUni=(a,b)=>{if(!a||!b||a===b)return;if(dcol(means[a],means[b])<30)uni(a,b);};
   for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=y*w+x,l=seg.lab[i];
     if(l){if(x<w-1)tryUni(l,seg.lab[i+1]);if(y<h-1)tryUni(l,seg.lab[i+w]);continue;}
     const ls=[];for(const o of [-1,1,-w,w,-2,2,-2*w,2*w]){const j=i+o;if(j<0||j>=N)continue;const m=seg.lab[j];if(m&&ls.indexOf(m)<0)ls.push(m);}
     for(let u=0;u<ls.length;u++)for(let v=u+1;v<ls.length;v++)tryUni(ls[u],ls[v]);}
-  /* etichette compatte + i pixel di bordo vanno alla zona piu' vicina */
   const root=new Int32Array(K);let n=0;const idOf=new Int32Array(K);
   for(let l=1;l<K;l++){const r=find(l);if(!idOf[r])idOf[r]=++n;root[l]=idOf[r];}
   let lab=new Int32Array(N);for(let i=0;i<N;i++)lab[i]=seg.lab[i]?root[seg.lab[i]]:0;
+  /* i pixel di bordo vanno alla zona piu' vicina */
   {const qq=new Int32Array(N);let qh=0,qt=0;for(let i=0;i<N;i++)if(lab[i])qq[qt++]=i;
    while(qh<qt){const i=qq[qh++];const v=lab[i];const x=i%w,y=(i/w)|0;
      if(x>0&&!lab[i-1]){lab[i-1]=v;qq[qt++]=i-1;}if(x<w-1&&!lab[i+1]){lab[i+1]=v;qq[qt++]=i+1;}
      if(y>0&&!lab[i-w]){lab[i-w]=v;qq[qt++]=i-w;}if(y<h-1&&!lab[i+w]){lab[i+w]=v;qq[qt++]=i+w;}}}
-  /* ogni zona si spacca in parte SOTTILE (linee, contorni: i tratti neri di un disegno sono
-     tutti collegati e formerebbero una zona sola grande quanto il disegno) e parte PIENA:
-     cosi' il contorno del personaggio e' una zona a se', separata dalle scritte e dai dettagli */
-  {const R0s=Math.max(2,0.015*Math.min(bw,bh)), r2=R0s*R0s;
-   const bd=new Uint8Array(N);for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=y*w+x;if(x===0||y===0||x===w-1||y===h-1||(x<w-1&&lab[i+1]!==lab[i])||(y<h-1&&lab[i+w]!==lab[i]))bd[i]=1;}
-   const dd=edt2d(bd,w,h);const thin=new Uint8Array(N);for(let i=0;i<N;i++)thin[i]=dd[i]<r2?1:0;
-   /* si spaccano solo le zone che sono in prevalenza linee (oltre il 60% di pixel sottili):
-      una campitura grande resta intera, senza una 'cornice' sottile lungo il suo bordo */
-   {const tot=new Float64Array(n+1),sot=new Float64Array(n+1);for(let i=0;i<N;i++){const l=lab[i];if(!l)continue;tot[l]++;if(thin[i])sot[l]++;}
-    for(let i=0;i<N;i++){const l=lab[i];if(l&&sot[l]<0.6*tot[l])thin[i]=0;}}
+  const colore=()=>{const A=new Float64Array(n+1),S0=new Float64Array(n+1),S1=new Float64Array(n+1),S2=new Float64Array(n+1);
+    for(let i=0,p=0;i<N;i++,p+=4){const l=lab[i];if(!l)continue;A[l]++;S0[l]+=d[p];S1[l]+=d[p+1];S2[l]+=d[p+2];}
+    const M=new Array(n+1);for(let l=1;l<=n;l++)M[l]=A[l]?[S0[l]/A[l],S1[l]/A[l],S2[l]/A[l]]:[0,0,0];return M;};
+  /* ---- 2. ogni zona di sole linee si spacca in parte sottile e parte piena ---- */
+  const r2=R0*R0;
+  const bordi=()=>{const bd=new Uint8Array(N);for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=y*w+x;if(x===0||y===0||x===w-1||y===h-1||(x<w-1&&lab[i+1]!==lab[i])||(y<h-1&&lab[i+w]!==lab[i]))bd[i]=1;}return bd;};
+  let thin;
+  {const dd=edt2d(bordi(),w,h);thin=new Uint8Array(N);for(let i=0;i<N;i++)thin[i]=dd[i]<r2?1:0;
+   const tot=new Float64Array(n+1),sot=new Float64Array(n+1);for(let i=0;i<N;i++){const l=lab[i];if(!l)continue;tot[l]++;if(thin[i])sot[l]++;}
+   for(let i=0;i<N;i++){const l=lab[i];if(l&&(sot[l]<0.6*tot[l]||tot[l]<0.03*artArea))thin[i]=0;}
    const lab2=new Int32Array(N);let n2=0;const st=[];
    for(let s0=0;s0<N;s0++){if(lab2[s0]||!lab[s0])continue;const L=lab[s0],T=thin[s0];n2++;lab2[s0]=n2;st.push(s0);
      while(st.length){const i=st.pop();const x=i%w,y=(i/w)|0;
@@ -3468,63 +3468,84 @@ function rilievoAI(seg,d,w,h,inArt,artArea,bw,bh,fill,mmpx){
        if(y>0&&!lab2[i-w]&&lab[i-w]===L&&thin[i-w]===T){lab2[i-w]=n2;st.push(i-w);}
        if(y<h-1&&!lab2[i+w]&&lab[i+w]===L&&thin[i+w]===T){lab2[i+w]=n2;st.push(i+w);}}}
    lab=lab2;n=n2;}
-  /* statistiche e contatti fra zone */
-  const stat=()=>{const A=new Float64Array(n+1),S0=new Float64Array(n+1),S1=new Float64Array(n+1),S2=new Float64Array(n+1),X=new Float64Array(n+1),Y=new Float64Array(n+1),out=new Uint8Array(n+1),art=new Float64Array(n+1);
-    for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=y*w+x,l=lab[i];if(!l)continue;const p=i*4;A[l]++;S0[l]+=d[p];S1[l]+=d[p+1];S2[l]+=d[p+2];X[l]+=x;Y[l]+=y;if(inArt[i])art[l]++;
-      if(inArt[i]&&((x>0&&!inArt[i-1])||(x<w-1&&!inArt[i+1])||(y>0&&!inArt[i-w])||(y<h-1&&!inArt[i+w])))out[l]=1;}
-    return {A,S0,S1,S2,X,Y,out,art};};
-  const contatti=()=>{const M=new Map();const add=(a,b)=>{if(a===b||!a||!b)return;const k=a<b?a*(n+1)+b:b*(n+1)+a;M.set(k,(M.get(k)||0)+1);};
-    for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=y*w+x;if(x<w-1)add(lab[i],lab[i+1]);if(y<h-1)add(lab[i],lab[i+w]);}return M;};
-  const fondi=(vittime)=>{const M=contatti();const best=new Int32Array(n+1),bn=new Float64Array(n+1);
-    for(const [k,c] of M){const a=Math.floor(k/(n+1)),b=k%(n+1);if(vittime.has(a)&&!vittime.has(b)&&c>bn[a]){bn[a]=c;best[a]=b;}if(vittime.has(b)&&!vittime.has(a)&&c>bn[b]){bn[b]=c;best[b]=a;}}
-    const map=new Int32Array(n+1);for(let l=1;l<=n;l++)map[l]=vittime.has(l)&&best[l]?best[l]:l;
-    for(let l=1;l<=n;l++){let t=map[l],g=0;while(map[t]!==t&&g++<50)t=map[t];map[l]=t;}
-    for(let i=0;i<N;i++)lab[i]=map[lab[i]];};
-  /* via le zone minuscole (sotto lo 0,05% del disegno): finiscono nella vicina con cui confinano di piu' */
-  let st=stat();{const v=new Set();for(let l=1;l<=n;l++)if(st.A[l]>0&&st.art[l]<0.0005*artArea)v.add(l);if(v.size)fondi(v);}
-  /* al massimo 60 zone: le piu' piccole si fondono nelle vicine */
-  st=stat();for(let giro=0;giro<8;giro++){const vive=[];for(let l=1;l<=n;l++)if(st.A[l]>0)vive.push(l);if(vive.length<=60)break;vive.sort((a,b)=>st.A[a]-st.A[b]);const v=new Set(vive.slice(0,vive.length-60));fondi(v);st=stat();}
-  /* ri-numerazione 1..n2 in ordine di area, solo zone dentro il disegno */
-  const vive=[];for(let l=1;l<=n;l++)if(st.A[l]>0&&st.art[l]>0)vive.push(l);vive.sort((a,b)=>st.A[b]-st.A[a]);
-  const nuovo=new Int32Array(n+1);vive.forEach((l,i)=>nuovo[l]=i+1);for(let i=0;i<N;i++)lab[i]=nuovo[lab[i]];
-  const n2=vive.length;
-  /* punto piu' interno di ogni zona (per scrivere il numero dentro) */
-  const bordoPx=new Uint8Array(N);for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=y*w+x;if(!lab[i]||(x<w-1&&lab[i+1]!==lab[i])||(y<h-1&&lab[i+w]!==lab[i])||x===0||y===0||x===w-1||y===h-1)bordoPx[i]=1;}
-  const dist=edt2d(bordoPx,w,h);const bestD=new Float64Array(n2+1).fill(-1),bestI=new Int32Array(n2+1);
-  for(let i=0;i<N;i++){const l=lab[i];if(!l)continue;if(dist[i]>bestD[l]){bestD[l]=dist[i];bestI[l]=i;}}
-  const R0=Math.max(2,0.015*Math.min(bw,bh));
-  const zone=[];const hex=v=>'#'+[0,1,2].map(k=>Math.round(v[k]).toString(16).padStart(2,'0')).join('');
-  for(const l of vive){const id=nuovo[l];const a=st.A[l];const cx=st.X[l]/a,cy=st.Y[l]/a;
-    const col=[st.S0[l]/a,st.S1[l]/a,st.S2[l]/a];
-    const rx=(cx-S.bbox.x*(w/S.mw))/Math.max(1,bw),ry=(cy-S.bbox.y*(h/S.mh))/Math.max(1,bh);
-    const pos=(ry<0.33?'in alto':ry>0.66?'in basso':'al centro')+' '+(rx<0.33?'a sinistra':rx>0.66?'a destra':'');
-    const areaPct=+((st.art[l]/artArea)*100).toFixed(1);
-    zone.push({id,colore:hex(col),area:areaPct,pos:pos.trim(),sottile:Math.sqrt(bestD[l])<R0&&areaPct<8,bordo:!!st.out[l]});}
-  /* ---- le due immagini per il modello ---- */
+  /* ---- 3. ponte sulle linee: due pezzi dello stesso colore separati solo da una linea
+     sottile (il teschio tagliato dai tratti neri) sono UN elemento ---- */
+  {const M=colore();const par2=new Int32Array(n+1);for(let i=0;i<=n;i++)par2[i]=i;
+   const f2=a=>{while(par2[a]!==a){par2[a]=par2[par2[a]];a=par2[a];}return a;};
+   const isThinZone=new Uint8Array(n+1);{const tot=new Float64Array(n+1),sot=new Float64Array(n+1);for(let i=0;i<N;i++){const l=lab[i];if(!l)continue;tot[l]++;if(thin[i])sot[l]++;}for(let l=1;l<=n;l++)if(tot[l]&&sot[l]>=0.6*tot[l])isThinZone[l]=1;}
+   const passo=Math.max(2,Math.round(R0*0.8));
+   for(let y=passo;y<h-passo;y++)for(let x=passo;x<w-passo;x++){const i=y*w+x,l=lab[i];if(!l||!isThinZone[l]||!thin[i])continue;
+     const a=lab[i-passo],b=lab[i+passo],c=lab[i-passo*w],e=lab[i+passo*w];
+     const cand=[a,b,c,e].filter(v=>v&&v!==l&&!isThinZone[v]);
+     for(let u=0;u<cand.length;u++)for(let v=u+1;v<cand.length;v++){const p1=f2(cand[u]),p2=f2(cand[v]);if(p1!==p2&&dcol(M[cand[u]],M[cand[v]])<30)par2[p2]=p1;}}
+   const map=new Int32Array(n+1);let n3=0;const id3=new Int32Array(n+1);
+   for(let l=1;l<=n;l++){const r=f2(l);if(!id3[r])id3[r]=++n3;map[l]=id3[r];}
+   for(let i=0;i<N;i++)lab[i]=map[lab[i]];n=n3;}
+  /* ---- 4. statistiche ---- */
+  const A=new Float64Array(n+1),S0=new Float64Array(n+1),S1=new Float64Array(n+1),S2=new Float64Array(n+1),X=new Float64Array(n+1),Y=new Float64Array(n+1),out=new Uint8Array(n+1),art=new Float64Array(n+1),sot=new Float64Array(n+1);
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=y*w+x,l=lab[i];if(!l)continue;const p=i*4;A[l]++;S0[l]+=d[p];S1[l]+=d[p+1];S2[l]+=d[p+2];X[l]+=x;Y[l]+=y;if(thin[i])sot[l]++;if(inArt[i]){art[l]++;
+    if((x>0&&!inArt[i-1])||(x<w-1&&!inArt[i+1])||(y>0&&!inArt[i-w])||(y<h-1&&!inArt[i+w]))out[l]=1;}}
+  const mean=l=>[S0[l]/A[l],S1[l]/A[l],S2[l]/A[l]];
+  /* ---- 5. zone numerate (i pezzi grandi) e GRUPPI per colore (i pezzi piccoli) ---- */
+  const ordine=[];for(let l=1;l<=n;l++)if(A[l]>0&&art[l]>0)ordine.push(l);ordine.sort((a,b)=>A[b]-A[a]);
+  const zoneId=new Int32Array(n+1),grpOf=new Int32Array(n+1);
+  const numerate=[],piccole=[];
+  for(const l of ordine){if(art[l]>=0.0015*artArea&&numerate.length<80)numerate.push(l);else piccole.push(l);}
+  numerate.forEach((l,i)=>zoneId[l]=i+1);
+  const gruppi=[];   // {col,pezzi,area,X,Y,labels}
+  for(const l of piccole){const c=mean(l);let g=-1,bd=1e9;
+    for(let k=0;k<gruppi.length;k++){const dd=dcol(gruppi[k].col,c);if(dd<bd){bd=dd;g=k;}}
+    if(g<0||bd>=45){if(gruppi.length<10){gruppi.push({col:c,pezzi:0,area:0,X:0,Y:0,labels:[]});g=gruppi.length-1;}}
+    const G=gruppi[g];G.pezzi++;G.area+=art[l];G.X+=X[l];G.Y+=Y[l];G.labels.push(l);grpOf[l]=g+1;}
+  /* ---- 6. elenco per il modello ---- */
+  const hex=v=>'#'+[0,1,2].map(k=>Math.round(v[k]).toString(16).padStart(2,'0')).join('');
+  const posDi=(cx,cy)=>{const rx=(cx-S.bbox.x*(w/S.mw))/Math.max(1,bw),ry=(cy-S.bbox.y*(h/S.mh))/Math.max(1,bh);
+    return ((ry<0.33?'in alto':ry>0.66?'in basso':'al centro')+' '+(rx<0.33?'a sinistra':rx>0.66?'a destra':'')).trim();};
+  const zone=[];
+  for(const l of numerate){const id=zoneId[l];const areaPct=+((art[l]/artArea)*100).toFixed(1);
+    zone.push({id,colore:hex(mean(l)),area:areaPct,pos:posDi(X[l]/A[l],Y[l]/A[l]),sottile:sot[l]>=0.6*A[l]&&areaPct<8,bordo:!!out[l]});}
+  gruppi.forEach((G,k)=>{const na=Math.max(1,G.labels.reduce((s,l)=>s+A[l],0));
+    zone.push({id:'G'+(k+1),colore:hex(G.col),area:+((G.area/artArea)*100).toFixed(1),pos:'pezzi sparsi, per lo piu\' '+posDi(G.X/na,G.Y/na),pezzi:G.pezzi});});
+  /* ---- 7. le due immagini per il modello ---- */
+  const bd=bordi();
   const base=document.createElement('canvas');base.width=w;base.height=h;const gb=base.getContext('2d');
   const im=gb.createImageData(w,h);im.data.set(d);gb.putImageData(im,0,0);
   const ov=document.createElement('canvas');ov.width=w;ov.height=h;const go=ov.getContext('2d');
   const io=go.createImageData(w,h),od=io.data;
   const tinta=id=>{const hh=(id*137.508)%360;const f=(k)=>{const kk=(k+hh/30)%12;const c=0.55-0.45*Math.max(-1,Math.min(kk-3,9-kk,1));return Math.round(c*255);};return [f(0),f(8),f(4)];};
-  const tints=[];for(let id=1;id<=n2;id++)tints[id]=tinta(id);
-  for(let i=0,p=0;i<N;i++,p+=4){const l=lab[i];if(!l){od[p]=d[p];od[p+1]=d[p+1];od[p+2]=d[p+2];od[p+3]=255;continue;}
-    if(bordoPx[i]){od[p]=20;od[p+1]=20;od[p+2]=20;od[p+3]=255;continue;}
-    const t=tints[l];od[p]=Math.round(d[p]*0.55+t[0]*0.45);od[p+1]=Math.round(d[p+1]*0.55+t[1]*0.45);od[p+2]=Math.round(d[p+2]*0.55+t[2]*0.45);od[p+3]=255;}
+  const tints=[];for(let id=1;id<=numerate.length;id++)tints[id]=tinta(id);
+  const gt=[[255,0,255],[0,200,255],[255,120,0],[0,220,90],[255,230,0],[160,60,255],[255,60,60],[0,140,140],[200,120,60],[120,120,255]];
+  for(let i=0,p=0;i<N;i++,p+=4){const l=lab[i];
+    if(!l){od[p]=d[p];od[p+1]=d[p+1];od[p+2]=d[p+2];od[p+3]=255;continue;}
+    if(bd[i]&&zoneId[l]){od[p]=20;od[p+1]=20;od[p+2]=20;od[p+3]=255;continue;}
+    let t;if(zoneId[l]){t=tints[zoneId[l]];od[p]=Math.round(d[p]*0.55+t[0]*0.45);od[p+1]=Math.round(d[p+1]*0.55+t[1]*0.45);od[p+2]=Math.round(d[p+2]*0.55+t[2]*0.45);}
+    else{t=gt[(grpOf[l]-1)%gt.length];od[p]=Math.round(d[p]*0.35+t[0]*0.65);od[p+1]=Math.round(d[p+1]*0.35+t[1]*0.65);od[p+2]=Math.round(d[p+2]*0.35+t[2]*0.65);}
+    od[p+3]=255;}
   go.putImageData(io,0,0);
+  /* punto piu' interno di ogni zona numerata, per scriverci il numero */
+  const dist=edt2d(bd,w,h);const bestD=new Float64Array(n+1).fill(-1),bestI=new Int32Array(n+1);
+  for(let i=0;i<N;i++){const l=lab[i];if(!l||!zoneId[l])continue;if(dist[i]>bestD[l]){bestD[l]=dist[i];bestI[l]=i;}}
   const ks=Math.min(1,900/Math.max(w,h));const sw=Math.round(w*ks),sh=Math.round(h*ks);
   const piccola=(src)=>{const c=document.createElement('canvas');c.width=sw;c.height=sh;const g=c.getContext('2d');g.imageSmoothingQuality='high';g.drawImage(src,0,0,sw,sh);return c;};
-  const img=piccola(base), ovs=piccola(ov);
+  const img=piccola(base), ovs0=piccola(ov);
+  const righeL=Math.ceil(gruppi.length/3), hL=18, bandaL=gruppi.length?righeL*hL+8:0;
+  const ovs=document.createElement('canvas');ovs.width=sw;ovs.height=sh+bandaL;{const g=ovs.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,sw,sh+bandaL);g.drawImage(ovs0,0,0);}
   {const g=ovs.getContext('2d');g.font='700 13px Arial';g.textAlign='center';g.textBaseline='middle';
-   for(const z of zone){const i=bestI[vive[z.id-1]];const x=(i%w)*ks,y=((i/w)|0)*ks;const t=String(z.id);const tw=g.measureText(t).width+8;
-     g.fillStyle='rgba(255,255,255,.92)';g.fillRect(x-tw/2,y-9,tw,18);g.strokeStyle='#111';g.lineWidth=1;g.strokeRect(x-tw/2+.5,y-8.5,tw-1,17);g.fillStyle='#000';g.fillText(t,x,y);}}
-  const labKeep=lab;
-  S.rilAI={hash,stato:'pending',lab:labKeep,ids:null,n:n2,zone};
+   for(const l of numerate){const i=bestI[l];const x=(i%w)*ks,y=((i/w)|0)*ks;const t=String(zoneId[l]);const tw=g.measureText(t).width+8;
+     g.fillStyle='rgba(255,255,255,.92)';g.fillRect(x-tw/2,y-9,tw,18);g.strokeStyle='#111';g.lineWidth=1;g.strokeRect(x-tw/2+.5,y-8.5,tw-1,17);g.fillStyle='#000';g.fillText(t,x,y);}
+   /* legenda dei gruppi in basso */
+   if(gruppi.length){g.font='700 12px Arial';g.textAlign='left';
+     gruppi.forEach((G,k)=>{const col=k%3,row=Math.floor(k/3);const x=8+col*(sw/3),y=sh+4+row*hL;const t=gt[k%gt.length];
+       g.fillStyle='rgb('+t.join(',')+')';g.fillRect(x,y,12,12);g.fillStyle='#000';g.fillText('G'+(k+1)+': '+G.pezzi+' pezzi piccoli '+hex(G.col),x+16,y+6);});}}
+  S.rilAI={hash,stato:'pending',lab,zoneId,grpOf,ids:null,gids:null,n:numerate.length,gruppi:gruppi.length,zone};
   try{window.__ppAggiorna&&window.__ppAggiorna();}catch(e){}
-  const fine=(ids,motivo,ok)=>{ if(!S.rilAI||S.rilAI.hash!==hash)return; S.rilAI.stato=ok?'ok':'err'; S.rilAI.ids=new Set(ids||[]); S.rilAI.motivo=motivo||'';
-    S.rilGen=(S.rilGen||0)+1; S.ril=null; try{console.debug('[rilievo ai]',ok?'zone '+[...S.rilAI.ids].join(','):'riserva',motivo||'');}catch(e){}
+  const fine=(ids,motivo,ok)=>{ if(!S.rilAI||S.rilAI.hash!==hash)return; S.rilAI.stato=ok?'ok':'err';
+    const zn=new Set(),gn=new Set();for(const v of (ids||[])){const t=String(v).trim().toUpperCase();if(/^G\d+$/.test(t))gn.add(+t.slice(1));else if(/^\d+$/.test(t))zn.add(+t);}
+    S.rilAI.ids=zn;S.rilAI.gids=gn;S.rilAI.motivo=motivo||'';
+    S.rilGen=(S.rilGen||0)+1; S.ril=null; try{console.debug('[rilievo ai]',ok?'zone '+[...zn].join(',')+' gruppi '+[...gn].join(','):'riserva',motivo||'');}catch(e){}
     try{if(S.src&&S.bbox){draw();computeLayout();}}catch(e){} try{window.__ppAggiorna&&window.__ppAggiorna();}catch(e){} };
   const fake=q.get('rilfake');
-  if(fake!=null){setTimeout(()=>fine(fake.split(',').map(Number).filter(Boolean),'prova',true),50);}
+  if(fake!=null){setTimeout(()=>fine(fake.split(',').map(x=>x.trim()).filter(Boolean),'prova',true),50);}
   else if(typeof fetch==='function'){
     fetch('/api/rilievo',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({hash,img:img.toDataURL('image/jpeg',0.85),overlay:ovs.toDataURL('image/jpeg',0.9),zone})})
       .then(r=>r.json().then(j=>({st:r.status,j}))).then(({st,j})=>{ if(j&&j.ok)fine(j.rilievo,j.motivo,true); else fine(null,((j&&j.motivo)||('errore '+st))+(j&&j.dettaglio?' · '+j.dettaglio:''),false); })
