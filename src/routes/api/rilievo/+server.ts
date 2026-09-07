@@ -1,0 +1,102 @@
+import { json } from '@sveltejs/kit';
+import { createClient } from '@supabase/supabase-js';
+import { env } from '$env/dynamic/private';
+import { PUBLIC_SUPABASE_URL } from '$env/static/public';
+import type { RequestHandler } from './$types';
+
+/* ANALISI VISIVA DEL RILIEVO
+   Il motore di anteprima divide l'immagine del cliente in zone numerate e le manda qui.
+   Un modello di visione le guarda come farebbe un grafico e sceglie dove va l'effetto
+   rilievo UV. Il risultato e' salvato per immagine (hash), cosi' lo stesso file non
+   viene analizzato due volte. Senza chiave API il motore usa le sue regole di riserva. */
+
+const MODELLO = env.RILIEVO_AI_MODEL || 'claude-sonnet-5';
+
+const REGOLE = `Sei il grafico prestampa di Stickerprint, esperto di adesivi con effetto RILIEVO UV: una vernice spessa e lucida stesa solo su alcune zone, sopra una stampa che resta opaca. Il rilievo si vede e si tocca: crea un gioco di luci fra le parti lucide in rilievo e lo sfondo opaco.
+
+Ricevi l'immagine di un cliente e la stessa immagine con le zone numerate (ogni zona e' una campitura di colore uniforme). Devi decidere QUALI ZONE ricevono il rilievo, con l'obiettivo di stupire: il cliente deve dire "wow".
+
+Come ragiona un grafico:
+- Prima capisci cos'e' SFONDO (campiture grandi, sfumature di fondo, placche, ombre, il filetto o contorno attorno alla sagoma, l'ombra estrusa dietro una scritta): lo sfondo resta OPACO, mai in rilievo.
+- Le SCRITTE vanno sempre in rilievo (anche piccole, anche dentro un nastro: se il nastro e' pieno e la scritta e' chiara, alza la scritta e lascia il nastro opaco, e' il contrasto piu' bello).
+- Vanno in rilievo i DETTAGLI che caratterizzano il disegno: occhi, denti, unghie, creste, squame, corna, capelli, gioielli, stelline, pallini, ghirigori, foglie e rami, ornamenti, icone e piccoli simboli, contorni fini e linee decorative.
+- Il CORPO PRINCIPALE di un personaggio o di una figura grande resta opaco (e' la base su cui i dettagli in rilievo risaltano), a meno che l'intero disegno sia un logo/lettering: allora le lettere vanno in rilievo per intero e i loro fori restano opachi.
+- Non mettere in rilievo un filo di contorno attorno alle lettere se le lettere stesse sono in rilievo: il rilievo segue la lettera.
+- Meglio poche zone giuste che tante zone a caso: il rilievo deve avere un senso visivo.
+
+Rispondi SOLO con un oggetto JSON, senza altro testo:
+{"rilievo":[numeri delle zone], "motivo":"una frase in italiano che spiega la scelta"}`;
+
+type Zona = { id: number; colore: string; area: number; pos: string; sottile?: boolean; bordo?: boolean };
+
+function admin() {
+	const service = env.SUPABASE_SERVICE_ROLE_KEY;
+	if (!service || !PUBLIC_SUPABASE_URL) return null;
+	return createClient(PUBLIC_SUPABASE_URL, service, { auth: { persistSession: false } });
+}
+
+function estraiJson(testo: string): { rilievo: number[]; motivo: string } | null {
+	const m = testo.match(/\{[\s\S]*\}/);
+	if (!m) return null;
+	try {
+		const o = JSON.parse(m[0]);
+		const rilievo = Array.isArray(o.rilievo) ? o.rilievo.map((n: unknown) => Number(n)).filter((n: number) => Number.isFinite(n)) : [];
+		return { rilievo, motivo: String(o.motivo ?? '') };
+	} catch {
+		return null;
+	}
+}
+
+export const POST: RequestHandler = async ({ request }) => {
+	const body = await request.json().catch(() => null) as { hash?: string; img?: string; overlay?: string; zone?: Zona[] } | null;
+	if (!body?.hash || !body.img || !body.overlay || !Array.isArray(body.zone)) return json({ ok: false, motivo: 'richiesta incompleta' }, { status: 400 });
+	const key = env.ANTHROPIC_API_KEY;
+	if (!key) return json({ ok: false, motivo: 'analisi visiva non configurata' }, { status: 503 });
+
+	const db = admin();
+	if (db) {
+		const { data } = await db.from('rilievo_ai').select('zone').eq('hash', body.hash).maybeSingle();
+		if (data?.zone) return json({ ok: true, cache: true, ...(data.zone as object) });
+	}
+
+	const b64 = (u: string) => u.replace(/^data:image\/\w+;base64,/, '');
+	const tipo = (u: string) => (/^data:image\/png/.test(u) ? 'image/png' : 'image/jpeg');
+	const lista = body.zone
+		.map((z) => `${z.id}: colore ${z.colore}, ${z.area}% dell'area, ${z.pos}${z.sottile ? ', tratto sottile' : ''}${z.bordo ? ', tocca il bordo esterno' : ''}`)
+		.join('\n');
+
+	const res = await fetch('https://api.anthropic.com/v1/messages', {
+		method: 'POST',
+		headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+		body: JSON.stringify({
+			model: MODELLO,
+			max_tokens: 500,
+			system: REGOLE,
+			messages: [
+				{
+					role: 'user',
+					content: [
+						{ type: 'text', text: 'Immagine del cliente:' },
+						{ type: 'image', source: { type: 'base64', media_type: tipo(body.img), data: b64(body.img) } },
+						{ type: 'text', text: 'La stessa immagine con le zone numerate (il numero sta dentro la zona):' },
+						{ type: 'image', source: { type: 'base64', media_type: tipo(body.overlay), data: b64(body.overlay) } },
+						{ type: 'text', text: `Elenco delle zone:\n${lista}\n\nScegli le zone da mettere in rilievo. Rispondi solo con il JSON.` }
+					]
+				}
+			]
+		})
+	}).catch(() => null);
+	if (!res || !res.ok) {
+		const err = res ? await res.text().catch(() => '') : 'rete';
+		console.error('[rilievo ai]', res?.status, err.slice(0, 300));
+		return json({ ok: false, motivo: 'analisi non riuscita' }, { status: 502 });
+	}
+	const out = await res.json().catch(() => null) as { content?: { type: string; text?: string }[] } | null;
+	const testo = (out?.content ?? []).map((c) => c.text ?? '').join('\n');
+	const scelta = estraiJson(testo);
+	if (!scelta) return json({ ok: false, motivo: 'risposta non leggibile' }, { status: 502 });
+	const valide = new Set(body.zone.map((z) => z.id));
+	scelta.rilievo = scelta.rilievo.filter((n) => valide.has(n));
+	if (db) await db.from('rilievo_ai').upsert({ hash: body.hash, zone: scelta, modello: MODELLO });
+	return json({ ok: true, ...scelta });
+};

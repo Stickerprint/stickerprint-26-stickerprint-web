@@ -3363,7 +3363,10 @@ function rilievoMask(){
     frac=cnt/artArea;
     if(frac<=0.6)break;        // troppo rilievo: disegno complesso, si alzano le soglie
     T=55;DC=110;DCR=90;DCP=140;}
-  /* pulizia morbida: filtro di maggioranza 3x3 (due passate): bordi arrotondati, niente
+  /* ---- ANALISI VISIVA: se il modello ha gia' scelto le zone per questa immagine, la
+     maschera e' la sua; altrimenti parte la richiesta e intanto valgono le regole sopra ---- */
+  try{ const ai=rilievoAI(seg,d,w,h,inArt,artArea,bw,bh,fill,mmpx); if(ai)R=ai; }catch(e){console.error('[rilievo ai]',e);}
+  /* pulizia morbida: filtro di maggioranza 3x3 (una passata): bordi arrotondati, niente
      tratteggio frastagliato */
   for(let pass=0;pass<1;pass++){
     const R2=new Uint8Array(N);
@@ -3401,6 +3404,114 @@ function rilievoMask(){
   try{ if(S.rilDebug){const isB=new Uint8Array(seg.nl+1);for(let l=1;l<=seg.nl;l++){const a=seg.areas[l];if(a>=Abig||(seg.touch[l]&&a>=Aedge))isB[l]=1;} S.ril.regs=[]; for(let l=1;l<=seg.nl;l++)S.ril.regs.push({l,area:+(seg.areas[l]/artArea).toFixed(3),maxd:Math.round(seg.maxd[l]),bg:!!isB[l],touch:!!seg.touch[l],col:seg.sums[l].map(v=>Math.round(v/seg.areas[l]))}); S.ril.regs.sort((x,y)=>y.area-x.area); S.ril.regs.length=Math.min(14,S.ril.regs.length); S.ril.T=T; S.ril.DC=DC; S.ril.mmpx=mmpx; S.ril.fill=fill;} }catch(e){}
   try{console.debug('[rilievo] dettagli:',Math.round(frac*100)+'% del disegno, regioni',seg.nl,'in',Math.round(performance.now()-t0),'ms');}catch(e){}
   return S.ril;}
+
+/* ==========================================================================
+   ANALISI VISIVA DEL RILIEVO
+   Le regole geometriche non 'capiscono' un disegno. Qui l'immagine viene divisa in
+   zone di colore uniforme, numerate, e mandata a /api/rilievo: un modello di visione
+   le guarda come farebbe un grafico e sceglie dove va il rilievo (scritte, dettagli,
+   stelline, occhi, creste…), lasciando opachi sfondi, ombre e contorni. Il risultato
+   vale per l'immagine (hash) e viene applicato a ogni ridisegno.
+   ========================================================================== */
+S.rilAI=null;
+function rilievoHash(){
+  const src=S.src||S.work.canvas; const c=document.createElement('canvas');c.width=48;c.height=48;
+  const g=c.getContext('2d',{willReadFrequently:true});g.drawImage(src,0,0,48,48);const q=g.getImageData(0,0,48,48).data;
+  let h1=2166136261,h2=0x9e3779b9;for(let i=0;i<q.length;i+=4){h1=Math.imul(h1^q[i],16777619);h2=Math.imul(h2^q[i+1]^(q[i+2]<<8)^(q[i+3]<<16),2246822519);}
+  return (h1>>>0).toString(16)+(h2>>>0).toString(16)+'-'+src.width+'x'+src.height;}
+function rilievoAI(seg,d,w,h,inArt,artArea,bw,bh,fill,mmpx){
+  const N=w*h, hash=rilievoHash();
+  const q=new URLSearchParams(location.search);
+  if(S.rilAI&&S.rilAI.hash===hash){
+    if(S.rilAI.stato==='ok'&&S.rilAI.lab&&S.rilAI.lab.length===N){
+      const R=new Uint8Array(N);const ids=S.rilAI.ids;const lab=S.rilAI.lab;
+      for(let i=0;i<N;i++)if(inArt[i]&&ids.has(lab[i]))R[i]=1;
+      return R;}
+    return null;   // in attesa, o fallita: valgono le regole di riserva
+  }
+  /* ---- zone: regioni simili e adiacenti fuse insieme ---- */
+  const K=seg.nl+1;
+  const par=new Int32Array(K);for(let i=0;i<K;i++)par[i]=i;
+  const find=a=>{while(par[a]!==a){par[a]=par[par[a]];a=par[a];}return a;};
+  const uni=(a,b)=>{a=find(a);b=find(b);if(a!==b)par[b]=a;};
+  const mean=l=>{const a=seg.areas[l];return [seg.sums[l][0]/a,seg.sums[l][1]/a,seg.sums[l][2]/a];};
+  const dcol=(a,b)=>Math.abs(a[0]-b[0])+Math.abs(a[1]-b[1])+Math.abs(a[2]-b[2]);
+  const means=new Array(K);for(let l=1;l<K;l++)means[l]=mean(l);
+  const tryUni=(a,b)=>{if(!a||!b||a===b)return;if(dcol(means[a],means[b])<40)uni(a,b);};
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=y*w+x,l=seg.lab[i];
+    if(l){if(x<w-1)tryUni(l,seg.lab[i+1]);if(y<h-1)tryUni(l,seg.lab[i+w]);continue;}
+    const ls=[];for(const o of [-1,1,-w,w,-2,2,-2*w,2*w]){const j=i+o;if(j<0||j>=N)continue;const m=seg.lab[j];if(m&&ls.indexOf(m)<0)ls.push(m);}
+    for(let u=0;u<ls.length;u++)for(let v=u+1;v<ls.length;v++)tryUni(ls[u],ls[v]);}
+  /* etichette compatte + i pixel di bordo vanno alla zona piu' vicina */
+  const root=new Int32Array(K);let n=0;const idOf=new Int32Array(K);
+  for(let l=1;l<K;l++){const r=find(l);if(!idOf[r])idOf[r]=++n;root[l]=idOf[r];}
+  let lab=new Int32Array(N);for(let i=0;i<N;i++)lab[i]=seg.lab[i]?root[seg.lab[i]]:0;
+  {const qq=new Int32Array(N);let qh=0,qt=0;for(let i=0;i<N;i++)if(lab[i])qq[qt++]=i;
+   while(qh<qt){const i=qq[qh++];const v=lab[i];const x=i%w,y=(i/w)|0;
+     if(x>0&&!lab[i-1]){lab[i-1]=v;qq[qt++]=i-1;}if(x<w-1&&!lab[i+1]){lab[i+1]=v;qq[qt++]=i+1;}
+     if(y>0&&!lab[i-w]){lab[i-w]=v;qq[qt++]=i-w;}if(y<h-1&&!lab[i+w]){lab[i+w]=v;qq[qt++]=i+w;}}}
+  /* statistiche e contatti fra zone */
+  const stat=()=>{const A=new Float64Array(n+1),S0=new Float64Array(n+1),S1=new Float64Array(n+1),S2=new Float64Array(n+1),X=new Float64Array(n+1),Y=new Float64Array(n+1),out=new Uint8Array(n+1),art=new Float64Array(n+1);
+    for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=y*w+x,l=lab[i];if(!l)continue;const p=i*4;A[l]++;S0[l]+=d[p];S1[l]+=d[p+1];S2[l]+=d[p+2];X[l]+=x;Y[l]+=y;if(inArt[i])art[l]++;
+      if(inArt[i]&&((x>0&&!inArt[i-1])||(x<w-1&&!inArt[i+1])||(y>0&&!inArt[i-w])||(y<h-1&&!inArt[i+w])))out[l]=1;}
+    return {A,S0,S1,S2,X,Y,out,art};};
+  const contatti=()=>{const M=new Map();const add=(a,b)=>{if(a===b||!a||!b)return;const k=a<b?a*(n+1)+b:b*(n+1)+a;M.set(k,(M.get(k)||0)+1);};
+    for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=y*w+x;if(x<w-1)add(lab[i],lab[i+1]);if(y<h-1)add(lab[i],lab[i+w]);}return M;};
+  const fondi=(vittime)=>{const M=contatti();const best=new Int32Array(n+1),bn=new Float64Array(n+1);
+    for(const [k,c] of M){const a=Math.floor(k/(n+1)),b=k%(n+1);if(vittime.has(a)&&!vittime.has(b)&&c>bn[a]){bn[a]=c;best[a]=b;}if(vittime.has(b)&&!vittime.has(a)&&c>bn[b]){bn[b]=c;best[b]=a;}}
+    const map=new Int32Array(n+1);for(let l=1;l<=n;l++)map[l]=vittime.has(l)&&best[l]?best[l]:l;
+    for(let l=1;l<=n;l++){let t=map[l],g=0;while(map[t]!==t&&g++<50)t=map[t];map[l]=t;}
+    for(let i=0;i<N;i++)lab[i]=map[lab[i]];};
+  /* via le zone minuscole (sotto lo 0,05% del disegno): finiscono nella vicina con cui confinano di piu' */
+  let st=stat();{const v=new Set();for(let l=1;l<=n;l++)if(st.A[l]>0&&st.art[l]<0.0005*artArea)v.add(l);if(v.size)fondi(v);}
+  /* al massimo 60 zone: le piu' piccole si fondono nelle vicine */
+  st=stat();for(let giro=0;giro<8;giro++){const vive=[];for(let l=1;l<=n;l++)if(st.A[l]>0)vive.push(l);if(vive.length<=60)break;vive.sort((a,b)=>st.A[a]-st.A[b]);const v=new Set(vive.slice(0,vive.length-60));fondi(v);st=stat();}
+  /* ri-numerazione 1..n2 in ordine di area, solo zone dentro il disegno */
+  const vive=[];for(let l=1;l<=n;l++)if(st.A[l]>0&&st.art[l]>0)vive.push(l);vive.sort((a,b)=>st.A[b]-st.A[a]);
+  const nuovo=new Int32Array(n+1);vive.forEach((l,i)=>nuovo[l]=i+1);for(let i=0;i<N;i++)lab[i]=nuovo[lab[i]];
+  const n2=vive.length;
+  /* punto piu' interno di ogni zona (per scrivere il numero dentro) */
+  const bordoPx=new Uint8Array(N);for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=y*w+x;if(!lab[i]||(x<w-1&&lab[i+1]!==lab[i])||(y<h-1&&lab[i+w]!==lab[i])||x===0||y===0||x===w-1||y===h-1)bordoPx[i]=1;}
+  const dist=edt2d(bordoPx,w,h);const bestD=new Float64Array(n2+1).fill(-1),bestI=new Int32Array(n2+1);
+  for(let i=0;i<N;i++){const l=lab[i];if(!l)continue;if(dist[i]>bestD[l]){bestD[l]=dist[i];bestI[l]=i;}}
+  const R0=Math.max(2,0.015*Math.min(bw,bh));
+  const zone=[];const hex=v=>'#'+[0,1,2].map(k=>Math.round(v[k]).toString(16).padStart(2,'0')).join('');
+  for(const l of vive){const id=nuovo[l];const a=st.A[l];const cx=st.X[l]/a,cy=st.Y[l]/a;
+    const col=[st.S0[l]/a,st.S1[l]/a,st.S2[l]/a];
+    const rx=(cx-S.bbox.x*(w/S.mw))/Math.max(1,bw),ry=(cy-S.bbox.y*(h/S.mh))/Math.max(1,bh);
+    const pos=(ry<0.33?'in alto':ry>0.66?'in basso':'al centro')+' '+(rx<0.33?'a sinistra':rx>0.66?'a destra':'');
+    zone.push({id,colore:hex(col),area:+((st.art[l]/artArea)*100).toFixed(1),pos:pos.trim(),sottile:Math.sqrt(bestD[l])<R0,bordo:!!st.out[l]});}
+  /* ---- le due immagini per il modello ---- */
+  const base=document.createElement('canvas');base.width=w;base.height=h;const gb=base.getContext('2d');
+  const im=gb.createImageData(w,h);im.data.set(d);gb.putImageData(im,0,0);
+  const ov=document.createElement('canvas');ov.width=w;ov.height=h;const go=ov.getContext('2d');
+  const io=go.createImageData(w,h),od=io.data;
+  const tinta=id=>{const hh=(id*137.508)%360;const f=(k)=>{const kk=(k+hh/30)%12;const c=0.55-0.45*Math.max(-1,Math.min(kk-3,9-kk,1));return Math.round(c*255);};return [f(0),f(8),f(4)];};
+  const tints=[];for(let id=1;id<=n2;id++)tints[id]=tinta(id);
+  for(let i=0,p=0;i<N;i++,p+=4){const l=lab[i];if(!l){od[p]=d[p];od[p+1]=d[p+1];od[p+2]=d[p+2];od[p+3]=255;continue;}
+    if(bordoPx[i]){od[p]=20;od[p+1]=20;od[p+2]=20;od[p+3]=255;continue;}
+    const t=tints[l];od[p]=Math.round(d[p]*0.55+t[0]*0.45);od[p+1]=Math.round(d[p+1]*0.55+t[1]*0.45);od[p+2]=Math.round(d[p+2]*0.55+t[2]*0.45);od[p+3]=255;}
+  go.putImageData(io,0,0);
+  const ks=Math.min(1,900/Math.max(w,h));const sw=Math.round(w*ks),sh=Math.round(h*ks);
+  const piccola=(src)=>{const c=document.createElement('canvas');c.width=sw;c.height=sh;const g=c.getContext('2d');g.imageSmoothingQuality='high';g.drawImage(src,0,0,sw,sh);return c;};
+  const img=piccola(base), ovs=piccola(ov);
+  {const g=ovs.getContext('2d');g.font='700 13px Arial';g.textAlign='center';g.textBaseline='middle';
+   for(const z of zone){const i=bestI[vive[z.id-1]];const x=(i%w)*ks,y=((i/w)|0)*ks;const t=String(z.id);const tw=g.measureText(t).width+8;
+     g.fillStyle='rgba(255,255,255,.92)';g.fillRect(x-tw/2,y-9,tw,18);g.strokeStyle='#111';g.lineWidth=1;g.strokeRect(x-tw/2+.5,y-8.5,tw-1,17);g.fillStyle='#000';g.fillText(t,x,y);}}
+  const labKeep=lab;
+  S.rilAI={hash,stato:'pending',lab:labKeep,ids:null,n:n2,zone};
+  try{window.__ppAggiorna&&window.__ppAggiorna();}catch(e){}
+  const fine=(ids,motivo,ok)=>{ if(!S.rilAI||S.rilAI.hash!==hash)return; S.rilAI.stato=ok?'ok':'err'; S.rilAI.ids=new Set(ids||[]); S.rilAI.motivo=motivo||'';
+    S.rilGen=(S.rilGen||0)+1; S.ril=null; try{console.debug('[rilievo ai]',ok?'zone '+[...S.rilAI.ids].join(','):'riserva',motivo||'');}catch(e){}
+    try{if(S.src&&S.bbox){draw();computeLayout();}}catch(e){} try{window.__ppAggiorna&&window.__ppAggiorna();}catch(e){} };
+  const fake=q.get('rilfake');
+  if(fake!=null){setTimeout(()=>fine(fake.split(',').map(Number).filter(Boolean),'prova',true),50);}
+  else if(typeof fetch==='function'){
+    fetch('/api/rilievo',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({hash,img:img.toDataURL('image/jpeg',0.85),overlay:ovs.toDataURL('image/jpeg',0.9),zone})})
+      .then(r=>r.json().then(j=>({st:r.status,j}))).then(({st,j})=>{ if(j&&j.ok)fine(j.rilievo,j.motivo,true); else fine(null,(j&&j.motivo)||('errore '+st),false); })
+      .catch(e=>fine(null,String(e&&e.message||e),false));}
+  if(q.get('rilshow')){const el=document.createElement('img');el.src=ovs.toDataURL('image/png');el.style.cssText='position:fixed;left:0;top:0;max-width:60vw;max-height:90vh;z-index:99;border:2px solid #f0f';el.id='rilOverlay';document.body.appendChild(el);}
+  return null;}
 
 /* posizione del disegno dentro il pezzo, in mm (con zoom e spostamento del sagomato) */
 function artRect(){
@@ -3485,14 +3596,14 @@ function rilievoApply(c,ppm){
   o.globalAlpha=1;o.globalCompositeOperation='destination-in';o.drawImage(c,0,0);
   o.globalCompositeOperation='source-over';
   return out;}
-/* Adesivi in rilievo: niente mockup 3D. Si mostra il file del cliente con il taglio e, sopra,
-   le zone che riceveranno il rilievo nel colore spot RDG_GLOSS. Con 'Dettagli rilievo' il
-   colore si toglie e resta il file del cliente. */
+/* Adesivi in rilievo: niente mockup 3D. Il cliente vede il suo file con il taglio; con
+   'Effetto rilievo' vede SOLO le zone che riceveranno il rilievo, nel colore spot RDG_GLOSS,
+   sul pezzo bianco: cosi' si capisce dove va il rilievo anche su un logo verde o grigio. */
 function rilievoDettagli(c,ppm){
   const m=rilievoMask(), A=artRect(); if(!m||!A)return c;
   const W=c.width,H=c.height;
   const out=document.createElement('canvas');out.width=W;out.height=H;const o=out.getContext('2d');
-  o.drawImage(c,0,0);
+  o.drawImage(c,0,0);o.globalCompositeOperation='source-in';o.fillStyle='#ffffff';o.fillRect(0,0,W,H);
   const mk=document.createElement('canvas');mk.width=m.w;mk.height=m.h;const gm=mk.getContext('2d');
   const im=gm.createImageData(m.w,m.h),dd=im.data;
   for(let i=0,p=0;i<m.w*m.h;i++,p+=4){ if(!m.on[i])continue; dd[p]=0x86;dd[p+1]=0xa7;dd[p+2]=0xb3;dd[p+3]=255; }
@@ -3505,7 +3616,7 @@ function rilievoDettagli(c,ppm){
   const id=gt.getImageData(0,0,W,H),q=id.data;
   for(let p=0;p<q.length;p+=4){ const a=q[p+3]; q[p]=0x86;q[p+1]=0xa7;q[p+2]=0xb3; q[p+3]=a<=112?0:a>=144?255:Math.round((a-112)*255/32); }   /* soglia a meta' con rampa stretta: contorno liscio e netto */
   gt.putImageData(id,0,0);
-  o.globalCompositeOperation='source-over';o.globalAlpha=0.88;o.drawImage(T,0,0);o.globalAlpha=1;
+  o.globalCompositeOperation='source-over';o.drawImage(T,0,0);
   o.globalCompositeOperation='destination-in';o.drawImage(c,0,0);o.globalCompositeOperation='source-over';
   return out;}
 function renderCore(ppm,withMat){
@@ -3516,7 +3627,9 @@ function renderCore(ppm,withMat){
     g.globalCompositeOperation='source-atop';g.fillStyle='rgba(18,18,28,0.08)';g.fillRect(0,0,o.width,o.height);
     c=o;}
   /* [sito] adesivi in rilievo: l'effetto va sopra la finitura, e resta lucido anche con l'UV opaca */
-  if(withMat&&S.rilievo&&S.prod!=='resin'&&!S.rilDettagli){try{c=rilievoDettagli(c,ppm);}catch(e){console.error('[rilievo]',e);}}
+  /* rilievo: la maschera (e l'analisi visiva) partono subito al caricamento, anche se il
+     cliente sta ancora guardando la sua grafica; la vista delle zone si attiva col bottone */
+  if(withMat&&S.rilievo&&S.prod!=='resin'){try{ if(S.rilDettagli)c=rilievoDettagli(c,ppm); else rilievoMask(); }catch(e){console.error('[rilievo]',e);}}
   return c;}
 function renderCoreRaw(ppm,withMat){
   const ink=inkLayer(ppm);
@@ -5061,10 +5174,10 @@ function ppGeoUI(){
       const onD=!!(S.rilievo&&!S.foglio&&S.src&&S.bbox&&S.prod!=='resin');
       if(!onD)S.rilDettagli=false;
       dett.style.display=onD?'inline-flex':'none';
-      dett.innerHTML=S.rilDettagli?(DETT_SVG+'<span>Mostra rilievo</span>'):(ART_SVG+'<span>Dettagli rilievo</span>');
-      dett.title=S.rilDettagli?'Mostra di nuovo le zone in rilievo colorate':'Nascondi il colore del rilievo e guarda il tuo file';
+      dett.innerHTML=S.rilDettagli?(ART_SVG+'<span>Torna alla grafica</span>'):(DETT_SVG+'<span>Effetto rilievo</span><span style="margin-left:2px;font-size:15px;line-height:1">👈</span>');
+      dett.title=S.rilDettagli?'Torna al tuo file':'Guarda dove andra\' l\'effetto rilievo';
       if(S.rilDettagli){dett.style.background='#0b0b3b';dett.style.color='#fff';dett.style.borderColor='#0b0b3b';}else{dett.style.background='#fff';dett.style.color='#0b0b3b';dett.style.borderColor='#dfe3ea';}
-      dettLeg.style.display='none';
+      dettLeg.style.display=(onD&&S.rilAI&&S.rilAI.stato==='pending')?'block':'none'; dettLeg.innerHTML='🔎 Sto studiando il disegno per decidere dove mettere il rilievo…';
       if(!lente){
         lente=document.createElement('button'); lente.type='button'; lente.id='ppLente';
         lente.style.cssText='position:absolute;right:10px;top:10px;z-index:6;display:none;align-items:center;gap:7px;padding:9px 12px;border-radius:999px;border:1.5px solid #dfe3ea;background:#fff;color:#0b0b3b;font:700 12.5px Montserrat,system-ui,sans-serif;cursor:pointer;box-shadow:0 4px 14px rgba(11,11,59,.12)';
@@ -5084,6 +5197,7 @@ function ppGeoUI(){
       if(!S.lente)S.lentePan={x:0,y:0};
     }catch(e){}
   };
+  window.__ppAggiorna=aggiornaLente;
   /* dopo ogni disegno la tela va inquadrata SUBITO: prima passavano fino a
      300 ms con l'anteprima piccola, che poi tornava normale */
   try{ const _draw=draw; draw=function(){const r=_draw.apply(this,arguments); try{fitEmbed();aggiornaLente();}catch(e){} return r;}; }catch(e){}
@@ -5091,6 +5205,7 @@ function ppGeoUI(){
   let lastH=0; const sendSize=()=>{const app=document.querySelector('.pp-app'); const h=Math.ceil(app?app.getBoundingClientRect().height+8:document.documentElement.scrollHeight); if(h!==lastH){lastH=h;send('size',{h});}};
   setInterval(sendSize,400); addEventListener('load',sendSize);
   const snapshot=()=>{
+    if(S.rilDettagli)return;
     const t0=performance.now();
     fitEmbed();
     try{
