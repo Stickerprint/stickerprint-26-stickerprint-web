@@ -189,8 +189,12 @@
 			<label>Credito Stickerprint (0,02 = 2% del netto, livello Creator)<input type="number" step="0.01" min="0" bind:value={cfg.creditRate} /></label>
 			<label>Misura minima di questo prodotto (mm)<input type="number" min="1" bind:value={cfg.size.minMm} /></label>
 			<label>Misura massima di questo prodotto (mm)<input type="number" min="1" bind:value={cfg.size.maxMm} /></label>
-			<label>Misura di partenza selezionata (mm)<input type="number" min="1" bind:value={cfg.size.defaultMm} /></label>
-			<label>Minimo per il sagomato (mm, vuoto = come il minimo)<input type="number" min="1" bind:value={cfg.size.minMmDiecut} /></label>
+		</div>
+		<p class="note" style="margin-top:14px"><b>Minimo per sagoma</b> (lato corto, mm): la misura proposta per prima al cliente è sempre questa; il lato lungo segue la proporzione del disegno. Vuoto = misura minima del prodotto.</p>
+		<div class="dgrid">
+			{#each ['sagomato', 'tondo', 'quadrato', 'ovale', 'rettangolare'] as sh (sh)}
+				<label>{sh}<input type="number" min="1" value={cfg.size.minByShape?.[sh] ?? ''} onchange={(e) => { const v = +(e.currentTarget as HTMLInputElement).value; cfg.size.minByShape = { ...(cfg.size.minByShape ?? {}) }; if (v > 0) cfg.size.minByShape[sh] = v; else delete cfg.size.minByShape[sh]; }} /></label>
+			{/each}
 		</div>
 	</div>
 

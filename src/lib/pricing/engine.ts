@@ -41,7 +41,7 @@ export interface EngineConfig {
 	priceRange: RangeStep[]; // per quantità
 	quantities: number[]; // fasce mostrate al cliente
 	recommendedQty: number;
-	size: { minMm: number; maxMm: number; defaultMm?: number; minMmDiecut?: number }; // defaultMm: misura di partenza; minMmDiecut: minimo per il sagomato
+	size: { minMm: number; maxMm: number; defaultMm?: number; minMmDiecut?: number; minByShape?: Record<string, number> }; // minByShape: minimo (lato corto) per sagoma; la misura di partenza e' sempre la minima
 	shapes: ShapeOption[]; // ogni sagoma ha le sue misure proposte (larghezze in mm)
 	materials: MaterialOption[];
 	finishes: FinishOption[];
@@ -137,11 +137,17 @@ const QTY_RESIN = [50, 100, 200, 300, 500, 1000, 2000, 3000, 5000]; // resinati:
 const QTY_SMALL = [15, 50, 100, 200, 300, 500, 1000, 2000, 3000];
 const MAT_STICKER = ['bianco', 'olografico', 'glitterato', 'trasparente', 'argento', 'oro'];
 
+/* Misure minime (lato corto, in mm) per sagoma: la misura di partenza proposta e' sempre la minima,
+   per non spaventare il cliente con un prezzo alto calcolato sulla dimensione del file */
+const MIN_STICKER: Record<string, number> = { sagomato: 40, tondo: 20, quadrato: 20, ovale: 20, rettangolare: 20 };
+const MIN_RESIN: Record<string, number> = { sagomato: 50, tondo: 10, quadrato: 15, ovale: 10, rettangolare: 15 };
+const MIN_LABEL: Record<string, number> = { sagomato: 20, tondo: 10, quadrato: 10, ovale: 10, rettangolare: 10 };
+
 /** Listini iniziali, uno per prodotto e indipendenti tra loro (poi ognuno si modifica dalla dashboard) */
 export const DEFAULT_ENGINES: Record<string, EngineConfig> = {
-	adesivi_personalizzati: base({ materials: withMaterials(MAT_STICKER), quantities: QTY_STD }),
+	adesivi_personalizzati: base({ materials: withMaterials(MAT_STICKER), quantities: QTY_STD, size: { minMm: 10, maxMm: 500, minByShape: MIN_STICKER } }),
 	adesivi_rilievo: base({
-		materials: withMaterials(MAT_STICKER), shapes: stdShapes(STICKER_IMGS, [50, 80, 100, 125]), quantities: QTY_SMALL, size: { minMm: 20, maxMm: 500 },
+		materials: withMaterials(MAT_STICKER), shapes: stdShapes(STICKER_IMGS, [50, 80, 100, 125]), quantities: QTY_SMALL, size: { minMm: 20, maxMm: 500, minByShape: MIN_STICKER },
 		// niente lamina sul rilievo: la finitura e' una vernice UV, il rilievo resta sempre lucido
 		finishTitle: 'Finitura', finishNote: "L'effetto rilievo è sempre lucido.",
 		finishes: [
@@ -149,7 +155,7 @@ export const DEFAULT_ENGINES: Record<string, EngineConfig> = {
 			{ id: 'uv-lucida', label: 'UV lucida', description: 'Brillante, riflette la luce', img: `${IMG}/lamina_lucida.webp`, laminate: true, visible: true }
 		]
 	}),
-	etichette: base({ materials: withMaterials(MAT_STICKER), shapes: stdShapes(LABEL_IMGS, [50, 80, 100, 125]), quantities: QTY_SMALL, size: { minMm: 15, maxMm: 300 } }),
+	etichette: base({ materials: withMaterials(MAT_STICKER), shapes: stdShapes(LABEL_IMGS, [50, 80, 100, 125]), quantities: QTY_SMALL, size: { minMm: 10, maxMm: 300, minByShape: MIN_LABEL } }),
 	fogli_adesivi: base({ materials: withMaterials(MAT_STICKER), shapes: clone(SHEET_SHAPES), quantities: QTY_SMALL, recommendedQty: 100, size: { minMm: 50, maxMm: 300 } }),
 	adesivi_resinati: base({
 		kind: 'resina',
@@ -157,7 +163,7 @@ export const DEFAULT_ENGINES: Record<string, EngineConfig> = {
 		finishes: withFinishes([]),
 		shapes: stdShapes(RES_IMGS, [25, 50, 80, 100]),
 		quantities: QTY_RESIN,
-		size: { minMm: 10, maxMm: 200, defaultMm: 25, minMmDiecut: 40 }
+		size: { minMm: 10, maxMm: 200, defaultMm: 25, minMmDiecut: 50, minByShape: MIN_RESIN }
 	}),
 	vetrofanie: base({
 		materials: withMaterials(['trasparente']),
@@ -280,13 +286,39 @@ export function quoteWith(cfg: EngineConfig, o: { w: number; h: number; forma: s
 export function lowestPrice(cfg: EngineConfig): number {
 	const sh = cfg.shapes.find((s) => s.visible) ?? cfg.shapes[0];
 	const mat = cfg.materials.find((m) => m.visible) ?? cfg.materials[0];
-	const w = Math.max(cfg.size.minMm, Math.min(...(sh?.presets?.length ? sh.presets : [50])));
-	const h = sh?.ratio ? w / sh.ratio : w;
+	const [w, h] = sh?.ratio ? startSize(cfg, sh.id, sh.ratio) : sh?.presets?.length && !cfg.size.minByShape ? [Math.max(cfg.size.minMm, Math.min(...sh.presets)), Math.max(cfg.size.minMm, Math.min(...sh.presets))] : startSize(cfg, sh?.id ?? 'sagomato', 1);
 	const fins = cfg.finishes.filter((f) => f.visible);
 	const ids = fins.length ? fins.map((f) => f.id) : ['nessuna'];
 	const qty = cfg.quantities[0] ?? 1;
 	const best = Math.min(...ids.map((finitura) => quoteWith(cfg, { w, h, forma: sh?.id ?? 'sagomato', materiale: mat?.id ?? 'bianco', finitura, qty, vatIncluded: true }).gross));
 	return Math.ceil(best);
+}
+
+/** Minimo (lato corto) di una sagoma */
+export function minForShape(cfg: EngineConfig, forma: string): number {
+	const m = cfg.size.minByShape?.[forma];
+	if (m) return Math.max(cfg.size.minMm, m);
+	return forma === 'sagomato' ? Math.max(cfg.size.minMm, cfg.size.minMmDiecut ?? 0) : cfg.size.minMm;
+}
+const r5 = (v: number) => Math.round(v / 5) * 5;
+const half = (v: number) => Math.round(v * 2) / 2;
+/** Misura di partenza: il lato corto e' il minimo della sagoma, il lato lungo segue la proporzione */
+export function startSize(cfg: EngineConfig, forma: string, ratio: number): [number, number] {
+	const m = minForShape(cfg, forma);
+	const r = ratio > 0 ? ratio : 1;
+	if (r >= 1) return [half(Math.min(cfg.size.maxMm, m * r)), m];
+	return [m, half(Math.min(cfg.size.maxMm, m / r))];
+}
+/** Le quattro misure proposte: la minima e tre piu' grandi (dalle misure della sagoma, altrimenti x1,5 x2 x3) */
+export function sizeProposals(cfg: EngineConfig, forma: string, ratio: number, presets: number[]): [number, number][] {
+	const [w0, h0] = startSize(cfg, forma, ratio);
+	const r = ratio > 0 ? ratio : 1;
+	const fromW = (w: number): [number, number] => [half(w), half(w / r)];
+	const out: [number, number][] = [[w0, h0]];
+	const cand = presets.filter((p) => p > w0 + 2).sort((a, b) => a - b);
+	for (const p of cand) { if (out.length >= 4) break; out.push(fromW(p)); }
+	for (const k of [1.5, 2, 3]) { if (out.length >= 4) break; const w = r5(w0 * k); if (!out.some(([x]) => Math.abs(x - w) < 2) && w <= cfg.size.maxMm) out.push(fromW(w)); }
+	return out.slice(0, 4);
 }
 
 /** Misura consigliata dalla proporzione del file */

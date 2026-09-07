@@ -3247,12 +3247,19 @@ function rilievoMask(){
     /* regioni non di sfondo: in rilievo se il loro colore medio si stacca dallo sfondo
        vicino (si prende la distanza minima fra i pixel della regione: se anche solo da
        un lato la regione e' dello stesso colore dello sfondo, e' sfondo tagliato) */
-    const minD=new Float32Array(seg.nl+1).fill(1e9);
+    const minD=new Float32Array(seg.nl+1).fill(1e9), outAdj=new Uint8Array(seg.nl+1);
     for(let i=0;i<N;i++){const l=seg.lab[i];if(!l||isBg[l])continue;const nb=nearest[i];if(nb<0)continue;
       const a=seg.areas[l],m0=seg.sums[l][0]/a,m1=seg.sums[l][1]/a,m2=seg.sums[l][2]/a,p=nb*4;
-      const dd=Math.abs(m0-d[p])+Math.abs(m1-d[p+1])+Math.abs(m2-d[p+2]);if(dd<minD[l])minD[l]=dd;}
+      let dd=Math.abs(m0-d[p])+Math.abs(m1-d[p+1])+Math.abs(m2-d[p+2]);
+      /* un occhiello (il buco della B) si confronta anche con il colore MEDIO della campitura
+         che lo racchiude: la texture dello sfondo non deve farlo sembrare un dettaglio */
+      const lb=seg.lab[nb];if(lb){const ab=seg.areas[lb];const db=Math.abs(m0-seg.sums[lb][0]/ab)+Math.abs(m1-seg.sums[lb][1]/ab)+Math.abs(m2-seg.sums[lb][2]/ab);if(db<dd)dd=db;}
+      if(!inArt[nb])outAdj[l]=1;   // lo sfondo piu' vicino e' il fuori del disegno
+      if(dd<minD[l])minD[l]=dd;}
     const on=new Uint8Array(seg.nl+1);
-    for(let l=1;l<=seg.nl;l++){if(isBg[l])continue;on[l]=(minD[l]>DCR)?1:0;}
+    /* il contorno esterno chiaro di un disegno (il filetto bianco attorno a una macchia nera)
+       e' il bordo dell'adesivo, non un dettaglio: contro il fuori serve uno stacco netto */
+    for(let l=1;l<=seg.nl;l++){if(isBg[l])continue;on[l]=(minD[l]>(outAdj[l]?110:DCR))?1:0;}
     /* colore locale dello sfondo: media dei soli pixel di sfondo in un intorno (tabella
        delle somme). Serve a scovare i pezzi di disegno 'fusi' nello sfondo perche' da un
        lato hanno lo stesso colore (la meta' scura di una scritta cromata su nero). */
@@ -3417,13 +3424,14 @@ function rilievoApply(c,ppm){
   o.globalAlpha=1;o.globalCompositeOperation='destination-in';o.drawImage(c,0,0);
   o.globalCompositeOperation='source-over';
   return out;}
-/* Vista 'Dettagli rilievo': la grafica sparisce, resta il pezzo bianco con le sole
-   zone che riceveranno l'effetto rilievo, nel colore spot RDG_GLOSS. */
+/* Adesivi in rilievo: niente mockup 3D. Si mostra il file del cliente con il taglio e, sopra,
+   le zone che riceveranno il rilievo nel colore spot RDG_GLOSS. Con 'Dettagli rilievo' il
+   colore si toglie e resta il file del cliente. */
 function rilievoDettagli(c,ppm){
   const m=rilievoMask(), A=artRect(); if(!m||!A)return c;
   const W=c.width,H=c.height;
   const out=document.createElement('canvas');out.width=W;out.height=H;const o=out.getContext('2d');
-  o.drawImage(c,0,0);o.globalCompositeOperation='source-in';o.fillStyle='#ffffff';o.fillRect(0,0,W,H);
+  o.drawImage(c,0,0);
   const mk=document.createElement('canvas');mk.width=m.w;mk.height=m.h;const gm=mk.getContext('2d');
   const im=gm.createImageData(m.w,m.h),dd=im.data;
   for(let i=0,p=0;i<m.w*m.h;i++,p+=4){ if(!m.on[i])continue; dd[p]=0x86;dd[p+1]=0xa7;dd[p+2]=0xb3;dd[p+3]=255; }
@@ -3436,7 +3444,7 @@ function rilievoDettagli(c,ppm){
   const id=gt.getImageData(0,0,W,H),q=id.data;
   for(let p=0;p<q.length;p+=4){ const a=q[p+3]; q[p]=0x86;q[p+1]=0xa7;q[p+2]=0xb3; q[p+3]=a<=112?0:a>=144?255:Math.round((a-112)*255/32); }   /* soglia a meta' con rampa stretta: contorno liscio e netto */
   gt.putImageData(id,0,0);
-  o.globalCompositeOperation='source-over';o.drawImage(T,0,0);
+  o.globalCompositeOperation='source-over';o.globalAlpha=0.88;o.drawImage(T,0,0);o.globalAlpha=1;
   o.globalCompositeOperation='destination-in';o.drawImage(c,0,0);o.globalCompositeOperation='source-over';
   return out;}
 function renderCore(ppm,withMat){
@@ -3447,7 +3455,7 @@ function renderCore(ppm,withMat){
     g.globalCompositeOperation='source-atop';g.fillStyle='rgba(18,18,28,0.08)';g.fillRect(0,0,o.width,o.height);
     c=o;}
   /* [sito] adesivi in rilievo: l'effetto va sopra la finitura, e resta lucido anche con l'UV opaca */
-  if(withMat&&S.rilievo&&S.prod!=='resin'){try{c=S.rilDettagli?rilievoDettagli(c,ppm):rilievoApply(c,ppm);}catch(e){console.error('[rilievo]',e);}}
+  if(withMat&&S.rilievo&&S.prod!=='resin'&&!S.rilDettagli){try{c=rilievoDettagli(c,ppm);}catch(e){console.error('[rilievo]',e);}}
   return c;}
 function renderCoreRaw(ppm,withMat){
   const ink=inkLayer(ppm);
@@ -4559,7 +4567,7 @@ function ridipingi(){
   }
   g.drawImage(a.base,0,0);
   try{
-    const f=((S.prod==='resin'&&!S.senzaResina)||S.rilDettagli)?99:fasBagliore();
+    const f=((S.prod==='resin'&&!S.senzaResina)||S.rilievo)?99:fasBagliore();
     if(f<10){
       g.globalCompositeOperation='screen';
       g.drawImage(bagliore(tile,f),pad*ppm,pad*ppm);
@@ -4992,8 +5000,8 @@ function ppGeoUI(){
       const onD=!!(S.rilievo&&!S.foglio&&S.src&&S.bbox&&S.prod!=='resin');
       if(!onD)S.rilDettagli=false;
       dett.style.display=onD?'inline-flex':'none';
-      dett.innerHTML=S.rilDettagli?(ART_SVG+'<span>Torna alla grafica</span>'):(DETT_SVG+'<span>Dettagli rilievo</span>');
-      dett.title=S.rilDettagli?'Mostra di nuovo la grafica con l\'effetto rilievo':'Mostra solo le zone che riceveranno il rilievo';
+      dett.innerHTML=S.rilDettagli?(DETT_SVG+'<span>Mostra rilievo</span>'):(ART_SVG+'<span>Dettagli rilievo</span>');
+      dett.title=S.rilDettagli?'Mostra di nuovo le zone in rilievo colorate':'Nascondi il colore del rilievo e guarda il tuo file';
       if(S.rilDettagli){dett.style.background='#0b0b3b';dett.style.color='#fff';dett.style.borderColor='#0b0b3b';}else{dett.style.background='#fff';dett.style.color='#0b0b3b';dett.style.borderColor='#dfe3ea';}
       dettLeg.style.display='none';
       if(!lente){
@@ -5022,7 +5030,6 @@ function ppGeoUI(){
   let lastH=0; const sendSize=()=>{const app=document.querySelector('.pp-app'); const h=Math.ceil(app?app.getBoundingClientRect().height+8:document.documentElement.scrollHeight); if(h!==lastH){lastH=h;send('size',{h});}};
   setInterval(sendSize,400); addEventListener('load',sendSize);
   const snapshot=()=>{
-    if(S.rilDettagli)return;
     const t0=performance.now();
     fitEmbed();
     try{
@@ -5072,7 +5079,11 @@ function ppGeoUI(){
         if(m&&$('mat')&&$('mat').value!==m){$('mat').value=m;try{syncMatChips();}catch(e){}mat=true;}
         if(c.lamina){const L=String(c.lamina).toLowerCase();const nl=L.indexOf('op')>=0?'opaca':(L.indexOf('ness')>=0?'nessuna':'lucida');if(nl!==S.lamina){S.lamina=nl;document.querySelectorAll('#cLam .chip').forEach(e=>e.classList.toggle('on',e.dataset.l===S.lamina));mat=true;}}
         if(c.w){const w=Math.max(8,+c.w||50),h=Math.max(8,+(c.h||c.w)||w);
-          if($('wmm').value!==w.toFixed(1)||$('hmm').value!==h.toFixed(1)){$('wmm').value=w.toFixed(1);$('hmm').value=h.toFixed(1);syncRatio();geom=true;}}
+          if($('wmm').value!==w.toFixed(1)||$('hmm').value!==h.toFixed(1)){$('wmm').value=w.toFixed(1);$('hmm').value=h.toFixed(1);syncRatio();geom=true;
+            /* il contorno resta in proporzione al disegno: a 5x5 come a 8x8 l'effetto e' lo stesso.
+               Prima il bordo in mm restava quello della misura precedente, e al primo clic su
+               piccolo/medio/grande faceva un salto */
+            try{applyBorderLevel();}catch(e){}}}
         if((geom||mat)&&S.src&&S.bbox){
           busy(true,'Aggiorno…');
           setTimeout(()=>{

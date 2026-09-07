@@ -11,7 +11,7 @@
 	import EnginePreview from './EnginePreview.svelte';
 	import { loadDraft, saveDraft, saveCartFile, saveCartPreview } from '$lib/utils/draftStore';
 	import { addToCart } from '$lib/cart';
-	import { quoteWith, suggestedSize, roundHalf, eur0, eur2, showFinishStep, showMaterialStep, type EngineConfig } from '$lib/pricing/engine';
+	import { quoteWith, minForShape, startSize, sizeProposals, roundHalf, eur0, eur2, showFinishStep, showMaterialStep, type EngineConfig } from '$lib/pricing/engine';
 
 	let {
 		shipDate,
@@ -47,7 +47,7 @@
 
 	let forma = $state('sagomato');
 	// sul sagomato puo' valere un minimo piu' alto (resinati: 40 mm)
-	const MIN_MM = $derived(forma === 'sagomato' ? Math.max(cfg.size.minMm, cfg.size.minMmDiecut ?? 0) : cfg.size.minMm);
+	const MIN_MM = $derived(minForShape(cfg, forma));
 	let materiale = $state('bianco');
 	let finitura = $state('lucida');
 	// svelte-ignore state_referenced_locally
@@ -112,18 +112,17 @@
 		return { ...qListino, net, gross, perPiece: shown / qty, perPieceNet: net / qty, credit: net * cfg.creditRate };
 	});
 	const progress = $derived((stepNo(step) / steps.length) * 100);
-	const suggested = $derived(suggestedSize(ratio));
 	const shapePresets = $derived(shape?.presets?.length ? shape.presets : [30, 50, 70, 100]);
-	const presets = $derived(
-		(file ? [suggested[0], ...shapePresets.filter((x) => x !== suggested[0])] : shapePresets).slice(0, 4).map((pw) => [pw, roundHalf(pw / ratio)] as [number, number])
-	);
-	// senza file, al cambio sagoma si parte dalla misura proposta (50 mm se c'è, altrimenti la prima)
+	/* la prima proposta e' sempre la misura minima della sagoma (lato corto al minimo, lato lungo in
+	   proporzione al disegno), poi tre misure piu' grandi; le misure personalizzate si scrivono sotto */
+	const presets = $derived(sizeProposals(cfg, forma, ratio, shapePresets));
+	// al cambio sagoma si riparte dalla misura minima (non nelle offerte, dove la misura e' fissa)
 	let lastForma = '';
 	$effect(() => {
 		if (forma === lastForma) return;
 		lastForma = forma;
-		if (!file) {
-			const [pw, ph] = presets.find(([x]) => x === 50) ?? presets[0];
+		if (!sizeLocked) {
+			const [pw, ph] = presets[0];
 			w = pw;
 			h = ph;
 		}
@@ -195,10 +194,10 @@
 		cutRatio = r;
 		// la misura dal file vale per il sagomato (segue la proporzione del disegno); sulle sagome
 		// geometriche resta quella scelta dal cliente, cosi' il cambio sagoma non rifa' il disegno due volte
-		if (forma === 'sagomato' || !file) {
-			w = s.srcMM && s.srcMM.w >= MIN_MM && s.srcMM.w <= MAX_MM ? clamp(s.srcMM.w) : suggestedSize(r)[0];
-			h = clamp(w / r);
-		} else if (shape?.equal) h = w;
+		/* si parte SEMPRE dalla misura minima della sagoma, anche se il file dichiara una misura
+		   sua: il cliente vede prima il prezzo piu' basso e poi sale se vuole */
+		const [w0, h0] = startSize(cfg, forma, r);
+		w = w0; h = h0;
 	}
 
 	const clamp = (v: number) => Math.min(MAX_MM, Math.max(MIN_MM, roundHalf(v || MIN_MM)));
@@ -390,7 +389,7 @@
 				<div class="step__body">
 					<div class="size-presets">
 						{#each presets as [pw, ph], k (pw)}
-							<button type="button" class="size-btn" class:is-active={w === pw && h === ph} onclick={() => { w = pw; h = ph; }}>{#if file && k === 0}<small>Consigliata</small>{/if}{fmt(pw)} × {fmt(ph)} mm</button>
+							<button type="button" class="size-btn" class:is-active={w === pw && h === ph} onclick={() => { w = pw; h = ph; }}>{#if k === 0}<small>Partenza</small>{/if}{fmt(pw)} × {fmt(ph)} mm</button>
 						{/each}
 					</div>
 					<div class="size-inputs">
