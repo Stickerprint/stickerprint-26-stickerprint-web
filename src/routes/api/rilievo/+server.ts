@@ -73,7 +73,8 @@ export const POST: RequestHandler = async ({ request }) => {
 		headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
 		body: JSON.stringify({
 			model: MODELLO,
-			max_tokens: 4000,   // il modello ragiona prima di rispondere: il JSON arriva dopo il blocco di ragionamento
+			max_tokens: 1500,
+			thinking: { type: 'disabled' },   // niente blocco di ragionamento: serve solo il JSON
 			system: REGOLE,
 			messages: [
 				{
@@ -92,14 +93,15 @@ export const POST: RequestHandler = async ({ request }) => {
 	if (!res || !res.ok) {
 		const err = res ? await res.text().catch(() => '') : 'rete';
 		console.error('[rilievo ai]', res?.status, err.slice(0, 300));
-		return json({ ok: false, motivo: 'analisi non riuscita' }, { status: 502 });
+		return json({ ok: false, motivo: 'analisi non riuscita', dettaglio: `HTTP ${res?.status ?? 0} ${err.slice(0, 300)}` }, { status: 502 });
 	}
 	const out = await res.json().catch(() => null) as { content?: { type: string; text?: string }[]; stop_reason?: string } | null;
 	const testo = (out?.content ?? []).map((c) => c.text ?? '').join('\n');
 	const scelta = estraiJson(testo);
 	if (!scelta) {
 		console.error('[rilievo ai] risposta non leggibile', out?.stop_reason, JSON.stringify(out).slice(0, 600));
-		return json({ ok: false, motivo: 'risposta non leggibile', dettaglio: (testo || JSON.stringify(out)).slice(0, 400) }, { status: 502 });
+		const blocchi = (out?.content ?? []).map((c) => `${c.type}:${(c.text ?? (c as { thinking?: string }).thinking ?? '').length}`).join(' ');
+		return json({ ok: false, motivo: 'risposta non leggibile', dettaglio: `stop=${out?.stop_reason ?? '?'} blocchi=[${blocchi}] testo=${testo.slice(0, 300)}` }, { status: 502 });
 	}
 	const valide = new Set(body.zone.map((z) => z.id));
 	scelta.rilievo = scelta.rilievo.filter((n) => valide.has(n));
