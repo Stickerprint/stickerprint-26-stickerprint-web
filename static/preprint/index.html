@@ -3172,12 +3172,7 @@ function rilievoMask(){
   const key=S.rilGen+'|'+S.palIdx+'|'+(S.rimuoviSfondo?1:0);
   if(S.ril&&S.ril.key===key)return S.ril;
   const t0=performance.now();
-  /* si parte dal FILE ORIGINALE del cliente (S.src), non dalla tela di lavoro ne'
-     dall'immagine elaborata per il mockup: i dettagli vanno letti dove sono davvero */
-  const sm=(()=>{const src=S.src||S.work.canvas;const sw=src.width,sh=src.height;const k=Math.min(1,1100/Math.max(sw,sh));
-    const w=Math.max(40,Math.round(sw*k)),h=Math.max(40,Math.round(sh*k));const c=document.createElement('canvas');c.width=w;c.height=h;
-    const g=c.getContext('2d',{willReadFrequently:true});g.imageSmoothingQuality='high';g.drawImage(src,0,0,w,h);return {w,h,d:g.getImageData(0,0,w,h).data};})();
-  const w=sm.w, h=sm.h, N=w*h;
+  const sm=smallCopy(960), w=sm.w, h=sm.h, N=w*h;
   const kx=w/S.mw, ky=h/S.mh;
   /* immagine composta: il disegno piu' il colore di riempimento del pezzo dove il
      disegno non c'e' (sfondo del file scontornato o fuori dal disegno). Cosi' una
@@ -3311,7 +3306,7 @@ function rilievoMask(){
   /* componenti: via i puntini che la macchina non puo' fare (sotto 0,5 mm), riempiti
      i forellini chiusi (sotto 1 mm di lato): la vernice copre comunque quegli spazi,
      e uno stemma con scritte minute diventa una forma unica */
-  {const Amin=Math.max(4,Math.round((0.5/mmpx)*(0.5/mmpx))), Ahole=Math.max(4,Math.round((0.5/mmpx)*(0.5/mmpx)));   /* si chiudono i forellini sotto 0,5 mm (macchie dentro i tratti di un font grunge); i buchi veri delle lettere e i dettagli come i denti di un teschio restano */
+  {const Amin=Math.max(4,Math.round((0.5/mmpx)*(0.5/mmpx))), Ahole=Math.max(6,Math.round((1.0/mmpx)*(1.0/mmpx)));
    const lab=new Int32Array(N);const st=[];
    const comp=(val,cb)=>{lab.fill(0);let n=0;
      for(let s=0;s<N;s++){if(lab[s]||R[s]!==val)continue;n++;lab[s]=n;st.push(s);let area=0,tc=0;const px=[];
@@ -3323,24 +3318,6 @@ function rilievoMask(){
        cb(px,area,tc);}};
    comp(1,(px,area)=>{if(area<Amin)for(const i of px)R[i]=0;});
    comp(0,(px,area,tc)=>{if(!tc&&area<Ahole)for(const i of px)R[i]=1;});}
-  /* chiusura leggera (0,12 mm): le tacche di un pixel lungo un contorno si richiudono e
-     i bordi escono continui; piu' di cosi' fonderebbe le lettere piccole */
-  {const r=Math.max(1,0.12/mmpx), r2=r*r;
-   const isR=new Uint8Array(N);for(let i=0;i<N;i++)isR[i]=R[i]?1:0;
-   const dToR=edt2d(isR,w,h);                        // distanza (al quadrato) dal rilievo
-   const D=new Uint8Array(N);for(let i=0;i<N;i++)D[i]=(R[i]||dToR[i]<=r2)?1:0;
-   const notD=new Uint8Array(N);for(let i=0;i<N;i++)notD[i]=D[i]?0:1;
-   const dToOut=edt2d(notD,w,h);                     // distanza dal fuori della forma dilatata
-   for(let i=0;i<N;i++)R[i]=(D[i]&&dToOut[i]>r2)?1:0;}
-  /* bordo uniforme: se lungo il perimetro della sagoma c'e' una fascia quasi tutta in
-     rilievo (il contorno colorato di uno scudo), la fascia va in rilievo per intero,
-     anche dove il colore del contorno si confonde con lo sfondo */
-  {const out=new Uint8Array(N);for(let i=0;i<N;i++)out[i]=inArt[i]?0:1;
-   const dIn=edt2d(out,w,h);let best=0;
-   for(let t=0.4;t<=2.0;t+=0.2){const tp=(t/mmpx)*(t/mmpx);let n=0,r=0;
-     for(let i=0;i<N;i++){if(!inArt[i]||dIn[i]>tp)continue;n++;if(R[i])r++;}
-     if(n>50&&r/n>=0.6)best=tp;else if(best)break;}
-   if(best)for(let i=0;i<N;i++)if(inArt[i]&&dIn[i]<=best)R[i]=1;}
   const c=document.createElement('canvas');c.width=w;c.height=h;
   const g=c.getContext('2d'),im=g.createImageData(w,h),dd=im.data;
   for(let i=0,p=0;i<N;i++,p+=4){if(R[i]){dd[p]=0;dd[p+1]=0;dd[p+2]=0;dd[p+3]=255;}}
