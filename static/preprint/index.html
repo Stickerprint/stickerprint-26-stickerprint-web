@@ -3165,6 +3165,8 @@ function resinDome(core,ppm){
    netti, quindi una campitura sfumata resta una regione sola: piatta.
    ========================================================================== */
 S.rilievo=false; S.rilGen=0; S.ril=null;
+/* [sito] 'Dettagli rilievo': solo sagoma e zone in rilievo in tinta piatta RDG_GLOSS (#86a7b3) */
+S.rilDettagli=false; const RDG_GLOSS='#86a7b3';
 function rilievoMask(){
   if(!S.work||!S.mask||!S.bbox)return null;
   const key=S.rilGen+'|'+S.palIdx+'|'+(S.rimuoviSfondo?1:0);
@@ -3332,6 +3334,28 @@ function rilievoApply(c,ppm){
   o.globalAlpha=1;o.globalCompositeOperation='destination-in';o.drawImage(c,0,0);
   o.globalCompositeOperation='source-over';
   return out;}
+/* Vista 'Dettagli rilievo': la grafica sparisce, resta il pezzo bianco con le sole
+   zone che riceveranno l'effetto rilievo, nel colore spot RDG_GLOSS. */
+function rilievoDettagli(c,ppm){
+  const m=rilievoMask(), A=artRect(); if(!m||!A)return c;
+  const W=c.width,H=c.height;
+  const out=document.createElement('canvas');out.width=W;out.height=H;const o=out.getContext('2d');
+  o.drawImage(c,0,0);o.globalCompositeOperation='source-in';o.fillStyle='#ffffff';o.fillRect(0,0,W,H);
+  const mk=document.createElement('canvas');mk.width=m.w;mk.height=m.h;const gm=mk.getContext('2d');
+  const im=gm.createImageData(m.w,m.h),dd=im.data;
+  for(let i=0,p=0;i<m.w*m.h;i++,p+=4){ if(!m.on[i])continue; dd[p]=0x86;dd[p+1]=0xa7;dd[p+2]=0xb3;dd[p+3]=255; }
+  gm.putImageData(im,0,0);
+  /* la maschera e' a bassa risoluzione: la porto sul pezzo con interpolazione e poi
+     taglio l'alfa a meta', cosi' i contorni escono lisci e netti anche con la lente */
+  const T=document.createElement('canvas');T.width=W;T.height=H;const gt=T.getContext('2d',{willReadFrequently:true});
+  const px=ppm*A.w/m.w;   /* pixel della maschera in pixel del pezzo */
+  gt.filter='blur('+(0.8*px).toFixed(2)+'px)';gt.setTransform(ppm,0,0,ppm,0,0);gt.imageSmoothingEnabled=true;gt.imageSmoothingQuality='high';gt.drawImage(mk,A.x,A.y,A.w,A.h);gt.setTransform(1,0,0,1,0,0);gt.filter='none';
+  const id=gt.getImageData(0,0,W,H),q=id.data;
+  for(let p=0;p<q.length;p+=4){ const a=q[p+3]; q[p]=0x86;q[p+1]=0xa7;q[p+2]=0xb3; q[p+3]=a<=112?0:a>=144?255:Math.round((a-112)*255/32); }   /* soglia a meta' con rampa stretta: contorno liscio e netto */
+  gt.putImageData(id,0,0);
+  o.globalCompositeOperation='source-over';o.drawImage(T,0,0);
+  o.globalCompositeOperation='destination-in';o.drawImage(c,0,0);o.globalCompositeOperation='source-over';
+  return out;}
 function renderCore(ppm,withMat){
   let c=renderCoreRaw(ppm,withMat);
   if(withMat&&S.lamina==='opaca'&&S.prod!=='resin'){
@@ -3340,7 +3364,7 @@ function renderCore(ppm,withMat){
     g.globalCompositeOperation='source-atop';g.fillStyle='rgba(18,18,28,0.08)';g.fillRect(0,0,o.width,o.height);
     c=o;}
   /* [sito] adesivi in rilievo: l'effetto va sopra la finitura, e resta lucido anche con l'UV opaca */
-  if(withMat&&S.rilievo&&S.prod!=='resin'){try{c=rilievoApply(c,ppm);}catch(e){console.error('[rilievo]',e);}}
+  if(withMat&&S.rilievo&&S.prod!=='resin'){try{c=S.rilDettagli?rilievoDettagli(c,ppm):rilievoApply(c,ppm);}catch(e){console.error('[rilievo]',e);}}
   return c;}
 function renderCoreRaw(ppm,withMat){
   const ink=inkLayer(ppm);
@@ -4452,7 +4476,7 @@ function ridipingi(){
   }
   g.drawImage(a.base,0,0);
   try{
-    const f=(S.prod==='resin'&&!S.senzaResina)?99:fasBagliore();
+    const f=((S.prod==='resin'&&!S.senzaResina)||S.rilDettagli)?99:fasBagliore();
     if(f<10){
       g.globalCompositeOperation='screen';
       g.drawImage(bagliore(tile,f),pad*ppm,pad*ppm);
@@ -4865,10 +4889,30 @@ function ppGeoUI(){
      (stessa vista degli adesivi: si lavora su zoom, colori, bordo), un altro torna al foglio. */
   const LENTE_SVG='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/><path d="M8 10.5h5M10.5 8v5"/></svg>';
   const FOGLIO_SVG='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h3M13 8h3M8 12h3M13 12h3M8 16h3M13 16h3"/></svg>';
-  let lente=null;
+  const DETT_SVG='<span style="display:inline-block;width:14px;height:14px;border-radius:4px;background:'+RDG_GLOSS+';border:1.5px solid rgba(11,11,59,.25)"></span>';
+  const ART_SVG='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 16l5-5 4 4 3-3 6 6"/><circle cx="16" cy="9" r="1.6"/></svg>';
+  let lente=null, dett=null, dettLeg=null;
   const aggiornaLente=()=>{
     try{
       const st=document.getElementById('ppStage'); if(!st)return;
+      /* [sito] RILIEVO: 'Dettagli rilievo' a sinistra. Nasconde la grafica e mostra il
+         pezzo con il tratteggio di taglio e le sole zone in rilievo in tinta RDG_GLOSS. */
+      if(!dett){
+        dett=document.createElement('button'); dett.type='button'; dett.id='ppDettagli';
+        dett.style.cssText='position:absolute;left:10px;top:10px;z-index:6;display:none;align-items:center;gap:7px;padding:9px 12px;border-radius:999px;border:1.5px solid #dfe3ea;background:#fff;color:#0b0b3b;font:700 12.5px Montserrat,system-ui,sans-serif;cursor:pointer;box-shadow:0 4px 14px rgba(11,11,59,.12)';
+        dett.onclick=()=>{S.rilDettagli=!S.rilDettagli; aggiornaLente(); if(S.src&&S.bbox){try{draw();computeLayout();}catch(e){}} };
+        dettLeg=document.createElement('div'); dettLeg.id='ppDettLeg';
+        dettLeg.style.cssText='position:absolute;left:10px;top:52px;z-index:6;display:none;max-width:210px;padding:7px 10px;border-radius:10px;background:rgba(255,255,255,.94);color:#3d3f63;font:600 11.5px Montserrat,system-ui,sans-serif;line-height:1.35;box-shadow:0 4px 14px rgba(11,11,59,.10)';
+        dettLeg.innerHTML='In colore le zone che riceveranno l\'effetto rilievo (spot <b>RDG_GLOSS</b>). Tratteggio: linea di taglio.';
+        st.style.position='relative'; st.appendChild(dett); st.appendChild(dettLeg);
+      }
+      const onD=!!(S.rilievo&&!S.foglio&&S.src&&S.bbox&&S.prod!=='resin');
+      if(!onD)S.rilDettagli=false;
+      dett.style.display=onD?'inline-flex':'none';
+      dett.innerHTML=S.rilDettagli?(ART_SVG+'<span>Torna alla grafica</span>'):(DETT_SVG+'<span>Dettagli rilievo</span>');
+      dett.title=S.rilDettagli?'Mostra di nuovo la grafica con l\'effetto rilievo':'Mostra solo le zone che riceveranno il rilievo';
+      if(S.rilDettagli){dett.style.background='#0b0b3b';dett.style.color='#fff';dett.style.borderColor='#0b0b3b';}else{dett.style.background='#fff';dett.style.color='#0b0b3b';dett.style.borderColor='#dfe3ea';}
+      dettLeg.style.display=(onD&&S.rilDettagli)?'block':'none';
       if(!lente){
         lente=document.createElement('button'); lente.type='button'; lente.id='ppLente';
         lente.style.cssText='position:absolute;right:10px;top:10px;z-index:6;display:none;align-items:center;gap:7px;padding:9px 12px;border-radius:999px;border:1.5px solid #dfe3ea;background:#fff;color:#0b0b3b;font:700 12.5px Montserrat,system-ui,sans-serif;cursor:pointer;box-shadow:0 4px 14px rgba(11,11,59,.12)';
@@ -4895,6 +4939,7 @@ function ppGeoUI(){
   let lastH=0; const sendSize=()=>{const app=document.querySelector('.pp-app'); const h=Math.ceil(app?app.getBoundingClientRect().height+8:document.documentElement.scrollHeight); if(h!==lastH){lastH=h;send('size',{h});}};
   setInterval(sendSize,400); addEventListener('load',sendSize);
   const snapshot=()=>{
+    if(S.rilDettagli)return;
     const t0=performance.now();
     fitEmbed();
     try{
