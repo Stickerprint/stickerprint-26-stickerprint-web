@@ -27,6 +27,7 @@ Come ragiona un grafico:
 - Se un elemento e' diviso in piu' zone numerate (un teschio tagliato da linee nere, una lettera in due colori), scegli TUTTE le sue zone: mezzo elemento in rilievo e' un errore.
 - Le zone G1, G2… sono GRUPPI di pezzi piccoli dello stesso colore (scritte piccole, pallini, stelline, nocche, foglioline, dettagli minuti). Scegliendo un gruppo alzi tutti i suoi pezzi. Se il gruppo ha il colore dello sfondo (i fori delle lettere, gli spazi fra i dettagli) NON sceglierlo; se ha il colore delle scritte e dei dettagli, scegli il gruppo cosi' le scritte piccole e i dettagli sono in rilievo.
 - Meglio poche zone giuste che tante zone a caso: il rilievo deve avere un senso visivo. Ma ogni scritta e ogni dettaglio caratterizzante deve esserci.
+- Prima di rispondere, ricontrolla lettera per lettera: OGNI lettera della scritta principale e di quelle secondarie deve avere tutte le sue zone nell'elenco (le lettere sono spesso divise in piu' zone: parte chiara, parte scura, ombra). Una scritta con una lettera mancante e' un errore grave.
 
 Rispondi SOLO con un oggetto JSON, senza altro testo:
 {"rilievo":[numeri delle zone e sigle dei gruppi, es. 3, 7, "G2"], "motivo":"una frase in italiano che spiega la scelta"}`;
@@ -83,6 +84,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		body: JSON.stringify({
 			model: MODELLO,
 			max_tokens: 1500,
+			temperature: 0,
 			thinking: { type: 'disabled' },   // niente blocco di ragionamento: serve solo il JSON
 			system: REGOLE,
 			messages: [

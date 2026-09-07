@@ -3418,7 +3418,7 @@ function rilievoHash(){
   const src=S.src||S.work.canvas; const c=document.createElement('canvas');c.width=48;c.height=48;
   const g=c.getContext('2d',{willReadFrequently:true});g.drawImage(src,0,0,48,48);const q=g.getImageData(0,0,48,48).data;
   let h1=2166136261,h2=0x9e3779b9;for(let i=0;i<q.length;i+=4){h1=Math.imul(h1^q[i],16777619);h2=Math.imul(h2^q[i+1]^(q[i+2]<<8)^(q[i+3]<<16),2246822519);}
-  return (h1>>>0).toString(16)+(h2>>>0).toString(16)+'-'+src.width+'x'+src.height+'-z4';}
+  return (h1>>>0).toString(16)+(h2>>>0).toString(16)+'-'+src.width+'x'+src.height+'-z5';}
 function rilievoAI(seg,d,w,h,inArt,artArea,bw,bh,fill,mmpx){
   const N=w*h, hash=rilievoHash();
   const q=new URLSearchParams(location.search);
@@ -3495,7 +3495,19 @@ function rilievoAI(seg,d,w,h,inArt,artArea,bw,bh,fill,mmpx){
   const ordine=[];for(let l=1;l<=n;l++)if(A[l]>0&&art[l]>0)ordine.push(l);ordine.sort((a,b)=>A[b]-A[a]);
   const zoneId=new Int32Array(n+1),grpOf=new Int32Array(n+1);
   const numerate=[],piccole=[];
-  for(const l of ordine){if(art[l]>=0.0015*artArea&&numerate.length<80)numerate.push(l);else piccole.push(l);}
+  /* i frammenti minuscoli (sotto lo 0,02%: antialiasing, granelli) non sono pezzi: vanno nella
+     zona con cui confinano di piu', senza formare gruppi inutili */
+  {const minuscoli=new Set();for(const l of ordine)if(art[l]<0.0002*artArea)minuscoli.add(l);
+   if(minuscoli.size){const cont=new Map();
+    for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=y*w+x,l=lab[i];if(!l)continue;
+      for(const j of [i+1,i+w]){if(j>=N||(j===i+1&&x===w-1))continue;const m=lab[j];if(!m||m===l)continue;
+        if(minuscoli.has(l)&&!minuscoli.has(m)){const k=l*(n+1)+m;cont.set(k,(cont.get(k)||0)+1);}
+        if(minuscoli.has(m)&&!minuscoli.has(l)){const k=m*(n+1)+l;cont.set(k,(cont.get(k)||0)+1);}}}
+    const best=new Int32Array(n+1),bn=new Float64Array(n+1);
+    for(const [k,c] of cont){const a=Math.floor(k/(n+1)),b=k%(n+1);if(c>bn[a]){bn[a]=c;best[a]=b;}}
+    for(let i=0;i<N;i++){const l=lab[i];if(l&&minuscoli.has(l)&&best[l])lab[i]=best[l];}
+    for(const l of minuscoli){if(best[l]){A[best[l]]+=A[l];art[best[l]]+=art[l];S0[best[l]]+=S0[l];S1[best[l]]+=S1[l];S2[best[l]]+=S2[l];A[l]=0;art[l]=0;}}}}
+  for(const l of ordine){if(!A[l]||!art[l])continue;if(art[l]>=0.0015*artArea&&numerate.length<80)numerate.push(l);else piccole.push(l);}
   numerate.forEach((l,i)=>zoneId[l]=i+1);
   const gruppi=[];   // {col,pezzi,area,X,Y,labels}
   for(const l of piccole){const c=mean(l);let g=-1,bd=1e9;
