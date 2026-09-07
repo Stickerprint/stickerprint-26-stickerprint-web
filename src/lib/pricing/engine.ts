@@ -318,7 +318,7 @@ export function sizeProposals(cfg: EngineConfig, forma: string, ratio: number, p
 	const cand = presets.filter((p) => p > w0 + 2).sort((a, b) => a - b);
 	for (const p of cand) { if (out.length >= 4) break; out.push(fromW(p)); }
 	for (const k of [1.5, 2, 3]) { if (out.length >= 4) break; const w = r5(w0 * k); if (!out.some(([x]) => Math.abs(x - w) < 2) && w <= cfg.size.maxMm) out.push(fromW(w)); }
-	return out.slice(0, 4);
+	return [out[0], ...out.slice(1).sort((a, b) => a[0] - b[0])].slice(0, 4);
 }
 
 /** Misura consigliata dalla proporzione del file */
