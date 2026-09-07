@@ -3275,7 +3275,15 @@ function rilievoMask(){
       /* pixel di bordo: e' dettaglio se il suo colore si stacca dallo sfondo vicino... */
       const nb=nearest[i];if(nb<0){R[i]=1;cnt++;continue;}
       const pb=nb*4;
-      if(Math.abs(d[p]-d[pb])+Math.abs(d[p+1]-d[pb+1])+Math.abs(d[p+2]-d[pb+2])<=DC)continue;
+      const dBg=Math.abs(d[p]-d[pb])+Math.abs(d[p+1]-d[pb+1])+Math.abs(d[p+2]-d[pb+2]);
+      if(dBg<=DC)continue;
+      /* accanto a un elemento in rilievo il bordo si decide a meta' colore: il pixel e'
+         inchiostro solo se somiglia piu' all'elemento che allo sfondo. Cosi' i tratti non
+         si ingrossano e gli spazi sottili (crepe, occhielli) restano aperti */
+      {let lo=0;for(const o of [-1,1,-w,w]){const j=i+o;if(j<0||j>=N)continue;const lj=seg.lab[j];if(lj&&on[lj]){lo=lj;break;}}
+       if(lo){const a=seg.areas[lo],m0=seg.sums[lo][0]/a,m1=seg.sums[lo][1]/a,m2=seg.sums[lo][2]/a;
+         const dEl=Math.abs(d[p]-m0)+Math.abs(d[p+1]-m1)+Math.abs(d[p+2]-m2);
+         if(dEl>dBg)continue;}}
       /* ...ma non se e' solo la sfumatura di confine fra DUE sfondi diversi (anello nero
          contro disco grigio): il suo colore sta 'in mezzo' ai due */
       let blend=false;
@@ -3288,16 +3296,9 @@ function rilievoMask(){
     frac=cnt/artArea;
     if(frac<=0.6)break;        // troppo rilievo: disegno complesso, si alzano le soglie
     T=55;DC=110;DCR=90;DCP=140;}
-  /* 1px di recupero sui bordi antialiasati (mezzo colore) delle lettere */
-  {const R3=Uint8Array.from(R);
-   for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){const i=y*w+x;if(R[i]||!inArt[i])continue;
-     if(!(R[i-1]||R[i+1]||R[i-w]||R[i+w]))continue;
-     const nb=nearest[i];if(nb<0)continue;const p=i*4,pb=nb*4;
-     if(Math.abs(d[p]-d[pb])+Math.abs(d[p+1]-d[pb+1])+Math.abs(d[p+2]-d[pb+2])>=Math.round(DC*0.6))R3[i]=1;}
-   R=R3;}
   /* pulizia morbida: filtro di maggioranza 3x3 (due passate): bordi arrotondati, niente
      tratteggio frastagliato */
-  for(let pass=0;pass<2;pass++){
+  for(let pass=0;pass<1;pass++){
     const R2=new Uint8Array(N);
     for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){const i=y*w+x;
       const n=R[i-w-1]+R[i-w]+R[i-w+1]+R[i-1]+R[i]+R[i+1]+R[i+w-1]+R[i+w]+R[i+w+1];
@@ -3306,7 +3307,7 @@ function rilievoMask(){
   /* componenti: via i puntini che la macchina non puo' fare (sotto 0,5 mm), riempiti
      i forellini chiusi (sotto 1 mm di lato): la vernice copre comunque quegli spazi,
      e uno stemma con scritte minute diventa una forma unica */
-  {const Amin=Math.max(4,Math.round((0.5/mmpx)*(0.5/mmpx))), Ahole=Math.max(6,Math.round((1.0/mmpx)*(1.0/mmpx)));
+  {const Amin=Math.max(4,Math.round((0.35/mmpx)*(0.35/mmpx))), Ahole=Math.max(4,Math.round((0.3/mmpx)*(0.3/mmpx)));   /* solo i forellini minuscoli: gli occhielli delle lettere e le crepe del disegno restano */
    const lab=new Int32Array(N);const st=[];
    const comp=(val,cb)=>{lab.fill(0);let n=0;
      for(let s=0;s<N;s++){if(lab[s]||R[s]!==val)continue;n++;lab[s]=n;st.push(s);let area=0,tc=0;const px=[];
