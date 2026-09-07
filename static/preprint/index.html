@@ -3418,7 +3418,7 @@ function rilievoHash(){
   const src=S.src||S.work.canvas; const c=document.createElement('canvas');c.width=48;c.height=48;
   const g=c.getContext('2d',{willReadFrequently:true});g.drawImage(src,0,0,48,48);const q=g.getImageData(0,0,48,48).data;
   let h1=2166136261,h2=0x9e3779b9;for(let i=0;i<q.length;i+=4){h1=Math.imul(h1^q[i],16777619);h2=Math.imul(h2^q[i+1]^(q[i+2]<<8)^(q[i+3]<<16),2246822519);}
-  return (h1>>>0).toString(16)+(h2>>>0).toString(16)+'-'+src.width+'x'+src.height;}
+  return (h1>>>0).toString(16)+(h2>>>0).toString(16)+'-'+src.width+'x'+src.height+'-z2';}
 function rilievoAI(seg,d,w,h,inArt,artArea,bw,bh,fill,mmpx){
   const N=w*h, hash=rilievoHash();
   const q=new URLSearchParams(location.search);
@@ -3450,6 +3450,24 @@ function rilievoAI(seg,d,w,h,inArt,artArea,bw,bh,fill,mmpx){
    while(qh<qt){const i=qq[qh++];const v=lab[i];const x=i%w,y=(i/w)|0;
      if(x>0&&!lab[i-1]){lab[i-1]=v;qq[qt++]=i-1;}if(x<w-1&&!lab[i+1]){lab[i+1]=v;qq[qt++]=i+1;}
      if(y>0&&!lab[i-w]){lab[i-w]=v;qq[qt++]=i-w;}if(y<h-1&&!lab[i+w]){lab[i+w]=v;qq[qt++]=i+w;}}}
+  /* ogni zona si spacca in parte SOTTILE (linee, contorni: i tratti neri di un disegno sono
+     tutti collegati e formerebbero una zona sola grande quanto il disegno) e parte PIENA:
+     cosi' il contorno del personaggio e' una zona a se', separata dalle scritte e dai dettagli */
+  {const R0s=Math.max(2,0.015*Math.min(bw,bh)), r2=R0s*R0s;
+   const bd=new Uint8Array(N);for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=y*w+x;if(x===0||y===0||x===w-1||y===h-1||(x<w-1&&lab[i+1]!==lab[i])||(y<h-1&&lab[i+w]!==lab[i]))bd[i]=1;}
+   const dd=edt2d(bd,w,h);const thin=new Uint8Array(N);for(let i=0;i<N;i++)thin[i]=dd[i]<r2?1:0;
+   /* si spaccano solo le zone che sono in prevalenza linee (oltre il 60% di pixel sottili):
+      una campitura grande resta intera, senza una 'cornice' sottile lungo il suo bordo */
+   {const tot=new Float64Array(n+1),sot=new Float64Array(n+1);for(let i=0;i<N;i++){const l=lab[i];if(!l)continue;tot[l]++;if(thin[i])sot[l]++;}
+    for(let i=0;i<N;i++){const l=lab[i];if(l&&sot[l]<0.6*tot[l])thin[i]=0;}}
+   const lab2=new Int32Array(N);let n2=0;const st=[];
+   for(let s0=0;s0<N;s0++){if(lab2[s0]||!lab[s0])continue;const L=lab[s0],T=thin[s0];n2++;lab2[s0]=n2;st.push(s0);
+     while(st.length){const i=st.pop();const x=i%w,y=(i/w)|0;
+       if(x>0&&!lab2[i-1]&&lab[i-1]===L&&thin[i-1]===T){lab2[i-1]=n2;st.push(i-1);}
+       if(x<w-1&&!lab2[i+1]&&lab[i+1]===L&&thin[i+1]===T){lab2[i+1]=n2;st.push(i+1);}
+       if(y>0&&!lab2[i-w]&&lab[i-w]===L&&thin[i-w]===T){lab2[i-w]=n2;st.push(i-w);}
+       if(y<h-1&&!lab2[i+w]&&lab[i+w]===L&&thin[i+w]===T){lab2[i+w]=n2;st.push(i+w);}}}
+   lab=lab2;n=n2;}
   /* statistiche e contatti fra zone */
   const stat=()=>{const A=new Float64Array(n+1),S0=new Float64Array(n+1),S1=new Float64Array(n+1),S2=new Float64Array(n+1),X=new Float64Array(n+1),Y=new Float64Array(n+1),out=new Uint8Array(n+1),art=new Float64Array(n+1);
     for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=y*w+x,l=lab[i];if(!l)continue;const p=i*4;A[l]++;S0[l]+=d[p];S1[l]+=d[p+1];S2[l]+=d[p+2];X[l]+=x;Y[l]+=y;if(inArt[i])art[l]++;
@@ -3480,7 +3498,8 @@ function rilievoAI(seg,d,w,h,inArt,artArea,bw,bh,fill,mmpx){
     const col=[st.S0[l]/a,st.S1[l]/a,st.S2[l]/a];
     const rx=(cx-S.bbox.x*(w/S.mw))/Math.max(1,bw),ry=(cy-S.bbox.y*(h/S.mh))/Math.max(1,bh);
     const pos=(ry<0.33?'in alto':ry>0.66?'in basso':'al centro')+' '+(rx<0.33?'a sinistra':rx>0.66?'a destra':'');
-    zone.push({id,colore:hex(col),area:+((st.art[l]/artArea)*100).toFixed(1),pos:pos.trim(),sottile:Math.sqrt(bestD[l])<R0,bordo:!!st.out[l]});}
+    const areaPct=+((st.art[l]/artArea)*100).toFixed(1);
+    zone.push({id,colore:hex(col),area:areaPct,pos:pos.trim(),sottile:Math.sqrt(bestD[l])<R0&&areaPct<8,bordo:!!st.out[l]});}
   /* ---- le due immagini per il modello ---- */
   const base=document.createElement('canvas');base.width=w;base.height=h;const gb=base.getContext('2d');
   const im=gb.createImageData(w,h);im.data.set(d);gb.putImageData(im,0,0);

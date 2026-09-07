@@ -22,6 +22,7 @@ Come ragiona un grafico:
 - Vanno in rilievo i DETTAGLI che caratterizzano il disegno: occhi, denti, unghie, creste, squame, corna, capelli, gioielli, stelline, pallini, ghirigori, foglie e rami, ornamenti, icone e piccoli simboli, contorni fini e linee decorative.
 - Il CORPO PRINCIPALE di un personaggio o di una figura grande resta opaco (e' la base su cui i dettagli in rilievo risaltano), a meno che l'intero disegno sia un logo/lettering: allora le lettere vanno in rilievo per intero e i loro fori restano opachi.
 - Non mettere in rilievo un filo di contorno attorno alle lettere se le lettere stesse sono in rilievo: il rilievo segue la lettera.
+- Le zone segnate come "tratto sottile" sono linee: il contorno nero di un personaggio o di un oggetto resta opaco (e' solo un bordo); vanno invece in rilievo le linee che SONO il disegno (illustrazione a linee, tatuaggio, ghirigori, ornamenti, venature).
 - Meglio poche zone giuste che tante zone a caso: il rilievo deve avere un senso visivo.
 
 Rispondi SOLO con un oggetto JSON, senza altro testo:
