@@ -4902,8 +4902,8 @@ function ppGeoUI(){
         dett.style.cssText='position:absolute;left:10px;top:10px;z-index:6;display:none;align-items:center;gap:7px;padding:9px 12px;border-radius:999px;border:1.5px solid #dfe3ea;background:#fff;color:#0b0b3b;font:700 12.5px Montserrat,system-ui,sans-serif;cursor:pointer;box-shadow:0 4px 14px rgba(11,11,59,.12)';
         dett.onclick=()=>{S.rilDettagli=!S.rilDettagli; aggiornaLente(); if(S.src&&S.bbox){try{draw();computeLayout();}catch(e){}} };
         dettLeg=document.createElement('div'); dettLeg.id='ppDettLeg';
-        dettLeg.style.cssText='position:absolute;left:10px;top:52px;z-index:6;display:none;max-width:210px;padding:7px 10px;border-radius:10px;background:rgba(255,255,255,.94);color:#3d3f63;font:600 11.5px Montserrat,system-ui,sans-serif;line-height:1.35;box-shadow:0 4px 14px rgba(11,11,59,.10)';
-        dettLeg.innerHTML='In colore le zone che riceveranno l\'effetto rilievo (spot <b>RDG_GLOSS</b>). Tratteggio: linea di taglio.';
+        dettLeg.style.cssText='position:absolute;left:10px;right:10px;bottom:8px;z-index:6;display:none;padding:6px 10px;border-radius:10px;background:rgba(255,255,255,.92);color:#3d3f63;font:600 11.5px Montserrat,system-ui,sans-serif;line-height:1.35;text-align:center;box-shadow:0 4px 14px rgba(11,11,59,.10)';
+        dettLeg.innerHTML='In colore: zone che riceveranno il rilievo (spot <b>RDG_GLOSS</b>) · tratteggio: linea di taglio';
         st.style.position='relative'; st.appendChild(dett); st.appendChild(dettLeg);
       }
       const onD=!!(S.rilievo&&!S.foglio&&S.src&&S.bbox&&S.prod!=='resin');
@@ -4960,7 +4960,7 @@ function ppGeoUI(){
   };
   addEventListener('message',e=>{
     if(e.origin!==origin)return; const d=e.data||{}; if(d.source!=='sito')return;
-    if(d.type==='file'&&d.file){
+    if(d.type==='file'&&d.file){ S.rilDettagli=false;
       (window.__msgs=window.__msgs||[]).push({t:Date.now(),type:d.type,isFile:d.file instanceof File,size:d.file.size,ftype:d.file.type});
       loadFile(d.file).then(()=>{(window.__msgs||[]).push({t:Date.now(),done:true,src:!!S.src});setTimeout(snapshot,120);},
         e=>{(window.__msgs||[]).push({t:Date.now(),error:String(e&&e.message||e)});});
