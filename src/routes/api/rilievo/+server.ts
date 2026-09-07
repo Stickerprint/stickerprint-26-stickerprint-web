@@ -84,7 +84,6 @@ export const POST: RequestHandler = async ({ request }) => {
 		body: JSON.stringify({
 			model: MODELLO,
 			max_tokens: 1500,
-			temperature: 0,
 			thinking: { type: 'disabled' },   // niente blocco di ragionamento: serve solo il JSON
 			system: REGOLE,
 			messages: [
