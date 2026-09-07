@@ -18,7 +18,8 @@ Ricevi l'immagine di un cliente e la stessa immagine con le zone numerate (ogni 
 
 Come ragiona un grafico:
 - Prima capisci cos'e' SFONDO (campiture grandi, sfumature di fondo, placche, ombre, il filetto o contorno attorno alla sagoma, l'ombra estrusa dietro una scritta): lo sfondo resta OPACO, mai in rilievo.
-- Le SCRITTE vanno sempre in rilievo (anche piccole, anche dentro un nastro: se il nastro e' pieno e la scritta e' chiara, alza la scritta e lascia il nastro opaco, e' il contrasto piu' bello).
+- Le SCRITTE vanno sempre in rilievo, anche piccole.
+- NASTRI, BANNER, TARGHETTE e CARTIGLI con una scritta sopra: scegli SOLO la scritta (e i pallini o i fregi accanto), MAI il nastro: la scritta lucida sul nastro opaco e' il contrasto piu' bello. Se scegli anche il nastro, la scritta sparisce nel rilievo.
 - Vanno in rilievo i DETTAGLI che caratterizzano il disegno: occhi, denti, unghie, creste, squame, corna, capelli, gioielli, stelline, pallini, ghirigori, foglie e rami, ornamenti, icone e piccoli simboli, contorni fini e linee decorative.
 - Il CORPO PRINCIPALE di un personaggio o di una figura grande resta opaco (e' la base su cui i dettagli in rilievo risaltano), a meno che l'intero disegno sia un logo/lettering: allora le lettere vanno in rilievo per intero e i loro fori restano opachi.
 - Non mettere in rilievo un filo di contorno attorno alle lettere se le lettere stesse sono in rilievo: il rilievo segue la lettera.
