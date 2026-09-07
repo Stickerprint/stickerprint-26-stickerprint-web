@@ -3311,7 +3311,7 @@ function rilievoMask(){
   /* componenti: via i puntini che la macchina non puo' fare (sotto 0,5 mm), riempiti
      i forellini chiusi (sotto 1 mm di lato): la vernice copre comunque quegli spazi,
      e uno stemma con scritte minute diventa una forma unica */
-  {const Amin=Math.max(4,Math.round((0.5/mmpx)*(0.5/mmpx))), Ahole=Math.max(4,Math.round((0.3/mmpx)*(0.3/mmpx)));   /* i buchi delle lettere restano: si chiudono solo i forellini sotto 0,3 mm */
+  {const Amin=Math.max(4,Math.round((0.5/mmpx)*(0.5/mmpx))), Ahole=Math.max(4,Math.round((0.5/mmpx)*(0.5/mmpx)));   /* si chiudono i forellini sotto 0,5 mm (macchie dentro i tratti di un font grunge); i buchi veri delle lettere e i dettagli come i denti di un teschio restano */
    const lab=new Int32Array(N);const st=[];
    const comp=(val,cb)=>{lab.fill(0);let n=0;
      for(let s=0;s<N;s++){if(lab[s]||R[s]!==val)continue;n++;lab[s]=n;st.push(s);let area=0,tc=0;const px=[];
