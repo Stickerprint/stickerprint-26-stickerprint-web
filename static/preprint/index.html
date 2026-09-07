@@ -3418,7 +3418,7 @@ function rilievoHash(){
   const src=S.src||S.work.canvas; const c=document.createElement('canvas');c.width=48;c.height=48;
   const g=c.getContext('2d',{willReadFrequently:true});g.drawImage(src,0,0,48,48);const q=g.getImageData(0,0,48,48).data;
   let h1=2166136261,h2=0x9e3779b9;for(let i=0;i<q.length;i+=4){h1=Math.imul(h1^q[i],16777619);h2=Math.imul(h2^q[i+1]^(q[i+2]<<8)^(q[i+3]<<16),2246822519);}
-  return (h1>>>0).toString(16)+(h2>>>0).toString(16)+'-'+src.width+'x'+src.height+'-z5';}
+  return (h1>>>0).toString(16)+(h2>>>0).toString(16)+'-'+src.width+'x'+src.height+'-z6';}
 function rilievoAI(seg,d,w,h,inArt,artArea,bw,bh,fill,mmpx){
   const N=w*h, hash=rilievoHash();
   const q=new URLSearchParams(location.search);
@@ -3497,12 +3497,14 @@ function rilievoAI(seg,d,w,h,inArt,artArea,bw,bh,fill,mmpx){
   const numerate=[],piccole=[];
   /* i frammenti minuscoli (sotto lo 0,02%: antialiasing, granelli) non sono pezzi: vanno nella
      zona con cui confinano di piu', senza formare gruppi inutili */
-  {const minuscoli=new Set();for(const l of ordine)if(art[l]<0.0002*artArea)minuscoli.add(l);
+  {const minuscoli=new Set();for(const l of ordine)if(art[l]<0.00005*artArea)minuscoli.add(l);
    if(minuscoli.size){const cont=new Map();
     for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=y*w+x,l=lab[i];if(!l)continue;
       for(const j of [i+1,i+w]){if(j>=N||(j===i+1&&x===w-1))continue;const m=lab[j];if(!m||m===l)continue;
-        if(minuscoli.has(l)&&!minuscoli.has(m)){const k=l*(n+1)+m;cont.set(k,(cont.get(k)||0)+1);}
-        if(minuscoli.has(m)&&!minuscoli.has(l)){const k=m*(n+1)+l;cont.set(k,(cont.get(k)||0)+1);}}}
+        /* solo verso un vicino dello STESSO colore: una lettera bianca piccola non deve
+           finire dentro il nastro arancione su cui poggia */
+        if(minuscoli.has(l)&&!minuscoli.has(m)&&dcol(mean(l),mean(m))<60){const k=l*(n+1)+m;cont.set(k,(cont.get(k)||0)+1);}
+        if(minuscoli.has(m)&&!minuscoli.has(l)&&dcol(mean(l),mean(m))<60){const k=m*(n+1)+l;cont.set(k,(cont.get(k)||0)+1);}}}
     const best=new Int32Array(n+1),bn=new Float64Array(n+1);
     for(const [k,c] of cont){const a=Math.floor(k/(n+1)),b=k%(n+1);if(c>bn[a]){bn[a]=c;best[a]=b;}}
     for(let i=0;i<N;i++){const l=lab[i];if(l&&minuscoli.has(l)&&best[l])lab[i]=best[l];}
@@ -3520,7 +3522,7 @@ function rilievoAI(seg,d,w,h,inArt,artArea,bw,bh,fill,mmpx){
     return ((ry<0.33?'in alto':ry>0.66?'in basso':'al centro')+' '+(rx<0.33?'a sinistra':rx>0.66?'a destra':'')).trim();};
   const zone=[];
   for(const l of numerate){const id=zoneId[l];const areaPct=+((art[l]/artArea)*100).toFixed(1);
-    zone.push({id,colore:hex(mean(l)),area:areaPct,pos:posDi(X[l]/A[l],Y[l]/A[l]),sottile:sot[l]>=0.6*A[l]&&areaPct<8,bordo:!!out[l]});}
+    zone.push({id,colore:hex(mean(l)),area:areaPct,pos:posDi(X[l]/A[l],Y[l]/A[l]),sottile:sot[l]>=0.6*A[l]&&areaPct<1.5,bordo:!!out[l]});}
   gruppi.forEach((G,k)=>{const na=Math.max(1,G.labels.reduce((s,l)=>s+A[l],0));
     zone.push({id:'G'+(k+1),colore:hex(G.col),area:+((G.area/artArea)*100).toFixed(1),pos:'pezzi sparsi, per lo piu\' '+posDi(G.X/na,G.Y/na),pezzi:G.pezzi});});
   /* ---- 7. le due immagini per il modello ---- */
