@@ -47,7 +47,12 @@ function estraiJson(testo: string): { rilievo: number[]; motivo: string } | null
 		const rilievo = Array.isArray(o.rilievo) ? o.rilievo.map((n: unknown) => Number(n)).filter((n: number) => Number.isFinite(n)) : [];
 		return { rilievo, motivo: String(o.motivo ?? '') };
 	} catch {
-		return null;
+		/* JSON sbagliato (una parentesi al posto di un'altra): si leggono i numeri dell'elenco e la frase */
+		const m = pulito.match(/"rilievo"\s*:\s*\[([^\]}]*)[\]}]/);
+		if (!m) return null;
+		const rilievo = m[1].split(/[^0-9]+/).filter(Boolean).map(Number).filter((n) => Number.isFinite(n));
+		const mm = pulito.match(/"motivo"\s*:\s*"([^"]*)"/);
+		return { rilievo, motivo: mm ? mm[1] : '' };
 	}
 }
 
