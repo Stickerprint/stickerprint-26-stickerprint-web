@@ -1686,13 +1686,20 @@ function computeMask(){
       if(spesso)for(let i=0;i<w*h;i++){if(m[i]&&!er[i]){const p=i*4;
         if(d[p+3]>=128)rim.push([d[p],d[p+1],d[p+2]]);}}
       const rc=rim.length>200?modeColor(rim):null;
-      if(rc&&rc[3]>=0.55){
+      /* il colore del perimetro e' una placca solo se e' anche una buona parte di tutto il
+         disegno: su una scritta grassa con un filo colorato attorno, il filo copre il perimetro
+         ma non e' lo sfondo (Paleta: il filo rosa faceva partire il pezzo rosa) */
+      let quota=1;
+      if(rc){let n=0,t=0;for(let i=0;i<w*h;i+=step){const p=i*4;if(!m[i]||d[p+3]<128)continue;t++;if(Math.abs(d[p]-rc[0])+Math.abs(d[p+1]-rc[1])+Math.abs(d[p+2]-rc[2])<60)n++;}quota=t?n/t:0;}
+      if(rc&&rc[3]>=0.55&&quota>=0.35){
         S.bgCol=[rc[0],rc[1],rc[2]];
         S.bgSrc='placca dell\'adesivo ('+Math.round(rc[3]*100)+'% del perimetro)';
         dens=1;   // la placca c'è: non serve il test di densità
       }
     }
-    if(!S.bgCol&&dens>=0.45){
+    /* la 'placca del design' vale solo se c'e' una campitura spessa: una scritta grassa riempie
+       il riquadro quanto una placca, ma il suo colore non e' lo sfondo (Paleta partiva rosa) */
+    if(!S.bgCol&&dens>=0.45&&(S.plateThick||0)>=0.045){
       const dp=[];
       for(let i=0;i<w*h;i+=step){const p=i*4;if(m[i]&&d[p+3]>=128)dp.push([d[p],d[p+1],d[p+2]]);}
       const dc=modeColor(dp);
@@ -3229,12 +3236,45 @@ function rilievoMask(){
      -------------------------------------------------------------------- */
   const Abig=0.18*artArea, Aedge=0.03*artArea;
   const dist3=(r,g,b,ref)=>Math.abs(r-ref[0])+Math.abs(g-ref[1])+Math.abs(b-ref[2]);
-  let T=30, DC=45, DCR=45, DCP=80, seg, R, frac=1, nearest;
+  let T=30, DC=45, DCR=45, DCP=80, seg, R, frac=1, nearest, onFinal=null, isBgFinal=null;
   const rb=Math.max(6,Math.round(0.03*Math.min(w,h)));   // raggio del colore locale di sfondo
   for(let tent=0;tent<2;tent++){
     seg=segmenta(T);
-    const isBg=new Uint8Array(seg.nl+1);
-    for(let l=1;l<=seg.nl;l++){const a=seg.areas[l];if(a>=Abig||(seg.touch[l]&&a>=Aedge))isBg[l]=1;}
+    /* ------------------------------------------------------------------
+       SFONDO E SOGGETTO
+       Sfondo: il fuori del disegno e cio' che tocca il bordo dell'immagine; una campitura
+       grande e' sfondo solo se e' una 'placca' che contiene altri elementi (il disco grigio
+       con la scritta), NON se e' il soggetto stesso (una scritta grassa che riempie il pezzo).
+       Un contorno spesso che tocca il fuori e racchiude il disegno (il filetto attorno a una
+       macchia, l'ombra estrusa dietro una scritta) e' sfondo: il colore finisce li', non e'
+       grafica da alzare.
+       ------------------------------------------------------------------ */
+    const K=seg.nl+1, R0=Math.max(2,0.015*Math.min(bw,bh)), Ael=0.004*artArea;
+    const mean=l=>{const a=seg.areas[l];return [seg.sums[l][0]/a,seg.sums[l][1]/a,seg.sums[l][2]/a];};
+    const dcol=(a,b)=>Math.abs(a[0]-b[0])+Math.abs(a[1]-b[1])+Math.abs(a[2]-b[2]);
+    /* adiacenze fra regioni (attraverso i pixel di bordo), con il numero di contatti */
+    const adj=new Map(); const bump=(a,b)=>{if(!a||!b||a===b)return;const k=a<b?a*K+b:b*K+a;adj.set(k,(adj.get(k)||0)+1);};
+    const nbLab=(i,x,y)=>{const out=[];for(const [dx,dy] of [[-1,0],[1,0],[0,-1],[0,1],[-2,0],[2,0],[0,-2],[0,2]]){const xx=x+dx,yy=y+dy;if(xx<0||yy<0||xx>=w||yy>=h)continue;const l=seg.lab[yy*w+xx];if(l&&out.indexOf(l)<0)out.push(l);}return out;};
+    for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=y*w+x;
+      if(seg.lab[i]){ if(x<w-1){const r=seg.lab[i+1];if(r&&r!==seg.lab[i])bump(seg.lab[i],r);} if(y<h-1){const dn=seg.lab[i+w];if(dn&&dn!==seg.lab[i])bump(seg.lab[i],dn);} continue; }
+      const ls=nbLab(i,x,y);for(let u=0;u<ls.length;u++)for(let v=u+1;v<ls.length;v++)bump(ls[u],ls[v]);}
+    const contatti=new Float64Array(K);           // contatti totali di ogni regione
+    const vicini=Array.from({length:K},()=>[]);   // [label, contatti]
+    for(const [k,n] of adj){const a=Math.floor(k/K),b=k%K;contatti[a]+=n;contatti[b]+=n;vicini[a].push([b,n]);vicini[b].push([a,n]);}
+    const isBg=new Uint8Array(K), isOut=new Uint8Array(K);
+    for(let l=1;l<=seg.nl;l++){if(seg.touch[l]&&seg.areas[l]>=Aedge){isBg[l]=1;isOut[l]=1;}}
+    const toccaOut=l=>vicini[l].some(([m])=>isOut[m]);
+    const racchiude=(l,dmin)=>{const ml=mean(l);return vicini[l].some(([m,n])=>{if(isBg[m]||isOut[m]||seg.areas[m]<Ael||toccaOut(m))return false;const mm=mean(m);return dcol(mm,ml)>dmin&&dcol(mm,fill)>60;});};
+    /* forma 'a fascia': lunga e sottile rispetto al suo spessore (un contorno, un'ombra estrusa), non un corpo compatto */
+    const fascia=l=>seg.areas[l]/Math.max(1,seg.maxd[l]*seg.maxd[l])>=25;
+    for(let l=1;l<=seg.nl;l++){if(isBg[l])continue;const a=seg.areas[l];
+      /* campitura grande: sfondo solo se e' una placca che contiene elementi ben distinti */
+      if(a>=Abig&&racchiude(l,120)){isBg[l]=1;continue;}
+      /* contorno/ombra spessi che toccano il fuori e racchiudono il disegno */
+      if(a>=Aedge&&seg.maxd[l]>=R0&&fascia(l)&&toccaOut(l)&&racchiude(l,60)){isBg[l]=1;continue;}}
+    /* pezzi grandi dello stesso colore di uno sfondo (il rosa chiuso fra due anelli neri) */
+    {const cols=[];for(let l=1;l<=seg.nl;l++)if(isBg[l])cols.push(mean(l));
+     for(let l=1;l<=seg.nl;l++){if(isBg[l]||seg.areas[l]<Aedge)continue;const ml=mean(l);if(cols.some(c=>dcol(c,ml)<70))isBg[l]=1;}}
     /* colore dello sfondo piu' vicino, per ogni pixel: propagazione a onda dai pixel di sfondo */
     nearest=new Int32Array(N).fill(-1);
     const q=new Int32Array(N);let qh=0,qt=0;
@@ -3247,7 +3287,7 @@ function rilievoMask(){
     /* regioni non di sfondo: in rilievo se il loro colore medio si stacca dallo sfondo
        vicino (si prende la distanza minima fra i pixel della regione: se anche solo da
        un lato la regione e' dello stesso colore dello sfondo, e' sfondo tagliato) */
-    const minD=new Float32Array(seg.nl+1).fill(1e9), outAdj=new Uint8Array(seg.nl+1);
+    const minD=new Float32Array(K).fill(1e9), outAdj=new Uint8Array(K);
     for(let i=0;i<N;i++){const l=seg.lab[i];if(!l||isBg[l])continue;const nb=nearest[i];if(nb<0)continue;
       const a=seg.areas[l],m0=seg.sums[l][0]/a,m1=seg.sums[l][1]/a,m2=seg.sums[l][2]/a,p=nb*4;
       let dd=Math.abs(m0-d[p])+Math.abs(m1-d[p+1])+Math.abs(m2-d[p+2]);
@@ -3256,10 +3296,29 @@ function rilievoMask(){
       const lb=seg.lab[nb];if(lb){const ab=seg.areas[lb];const db=Math.abs(m0-seg.sums[lb][0]/ab)+Math.abs(m1-seg.sums[lb][1]/ab)+Math.abs(m2-seg.sums[lb][2]/ab);if(db<dd)dd=db;}
       if(!inArt[nb])outAdj[l]=1;   // lo sfondo piu' vicino e' il fuori del disegno
       if(dd<minD[l])minD[l]=dd;}
-    const on=new Uint8Array(seg.nl+1);
+    const on=new Uint8Array(K);
     /* il contorno esterno chiaro di un disegno (il filetto bianco attorno a una macchia nera)
        e' il bordo dell'adesivo, non un dettaglio: contro il fuori serve uno stacco netto */
     for(let l=1;l<=seg.nl;l++){if(isBg[l])continue;on[l]=(minD[l]>(outAdj[l]?110:DCR))?1:0;}
+    /* ------------------------------------------------------------------
+       DUE RIFINITURE SUL SOGGETTO
+       1. Il tratto di contorno di una lettera (il filo rosa acceso attorno a 'Paleta'):
+          sottile, appoggiato a uno sfondo e per gran parte del suo perimetro attaccato a
+          un elemento spesso in rilievo → resta piatto, il rilievo segue solo la lettera.
+          (Gli anelli neri del toro toccano il toro solo in pochi punti: restano in rilievo.)
+       2. Un elemento chiuso DENTRO un elemento in rilievo (il buco della B, la scritta
+          bianca sul nastro giallo, i denti del teschio) → resta piatto: e' un foro nel
+          rilievo, cosi' il dettaglio si legge.
+       ------------------------------------------------------------------ */
+    const Anest=Math.max(6,(0.5/mmpx)*(0.5/mmpx));
+    for(let l=1;l<=seg.nl;l++){if(!on[l])continue;
+      const vs=vicini[l];let cBg=0,cThick=0;
+      for(const [m,n] of vs){if(isBg[m])cBg+=n;else if(on[m]&&seg.maxd[m]>=R0)cThick+=n;}
+      if(seg.maxd[l]<R0&&cBg>0&&contatti[l]>0&&cThick/contatti[l]>=0.3){on[l]=0;continue;}
+      if(cBg===0&&vs.length&&seg.areas[l]>=Anest&&vs.every(([m])=>on[m]||!isBg[m])){
+        /* foro solo se il colore e' davvero un altro: una luce chiara sulla lettera resta lettera */
+        const ml=mean(l);let far=false;for(const [m,n] of vs){if(on[m]&&dcol(mean(m),ml)>120){far=true;break;}}
+        if(far)on[l]=0;}}
     /* colore locale dello sfondo: media dei soli pixel di sfondo in un intorno (tabella
        delle somme). Serve a scovare i pezzi di disegno 'fusi' nello sfondo perche' da un
        lato hanno lo stesso colore (la meta' scura di una scritta cromata su nero). */
@@ -3300,6 +3359,7 @@ function rilievoMask(){
         const dB=Math.abs(d[p]-d[pc])+Math.abs(d[p+1]-d[pc+1])+Math.abs(d[p+2]-d[pc+2]);
         if(dA+dB<=dAB+40){blend=true;break;}}
       if(!blend){R[i]=1;cnt++;}}
+    onFinal=on;isBgFinal=isBg;
     frac=cnt/artArea;
     if(frac<=0.6)break;        // troppo rilievo: disegno complesso, si alzano le soglie
     T=55;DC=110;DCR=90;DCP=140;}
@@ -3337,6 +3397,7 @@ function rilievoMask(){
     if(!l){const x=i%w,y=(i/w)|0; l=(x>0&&seg.lab[i-1])||(x<w-1&&seg.lab[i+1])||(y>0&&seg.lab[i-w])||(y<h-1&&seg.lab[i+w])||0;}
     md[i]=l?seg.maxd[l]:0; }
   S.ril={key,canvas:c,w,h,frac,on:R,md};
+  if(S.rilDebug){S.ril.lab=seg.lab;S.ril.onReg=onFinal;S.ril.isBg=isBgFinal;S.ril.areas=seg.areas;S.ril.maxd=seg.maxd;S.ril.nearest=nearest;S.ril.d=d;}
   try{ if(S.rilDebug){const isB=new Uint8Array(seg.nl+1);for(let l=1;l<=seg.nl;l++){const a=seg.areas[l];if(a>=Abig||(seg.touch[l]&&a>=Aedge))isB[l]=1;} S.ril.regs=[]; for(let l=1;l<=seg.nl;l++)S.ril.regs.push({l,area:+(seg.areas[l]/artArea).toFixed(3),maxd:Math.round(seg.maxd[l]),bg:!!isB[l],touch:!!seg.touch[l],col:seg.sums[l].map(v=>Math.round(v/seg.areas[l]))}); S.ril.regs.sort((x,y)=>y.area-x.area); S.ril.regs.length=Math.min(14,S.ril.regs.length); S.ril.T=T; S.ril.DC=DC; S.ril.mmpx=mmpx; S.ril.fill=fill;} }catch(e){}
   try{console.debug('[rilievo] dettagli:',Math.round(frac*100)+'% del disegno, regioni',seg.nl,'in',Math.round(performance.now()-t0),'ms');}catch(e){}
   return S.ril;}
