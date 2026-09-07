@@ -36,10 +36,13 @@ function admin() {
 }
 
 function estraiJson(testo: string): { rilievo: number[]; motivo: string } | null {
-	const m = testo.match(/\{[\s\S]*\}/);
-	if (!m) return null;
+	// il modello puo' avvolgere il JSON in un blocco ```json … ``` o aggiungere testo: si prende l'oggetto che contiene "rilievo"
+	const pulito = testo.replace(/```(?:json)?/gi, '');
+	const inizio = pulito.indexOf('{');
+	const fine = pulito.lastIndexOf('}');
+	if (inizio < 0 || fine <= inizio) return null;
 	try {
-		const o = JSON.parse(m[0]);
+		const o = JSON.parse(pulito.slice(inizio, fine + 1));
 		const rilievo = Array.isArray(o.rilievo) ? o.rilievo.map((n: unknown) => Number(n)).filter((n: number) => Number.isFinite(n)) : [];
 		return { rilievo, motivo: String(o.motivo ?? '') };
 	} catch {
@@ -91,10 +94,13 @@ export const POST: RequestHandler = async ({ request }) => {
 		console.error('[rilievo ai]', res?.status, err.slice(0, 300));
 		return json({ ok: false, motivo: 'analisi non riuscita' }, { status: 502 });
 	}
-	const out = await res.json().catch(() => null) as { content?: { type: string; text?: string }[] } | null;
+	const out = await res.json().catch(() => null) as { content?: { type: string; text?: string }[]; stop_reason?: string } | null;
 	const testo = (out?.content ?? []).map((c) => c.text ?? '').join('\n');
 	const scelta = estraiJson(testo);
-	if (!scelta) return json({ ok: false, motivo: 'risposta non leggibile' }, { status: 502 });
+	if (!scelta) {
+		console.error('[rilievo ai] risposta non leggibile', out?.stop_reason, JSON.stringify(out).slice(0, 600));
+		return json({ ok: false, motivo: 'risposta non leggibile', dettaglio: (testo || JSON.stringify(out)).slice(0, 400) }, { status: 502 });
+	}
 	const valide = new Set(body.zone.map((z) => z.id));
 	scelta.rilievo = scelta.rilievo.filter((n) => valide.has(n));
 	if (db) await db.from('rilievo_ai').upsert({ hash: body.hash, zone: scelta, modello: MODELLO });
