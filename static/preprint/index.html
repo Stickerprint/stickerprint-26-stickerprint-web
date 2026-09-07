@@ -3574,10 +3574,22 @@ function rilievoAI(seg,d,w,h,inArt,artArea,bw,bh,fill,mmpx){
    if(gruppi.length){g.font='700 12px Arial';g.textAlign='left';
      gruppi.forEach((G,k)=>{const col=k%3,row=Math.floor(k/3);const x=8+col*(sw/3),y=sh+4+row*hL;const t=gt[k%gt.length];
        g.fillStyle='rgb('+t.join(',')+')';g.fillRect(x,y,12,12);g.fillStyle='#000';g.fillText('G'+(k+1)+': '+G.pezzi+' pezzi piccoli '+hex(G.col),x+16,y+6);});}}
-  S.rilAI={hash,stato:'pending',lab,zoneId,grpOf,vic,nLab:n,ids:null,gids:null,n:numerate.length,gruppi:gruppi.length,zone};
+  const zmean=new Array(n+1),zart=new Float64Array(n+1);for(const l of numerate){zmean[l]=mean(l);zart[l]=art[l];}
+  S.rilAI={hash,stato:'pending',lab,zoneId,grpOf,vic,zmean,zart,nLab:n,ids:null,gids:null,n:numerate.length,gruppi:gruppi.length,zone};
   try{window.__ppAggiorna&&window.__ppAggiorna();}catch(e){}
   const fine=(ids,motivo,ok)=>{ if(!S.rilAI||S.rilAI.hash!==hash)return; S.rilAI.stato=ok?'ok':'err';
     const zn=new Set(),gn=new Set();for(const v of (ids||[])){const t=String(v).trim().toUpperCase();if(/^G\d+$/.test(t))gn.add(+t.slice(1));else if(/^\d+$/.test(t))zn.add(+t);}
+    /* completamento: una scritta si sceglie tutta. Se una zona scelta poggia su un solo
+       contenitore, le altre zone dello stesso colore e di dimensione simile che poggiano
+       sullo stesso contenitore entrano anche loro (il modello a volte salta 'utt' in
+       'a tutta Birra') */
+    {const A=S.rilAI;const dc=(a,b)=>Math.abs(a[0]-b[0])+Math.abs(a[1]-b[1])+Math.abs(a[2]-b[2]);
+     const numerate=[];for(let l=1;l<=A.nLab;l++)if(A.zoneId[l])numerate.push(l);
+     let aggiunte=0;
+     for(const x of numerate){if(!zn.has(A.zoneId[x])||A.vic[x].size!==1)continue;const [c]=A.vic[x];
+       for(const y of numerate){if(y===x||zn.has(A.zoneId[y])||A.vic[y].size!==1)continue;const [cy]=A.vic[y];if(cy!==c)continue;
+         if(dc(A.zmean[x],A.zmean[y])<40&&A.zart[y]<=A.zart[x]*4&&A.zart[y]>=A.zart[x]/4){zn.add(A.zoneId[y]);aggiunte++;}}}
+     if(aggiunte)try{console.debug('[rilievo ai] completate',aggiunte,'zone della stessa scritta');}catch(e){}}
     /* sicurezza: una zona scelta che CONTIENE almeno 4 pezzi scelti (una scritta su un nastro,
        una targhetta con un testo) resta opaca: il rilievo va sulla scritta, non sul contenitore */
     {const A=S.rilAI;const sel=l=>(A.zoneId[l]&&zn.has(A.zoneId[l]))||(A.grpOf[l]&&gn.has(A.grpOf[l]));
