@@ -73,7 +73,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
 		body: JSON.stringify({
 			model: MODELLO,
-			max_tokens: 500,
+			max_tokens: 4000,   // il modello ragiona prima di rispondere: il JSON arriva dopo il blocco di ragionamento
 			system: REGOLE,
 			messages: [
 				{
