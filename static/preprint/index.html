@@ -3322,7 +3322,7 @@ function rilievoMask(){
     /* bordo esterno = entro 4 px dal fuori (la crescita si ferma prima del filo di pixel misti
        del contorno) oppure accanto a uno sfondo gia' deciso */
     const bx=[],by=[];for(const i of rg.px){const x=i%w,y=(i/w)|0;let est=dNon[i]<=16;
-      if(!est)for(const j of [x>0?i-1:-1,x<w-1?i+1:-1,y>0?i-w:-1,y<h-1?i+w:-1]){if(j>=0&&bg[j]&&inArt[j]){est=true;break;}}
+      if(!est)for(const [dx,dy] of [[-1,0],[1,0],[0,-1],[0,1]]){for(let t=1;t<=3;t++){const xx=x+dx*t,yy=y+dy*t;if(xx<0||yy<0||xx>=w||yy>=h)break;const j=yy*w+xx;if(bg[j]&&inArt[j]){est=true;break;}}if(est)break;}
       if(est){bx.push(x);by.push(y);}}
     const n=bx.length;rg.geoDbg={n};if(n<50)return (rg.geo=false);
     /* cerchio ai minimi quadrati (Kasa) sui pixel del bordo esterno: anche un disco coperto a meta' lo trova */
@@ -3331,11 +3331,13 @@ function rilievoMask(){
       const det=(m)=>m[0][0]*(m[1][1]*m[2][2]-m[1][2]*m[2][1])-m[0][1]*(m[1][0]*m[2][2]-m[1][2]*m[2][0])+m[0][2]*(m[1][0]*m[2][1]-m[1][1]*m[2][0]);
       const D0=det(A);if(Math.abs(D0)>1e-6){const col=(c)=>A.map((r,i)=>r.map((v,j)=>j===c?B[i]:v));const D=det(col(0))/D0,E=det(col(1))/D0,F=det(col(2))/D0;
         const ccx=-D/2,ccy=-E/2,rr=Math.sqrt(Math.max(0,ccx*ccx+ccy*ccy-F));
-        if(rr>4)for(let k=0;k<n;k++){const dx=bx[k]-cx0-ccx,dy=by[k]-cy0-ccy;if(Math.abs(Math.sqrt(dx*dx+dy*dy)-rr)<=0.06*rr)okC++;}}}
+        if(rr>4){for(let k=0;k<n;k++){const dx=bx[k]-cx0-ccx,dy=by[k]-cy0-ccy;if(Math.abs(Math.sqrt(dx*dx+dy*dy)-rr)<=0.06*rr)okC++;}
+          if(okC>=0.8*n)rg.circ={cx:cx0+ccx,cy:cy0+ccy,r:rr};}}}
     let okE=0,okR=0;for(let k=0;k<n;k++){const x=bx[k],y=by[k];const dn=Math.sqrt(((x-cx0)/rx)*((x-cx0)/rx)+((y-cy0)/ry)*((y-cy0)/ry));if(Math.abs(dn-1)<0.1)okE++;if(x-x0<=2||x1-x<=2||y-y0<=2||y1-y<=2)okR++;}
     rg.geoDbg={n,okC,okE,okR};return (rg.geo=Math.max(okC,okE,okR)>=0.8*n);};
   const plateTouch=[false];
-  const segnaPlacca=(rg)=>{rg.plate=true;const k=cols.length;cols.push(rg.col);plateTouch[k]=!!rg.touch;for(const i of rg.px){bg[i]=1;bgOf[i]=k;}};
+  const plateReg=[null];
+  const segnaPlacca=(rg)=>{rg.plate=true;const k=cols.length;cols.push(rg.col);plateTouch[k]=!!rg.touch;plateReg[k]=rg;for(const i of rg.px){bg[i]=1;bgOf[i]=k;}};
   /* ---- 1a. sfondo del FILE e pannelli ----
      Una regione del colore di sfondo del file (quello che lo scontorno ha riconosciuto) che
      tocca il bordo e' sfondo anche se il pezzo e' di un altro colore: il grigio chiaro dietro
@@ -3389,7 +3391,9 @@ function rilievoMask(){
     if(rg.px.length>=Aplate&&compat>=0.08&&contiene){segnaPlacca(rg);continue;}
     /* interna, compatta, con la scritta dentro (il disco grigio di Sobi) */
     /* (compattezza alta: un disco o un riquadro veri; un personaggio con molti dettagli e' irregolare) */
-    if(!rg.touch&&rg.px.length>=0.08*artArea&&compat>=0.12&&contiene){segnaPlacca(rg);continue;}}
+    /* ...e di forma geometrica: la testa spigolosa di un robot con quattro dettagli dentro
+       non e' un disco con la scritta */
+    if(!rg.touch&&rg.px.length>=0.08*artArea&&compat>=0.12&&contiene&&(geo||nBuchi>=6)){segnaPlacca(rg);continue;}}
   /* una regione che tocca il bordo e RACCHIUDE una placca (l'anello a pennellata attorno al
      disco) e' sfondo anche se non e' compatta */
   for(const rg of regioni){if(rg.plate||!rg.touch||rg.px.length<Aedge)continue;
@@ -3406,6 +3410,31 @@ function rilievoMask(){
     if(rg.m.compat<0.05)continue;   /* il rosa del toro fra due anelli: 0,069; la scritta DIAVEL: 0,03 */
     let k=-1;for(let t=1;t<cols.length;t++)if(dcc(cols[t],rg.col)<40){k=t;break;}
     if(k>=0){rg.plate=true;for(const i of rg.px){bg[i]=1;bgOf[i]=k;}}}
+  /* ---- 1c. colore della CORNICE ----
+     Il colore di una placca che tocca il bordo (l'anello nero di Sobi, l'anello di uno stemma)
+     e' il colore della cornice. Le forme di quel colore SOTTILI o ALLUNGATE (un arco interno
+     concentrico, i filetti, i contorni di una figura) sono cornice anche loro: sfondo, o tutto
+     o niente. Le forme compatte (le lettere di SOBI, i pallini) restano grafica. */
+  {const frame=[];for(let t=1;t<cols.length;t++)if(plateTouch[t])frame.push(t);
+   if(frame.length){const lab3=new Int32Array(N);let rid=0;const Amin3=Math.max(16,(0.4/mmpx)*(0.4/mmpx));
+    for(let s0=0;s0<N;s0++){if(lab3[s0]||!inArt[s0]||bg[s0])continue;const p0=s0*4;
+      let kf=-1;for(const t of frame){if(Math.abs(db[p0]-cols[t][0])+Math.abs(db[p0+1]-cols[t][1])+Math.abs(db[p0+2]-cols[t][2])<40){kf=t;break;}}
+      if(kf<0){lab3[s0]=-1;continue;}
+      rid++;let top=0;st[top++]=s0;lab3[s0]=rid;px.length=0;let per=0;const cc=cols[kf];
+      while(top){const i=st[--top];px.push(i);const x=i%w,y=(i/w)|0;let bordo=false;
+        for(const j of [x>0?i-1:-1,x<w-1?i+1:-1,y>0?i-w:-1,y<h-1?i+w:-1]){if(j<0||!inArt[j]||bg[j]){bordo=true;continue;}
+          if(lab3[j]===rid)continue;const q=j*4;
+          if(Math.abs(db[q]-cc[0])+Math.abs(db[q+1]-cc[1])+Math.abs(db[q+2]-cc[2])<40){if(!lab3[j]){lab3[j]=rid;st[top++]=j;}}else bordo=true;}
+        if(bordo)per++;}
+      if(px.length<Amin3)continue;
+      const circ=4*Math.PI*px.length/(per*per);   /* 1 = cerchio; una lettera 0,2-0,6; un filetto <0,12 */
+      let arco=false;const pr=plateReg[kf];
+      /* ARCO CONCENTRICO alla cornice circolare: sta in una fascia radiale stretta (<20% del
+         raggio) e copre almeno 45 gradi. Una lettera di una scritta curva copre pochi gradi */
+      if(pr&&pr.circ&&(pr.circ.r>0)){const {cx,cy,r}=pr.circ;let r0=1e9,r1=0;const bins=new Uint8Array(36);
+        for(const i of px){const x=i%w-cx,y=((i/w)|0)-cy;const d=Math.sqrt(x*x+y*y);if(d<r0)r0=d;if(d>r1)r1=d;bins[((Math.atan2(y,x)+Math.PI)/(2*Math.PI)*36|0)%36]=1;}
+        let ang=0;for(let b=0;b<36;b++)ang+=bins[b];arco=(r1-r0)<0.2*r&&ang>=5;}
+      if(circ<0.12||arco){for(const i of px){bg[i]=1;bgOf[i]=kf;}}}}}
   /* ---- 2. rilievo: pixel che si staccano dallo sfondo piu' vicino ---- */
   const nearest=new Int32Array(N);const q=new Int32Array(N);let qh=0,qt=0;
   /* si parte dai pixel di sfondo INTERNI (a 2 px dal confine): quelli sul confine sono
@@ -3479,6 +3508,15 @@ function rilievoMask(){
      const isT=new Set(tratti);for(const i of px){if(isT.has(i))continue;bg[i]=1;bgOf[i]=kcol;}cambiato=true;}
    if(cambiato)calcNearest();}
   /* confronto con il pixel di sfondo INTERNO piu' vicino (segue anche una placca sfumata) */
+  const transizione=(i)=>{const x=i%w,y=(i/w)|0;const p=i*4;
+    for(const [dx,dy] of [[1,0],[0,1]]){let a=-1,b=-1;
+      for(let t=1;t<=3&&a<0;t++){const xx=x+dx*t,yy=y+dy*t;if(xx>=w||yy>=h)break;const j=yy*w+xx;if(bg[j]&&inArt[j])a=j;}
+      for(let t=1;t<=3&&b<0;t++){const xx=x-dx*t,yy=y-dy*t;if(xx<0||yy<0)break;const j=yy*w+xx;if(bg[j]&&inArt[j])b=j;}
+      if(a<0||b<0||bgOf[a]===bgOf[b])continue;
+      const qa=a*4,qb=b*4;let best=1e9;
+      for(let f=0;f<=1.001;f+=0.125){const dist=Math.abs(d[p]-(db[qa]*(1-f)+db[qb]*f))+Math.abs(d[p+1]-(db[qa+1]*(1-f)+db[qb+1]*f))+Math.abs(d[p+2]-(db[qa+2]*(1-f)+db[qb+2]*f));if(dist<best)best=dist;}
+      if(best<=45)return true;}
+    return false;};
   let R=new Uint8Array(N);
   for(let i=0;i<N;i++){if(!inArt[i]||bg[i])continue;const nb=nearest[i];if(nb<0){R[i]=1;continue;}
     /* il pixel si confronta NON sfocato (gli spazi sottili fra le lettere e i buchi restano
@@ -3488,7 +3526,10 @@ function rilievoMask(){
        anche se i due colori differiscono un po' (grigio chiaro del JPEG contro il bianco dello
        sticker: la controforma della D non e' rilievo). Contro una placca vale il confronto normale */
     if(fileBg&&bgOf[nb]===0&&Math.abs(d[p]-fileBg[0])+Math.abs(d[p+1]-fileBg[1])+Math.abs(d[p+2]-fileBg[2])<=40)continue;
-    if(Math.abs(d[p]-db[q])+Math.abs(d[p+1]-db[q+1])+Math.abs(d[p+2]-db[q+2])>60)R[i]=1;}
+    if(Math.abs(d[p]-db[q])+Math.abs(d[p+1]-db[q+1])+Math.abs(d[p+2]-db[q+2])>60){
+      /* filetto di TRANSIZIONE fra due sfondi diversi (l'arco nero e il disco blu, entrambi
+         sfondo): il pixel sta a meta' colore fra i due vicini, non e' grafica */
+      if(transizione(i))continue;R[i]=1;}}
   /* ---- 3. pulizia minima ---- */
   {const Amin=Math.max(4,Math.round((0.35/mmpx)*(0.35/mmpx))), Ahole=Math.max(4,Math.round((0.2/mmpx)*(0.2/mmpx)));
    const lab=new Int32Array(N);
