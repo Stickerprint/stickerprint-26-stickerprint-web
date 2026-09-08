@@ -3417,6 +3417,9 @@ function rilievoMask(){
      o niente. Le forme compatte (le lettere di SOBI, i pallini) restano grafica. */
   {const frame=[];for(let t=1;t<cols.length;t++)if(plateTouch[t])frame.push(t);
    if(frame.length){const lab3=new Int32Array(N);let rid=0;const Amin3=Math.max(16,(0.4/mmpx)*(0.4/mmpx));
+    /* spessore dei tratti del colore della cornice: distanza dal bordo di ogni forma candidata */
+    const cand=new Uint8Array(N);for(let i=0;i<N;i++){if(!inArt[i]||bg[i]){cand[i]=1;continue;}const p0=i*4;let c=false;for(const t of frame){if(Math.abs(db[p0]-cols[t][0])+Math.abs(db[p0+1]-cols[t][1])+Math.abs(db[p0+2]-cols[t][2])<40){c=true;break;}}cand[i]=c?0:1;}
+    const dCand=edt2d(cand,w,h);const rSottile=(0.25/mmpx)*(0.25/mmpx);   /* tratto sotto 0,5 mm di spessore */
     for(let s0=0;s0<N;s0++){if(lab3[s0]||!inArt[s0]||bg[s0])continue;const p0=s0*4;
       let kf=-1;for(const t of frame){if(Math.abs(db[p0]-cols[t][0])+Math.abs(db[p0+1]-cols[t][1])+Math.abs(db[p0+2]-cols[t][2])<40){kf=t;break;}}
       if(kf<0){lab3[s0]=-1;continue;}
@@ -3427,14 +3430,16 @@ function rilievoMask(){
           if(Math.abs(db[q]-cc[0])+Math.abs(db[q+1]-cc[1])+Math.abs(db[q+2]-cc[2])<40){if(!lab3[j]){lab3[j]=rid;st[top++]=j;}}else bordo=true;}
         if(bordo)per++;}
       if(px.length<Amin3)continue;
-      const circ=4*Math.PI*px.length/(per*per);   /* 1 = cerchio; una lettera 0,2-0,6; un filetto <0,12 */
+      /* SOTTILE = raggio inscritto massimo sotto 0,25 mm (contorni, filetti). Una lettera, anche
+         allungata o in corsivo (DIAVEL cromata), ha tratti piu' spessi e resta grafica */
+      let r2=0;for(const i of px)if(dCand[i]>r2)r2=dCand[i];const sottile=r2<rSottile;
       let arco=false;const pr=plateReg[kf];
       /* ARCO CONCENTRICO alla cornice circolare: sta in una fascia radiale stretta (<20% del
          raggio) e copre almeno 45 gradi. Una lettera di una scritta curva copre pochi gradi */
       if(pr&&pr.circ&&(pr.circ.r>0)){const {cx,cy,r}=pr.circ;let r0=1e9,r1=0;const bins=new Uint8Array(36);
         for(const i of px){const x=i%w-cx,y=((i/w)|0)-cy;const d=Math.sqrt(x*x+y*y);if(d<r0)r0=d;if(d>r1)r1=d;bins[((Math.atan2(y,x)+Math.PI)/(2*Math.PI)*36|0)%36]=1;}
         let ang=0;for(let b=0;b<36;b++)ang+=bins[b];arco=(r1-r0)<0.2*r&&ang>=5;}
-      if(circ<0.12||arco){for(const i of px){bg[i]=1;bgOf[i]=kf;}}}}}
+      if(sottile||arco){for(const i of px){bg[i]=1;bgOf[i]=kf;}}}}}
   /* ---- 2. rilievo: pixel che si staccano dallo sfondo piu' vicino ---- */
   const nearest=new Int32Array(N);const q=new Int32Array(N);let qh=0,qt=0;
   /* si parte dai pixel di sfondo INTERNI (a 2 px dal confine): quelli sul confine sono
@@ -3488,7 +3493,10 @@ function rilievoMask(){
        if(pt)nPT++;}
      const nT=tratti.length;const fracT=nT/(nFondo+nT);const fracP=nPerim?nPT/nPerim:0;
      let ok=false,thin=0;
-     if(nFondo>0&&fracT<=0.6&&(fracT>=0.06||fracP>=0.5)){
+     /* soglie: molte venature (>=15% di tratti) oppure contorno chiaro su meta' del perimetro.
+        Una lettera cromata (grigio chiaro con un filo di luce in cima: 7-11% di tratti, 20% del
+        perimetro) NON e' una campitura a linea e resta in rilievo */
+     if(nFondo>0&&fracT<=0.6&&(fracT>=0.15||fracP>=0.5)){
        lr2/=nFondo;
        if(Math.abs(lr2-lb)>=50){
          /* sottili: la corsa di pixel 'tratto' che passa per il pixel, lungo x o lungo y,
