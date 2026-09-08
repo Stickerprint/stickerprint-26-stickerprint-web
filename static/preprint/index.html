@@ -3418,7 +3418,7 @@ function rilievoHash(){
   const src=S.src||S.work.canvas; const c=document.createElement('canvas');c.width=48;c.height=48;
   const g=c.getContext('2d',{willReadFrequently:true});g.drawImage(src,0,0,48,48);const q=g.getImageData(0,0,48,48).data;
   let h1=2166136261,h2=0x9e3779b9;for(let i=0;i<q.length;i+=4){h1=Math.imul(h1^q[i],16777619);h2=Math.imul(h2^q[i+1]^(q[i+2]<<8)^(q[i+3]<<16),2246822519);}
-  return (h1>>>0).toString(16)+(h2>>>0).toString(16)+'-'+src.width+'x'+src.height+'-z15';}
+  return (h1>>>0).toString(16)+(h2>>>0).toString(16)+'-'+src.width+'x'+src.height+'-z16';}
 function rilievoAI(seg,d,w,h,inArt,artArea,bw,bh,fill,mmpx){
   const N=w*h, hash=rilievoHash();
   const q=new URLSearchParams(location.search);
@@ -3595,9 +3595,10 @@ function rilievoAI(seg,d,w,h,inArt,artArea,bw,bh,fill,mmpx){
    if(gruppi.length){g.font='700 12px Arial';g.textAlign='left';
      gruppi.forEach((G,k)=>{const col=k%3,row=Math.floor(k/3);const x=8+col*(sw/3),y=sh+4+row*hL;const t=gt[k%gt.length];
        g.fillStyle='rgb('+t.join(',')+')';g.fillRect(x,y,12,12);g.fillStyle='#000';g.fillText('G'+(k+1)+': '+G.pezzi+' pezzi piccoli '+hex(G.col),x+16,y+6);});}}
+  const lmean=new Array(n+1);for(let l=1;l<=n;l++)if(A[l])lmean[l]=mean(l);
   const zmean=new Array(n+1),zart=new Float64Array(n+1),zfascia=new Uint8Array(n+1),zbordo=new Uint8Array(n+1);
   for(const l of numerate){zmean[l]=mean(l);zart[l]=art[l];const z=zone[zoneId[l]-1];if(z){zfascia[l]=z.fascia?1:0;zbordo[l]=z.bordo?1:0;}}
-  S.rilAI={hash,stato:'pending',lab,zoneId,grpOf,vic,zmean,zart,zfascia,zbordo,lart:art,mmpx,nLab:n,ids:null,gids:null,n:numerate.length,gruppi:gruppi.length,zone};
+  S.rilAI={hash,stato:'pending',lab,zoneId,grpOf,vic,zmean,zart,zfascia,zbordo,lmean,lart:art,mmpx,nLab:n,ids:null,gids:null,n:numerate.length,gruppi:gruppi.length,zone};
   try{window.__ppAggiorna&&window.__ppAggiorna();}catch(e){}
   const fine=(ids,motivo,ok)=>{ if(!S.rilAI||S.rilAI.hash!==hash)return; S.rilAI.stato=ok?'ok':'err';
     const zn=new Set(),gn=new Set();for(const v of (ids||[])){const t=String(v).trim().toUpperCase();if(/^G\d+$/.test(t))gn.add(+t.slice(1));else if(/^\d+$/.test(t))zn.add(+t);}
@@ -3637,7 +3638,12 @@ function rilievoAI(seg,d,w,h,inArt,artArea,bw,bh,fill,mmpx){
      /* contano solo i pezzi di almeno 0,8 mm (lettere): i brillantini e i puntini di una
         texture dentro una lettera non devono spegnere la lettera */
      const minPezzo=(0.8/(A.mmpx||0.1))*(0.8/(A.mmpx||0.1));
-     for(let l=1;l<=A.nLab;l++){if(!sel(l)||A.vic[l].size!==1||(A.lart&&A.lart[l]<minPezzo))continue;const [c]=A.vic[l];if(!A.zoneId[c]||!zn.has(A.zoneId[c]))continue;dentro.set(c,(dentro.get(c)||0)+1);}
+     const dcc=(a,b)=>Math.abs(a[0]-b[0])+Math.abs(a[1]-b[1])+Math.abs(a[2]-b[2]);
+     for(let l=1;l<=A.nLab;l++){if(!sel(l)||A.vic[l].size!==1||(A.lart&&A.lart[l]<minPezzo))continue;const [c]=A.vic[l];if(!A.zoneId[c]||!zn.has(A.zoneId[c]))continue;
+       /* solo pezzi di colore davvero diverso dal contenitore: una scritta bianca sul nastro si',
+          un riflesso rosa chiaro dentro una lettera rosa no */
+       if(A.lmean&&A.lmean[l]&&A.lmean[c]&&dcc(A.lmean[l],A.lmean[c])<120)continue;
+       dentro.set(c,(dentro.get(c)||0)+1);}
      for(const [c,k] of dentro)if(k>=4){zn.delete(A.zoneId[c]);try{console.debug('[rilievo ai] zona',A.zoneId[c],'lasciata opaca: contiene',k,'pezzi in rilievo');}catch(e){}}}
     S.rilAI.ids=zn;S.rilAI.gids=gn;S.rilAI.motivo=motivo||'';
     S.rilGen=(S.rilGen||0)+1; S.ril=null; try{console.debug('[rilievo ai]',ok?'zone '+[...zn].join(',')+' gruppi '+[...gn].join(','):'riserva',motivo||'');}catch(e){}
