@@ -11,7 +11,7 @@ import type { RequestHandler } from './$types';
    viene analizzato due volte. Senza chiave API il motore usa le sue regole di riserva. */
 
 const MODELLO = env.RILIEVO_AI_MODEL || 'claude-sonnet-5';
-const PROMPT_V = 'p3';   // cambia quando cambiano le regole: i risultati in cache valgono solo per la stessa versione
+const PROMPT_V = 'p4';   // cambia quando cambiano le regole: i risultati in cache valgono solo per la stessa versione
 
 const REGOLE = `Sei il grafico prestampa di Stickerprint, esperto di adesivi con effetto RILIEVO UV: una vernice spessa e lucida stesa solo su alcune zone, sopra una stampa che resta opaca. Il rilievo si vede e si tocca: crea un gioco di luci fra le parti lucide in rilievo e lo sfondo opaco.
 
@@ -90,41 +90,50 @@ export const POST: RequestHandler = async ({ request }) => {
 		.map((z) => `${z.id}: colore ${z.colore}, ${z.area}% dell'area, ${z.pos}${z.pezzi ? `, gruppo di ${z.pezzi} pezzi piccoli` : ''}${z.sottile ? ', tratto sottile' : ''}${z.bordo ? ', tocca il bordo esterno' : ''}`)
 		.join('\n');
 
-	const res = await fetch('https://api.anthropic.com/v1/messages', {
-		method: 'POST',
-		headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-		body: JSON.stringify({
-			model: MODELLO,
-			max_tokens: 1500,
-			thinking: { type: 'disabled' },   // niente blocco di ragionamento: serve solo il JSON
-			system: REGOLE,
-			messages: [
-				{
-					role: 'user',
-					content: [
-						{ type: 'text', text: 'Immagine del cliente:' },
-						{ type: 'image', source: { type: 'base64', media_type: tipo(body.img), data: b64(body.img) } },
-						{ type: 'text', text: 'La stessa immagine con le zone numerate (il numero sta dentro la zona):' },
-						{ type: 'image', source: { type: 'base64', media_type: tipo(body.overlay), data: b64(body.overlay) } },
-						{ type: 'text', text: `Elenco delle zone:\n${lista}\n\nScegli le zone da mettere in rilievo. Rispondi solo con il JSON.` }
-					]
-				}
-			]
-		})
-	}).catch(() => null);
-	if (!res || !res.ok) {
-		const err = res ? await res.text().catch(() => '') : 'rete';
-		console.error('[rilievo ai]', res?.status, err.slice(0, 300));
-		return json({ ok: false, motivo: 'analisi non riuscita', dettaglio: `HTTP ${res?.status ?? 0} ${err.slice(0, 300)}` }, { status: 502, headers: cors(request) });
-	}
-	const out = await res.json().catch(() => null) as { content?: { type: string; text?: string }[]; stop_reason?: string } | null;
-	const testo = (out?.content ?? []).map((c) => c.text ?? '').join('\n');
-	const scelta = estraiJson(testo);
-	if (!scelta) {
-		console.error('[rilievo ai] risposta non leggibile', out?.stop_reason, JSON.stringify(out).slice(0, 600));
-		const blocchi = (out?.content ?? []).map((c) => `${c.type}:${(c.text ?? (c as { thinking?: string }).thinking ?? '').length}`).join(' ');
-		return json({ ok: false, motivo: 'risposta non leggibile', dettaglio: `stop=${out?.stop_reason ?? '?'} blocchi=[${blocchi}] testo=${testo.slice(0, 300)}` }, { status: 502, headers: cors(request) });
-	}
+	/* Il modello non risponde sempre uguale: una volta salta una lettera, un'altra un dettaglio.
+	   Due analisi in parallelo e l'UNIONE delle scelte: se una delle due alza una zona, la zona
+	   e' in rilievo. Le sicurezze del motore (nastro, filo esterno) tolgono gli eccessi. */
+	const chiama = async (): Promise<{ scelta: { rilievo: string[]; motivo: string } | null; err: string }> => {
+		const res = await fetch('https://api.anthropic.com/v1/messages', {
+			method: 'POST',
+			headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+			body: JSON.stringify({
+				model: MODELLO,
+				max_tokens: 1500,
+				thinking: { type: 'disabled' },
+				system: REGOLE,
+				messages: [
+					{
+						role: 'user',
+						content: [
+							{ type: 'text', text: 'Immagine del cliente:' },
+							{ type: 'image', source: { type: 'base64', media_type: tipo(body.img), data: b64(body.img) } },
+							{ type: 'text', text: 'La stessa immagine con le zone numerate (il numero sta dentro la zona):' },
+							{ type: 'image', source: { type: 'base64', media_type: tipo(body.overlay), data: b64(body.overlay) } },
+							{ type: 'text', text: `Elenco delle zone:\n${lista}\n\nScegli le zone da mettere in rilievo. Rispondi solo con il JSON.` }
+						]
+					}
+				]
+			})
+		}).catch(() => null);
+		if (!res || !res.ok) {
+			const err = res ? await res.text().catch(() => '') : 'rete';
+			console.error('[rilievo ai]', res?.status, err.slice(0, 300));
+			return { scelta: null, err: `HTTP ${res?.status ?? 0} ${err.slice(0, 300)}` };
+		}
+		const out = await res.json().catch(() => null) as { content?: { type: string; text?: string }[]; stop_reason?: string } | null;
+		const testo = (out?.content ?? []).map((c) => c.text ?? '').join('\n');
+		const scelta = estraiJson(testo);
+		if (!scelta) {
+			const blocchi = (out?.content ?? []).map((c) => `${c.type}:${(c.text ?? (c as { thinking?: string }).thinking ?? '').length}`).join(' ');
+			console.error('[rilievo ai] risposta non leggibile', out?.stop_reason, JSON.stringify(out).slice(0, 600));
+			return { scelta: null, err: `stop=${out?.stop_reason ?? '?'} blocchi=[${blocchi}] testo=${testo.slice(0, 300)}` };
+		}
+		return { scelta, err: '' };
+	};
+	const [a, b] = await Promise.all([chiama(), chiama()]);
+	if (!a.scelta && !b.scelta) return json({ ok: false, motivo: 'analisi non riuscita', dettaglio: a.err }, { status: 502, headers: cors(request) });
+	const scelta = { rilievo: [...new Set([...(a.scelta?.rilievo ?? []), ...(b.scelta?.rilievo ?? [])])], motivo: (a.scelta ?? b.scelta)!.motivo };
 	const valide = new Set(body.zone.map((z) => String(z.id).toUpperCase()));
 	scelta.rilievo = scelta.rilievo.filter((n) => valide.has(n));
 	if (db) await db.from('rilievo_ai').upsert({ hash: body.hash + '-' + PROMPT_V, zone: scelta, modello: MODELLO });
