@@ -3233,6 +3233,15 @@ function rilievoMask(){
       if(S.mask[sy*S.mw+sx]&&d[p+3]>60){inArt[i]=1;if(d[p+3]<255){const a=d[p+3]/255;d[p]=Math.round(d[p]*a+fill[0]*(1-a));d[p+1]=Math.round(d[p+1]*a+fill[1]*(1-a));d[p+2]=Math.round(d[p+2]*a+fill[2]*(1-a));d[p+3]=255;}}
       else{d[p]=fill[0];d[p+1]=fill[1];d[p+2]=fill[2];d[p+3]=255;}}}
   const bw=S.bbox.w*kx,bh=S.bbox.h*ky,artArea=Math.max(1,bw*bh);
+  /* luminosita' MASSIMA di ogni cella presa dal file a piena risoluzione: una venatura bianca
+     di 1 px, ridotta alla scala di lavoro, si mescolerebbe col grigio; qui resta bianca.
+     Serve a riconoscere i tratti chiari sottili (foglie a linea) anche su file grandi. */
+  const lumMax=(()=>{if(k>=1||sw*sh>16e6)return null;try{
+    const g0=src.getContext?src.getContext('2d',{willReadFrequently:true}):null;if(!g0)return null;
+    const sd=g0.getImageData(0,0,sw,sh).data;const out=new Uint8Array(N);
+    for(let y=0;y<sh;y++){const ty=Math.min(h-1,Math.floor(y*k));const o=y*sw;
+      for(let x=0;x<sw;x++){const q=(o+x)*4;if(sd[q+3]<128)continue;const l=(0.299*sd[q]+0.587*sd[q+1]+0.114*sd[q+2])|0;const t=ty*w+Math.min(w-1,Math.floor(x*k));if(l>out[t])out[t]=l;}}
+    return out;}catch(e){return null;}})();
   const mmpx=(S.art&&S.art.w&&S.bbox.w)?(S.art.w/S.bbox.w)/kx:0.1;
   /* i confronti di colore si fanno su una copia leggermente sfocata: il rumore a blocchi di un
      JPEG non deve spezzare una campitura in strisce */
@@ -3248,7 +3257,9 @@ function rilievoMask(){
      Croma = colore normalizzato sulla somma dei canali (solo fra pixel abbastanza chiari:
      sul nero la tinta e' rumore); deriva = distanza dal colore MEDIO della regione. */
   const stessaTinta=(q,mr,mg,mb)=>{const r=db[q],g=db[q+1],b=db[q+2];
-    if(Math.abs(r-mr)+Math.abs(g-mg)+Math.abs(b-mb)>180)return false;
+    /* deriva per CANALE (non somma): un rosso scuro a pennello (160,20,20) sul nero si stacca
+       di 145 sul rosso e di quasi niente sugli altri; il disco grigio di Sobi varia di 47 */
+    if(Math.abs(r-mr)>90||Math.abs(g-mg)>90||Math.abs(b-mb)>90)return false;
     const sj=r+g+b,sm=mr+mg+mb;if(sj<120||sm<120)return true;
     return Math.abs(r/sj-mr/sm)+Math.abs(g/sj-mg/sm)+Math.abs(b/sj-mb/sm)<=0.12;};
   /* ---- 1. sfondo ---- */
@@ -3304,6 +3315,25 @@ function rilievoMask(){
         const ew=ex1-ex0+1,eh=ey1-ey0+1;const compatto=Math.max(ew,eh)/Math.max(1,Math.min(ew,eh))<3&&area/(ew*eh)>=0.25;
         if(area>=minB&&compatto){nBuchi++;buchiC+=area;}}}
     return {rmax:Math.sqrt(md),buchi,nBuchi,buchiC};};
+  /* FONDALE GEOMETRICO: il bordo esterno della regione (contro il fuori o contro un altro
+     sfondo) sta su un cerchio/ellisse o sul suo rettangolo. Il maiale davanti al disco ha il
+     bordo irregolare; il disco, anche se coperto per meta', no. */
+  const geometrica=(rg)=>{if(rg.geo!==undefined)return rg.geo;const [x0,y0,x1,y1]=rg.box;const cx0=(x0+x1)/2,cy0=(y0+y1)/2,rx=Math.max(1,(x1-x0)/2),ry=Math.max(1,(y1-y0)/2);
+    /* bordo esterno = entro 4 px dal fuori (la crescita si ferma prima del filo di pixel misti
+       del contorno) oppure accanto a uno sfondo gia' deciso */
+    const bx=[],by=[];for(const i of rg.px){const x=i%w,y=(i/w)|0;let est=dNon[i]<=16;
+      if(!est)for(const j of [x>0?i-1:-1,x<w-1?i+1:-1,y>0?i-w:-1,y<h-1?i+w:-1]){if(j>=0&&bg[j]&&inArt[j]){est=true;break;}}
+      if(est){bx.push(x);by.push(y);}}
+    const n=bx.length;rg.geoDbg={n};if(n<50)return (rg.geo=false);
+    /* cerchio ai minimi quadrati (Kasa) sui pixel del bordo esterno: anche un disco coperto a meta' lo trova */
+    let Sx=0,Sy=0,Sxx=0,Syy=0,Sxy=0,Sz=0,Sxz=0,Syz=0;for(let k=0;k<n;k++){const x=bx[k]-cx0,y=by[k]-cy0,z=x*x+y*y;Sx+=x;Sy+=y;Sxx+=x*x;Syy+=y*y;Sxy+=x*y;Sz+=z;Sxz+=x*z;Syz+=y*z;}
+    let okC=0;{const A=[[Sxx,Sxy,Sx],[Sxy,Syy,Sy],[Sx,Sy,n]],B=[-Sxz,-Syz,-Sz];
+      const det=(m)=>m[0][0]*(m[1][1]*m[2][2]-m[1][2]*m[2][1])-m[0][1]*(m[1][0]*m[2][2]-m[1][2]*m[2][0])+m[0][2]*(m[1][0]*m[2][1]-m[1][1]*m[2][0]);
+      const D0=det(A);if(Math.abs(D0)>1e-6){const col=(c)=>A.map((r,i)=>r.map((v,j)=>j===c?B[i]:v));const D=det(col(0))/D0,E=det(col(1))/D0,F=det(col(2))/D0;
+        const ccx=-D/2,ccy=-E/2,rr=Math.sqrt(Math.max(0,ccx*ccx+ccy*ccy-F));
+        if(rr>4)for(let k=0;k<n;k++){const dx=bx[k]-cx0-ccx,dy=by[k]-cy0-ccy;if(Math.abs(Math.sqrt(dx*dx+dy*dy)-rr)<=0.06*rr)okC++;}}}
+    let okE=0,okR=0;for(let k=0;k<n;k++){const x=bx[k],y=by[k];const dn=Math.sqrt(((x-cx0)/rx)*((x-cx0)/rx)+((y-cy0)/ry)*((y-cy0)/ry));if(Math.abs(dn-1)<0.1)okE++;if(x-x0<=2||x1-x<=2||y-y0<=2||y1-y<=2)okR++;}
+    rg.geoDbg={n,okC,okE,okR};return (rg.geo=Math.max(okC,okE,okR)>=0.8*n);};
   const plateTouch=[false];
   const segnaPlacca=(rg)=>{rg.plate=true;const k=cols.length;cols.push(rg.col);plateTouch[k]=!!rg.touch;for(const i of rg.px){bg[i]=1;bgOf[i]=k;}};
   /* ---- 1a. sfondo del FILE e pannelli ----
@@ -3346,7 +3376,13 @@ function rilievoMask(){
     /* ...e li contiene DAVVERO: le placche vere (disco di Sobi, macchia GBZ, scudi) hanno
        grafica per almeno il 14-60% della loro area; un pesce nero con occhio e denti, un
        personaggio con due dettagli restano sotto il 3% e sono soggetti da mettere in rilievo */
-    const contiene=nBuchi>=3&&buchiC>=0.06*rg.px.length;
+    /* ...oppure UNA figura grande che copre gran parte della campitura (il maiale davanti al
+       disco turchese: la campitura e' un fondale, non un soggetto) */
+    /* una campitura che arriva al taglio con un bordo IRREGOLARE (la sagoma stessa del soggetto:
+       il maiale, il pesce) e' placca solo se contiene MOLTA grafica (>=6 elementi: la macchia
+       GBZ con lettere, boccali, pallini); un fondale geometrico o interno basta con 3 */
+    const geo=geometrica(rg);const molti=nBuchi>=3&&buchiC>=0.06*rg.px.length;
+    const contiene=(molti&&(geo||!rg.touch||nBuchi>=6))||(buchiC>=0.4*rg.px.length&&geo);rg.m.geo=geo;
     /* sul bordo del disegno: spessa, compatta, con almeno un quarto del perimetro sul bordo */
     if(rg.touch&&rmax>=R0&&compat>=0.09&&rg.touchFrac>=0.15&&contiene){segnaPlacca(rg);continue;}
     /* grande e compatta (il fondo nero di uno stemma pieno di elementi) */
@@ -3364,6 +3400,10 @@ function rilievoMask(){
   /* una regione grande (dal 4% in su) dello stesso colore di una placca e' sfondo anche lei
      (il rosa chiuso fra due anelli neri); le piccole di quel colore (scritte, contorni) restano grafica */
   for(const rg of regioni){if((mono&&!rg.touch)||rg.plate||rg.px.length<Aedge)continue;
+    /* solo campiture COMPATTE: una scritta cromata dello stesso grigio della cornice (DIAVEL)
+       e' grafica, non un pezzo di cornice */
+    if(!rg.m){const mm=misura(rg);rg.m={rmax:Math.round(mm.rmax),compat:+(mm.rmax/Math.sqrt(rg.px.length)).toFixed(3),nBuchi:mm.nBuchi,bc:+(mm.buchiC/rg.px.length).toFixed(3),R0:Math.round(R0)};}
+    if(rg.m.compat<0.05)continue;   /* il rosa del toro fra due anelli: 0,069; la scritta DIAVEL: 0,03 */
     let k=-1;for(let t=1;t<cols.length;t++)if(dcc(cols[t],rg.col)<40){k=t;break;}
     if(k>=0){rg.plate=true;for(const i of rg.px){bg[i]=1;bgOf[i]=k;}}}
   /* ---- 2. rilievo: pixel che si staccano dallo sfondo piu' vicino ---- */
@@ -3406,7 +3446,7 @@ function rilievoMask(){
         al grigio. La crescita sull'immagine sfocata scavalca una venatura sottile, percio' i
         tratti stanno quasi sempre DENTRO la regione; il contorno della foglia sta fuori, sul perimetro.
         Soglia 40 (non 60): una venatura di 1 px, ridotta alla scala di lavoro, si mescola col grigio */
-     const tratto=(j)=>{const lj=lum(d,j*4);return (lj-lr)*segno>0&&Math.abs(lj-lr)>=40;};
+     const tratto=(j)=>{const lj=lumMax?Math.max(lumMax[j],lum(d,j*4)):lum(d,j*4);return (lj-lr)*segno>0&&Math.abs(lj-lr)>=40;};
      const tratti=[];let nFondo=0,lr2=0;
      for(const i of px){if(tratto(i)){tratti.push(i);mk[i]=1;}else{lr2+=lum(d,i*4);nFondo++;}}
      let nPerim=0,nPT=0;
@@ -3480,7 +3520,7 @@ function rilievoMask(){
   g.putImageData(im,0,0);
   /* spessore locale (distanza dal bordo del rilievo), usato solo dal vecchio mockup 3D */
   const md=new Float32Array(N);{const inv=new Uint8Array(N);for(let i=0;i<N;i++)inv[i]=R[i]?0:1;const dd2=edt2d(inv,w,h);for(let i=0;i<N;i++)if(R[i])md[i]=Math.sqrt(dd2[i]);}
-  S.ril={key,canvas:c,w,h,frac,on:R,md,dbg:{bg,nearest,db,inArt,linee,mono,fileBg,regioni:regioni.map(r=>({area:+(r.px.length/artArea).toFixed(3),touch:r.touch,tf:+r.touchFrac.toFixed(2),plate:r.plate,col:r.col.map(Math.round),box:r.box,m:r.m||null}))}};
+  S.ril={key,canvas:c,w,h,frac,on:R,md,dbg:{bg,nearest,db,inArt,linee,mono,fileBg,regioni:regioni.map(r=>({area:+(r.px.length/artArea).toFixed(3),touch:r.touch,tf:+r.touchFrac.toFixed(2),plate:r.plate,col:r.col.map(Math.round),box:r.box,m:r.m||null,gd:r.geoDbg||null}))}};
   try{console.debug('[rilievo] '+Math.round(frac*100)+'% del disegno in rilievo, '+w+'x'+h+' in '+Math.round(performance.now()-t0)+' ms');}catch(e){}
   return S.ril;}
 
