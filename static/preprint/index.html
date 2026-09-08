@@ -3242,6 +3242,15 @@ function rilievoMask(){
       const p=i*4;o[p]=r/n;o[p+1]=g/n;o[p+2]=b/n;o[p+3]=255;}
     a=o;}return a;})();
   const dc=(p,q)=>Math.abs(db[p]-db[q])+Math.abs(db[p+1]-db[q+1])+Math.abs(db[p+2]-db[q+2]);
+  /* Una regione puo' sfumare in LUMINOSITA' (il disco grigio con la luce al centro) ma non
+     cambiare TINTA: un cuore rosso dal bordo morbido su un disco arancio, una pennellata
+     rossa sfumata sul nero, non devono venire inghiottiti dalla placca passo dopo passo.
+     Croma = colore normalizzato sulla somma dei canali (solo fra pixel abbastanza chiari:
+     sul nero la tinta e' rumore); deriva = distanza dal colore MEDIO della regione. */
+  const stessaTinta=(q,mr,mg,mb)=>{const r=db[q],g=db[q+1],b=db[q+2];
+    if(Math.abs(r-mr)+Math.abs(g-mg)+Math.abs(b-mb)>180)return false;
+    const sj=r+g+b,sm=mr+mg+mb;if(sj<120||sm<120)return true;
+    return Math.abs(r/sj-mr/sm)+Math.abs(g/sj-mg/sm)+Math.abs(b/sj-mb/sm)<=0.12;};
   /* ---- 1. sfondo ---- */
   const bg=new Uint8Array(N);const bgOf=new Int32Array(N).fill(-1);
   const cols=[[fill[0],fill[1],fill[2]]];   // 0 = riempimento del pezzo, poi le placche
@@ -3264,8 +3273,9 @@ function rilievoMask(){
       const fuori=dNon[i]<=9;
       if(fuori){touch=true;nBordo++;}
       let perim=fuori;
+      const n0=px.length,mr=r/n0,mg=g/n0,mb=b/n0;
       for(const j of [x>0?i-1:-1,x<w-1?i+1:-1,y>0?i-w:-1,y<h-1?i+w:-1]){if(j<0||!inArt[j])continue;
-        if(dc(p,j*4)<12){if(!vis[j]){vis[j]=1;st[top++]=j;}}else perim=true;}
+        if(dc(p,j*4)<12&&stessaTinta(j*4,mr,mg,mb)){if(!vis[j]){vis[j]=1;st[top++]=j;}}else perim=true;}
       if(perim)nPerim++;}
     if(px.length<0.02*artArea)continue;
     let x0=w,y0=h,x1=0,y1=0;for(const i of px){const x=i%w,y=(i/w)|0;if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;}
@@ -3296,7 +3306,39 @@ function rilievoMask(){
     return {rmax:Math.sqrt(md),buchi,nBuchi,buchiC};};
   const plateTouch=[false];
   const segnaPlacca=(rg)=>{rg.plate=true;const k=cols.length;cols.push(rg.col);plateTouch[k]=!!rg.touch;for(const i of rg.px){bg[i]=1;bgOf[i]=k;}};
-  for(const rg of regioni){if(rg.px.length<Aedge)continue;
+  /* ---- 1a. sfondo del FILE e pannelli ----
+     Una regione del colore di sfondo del file (quello che lo scontorno ha riconosciuto) che
+     tocca il bordo e' sfondo anche se il pezzo e' di un altro colore: il grigio chiaro dietro
+     la D su uno sticker bianco. Un rettangolo che riempie tutto il disegno (il riquadro nero
+     di GPE o di Grass de Rost) e' un pannello: sfondo, qualunque cosa contenga. */
+  const fileBg=(S.bgOpaque&&S.bgCol)?S.bgCol.map(v=>Math.round(v)):null;
+  for(const rg of regioni){if(rg.plate)continue;
+    if(fileBg&&rg.touch&&dcc(rg.col,fileBg)<40){segnaPlacca(rg);continue;}
+    const [x0,y0,x1,y1]=rg.box;const bb=(x1-x0+1)*(y1-y0+1);
+    if(rg.px.length>=0.75*bb&&bb>=0.85*artArea)segnaPlacca(rg);}   /* riquadro: copre almeno 3/4 del suo rettangolo (le lettere ritagliate tolgono il resto) e il rettangolo e' tutto il disegno */
+  /* ---- 1b. un solo colore d'inchiostro? ----
+     Se, tolti il riempimento del pezzo e lo sfondo del file, il disegno e' fatto quasi tutto
+     (>=90%) di UN colore (lo stemma verde di Misinto con le sagome bianche, un logo nero su
+     bianco), non esistono placche: quel colore E' il disegno e va tutto in rilievo. Le placche
+     hanno senso solo quando sopra c'e' grafica di altri colori (Sobi, GBZ, Cuore Punto).
+     Vale per le forme INTERNE (lo stemma dentro il suo bordo bianco): una campitura che arriva
+     fino al taglio e' la base dello sticker e segue le regole normali (il disco arancio di
+     Gocce con le scritte sopra resta una placca; il pesce nero senza niente sopra resta rilievo). */
+  let mono=false;
+  {const hist=new Map();let nInk=0;
+   /* i pixel di confine (misti fra due colori) non contano: si guardano solo le campiture */
+   const piatto=(i)=>{const x=i%w,y=(i/w)|0;const p=i*4;if(x>0&&dc(p,p-4)>30)return false;if(x<w-1&&dc(p,p+4)>30)return false;if(y>0&&dc(p,p-w*4)>30)return false;if(y<h-1&&dc(p,p+w*4)>30)return false;return true;};
+   const isInk=(i)=>{const p=i*4;const r=db[p],g=db[p+1],b=db[p+2];
+     if(Math.abs(r-fill[0])+Math.abs(g-fill[1])+Math.abs(b-fill[2])<=60)return false;
+     if(fileBg&&Math.abs(r-fileBg[0])+Math.abs(g-fileBg[1])+Math.abs(b-fileBg[2])<=60)return false;return true;};
+   for(let i=0;i<N;i++){if(!inArt[i]||bg[i]||!isInk(i)||!piatto(i))continue;const p=i*4;const r=db[p],g=db[p+1],b=db[p+2];
+     nInk++;const k=((r>>5)<<6)|((g>>5)<<3)|(b>>5);const e=hist.get(k);if(e){e.n++;e.r+=r;e.g+=g;e.b+=b;}else hist.set(k,{n:1,r,g,b});}
+   if(nInk>=0.05*artArea){let best=null;for(const e of hist.values())if(!best||e.n>best.n)best=e;
+     const cr=best.r/best.n,cg=best.g/best.n,cb=best.b/best.n;let vicini=0;
+     for(let i=0;i<N;i++){if(!inArt[i]||bg[i]||!isInk(i)||!piatto(i))continue;const p=i*4;
+       if(Math.abs(db[p]-cr)+Math.abs(db[p+1]-cg)+Math.abs(db[p+2]-cb)<=60)vicini++;}
+     mono=vicini>=0.9*nInk;}}
+  for(const rg of regioni){if((mono&&!rg.touch)||rg.plate||rg.px.length<Aedge)continue;
     const {rmax,nBuchi,buchiC}=misura(rg);const compat=rmax/Math.sqrt(rg.px.length);rg.m={rmax:Math.round(rmax),compat:+compat.toFixed(3),nBuchi,bc:+(buchiC/rg.px.length).toFixed(3),R0:Math.round(R0)};
     /* Una placca e' sfondo perche' CONTIENE altra grafica: almeno 6 buchi apprezzabili (le
        lettere di una scritta, gli elementi di uno stemma). Un pesce nero con un occhio e
@@ -3321,7 +3363,7 @@ function rilievoMask(){
     if(dentro&&rg.m&&rg.m.rmax>=2*R0)segnaPlacca(rg);}
   /* una regione grande (dal 4% in su) dello stesso colore di una placca e' sfondo anche lei
      (il rosa chiuso fra due anelli neri); le piccole di quel colore (scritte, contorni) restano grafica */
-  for(const rg of regioni){if(rg.plate||rg.px.length<Aedge)continue;
+  for(const rg of regioni){if((mono&&!rg.touch)||rg.plate||rg.px.length<Aedge)continue;
     let k=-1;for(let t=1;t<cols.length;t++)if(dcc(cols[t],rg.col)<40){k=t;break;}
     if(k>=0){rg.plate=true;for(const i of rg.px){bg[i]=1;bgOf[i]=k;}}}
   /* ---- 2. rilievo: pixel che si staccano dallo sfondo piu' vicino ---- */
@@ -3350,7 +3392,8 @@ function rilievoMask(){
    for(let s0=0;s0<N;s0++){if(lab2[s0]||!inArt[s0]||bg[s0])continue;
      rid++;let top=0;st[top++]=s0;lab2[s0]=rid;px.length=0;let r=0,g=0,b=0;
      while(top){const i=st[--top];px.push(i);const p=i*4;r+=db[p];g+=db[p+1];b+=db[p+2];const x=i%w,y=(i/w)|0;
-       for(const j of [x>0?i-1:-1,x<w-1?i+1:-1,y>0?i-w:-1,y<h-1?i+w:-1]){if(j<0||!inArt[j]||bg[j]||lab2[j])continue;if(dc(p,j*4)<12){lab2[j]=rid;st[top++]=j;}}}
+       const n0=px.length,mr=r/n0,mg=g/n0,mb=b/n0;
+       for(const j of [x>0?i-1:-1,x<w-1?i+1:-1,y>0?i-w:-1,y<h-1?i+w:-1]){if(j<0||!inArt[j]||bg[j]||lab2[j])continue;if(dc(p,j*4)<12&&stessaTinta(j*4,mr,mg,mb)){lab2[j]=rid;st[top++]=j;}}}
      const n=px.length;if(n<Math.max(9,(0.3/mmpx)*(0.3/mmpx)))continue;
      const mr=r/n,mg=g/n,mb=b/n;if(Math.max(mr,mg,mb)-Math.min(mr,mg,mb)>=45)continue;   // solo grigi
      let lr=0.299*mr+0.587*mg+0.114*mb;
@@ -3401,6 +3444,10 @@ function rilievoMask(){
     /* il pixel si confronta NON sfocato (gli spazi sottili fra le lettere e i buchi restano
        aperti), lo sfondo di riferimento e' sfocato (pulito dal rumore) */
     const p=i*4,q=nb*4;
+    /* un pixel del colore di sfondo del FILE confrontato col riempimento del pezzo e' sfondo
+       anche se i due colori differiscono un po' (grigio chiaro del JPEG contro il bianco dello
+       sticker: la controforma della D non e' rilievo). Contro una placca vale il confronto normale */
+    if(fileBg&&bgOf[nb]===0&&Math.abs(d[p]-fileBg[0])+Math.abs(d[p+1]-fileBg[1])+Math.abs(d[p+2]-fileBg[2])<=40)continue;
     if(Math.abs(d[p]-db[q])+Math.abs(d[p+1]-db[q+1])+Math.abs(d[p+2]-db[q+2])>60)R[i]=1;}
   /* ---- 3. pulizia minima ---- */
   {const Amin=Math.max(4,Math.round((0.35/mmpx)*(0.35/mmpx))), Ahole=Math.max(4,Math.round((0.2/mmpx)*(0.2/mmpx)));
@@ -3433,7 +3480,7 @@ function rilievoMask(){
   g.putImageData(im,0,0);
   /* spessore locale (distanza dal bordo del rilievo), usato solo dal vecchio mockup 3D */
   const md=new Float32Array(N);{const inv=new Uint8Array(N);for(let i=0;i<N;i++)inv[i]=R[i]?0:1;const dd2=edt2d(inv,w,h);for(let i=0;i<N;i++)if(R[i])md[i]=Math.sqrt(dd2[i]);}
-  S.ril={key,canvas:c,w,h,frac,on:R,md,dbg:{bg,nearest,db,inArt,linee,regioni:regioni.map(r=>({area:+(r.px.length/artArea).toFixed(3),touch:r.touch,tf:+r.touchFrac.toFixed(2),plate:r.plate,col:r.col.map(Math.round),box:r.box,m:r.m||null}))}};
+  S.ril={key,canvas:c,w,h,frac,on:R,md,dbg:{bg,nearest,db,inArt,linee,mono,fileBg,regioni:regioni.map(r=>({area:+(r.px.length/artArea).toFixed(3),touch:r.touch,tf:+r.touchFrac.toFixed(2),plate:r.plate,col:r.col.map(Math.round),box:r.box,m:r.m||null}))}};
   try{console.debug('[rilievo] '+Math.round(frac*100)+'% del disegno in rilievo, '+w+'x'+h+' in '+Math.round(performance.now()-t0)+' ms');}catch(e){}
   return S.ril;}
 
