@@ -41,7 +41,7 @@ export interface EngineConfig {
 	priceRange: RangeStep[]; // per quantità
 	quantities: number[]; // fasce mostrate al cliente
 	recommendedQty: number;
-	size: { minMm: number; maxMm: number; defaultMm?: number; minMmDiecut?: number; minByShape?: Record<string, number> }; // minByShape: minimo (lato corto) per sagoma; la misura di partenza e' sempre la minima
+	size: { minMm: number; maxMm: number; defaultMm?: number; minMmDiecut?: number; minByShape?: Record<string, number>; startByShape?: Record<string, [number, number]> }; // minByShape: minimo (lato corto) per sagoma; startByShape: misura di partenza proposta [w,h] per sagoma (altrimenti la minima)
 	shapes: ShapeOption[]; // ogni sagoma ha le sue misure proposte (larghezze in mm)
 	materials: MaterialOption[];
 	finishes: FinishOption[];
@@ -62,15 +62,16 @@ const ALL_MATERIALS: MaterialOption[] = [
 ];
 
 /** Sagome standard; le immagini cambiano per prodotto (cartelle res/, vetr/, label/) */
-function stdShapes(imgs: [string, string, string, string, string], presets: number[]): ShapeOption[] {
+function stdShapes(imgs: [string, string, string, string, string], presets: number[], sagomatoUltimo = false): ShapeOption[] {
 	const [custom, round, square, oval, rect] = imgs;
-	return [
+	const list: ShapeOption[] = [
 		{ id: 'sagomato', label: 'Sagomato', description: 'Forma libera', img: custom, visible: true, presets: [...presets] },
 		{ id: 'tondo', label: 'Rotondo', description: 'Cerchio', img: round, equal: true, visible: true, presets: [...presets] },
 		{ id: 'quadrato', label: 'Quadrato', description: 'Angoli morbidi', img: square, equal: true, visible: true, presets: [...presets] },
 		{ id: 'ovale', label: 'Ovale', description: 'Ellisse', img: oval, visible: true, presets: [...presets] },
 		{ id: 'rettangolare', label: 'Rettangolo', description: 'Orizzontale', img: rect, visible: true, presets: [...presets] }
 	];
+	return sagomatoUltimo ? [...list.slice(1), list[0]] : list;
 }
 const STICKER_IMGS: [string, string, string, string, string] = [`${IMG}/custom_stickers.webp`, `${IMG}/round_stickers.webp`, `${IMG}/square_stickers.webp`, `${IMG}/oval_stickers.webp`, `${IMG}/rect_stickers.webp`];
 const RES_IMGS: [string, string, string, string, string] = [`${IMG}/res/custom_res.webp`, `${IMG}/res/round_res.webp`, `${IMG}/res/square_res.webp`, `${IMG}/res/oval_res.webp`, `${IMG}/res/rect_res.webp`];
@@ -140,7 +141,9 @@ const MAT_STICKER = ['bianco', 'olografico', 'glitterato', 'trasparente', 'argen
 /* Misure minime (lato corto, in mm) per sagoma: la misura di partenza proposta e' sempre la minima,
    per non spaventare il cliente con un prezzo alto calcolato sulla dimensione del file */
 const MIN_STICKER: Record<string, number> = { sagomato: 40, tondo: 20, quadrato: 20, ovale: 20, rettangolare: 20 };
-const MIN_RESIN: Record<string, number> = { sagomato: 50, tondo: 10, quadrato: 15, ovale: 10, rettangolare: 15 };
+const MIN_RESIN: Record<string, number> = { sagomato: 50, tondo: 10, quadrato: 15, ovale: 10, rettangolare: 20 };
+/* Resinati: misura di partenza proposta (il cliente puo' scendere fino al minimo) */
+const START_RESIN: Record<string, [number, number]> = { tondo: [25, 25], quadrato: [25, 25], ovale: [40, 20], rettangolare: [40, 20] };
 const MIN_LABEL: Record<string, number> = { sagomato: 20, tondo: 10, quadrato: 10, ovale: 10, rettangolare: 10 };
 
 /** Listini iniziali, uno per prodotto e indipendenti tra loro (poi ognuno si modifica dalla dashboard) */
@@ -161,9 +164,9 @@ export const DEFAULT_ENGINES: Record<string, EngineConfig> = {
 		kind: 'resina',
 		materials: withMaterials(['bianco', 'super', 'trasparente', 'argento', 'oro']),
 		finishes: withFinishes([]),
-		shapes: stdShapes(RES_IMGS, [25, 50, 80, 100]),
+		shapes: stdShapes(RES_IMGS, [25, 50, 80, 100], true),
 		quantities: QTY_RESIN,
-		size: { minMm: 10, maxMm: 200, defaultMm: 25, minMmDiecut: 50, minByShape: MIN_RESIN }
+		size: { minMm: 10, maxMm: 200, defaultMm: 25, minMmDiecut: 50, minByShape: MIN_RESIN, startByShape: START_RESIN }
 	}),
 	vetrofanie: base({
 		materials: withMaterials(['trasparente']),
@@ -190,7 +193,12 @@ export function mergeConfig(defaults: EngineConfig, saved: unknown): EngineConfi
 	if (s.version !== 3) return clone(defaults); // formato precedente: si riparte dal default
 	const list = <T extends { id: string }>(def: T[], got: unknown): T[] => {
 		if (!Array.isArray(got) || !got.length) return def;
-		return (got as T[]).map((it) => ({ ...(def.find((d) => d.id === it.id) ?? {}), ...it }) as T);
+		/* l'ORDINE e' quello del listino di base (le sagome dei resinati: tondo prima, sagomato ultimo);
+		   i valori salvati in dashboard prevalgono, le voci salvate ma non piu' nel base restano in coda */
+		const g = got as T[];
+		const out = def.map((d) => ({ ...d, ...(g.find((it) => it.id === d.id) ?? {}) }) as T);
+		for (const it of g) if (!def.some((d) => d.id === it.id)) out.push(it);
+		return out;
 	};
 	return {
 		...clone(defaults),
@@ -304,6 +312,8 @@ const r5 = (v: number) => Math.round(v / 5) * 5;
 const half = (v: number) => Math.round(v * 2) / 2;
 /** Misura di partenza: il lato corto e' il minimo della sagoma, il lato lungo segue la proporzione */
 export function startSize(cfg: EngineConfig, forma: string, ratio: number): [number, number] {
+	const st = cfg.size.startByShape?.[forma];
+	if (st && st[0] > 0 && st[1] > 0) return [half(Math.min(cfg.size.maxMm, st[0])), half(Math.min(cfg.size.maxMm, st[1]))];
 	const m = minForShape(cfg, forma);
 	const r = ratio > 0 ? ratio : 1;
 	if (r >= 1) return [half(Math.min(cfg.size.maxMm, m * r)), m];
@@ -312,7 +322,8 @@ export function startSize(cfg: EngineConfig, forma: string, ratio: number): [num
 /** Le quattro misure proposte: la minima e tre piu' grandi (dalle misure della sagoma, altrimenti x1,5 x2 x3) */
 export function sizeProposals(cfg: EngineConfig, forma: string, ratio: number, presets: number[]): [number, number][] {
 	const [w0, h0] = startSize(cfg, forma, ratio);
-	const r = ratio > 0 ? ratio : 1;
+	/* la proporzione delle proposte segue la misura di partenza (rettangolo 40x20 -> proposte 2:1) */
+	const r = cfg.size.startByShape?.[forma] ? (h0 > 0 ? w0 / h0 : 1) : (ratio > 0 ? ratio : 1);
 	const fromW = (w: number): [number, number] => [half(w), half(w / r)];
 	const out: [number, number][] = [[w0, h0]];
 	const cand = presets.filter((p) => p > w0 + 2).sort((a, b) => a - b);

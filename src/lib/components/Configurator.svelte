@@ -45,7 +45,7 @@
 	);
 	const stepNo = (id: string) => steps.indexOf(id) + 1;
 
-	let forma = $state('sagomato');
+	let forma = $state(''); // la prima sagoma visibile del listino (resinati: tondo)
 	// sul sagomato puo' valere un minimo piu' alto (resinati: 40 mm)
 	const MIN_MM = $derived(minForShape(cfg, forma));
 	let materiale = $state('bianco');
