@@ -3681,7 +3681,10 @@ function renderCore(ppm,withMat){
   /* [sito] adesivi in rilievo: l'effetto va sopra la finitura, e resta lucido anche con l'UV opaca */
   /* rilievo: la maschera (e l'analisi visiva) partono subito al caricamento, anche se il
      cliente sta ancora guardando la sua grafica; la vista delle zone si attiva col bottone */
-  if(withMat&&S.rilievo&&S.prod!=='resin'){try{ if(S.rilDettagli)c=rilievoDettagli(c,ppm); else rilievoMask(); }catch(e){console.error('[rilievo]',e);}}
+  /* [sito] rilievo: nella vista normale la grafica resta com'e' e sopra le zone in rilievo si
+     appoggia l'effetto smusso/rilievo TRASPARENTE (luci, ombre, cupola: prende il colore del
+     file sotto); con 'Effetto rilievo' si vede solo la maschera RDG_GLOSS sul pezzo bianco */
+  if(withMat&&S.rilievo&&S.prod!=='resin'){try{ if(S.rilDettagli)c=rilievoDettagli(c,ppm); else c=rilievoApply(c,ppm); }catch(e){console.error('[rilievo]',e);}}
   return c;}
 function renderCoreRaw(ppm,withMat){
   const ink=inkLayer(ppm);
