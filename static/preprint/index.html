@@ -3260,7 +3260,8 @@ function rilievoMask(){
           mark[kk]=3;qq[hh++]=kk;}}
       if(adiac){buchi+=area;if(area>=minB)nBuchi++;}}
     return {rmax:Math.sqrt(md),buchi,nBuchi};};
-  const segnaPlacca=(rg)=>{rg.plate=true;const k=cols.length;cols.push(rg.col);for(const i of rg.px){bg[i]=1;bgOf[i]=k;}};
+  const plateTouch=[false];
+  const segnaPlacca=(rg)=>{rg.plate=true;const k=cols.length;cols.push(rg.col);plateTouch[k]=!!rg.touch;for(const i of rg.px){bg[i]=1;bgOf[i]=k;}};
   for(const rg of regioni){if(rg.px.length<Aedge)continue;
     const {rmax,nBuchi}=misura(rg);const compat=rmax/Math.sqrt(rg.px.length);rg.m={rmax:Math.round(rmax),compat:+compat.toFixed(3),nBuchi,R0:Math.round(R0)};
     /* Una placca e' sfondo perche' CONTIENE altra grafica: almeno 6 buchi apprezzabili (le
@@ -3278,7 +3279,9 @@ function rilievoMask(){
      disco) e' sfondo anche se non e' compatta */
   for(const rg of regioni){if(rg.plate||!rg.touch||rg.px.length<Aedge)continue;
     const b1=rg.box;const dentro=regioni.some(o=>o.plate&&!o.touch&&o.box[0]>=b1[0]&&o.box[1]>=b1[1]&&o.box[2]<=b1[2]&&o.box[3]<=b1[3]);
-    if(dentro)segnaPlacca(rg);}
+    /* solo se SPESSO (una pennellata, una cornice piena): un filo di contorno attorno a uno
+       stemma e' grafica e resta in rilievo */
+    if(dentro&&rg.m&&rg.m.rmax>=2*R0)segnaPlacca(rg);}
   /* una regione grande (dal 4% in su) dello stesso colore di una placca e' sfondo anche lei
      (il rosa chiuso fra due anelli neri); le piccole di quel colore (scritte, contorni) restano grafica */
   for(const rg of regioni){if(rg.plate||rg.px.length<Aedge)continue;
@@ -3303,6 +3306,21 @@ function rilievoMask(){
        aperti), lo sfondo di riferimento e' sfocato (pulito dal rumore) */
     const p=i*4,q=nb*4;
     if(Math.abs(d[p]-db[q])+Math.abs(d[p+1]-db[q+1])+Math.abs(d[p+2]-db[q+2])>60)R[i]=1;}
+  /* TEXTURE DELLO SFONDO: dentro una placca esterna (quella sul bordo del disegno) gli elementi
+     sottili e molto allungati (le striature chiare di una pennellata) sono texture, non grafica.
+     Scritte, anelli, figure hanno un riquadro poco allungato e restano. */
+  {const lab=new Int32Array(N);let top;const q2=st;
+   for(let s0=0;s0<N;s0++){if(!R[s0]||lab[s0])continue;top=0;q2[top++]=s0;lab[s0]=1;px.length=0;
+     let x0=w,y0=h,x1=0,y1=0;const votes=new Map();
+     while(top){const i=q2[--top];px.push(i);const x=i%w,y=(i/w)|0;if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;
+       const nb=nearest[i];if(nb>=0){const k=bgOf[nb];votes.set(k,(votes.get(k)||0)+1);}
+       for(const j of [x>0?i-1:-1,x<w-1?i+1:-1,y>0?i-w:-1,y<h-1?i+w:-1]){if(j>=0&&R[j]&&!lab[j]){lab[j]=1;q2[top++]=j;}}}
+     const bw2=x1-x0+1,bh2=y1-y0+1;const lungo=Math.max(bw2,bh2),corto=Math.min(bw2,bh2);
+     let kBest=-1,vBest=0;for(const [k,v] of votes)if(v>vBest){vBest=v;kBest=k;}
+     const sullaPlaccaEsterna=kBest>0&&plateTouch[kBest];
+     const sottile=px.length/lungo<R0;                  // larghezza media sotto il raggio di riferimento
+     const allungato=lungo/Math.max(1,corto)>=5;
+     if(sullaPlaccaEsterna&&sottile&&allungato&&px.length<0.01*artArea)for(const i of px)R[i]=0;}}
   /* ---- 3. pulizia minima ---- */
   {const Amin=Math.max(4,Math.round((0.35/mmpx)*(0.35/mmpx))), Ahole=Math.max(4,Math.round((0.2/mmpx)*(0.2/mmpx)));
    const lab=new Int32Array(N);
