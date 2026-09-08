@@ -3060,7 +3060,43 @@ const RESM={
   aBL:32, aTL:70, aTR:22, aBR:55,    // apertura angolare (gradi) di mezzaluna, filo, luce secondaria, ombra
   glMax:0.93
 };
+/* --------------------------------------------------------------------
+   [sito] CUPOLA DAI MOCKUP PSD DI MATTIA (3D Epoxy Dome Stickers Mockup Set)
+   Per tondo, quadrato, ovale e rettangolo si usano ESATTAMENTE i livelli dipinti dei PSD
+   (vista dall'alto): 'w' in moltiplica (ombreggiatura verso i bordi), i tre 'b' in scherma
+   (riflesso sul bordo in basso a sinistra e luce in alto), il filo di bordo al 46%.
+   I livelli sono esportati in /preprint/dome/<forma>/ e stesi sul riquadro del pezzo.
+   Ovali e rettangoli fuori proporzione: gli stessi livelli adattati al riquadro (il riflesso
+   segue comunque il bordo). Sagomato: per ora la cupola calcolata (resinDome sotto).
+   -------------------------------------------------------------------- */
+const DOME_IMG={};
+function domeAssets(shape){
+  let e=DOME_IMG[shape]; if(e)return e.ok?e:null;
+  e=DOME_IMG[shape]={ok:false,n:0};
+  const names=['mult','screen','edge'];
+  for(const n of names){const im=new Image();im.onload=()=>{e[n]=im;e.n++;if(e.n>=names.length){e.ok=true;try{if(S.src&&S.bbox){draw();computeLayout();}}catch(x){}}};
+    im.onerror=()=>{e.n++;if(e.n>=names.length){e.ok=!!(e.mult&&e.screen);try{if(S.src&&S.bbox){draw();computeLayout();}}catch(x){}}};
+    im.src='/preprint/dome/'+shape+'/'+n+'.png';}
+  return null;}
+function resinDomeMockup(core,ppm,shape){
+  const W=core.width,H=core.height;
+  const gc=core.getContext('2d',{willReadFrequently:true});const d=gc.getImageData(0,0,W,H).data;
+  let x0=W,y0=H,x1=-1,y1=-1;for(let y=0;y<H;y++)for(let x=0;x<W;x++){if(d[(y*W+x)*4+3]>10){if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;}}
+  if(x1<0)return null;const bw=x1-x0+1,bh=y1-y0+1;
+  /* il sito manda il quadrato come rettangolo arrotondato con lati uguali: lati uguali = livelli del quadrato */
+  if(shape==='rect'&&Math.abs(bw-bh)<=0.08*Math.max(bw,bh))shape='square';
+  const A=domeAssets(shape); if(!A)return null;
+  const out=document.createElement('canvas');out.width=W;out.height=H;const o=out.getContext('2d');
+  o.drawImage(core,0,0);o.imageSmoothingQuality='high';
+  o.globalCompositeOperation='multiply';o.drawImage(A.mult,x0,y0,bw,bh);
+  o.globalCompositeOperation='screen';o.drawImage(A.screen,x0,y0,bw,bh);
+  if(A.edge){o.globalCompositeOperation='source-over';o.drawImage(A.edge,x0,y0,bw,bh);}
+  o.globalCompositeOperation='destination-in';o.drawImage(core,0,0);
+  o.globalCompositeOperation='source-over';
+  return out;}
+const DOME_SHAPES={circle:'circle',square:'square',ellipse:'ellipse',rect:'rect',rounded:'rect'};
 function resinDome(core,ppm){
+  {const shp=$('shp')&&$('shp').value;const ds=DOME_SHAPES[shp];if(ds){try{const r=resinDomeMockup(core,ppm,ds);if(r)return r;}catch(e){console.error('[cupola]',e);}}}
   const W=core.width,H=core.height,N=W*H;
   const gc=core.getContext('2d',{willReadFrequently:true});
   const id=gc.getImageData(0,0,W,H),d=id.data;
