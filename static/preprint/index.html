@@ -3530,6 +3530,21 @@ function rilievoMask(){
       /* filetto di TRANSIZIONE fra due sfondi diversi (l'arco nero e il disco blu, entrambi
          sfondo): il pixel sta a meta' colore fra i due vicini, non e' grafica */
       if(transizione(i))continue;R[i]=1;}}
+  /* ---- 2b. SFUMATURE DENTRO UN ELEMENTO (scritta cromata) ----
+     Una scritta cromata ha una fascia scura a meta' altezza: la crescita della placca nera la
+     assorbe (e' un grigio vicino al nero) e la lettera esce a pezzi. Un pixel che sta fra due
+     zone in rilievo, sopra e sotto entro 0,6 mm, e che NON ha il colore della placca (dista
+     >60 dal colore MEDIO della placca) e' la fascia di quella sfumatura: rilievo. Le
+     controforme e gli spazi fra le lettere hanno esattamente il colore della placca e restano. */
+  {const Lv=Math.max(2,Math.round(0.6/mmpx));const add=[];
+   for(let i=0;i<N;i++){if(R[i]||!inArt[i])continue;const nb=nearest[i];if(nb<0)continue;const k=bgOf[nb];if(k<=0)continue;
+     const p=i*4,cc=cols[k];if(Math.abs(d[p]-cc[0])+Math.abs(d[p+1]-cc[1])+Math.abs(d[p+2]-cc[2])<=60)continue;
+     const x=i%w,y=(i/w)|0;let su=false,giu=false;
+     for(let t=1;t<=Lv&&!su;t++){const yy=y-t;if(yy<0)break;if(R[yy*w+x])su=true;}
+     if(!su)continue;
+     for(let t=1;t<=Lv&&!giu;t++){const yy=y+t;if(yy>=h)break;if(R[yy*w+x])giu=true;}
+     if(giu)add.push(i);}
+   for(const i of add)R[i]=1;}
   /* ---- 3. pulizia minima ---- */
   {const Amin=Math.max(4,Math.round((0.35/mmpx)*(0.35/mmpx))), Ahole=Math.max(4,Math.round((0.2/mmpx)*(0.2/mmpx)));
    const lab=new Int32Array(N);
