@@ -11,6 +11,7 @@ import type { RequestHandler } from './$types';
    viene analizzato due volte. Senza chiave API il motore usa le sue regole di riserva. */
 
 const MODELLO = env.RILIEVO_AI_MODEL || 'claude-sonnet-5';
+const PROMPT_V = 'p3';   // cambia quando cambiano le regole: i risultati in cache valgono solo per la stessa versione
 
 const REGOLE = `Sei il grafico prestampa di Stickerprint, esperto di adesivi con effetto RILIEVO UV: una vernice spessa e lucida stesa solo su alcune zone, sopra una stampa che resta opaca. Il rilievo si vede e si tocca: crea un gioco di luci fra le parti lucide in rilievo e lo sfondo opaco.
 
@@ -20,7 +21,8 @@ Come ragiona un grafico:
 - Prima capisci cos'e' SFONDO (campiture grandi, sfumature di fondo, placche, ombre, il filetto o contorno attorno alla sagoma, l'ombra estrusa dietro una scritta): lo sfondo resta OPACO, mai in rilievo.
 - Le SCRITTE vanno sempre in rilievo, anche piccole.
 - NASTRI, BANNER, TARGHETTE e CARTIGLI con una scritta sopra: scegli SOLO la scritta (e i pallini o i fregi accanto), MAI il nastro: la scritta lucida sul nastro opaco e' il contrasto piu' bello. Se scegli anche il nastro, la scritta sparisce nel rilievo.
-- Vanno in rilievo i DETTAGLI che caratterizzano il disegno: occhi, denti, unghie, creste, squame, corna, capelli, gioielli, stelline, pallini, ghirigori, foglie e rami, ornamenti, icone e piccoli simboli, contorni fini e linee decorative.
+- Vanno in rilievo i DETTAGLI che caratterizzano il disegno: occhi, denti, unghie e artigli, creste, squame, corna, capelli, criniere, ciuffi e pelliccia folta, code, gioielli, stelline, pallini, ghirigori, foglie e rami, ornamenti, icone e piccoli simboli, contorni fini e linee decorative.
+- Disegno a inchiostro o a linee nere su fondo chiaro (tatuaggio, stemma disegnato a tratto, illustrazione in bianco e nero): TUTTO l'inchiostro e' il soggetto e va in rilievo (ali, teschi, corpi, scritte); solo il fondo chiaro resta opaco.
 - Pallini, bolle, stelline, coriandoli e puntini SPARSI SULLO SFONDO sono decorazione, non sfondo: vanno in rilievo (danno l'effetto 'wow' con il gioco di luci). Se sono in un gruppo G, scegli il gruppo.
 - Il CORPO PRINCIPALE di un personaggio o di una figura grande resta opaco (e' la base su cui i dettagli in rilievo risaltano), a meno che l'intero disegno sia un logo/lettering: allora le lettere vanno in rilievo per intero e i loro fori restano opachi.
 - Non mettere in rilievo un filo di contorno attorno alle lettere se le lettere stesse sono in rilievo: il rilievo segue la lettera.
@@ -78,7 +80,7 @@ export const POST: RequestHandler = async ({ request }) => {
 
 	const db = admin();
 	if (db) {
-		const { data } = await db.from('rilievo_ai').select('zone').eq('hash', body.hash).maybeSingle();
+		const { data } = await db.from('rilievo_ai').select('zone').eq('hash', body.hash + '-' + PROMPT_V).maybeSingle();
 		if (data?.zone) return json({ ok: true, cache: true, ...(data.zone as object) }, { status: 200, headers: cors(request) });
 	}
 
@@ -125,6 +127,6 @@ export const POST: RequestHandler = async ({ request }) => {
 	}
 	const valide = new Set(body.zone.map((z) => String(z.id).toUpperCase()));
 	scelta.rilievo = scelta.rilievo.filter((n) => valide.has(n));
-	if (db) await db.from('rilievo_ai').upsert({ hash: body.hash, zone: scelta, modello: MODELLO });
+	if (db) await db.from('rilievo_ai').upsert({ hash: body.hash + '-' + PROMPT_V, zone: scelta, modello: MODELLO });
 	return json({ ok: true, ...scelta }, { status: 200, headers: cors(request) });
 };
