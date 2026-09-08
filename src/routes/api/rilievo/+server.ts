@@ -93,6 +93,7 @@ export const POST: RequestHandler = async ({ request }) => {
 	/* Il modello non risponde sempre uguale: una volta salta una lettera, un'altra un dettaglio.
 	   Due analisi in parallelo e l'UNIONE delle scelte: se una delle due alza una zona, la zona
 	   e' in rilievo. Le sicurezze del motore (nastro, filo esterno) tolgono gli eccessi. */
+	const imgUrl = body.img, ovUrl = body.overlay;
 	const chiama = async (): Promise<{ scelta: { rilievo: string[]; motivo: string } | null; err: string }> => {
 		const res = await fetch('https://api.anthropic.com/v1/messages', {
 			method: 'POST',
@@ -107,9 +108,9 @@ export const POST: RequestHandler = async ({ request }) => {
 						role: 'user',
 						content: [
 							{ type: 'text', text: 'Immagine del cliente:' },
-							{ type: 'image', source: { type: 'base64', media_type: tipo(body.img), data: b64(body.img) } },
+							{ type: 'image', source: { type: 'base64', media_type: tipo(imgUrl), data: b64(imgUrl) } },
 							{ type: 'text', text: 'La stessa immagine con le zone numerate (il numero sta dentro la zona):' },
-							{ type: 'image', source: { type: 'base64', media_type: tipo(body.overlay), data: b64(body.overlay) } },
+							{ type: 'image', source: { type: 'base64', media_type: tipo(ovUrl), data: b64(ovUrl) } },
 							{ type: 'text', text: `Elenco delle zone:\n${lista}\n\nScegli le zone da mettere in rilievo. Rispondi solo con il JSON.` }
 						]
 					}
