@@ -3590,13 +3590,16 @@ const SMUSSO={size:0.55,depth:2.72,soften:0.07,angle:30,altitude:30,hi:0.50,sh:0
 function smussoApplica(o,mk,ppm,W,H){
   const N=W*H;const K=(S.rilForza||1.0);
   const gm=mk.getContext('2d',{willReadFrequently:true});const md=gm.getImageData(0,0,W,H).data;
-  const on=new Uint8Array(N);let any=0;for(let i=0;i<N;i++){if(md[i*4+3]>=128){on[i]=1;any++;}}
+  let any=0;for(let i=3;i<N*4;i+=4)if(md[i]>=64){any=1;break;}
   if(!any)return;
-  const inv=new Uint8Array(N);for(let i=0;i<N;i++)inv[i]=on[i]?0:1;
-  const d2=edt2d(inv,W,H);
   const rr=Math.max(1.5,SMUSSO.size*ppm);
-  const hgt=new Float32Array(N);
-  for(let i=0;i<N;i++){if(!on[i])continue;const t=Math.min(1,Math.sqrt(d2[i])/rr);hgt[i]=t*t*(3-2*t);}
+  /* ALTEZZA come la tecnica 'Arrotonda' di Photoshop: la maschera (gia' a contorno morbido)
+     sfumata per 'dimensione' px. Niente scalini: il contorno della maschera ridotta non si
+     vede piu' nello smusso, che esce liscio anche con la lente */
+  const hc=document.createElement('canvas');hc.width=W;hc.height=H;const gh=hc.getContext('2d',{willReadFrequently:true});
+  gh.filter='blur('+(rr*0.55).toFixed(2)+'px)';gh.drawImage(mk,0,0);gh.filter='none';
+  const hd=gh.getImageData(0,0,W,H).data;const hgt=new Float32Array(N);
+  for(let i=0;i<N;i++){const t=hd[i*4+3]/255;hgt[i]=t*t*(3-2*t);}
   /* luce: angolo (0 = da destra, 90 = dall'alto) e altitudine, convenzione Photoshop */
   const an=SMUSSO.angle*Math.PI/180, al=SMUSSO.altitude*Math.PI/180;
   const L=[Math.cos(an)*Math.cos(al),-Math.sin(an)*Math.cos(al),Math.sin(al)];
@@ -3620,7 +3623,9 @@ function rilievoApply(c,ppm){
   const W=c.width,H=c.height;
   /* maschera portata sul pezzo (in pixel del tile), ritagliata sulla sagoma */
   const mk=document.createElement('canvas');mk.width=W;mk.height=H;const gm=mk.getContext('2d',{willReadFrequently:true});
-  gm.setTransform(ppm,0,0,ppm,0,0);gm.imageSmoothingQuality='high';gm.drawImage(m.canvas,A.x,A.y,A.w,A.h);gm.setTransform(1,0,0,1,0,0);
+  const px=ppm*A.w/m.w;   /* pixel della maschera in pixel del pezzo */
+  gm.filter='blur('+(0.5*px).toFixed(2)+'px)';gm.setTransform(ppm,0,0,ppm,0,0);gm.imageSmoothingEnabled=true;gm.imageSmoothingQuality='high';gm.drawImage(m.canvas,A.x,A.y,A.w,A.h);gm.setTransform(1,0,0,1,0,0);gm.filter='none';
+  {const id=gm.getImageData(0,0,W,H),q=id.data;for(let p=3;p<q.length;p+=4){const a=q[p];q[p]=a<=88?0:a>=118?255:Math.round((a-88)*255/30);}gm.putImageData(id,0,0);}   /* contorno liscio e netto, come nella vista RDG */
   gm.globalCompositeOperation='destination-in';gm.drawImage(c,0,0);
   const out=document.createElement('canvas');out.width=W;out.height=H;const o=out.getContext('2d');o.drawImage(c,0,0);
   smussoApplica(o,mk,ppm,W,H);
@@ -3649,8 +3654,7 @@ function rilievoDettagli(c,ppm){
   for(let p=0;p<q.length;p+=4){ const a=q[p+3]; q[p]=0x86;q[p+1]=0xa7;q[p+2]=0xb3; q[p+3]=a<=88?0:a>=118?255:Math.round((a-88)*255/30); }   /* soglia al 40% con rampa stretta: contorno liscio, i tratti sottili (la i) non si perdono e gli spazi fra le lettere restano aperti */
   gt.putImageData(id,0,0);
   o.globalCompositeOperation='source-over';o.drawImage(T,0,0);
-  /* lo stesso smusso di Photoshop anche sulla tinta RDG_GLOSS */
-  try{smussoApplica(o,T,ppm,W,H);}catch(e){console.error('[smusso]',e);}
+  /* la tinta RDG_GLOSS resta PIATTA: il cliente deve vedere esattamente dove va il rilievo */
   o.globalCompositeOperation='destination-in';o.drawImage(c,0,0);o.globalCompositeOperation='source-over';
   return out;}
 function renderCore(ppm,withMat){
