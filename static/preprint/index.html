@@ -3418,7 +3418,7 @@ function rilievoHash(){
   const src=S.src||S.work.canvas; const c=document.createElement('canvas');c.width=48;c.height=48;
   const g=c.getContext('2d',{willReadFrequently:true});g.drawImage(src,0,0,48,48);const q=g.getImageData(0,0,48,48).data;
   let h1=2166136261,h2=0x9e3779b9;for(let i=0;i<q.length;i+=4){h1=Math.imul(h1^q[i],16777619);h2=Math.imul(h2^q[i+1]^(q[i+2]<<8)^(q[i+3]<<16),2246822519);}
-  return (h1>>>0).toString(16)+(h2>>>0).toString(16)+'-'+src.width+'x'+src.height+'-z19';}
+  return (h1>>>0).toString(16)+(h2>>>0).toString(16)+'-'+src.width+'x'+src.height+'-z20';}
 function rilievoAI(seg,d,w,h,inArt,artArea,bw,bh,fill,mmpx){
   const N=w*h, hash=rilievoHash();
   const q=new URLSearchParams(location.search);
@@ -3442,7 +3442,7 @@ function rilievoAI(seg,d,w,h,inArt,artArea,bw,bh,fill,mmpx){
     try{console.debug('[rilievo ai] inchiostro scuro: '+Math.round(100*nDark/Math.max(1,nArt))+'%');}catch(e){}
     if(nArt&&nDark/nArt>=0.6){const notDark=new Uint8Array(N);for(let i=0;i<N;i++)notDark[i]=dark[i]?0:1;
      const dd=edt2d(notDark,w,h);let thin=0;const r2=R0*R0;for(let i=0;i<N;i++)if(dark[i]&&dd[i]<r2)thin++;
-     if(thin/nDark>=0.45){S.rilAI={hash,stato:'lineart',motivo:'disegno a tratto: tutto l\'inchiostro in rilievo',n:0,gruppi:0,zone:[]};
+     if(thin/nDark>=0.75){S.rilAI={hash,stato:'lineart',motivo:'disegno a tratto: tutto l\'inchiostro in rilievo',n:0,gruppi:0,zone:[]};
        try{console.debug('[rilievo ai] disegno a tratto ('+Math.round(100*nDark/nArt)+'% scuro, '+Math.round(100*thin/nDark)+'% sottile): regole di riserva');}catch(e){}
        try{window.__ppAggiorna&&window.__ppAggiorna();}catch(e){}
        return null;}}}}
