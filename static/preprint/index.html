@@ -1877,7 +1877,37 @@ function buildArtCanvas(){
     for(let i=0,q=3;i<w*h;i++,q+=4)if(!S.mask[i])dd[q]=0;
   }
   g.putImageData(id,0,0);
-  S.artCanvas=c;}
+  S.artCanvas=c;buildArtHi();}
+/* Copia del disegno a PIENA risoluzione per l'anteprima.
+   La copia di lavoro e' ridotta a 1100 px: i capelli di un carattere sottile e le scritte
+   piccole li' sono grigi a meta' e in anteprima escono sgranati o spezzati. Qui il file
+   originale resta com'e'; dalla copia scontornata prendo solo QUANTO di ogni pixel e'
+   disegno (l'alfa), affinata pixel per pixel sul file vero nella fascia del bordo. Solo per
+   disegnare: maschera, sagoma e rilievo non cambiano. */
+function buildArtHi(){
+  S.artHi=null;
+  if(!S.artCanvas||!S.src)return;
+  const W=S.srcW,H=S.srcH;
+  if(W<=S.mw*1.15||W*H>7e6)return;   /* il lavoro e' gia' a piena risoluzione, o il file e' enorme */
+  try{
+    const c=document.createElement('canvas');c.width=W;c.height=H;const g=c.getContext('2d',{willReadFrequently:true});
+    g.drawImage(S.src,0,0);const id=g.getImageData(0,0,W,H),dd=id.data;
+    const up=document.createElement('canvas');up.width=W;up.height=H;const gu=up.getContext('2d',{willReadFrequently:true});
+    gu.imageSmoothingEnabled=true;gu.imageSmoothingQuality='high';gu.drawImage(S.artCanvas,0,0,W,H);const uu=gu.getImageData(0,0,W,H).data;
+    const B=S.bgCol;const opaco=!!(S.bgOpaque&&B);
+    for(let i=0,q=0;i<W*H;i++,q+=4){
+      const au=uu[q+3];
+      if(au===0){dd[q+3]=0;continue;}
+      if(au>=250)continue;                       /* dentro: il pixel originale com'e' */
+      if(!opaco){dd[q+3]=Math.round(dd[q+3]*au/255);continue;}   /* file con trasparenza: vale la sua alfa */
+      /* fascia del bordo: quanto disegno c'e' davvero in QUESTO pixel del file vero */
+      const sr=dd[q]-B[0],sg=dd[q+1]-B[1],sb=dd[q+2]-B[2];const scarto=Math.sqrt(sr*sr+sg*sg+sb*sb);
+      const fr=uu[q]-B[0],fg=uu[q+1]-B[1],fb=uu[q+2]-B[2];const dF=Math.max(60,Math.sqrt(fr*fr+fg*fg+fb*fb));
+      const a=(scarto>=26)?Math.min(1,scarto/dF):0;
+      dd[q+3]=Math.round(255*Math.max(au/255,a>=0.05?a:0));}
+    g.putImageData(id,0,0);
+    S.artHi=c;
+  }catch(e){S.artHi=null;}}
 
 /* ==========================================================================
    TAVOLOZZA DELLO SFONDO
@@ -2346,7 +2376,7 @@ function inkLayer(ppm){
      dentro si scala e si sposta attorno al centro dello sticker (fuori resta tagliato
      dal 'source-atop'). Sulle forme geometriche zoom e spostamento stanno gia' in S.art. */
   const A=artRect();
-  g.drawImage(S.artCanvas||S.work.canvas,A.x,A.y,A.w,A.h);
+  g.drawImage(S.artHi||S.artCanvas||S.work.canvas,A.x,A.y,A.w,A.h);
   g.globalCompositeOperation='source-over';
 
   /* --------------------------------------------------------------------
@@ -3250,24 +3280,31 @@ function rilievoMask(){
     /* ELEMENTI ADIACENTI: quanti gruppi di pixel di altro colore (di almeno lo 0,05% del disegno)
        confinano con la regione dentro il suo riquadro. Una placca ne ha molti (lettere, figure);
        un soggetto pieno (un sole, un pesce) pochi. Si contano anche gli elementi che sporgono. */
-    const qq=new Int32Array(bwid*bhei);const minB=0.0005*artArea;let nBuchi=0,buchi=0;
+    const qq=new Int32Array(bwid*bhei);const minB=0.0005*artArea;let nBuchi=0,buchi=0,buchiC=0;
     for(let k0=0;k0<mark.length;k0++){if(mark[k0])continue;const gx=k0%bwid+x0,gy=((k0/bwid)|0)+y0;if(!inArt[gy*w+gx]){mark[k0]=2;continue;}
-      let area=0,adiac=false;let hh=0;qq[hh++]=k0;mark[k0]=3;
-      while(hh){const k=qq[--hh];area++;const x=k%bwid,y=(k/bwid)|0;
+      let area=0,adiac=false;let hh=0;qq[hh++]=k0;mark[k0]=3;let ex0=bwid,ey0=bhei,ex1=0,ey1=0;
+      while(hh){const k=qq[--hh];area++;const x=k%bwid,y=(k/bwid)|0;if(x<ex0)ex0=x;if(x>ex1)ex1=x;if(y<ey0)ey0=y;if(y>ey1)ey1=y;
         for(const kk of [x>0?k-1:-1,x<bwid-1?k+1:-1,y>0?k-bwid:-1,y<bhei-1?k+bwid:-1]){if(kk<0)continue;
           if(mark[kk]===1){adiac=true;continue;}if(mark[kk])continue;
           const ggx=kk%bwid+x0,ggy=((kk/bwid)|0)+y0;if(!inArt[ggy*w+ggx]){mark[kk]=2;continue;}
           mark[kk]=3;qq[hh++]=kk;}}
-      if(adiac){buchi+=area;if(area>=minB)nBuchi++;}}
-    return {rmax:Math.sqrt(md),buchi,nBuchi};};
+      if(adiac){buchi+=area;
+        /* conta solo gli elementi COMPATTI (lettere, figure, pallini): una linea sottile e lunga
+           (le piume incise in una campitura) e' disegno della campitura stessa, non un elemento sopra */
+        const ew=ex1-ex0+1,eh=ey1-ey0+1;const compatto=Math.max(ew,eh)/Math.max(1,Math.min(ew,eh))<3&&area/(ew*eh)>=0.25;
+        if(area>=minB&&compatto){nBuchi++;buchiC+=area;}}}
+    return {rmax:Math.sqrt(md),buchi,nBuchi,buchiC};};
   const plateTouch=[false];
   const segnaPlacca=(rg)=>{rg.plate=true;const k=cols.length;cols.push(rg.col);plateTouch[k]=!!rg.touch;for(const i of rg.px){bg[i]=1;bgOf[i]=k;}};
   for(const rg of regioni){if(rg.px.length<Aedge)continue;
-    const {rmax,nBuchi}=misura(rg);const compat=rmax/Math.sqrt(rg.px.length);rg.m={rmax:Math.round(rmax),compat:+compat.toFixed(3),nBuchi,R0:Math.round(R0)};
+    const {rmax,nBuchi,buchiC}=misura(rg);const compat=rmax/Math.sqrt(rg.px.length);rg.m={rmax:Math.round(rmax),compat:+compat.toFixed(3),nBuchi,bc:+(buchiC/rg.px.length).toFixed(3),R0:Math.round(R0)};
     /* Una placca e' sfondo perche' CONTIENE altra grafica: almeno 6 buchi apprezzabili (le
        lettere di una scritta, gli elementi di uno stemma). Un pesce nero con un occhio e
        due denti, un sole pieno, una scritta grassa NON sono placche: vanno in rilievo. */
-    const contiene=nBuchi>=4;
+    /* ...e li contiene DAVVERO: le placche vere (disco di Sobi, macchia GBZ, scudi) hanno
+       grafica per almeno il 14-60% della loro area; un pesce nero con occhio e denti, un
+       personaggio con due dettagli restano sotto il 3% e sono soggetti da mettere in rilievo */
+    const contiene=nBuchi>=3&&buchiC>=0.06*rg.px.length;
     /* sul bordo del disegno: spessa, compatta, con almeno un quarto del perimetro sul bordo */
     if(rg.touch&&rmax>=R0&&compat>=0.09&&rg.touchFrac>=0.15&&contiene){segnaPlacca(rg);continue;}
     /* grande e compatta (il fondo nero di uno stemma pieno di elementi) */
@@ -3288,17 +3325,76 @@ function rilievoMask(){
     let k=-1;for(let t=1;t<cols.length;t++)if(dcc(cols[t],rg.col)<40){k=t;break;}
     if(k>=0){rg.plate=true;for(const i of rg.px){bg[i]=1;bgOf[i]=k;}}}
   /* ---- 2. rilievo: pixel che si staccano dallo sfondo piu' vicino ---- */
-  const nearest=new Int32Array(N).fill(-1);const q=new Int32Array(N);let qh=0,qt=0;
+  const nearest=new Int32Array(N);const q=new Int32Array(N);let qh=0,qt=0;
   /* si parte dai pixel di sfondo INTERNI (a 2 px dal confine): quelli sul confine sono
      mescolati con la grafica dalla sfocatura e falserebbero il confronto */
-  {const inv=new Uint8Array(N);for(let i=0;i<N;i++)inv[i]=bg[i]?0:1;const dOut=edt2d(inv,w,h);
-   for(let i=0;i<N;i++)if(bg[i]&&dOut[i]>=16){nearest[i]=i;q[qt++]=i;}
-   if(!qt)for(let i=0;i<N;i++)if(bg[i]){nearest[i]=i;q[qt++]=i;}}
-  while(qh<qt){const i=q[qh++];const sIdx=nearest[i];const x=i%w,y=(i/w)|0;
+  const calcNearest=()=>{nearest.fill(-1);qh=0;qt=0;
+   {const inv=new Uint8Array(N);for(let i=0;i<N;i++)inv[i]=bg[i]?0:1;const dOut=edt2d(inv,w,h);
+    for(let i=0;i<N;i++)if(bg[i]&&dOut[i]>=16){nearest[i]=i;q[qt++]=i;}
+    if(!qt)for(let i=0;i<N;i++)if(bg[i]){nearest[i]=i;q[qt++]=i;}}
+   while(qh<qt){const i=q[qh++];const sIdx=nearest[i];const x=i%w,y=(i/w)|0;
     if(x>0&&nearest[i-1]<0){nearest[i-1]=sIdx;q[qt++]=i-1;}
     if(x<w-1&&nearest[i+1]<0){nearest[i+1]=sIdx;q[qt++]=i+1;}
     if(y>0&&nearest[i-w]<0){nearest[i-w]=sIdx;q[qt++]=i-w;}
-    if(y<h-1&&nearest[i+w]<0){nearest[i+w]=sIdx;q[qt++]=i+w;}}
+    if(y<h-1&&nearest[i+w]<0){nearest[i+w]=sIdx;q[qt++]=i+w;}}};
+  calcNearest();
+  /* ---- 1b. campiture 'a linea': un riempimento grigio (neutro, a mezza via fra lo sfondo e il
+     tratto) chiuso da un TRATTO SOTTILE di colore opposto allo sfondo (le foglie grigie con il
+     contorno e le venature bianche su fondo nero, il grigio di un disegno a china su bianco)
+     e' il fondo di un disegno a linea: in rilievo vanno i tratti, non l'area. Una campitura
+     colorata, o appoggiata direttamente sullo sfondo senza tratto, resta in rilievo. ---- */
+  const linee=[];
+  {const lum=(a,p)=>0.299*a[p]+0.587*a[p+1]+0.114*a[p+2];
+   const lab2=new Int32Array(N);const mk=new Uint8Array(N);const Wmax=Math.max(2,Math.round(0.5/mmpx));let cambiato=false;let rid=0;
+   const dirs=[[-1,0],[1,0],[0,-1],[0,1]];
+   for(let s0=0;s0<N;s0++){if(lab2[s0]||!inArt[s0]||bg[s0])continue;
+     rid++;let top=0;st[top++]=s0;lab2[s0]=rid;px.length=0;let r=0,g=0,b=0;
+     while(top){const i=st[--top];px.push(i);const p=i*4;r+=db[p];g+=db[p+1];b+=db[p+2];const x=i%w,y=(i/w)|0;
+       for(const j of [x>0?i-1:-1,x<w-1?i+1:-1,y>0?i-w:-1,y<h-1?i+w:-1]){if(j<0||!inArt[j]||bg[j]||lab2[j])continue;if(dc(p,j*4)<12){lab2[j]=rid;st[top++]=j;}}}
+     const n=px.length;if(n<Math.max(9,(0.3/mmpx)*(0.3/mmpx)))continue;
+     const mr=r/n,mg=g/n,mb=b/n;if(Math.max(mr,mg,mb)-Math.min(mr,mg,mb)>=45)continue;   // solo grigi
+     let lr=0.299*mr+0.587*mg+0.114*mb;
+     let lb=0,nb=0;for(const i of px){const qn=nearest[i];if(qn>=0){lb+=lum(db,qn*4);nb++;}}if(!nb)continue;lb/=nb;
+     /* solo il caso 'tratto CHIARO su fondo SCURO' (grigio fra i due): e' il disegno a linea
+        bianca su nero. Su fondo chiaro un grigio chiuso da linee nere e' il corpo di una figura
+        (il toro, un teschio ombreggiato) e resta tutto in rilievo */
+     const segno=lr-lb;if(segno<50)continue;
+     /* i TRATTI: pixel (dentro la regione, o confinanti) di colore opposto allo sfondo rispetto
+        al grigio. La crescita sull'immagine sfocata scavalca una venatura sottile, percio' i
+        tratti stanno quasi sempre DENTRO la regione; il contorno della foglia sta fuori, sul perimetro.
+        Soglia 40 (non 60): una venatura di 1 px, ridotta alla scala di lavoro, si mescola col grigio */
+     const tratto=(j)=>{const lj=lum(d,j*4);return (lj-lr)*segno>0&&Math.abs(lj-lr)>=40;};
+     const tratti=[];let nFondo=0,lr2=0;
+     for(const i of px){if(tratto(i)){tratti.push(i);mk[i]=1;}else{lr2+=lum(d,i*4);nFondo++;}}
+     let nPerim=0,nPT=0;
+     for(const i of px){const x=i%w,y=(i/w)|0;let perim=false,pt=false;for(const [dx,dy] of dirs){const xx=x+dx,yy=y+dy;if(xx<0||yy<0||xx>=w||yy>=h)continue;const j=yy*w+xx;if(lab2[j]===rid)continue;perim=true;
+       if(!mk[j]&&inArt[j]&&!bg[j]&&tratto(j)){tratti.push(j);mk[j]=1;}}
+       if(!perim)continue;nPerim++;
+       /* sul perimetro: c'e' un tratto entro 2 px (fuori, o appena dentro: la crescita puo' aver
+          inglobato il filo di contorno) */
+       for(const [dx,dy] of dirs){for(let k=1;k<=2;k++){const xx=x+dx*k,yy=y+dy*k;if(xx<0||yy<0||xx>=w||yy>=h)break;const j=yy*w+xx;if(mk[j]||(inArt[j]&&!bg[j]&&tratto(j))){pt=true;break;}}if(pt)break;}
+       if(pt)nPT++;}
+     const nT=tratti.length;const fracT=nT/(nFondo+nT);const fracP=nPerim?nPT/nPerim:0;
+     let ok=false,thin=0;
+     if(nFondo>0&&fracT<=0.6&&(fracT>=0.06||fracP>=0.5)){
+       lr2/=nFondo;
+       if(Math.abs(lr2-lb)>=50){
+         /* sottili: la corsa di pixel 'tratto' che passa per il pixel, lungo x o lungo y,
+            non supera Wmax (una venatura, un filo di contorno; non una campitura chiara) */
+         for(const i of tratti){const x=i%w,y=(i/w)|0;let best=1e9;
+           for(const [dx,dy] of [[1,0],[0,1]]){let run=1;
+             for(let k=1;k<=Wmax;k++){const x2=x+dx*k,y2=y+dy*k;if(x2>=w||y2>=h)break;if(!tratto(y2*w+x2))break;run++;}
+             for(let k=1;k<=Wmax;k++){const x2=x-dx*k,y2=y-dy*k;if(x2<0||y2<0)break;if(!tratto(y2*w+x2))break;run++;}
+             if(run<best)best=run;}
+           if(best<=Wmax)thin++;}
+         ok=thin>=0.8*nT;}}
+     for(const i of tratti)mk[i]=0;
+     linee.push({area:+(n/artArea).toFixed(4),lum:Math.round(lr),lb:Math.round(lb),nT,fracT:+fracT.toFixed(3),fracP:+fracP.toFixed(2),thin,ok});
+     if(!ok)continue;
+     const kcol=cols.length;cols.push([mr,mg,mb]);plateTouch[kcol]=false;
+     /* sfondo = il grigio; i tratti restano grafica e andranno in rilievo */
+     const isT=new Set(tratti);for(const i of px){if(isT.has(i))continue;bg[i]=1;bgOf[i]=kcol;}cambiato=true;}
+   if(cambiato)calcNearest();}
   /* confronto con il pixel di sfondo INTERNO piu' vicino (segue anche una placca sfumata) */
   let R=new Uint8Array(N);
   for(let i=0;i<N;i++){if(!inArt[i]||bg[i])continue;const nb=nearest[i];if(nb<0){R[i]=1;continue;}
@@ -3306,21 +3402,6 @@ function rilievoMask(){
        aperti), lo sfondo di riferimento e' sfocato (pulito dal rumore) */
     const p=i*4,q=nb*4;
     if(Math.abs(d[p]-db[q])+Math.abs(d[p+1]-db[q+1])+Math.abs(d[p+2]-db[q+2])>60)R[i]=1;}
-  /* TEXTURE DELLO SFONDO: dentro una placca esterna (quella sul bordo del disegno) gli elementi
-     sottili e molto allungati (le striature chiare di una pennellata) sono texture, non grafica.
-     Scritte, anelli, figure hanno un riquadro poco allungato e restano. */
-  {const lab=new Int32Array(N);let top;const q2=st;
-   for(let s0=0;s0<N;s0++){if(!R[s0]||lab[s0])continue;top=0;q2[top++]=s0;lab[s0]=1;px.length=0;
-     let x0=w,y0=h,x1=0,y1=0;const votes=new Map();
-     while(top){const i=q2[--top];px.push(i);const x=i%w,y=(i/w)|0;if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;
-       const nb=nearest[i];if(nb>=0){const k=bgOf[nb];votes.set(k,(votes.get(k)||0)+1);}
-       for(const j of [x>0?i-1:-1,x<w-1?i+1:-1,y>0?i-w:-1,y<h-1?i+w:-1]){if(j>=0&&R[j]&&!lab[j]){lab[j]=1;q2[top++]=j;}}}
-     const bw2=x1-x0+1,bh2=y1-y0+1;const lungo=Math.max(bw2,bh2),corto=Math.min(bw2,bh2);
-     let kBest=-1,vBest=0;for(const [k,v] of votes)if(v>vBest){vBest=v;kBest=k;}
-     const sullaPlaccaEsterna=kBest>0&&plateTouch[kBest];
-     const sottile=px.length/lungo<R0;                  // larghezza media sotto il raggio di riferimento
-     const allungato=lungo/Math.max(1,corto)>=5;
-     if(sullaPlaccaEsterna&&sottile&&allungato&&px.length<0.01*artArea)for(const i of px)R[i]=0;}}
   /* ---- 3. pulizia minima ---- */
   {const Amin=Math.max(4,Math.round((0.35/mmpx)*(0.35/mmpx))), Ahole=Math.max(4,Math.round((0.2/mmpx)*(0.2/mmpx)));
    const lab=new Int32Array(N);
@@ -3331,12 +3412,18 @@ function rilievoMask(){
          if(x<w-1&&!lab[i+1]&&R[i+1]===val){lab[i+1]=n;st[top++]=i+1;}
          if(y>0&&!lab[i-w]&&R[i-w]===val){lab[i-w]=n;st[top++]=i-w;}
          if(y<h-1&&!lab[i+w]&&R[i+w]===val){lab[i+w]=n;st[top++]=i+w;}}
-       cb(px,tc);}};
-   comp(1,(px)=>{if(px.length<Amin)for(const i of px)R[i]=0;});
+       cb(px,tc,n);}};
+   /* puntini isolati via; un pezzetto piccolo che sta vicino (entro 0,6 mm) ad altro rilievo e'
+      parte del disegno (il punto della i, una lettera sottile, un dettaglio) e resta */
+   const rV=Math.max(2,Math.round(0.6/mmpx));
+   comp(1,(px,tc,n)=>{if(px.length>=Amin)return;let x0=w,x1=0,y0=h,y1=0;for(const i of px){const x=i%w,y=(i/w)|0;if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;}
+     x0=Math.max(0,x0-rV);x1=Math.min(w-1,x1+rV);y0=Math.max(0,y0-rV);y1=Math.min(h-1,y1+rV);
+     for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){const j=y*w+x;if(R[j]&&lab[j]!==n)return;}
+     for(const i of px)R[i]=0;});
    /* vuoti racchiusi dal rilievo: si chiudono i forellini (area) e le CREPE sottili (raggio
       sotto 0,25 mm: la fessura fra una lettera e il suo contorno scuro); i buchi veri delle
       lettere sono larghi e restano */
-   const isR=new Uint8Array(N);for(let i=0;i<N;i++)isR[i]=R[i]?1:0;const dR=edt2d(isR,w,h);const rCrepa=(0.12/mmpx)*(0.12/mmpx);   /* crepe sotto 0,12 mm di raggio; le venature bianche di una foglia (piu' larghe) restano aperte */
+   const isR=new Uint8Array(N);for(let i=0;i<N;i++)isR[i]=R[i]?1:0;const dR=edt2d(isR,w,h);const rCrepa=(0.08/mmpx)*(0.08/mmpx);   /* crepe sotto 0,12 mm di raggio; le venature bianche di una foglia (piu' larghe) restano aperte */
    comp(0,(px,tc)=>{if(tc)return;if(px.length<Ahole){for(const i of px)R[i]=1;return;}let md=0;for(const i of px)if(dR[i]>md)md=dR[i];if(md<rCrepa)for(const i of px)R[i]=1;});}
   let cnt=0;for(let i=0;i<N;i++)if(R[i])cnt++;
   const frac=cnt/artArea;
@@ -3346,7 +3433,7 @@ function rilievoMask(){
   g.putImageData(im,0,0);
   /* spessore locale (distanza dal bordo del rilievo), usato solo dal vecchio mockup 3D */
   const md=new Float32Array(N);{const inv=new Uint8Array(N);for(let i=0;i<N;i++)inv[i]=R[i]?0:1;const dd2=edt2d(inv,w,h);for(let i=0;i<N;i++)if(R[i])md[i]=Math.sqrt(dd2[i]);}
-  S.ril={key,canvas:c,w,h,frac,on:R,md,dbg:{bg,nearest,db,inArt,regioni:regioni.map(r=>({area:+(r.px.length/artArea).toFixed(3),touch:r.touch,tf:+r.touchFrac.toFixed(2),plate:r.plate,col:r.col.map(Math.round),box:r.box,m:r.m||null}))}};
+  S.ril={key,canvas:c,w,h,frac,on:R,md,dbg:{bg,nearest,db,inArt,linee,regioni:regioni.map(r=>({area:+(r.px.length/artArea).toFixed(3),touch:r.touch,tf:+r.touchFrac.toFixed(2),plate:r.plate,col:r.col.map(Math.round),box:r.box,m:r.m||null}))}};
   try{console.debug('[rilievo] '+Math.round(frac*100)+'% del disegno in rilievo, '+w+'x'+h+' in '+Math.round(performance.now()-t0)+' ms');}catch(e){}
   return S.ril;}
 
@@ -3449,9 +3536,9 @@ function rilievoDettagli(c,ppm){
      taglio l'alfa a meta', cosi' i contorni escono lisci e netti anche con la lente */
   const T=document.createElement('canvas');T.width=W;T.height=H;const gt=T.getContext('2d',{willReadFrequently:true});
   const px=ppm*A.w/m.w;   /* pixel della maschera in pixel del pezzo */
-  gt.filter='blur('+(0.8*px).toFixed(2)+'px)';gt.setTransform(ppm,0,0,ppm,0,0);gt.imageSmoothingEnabled=true;gt.imageSmoothingQuality='high';gt.drawImage(mk,A.x,A.y,A.w,A.h);gt.setTransform(1,0,0,1,0,0);gt.filter='none';
+  gt.filter='blur('+(0.5*px).toFixed(2)+'px)';gt.setTransform(ppm,0,0,ppm,0,0);gt.imageSmoothingEnabled=true;gt.imageSmoothingQuality='high';gt.drawImage(mk,A.x,A.y,A.w,A.h);gt.setTransform(1,0,0,1,0,0);gt.filter='none';
   const id=gt.getImageData(0,0,W,H),q=id.data;
-  for(let p=0;p<q.length;p+=4){ const a=q[p+3]; q[p]=0x86;q[p+1]=0xa7;q[p+2]=0xb3; q[p+3]=a<=112?0:a>=144?255:Math.round((a-112)*255/32); }   /* soglia a meta' con rampa stretta: contorno liscio e netto */
+  for(let p=0;p<q.length;p+=4){ const a=q[p+3]; q[p]=0x86;q[p+1]=0xa7;q[p+2]=0xb3; q[p+3]=a<=88?0:a>=118?255:Math.round((a-88)*255/30); }   /* soglia al 40% con rampa stretta: contorno liscio, i tratti sottili (la i) non si perdono e gli spazi fra le lettere restano aperti */
   gt.putImageData(id,0,0);
   o.globalCompositeOperation='source-over';o.drawImage(T,0,0);
   o.globalCompositeOperation='destination-in';o.drawImage(c,0,0);o.globalCompositeOperation='source-over';
