@@ -3418,7 +3418,7 @@ function rilievoHash(){
   const src=S.src||S.work.canvas; const c=document.createElement('canvas');c.width=48;c.height=48;
   const g=c.getContext('2d',{willReadFrequently:true});g.drawImage(src,0,0,48,48);const q=g.getImageData(0,0,48,48).data;
   let h1=2166136261,h2=0x9e3779b9;for(let i=0;i<q.length;i+=4){h1=Math.imul(h1^q[i],16777619);h2=Math.imul(h2^q[i+1]^(q[i+2]<<8)^(q[i+3]<<16),2246822519);}
-  return (h1>>>0).toString(16)+(h2>>>0).toString(16)+'-'+src.width+'x'+src.height+'-z7';}
+  return (h1>>>0).toString(16)+(h2>>>0).toString(16)+'-'+src.width+'x'+src.height+'-z8';}
 function rilievoAI(seg,d,w,h,inArt,artArea,bw,bh,fill,mmpx){
   const N=w*h, hash=rilievoHash();
   const q=new URLSearchParams(location.search);
@@ -3437,7 +3437,7 @@ function rilievoAI(seg,d,w,h,inArt,artArea,bw,bh,fill,mmpx){
   const find=a=>{while(par[a]!==a){par[a]=par[par[a]];a=par[a];}return a;};
   const uni=(a,b)=>{a=find(a);b=find(b);if(a!==b)par[b]=a;};
   const means=new Array(K);for(let l=1;l<K;l++){const a=seg.areas[l];means[l]=[seg.sums[l][0]/a,seg.sums[l][1]/a,seg.sums[l][2]/a];}
-  const tryUni=(a,b)=>{if(!a||!b||a===b)return;if(dcol(means[a],means[b])<30)uni(a,b);};
+  const tryUni=(a,b)=>{if(!a||!b||a===b)return;if(dcol(means[a],means[b])<40)uni(a,b);};
   for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=y*w+x,l=seg.lab[i];
     if(l){if(x<w-1)tryUni(l,seg.lab[i+1]);if(y<h-1)tryUni(l,seg.lab[i+w]);continue;}
     const ls=[];for(const o of [-1,1,-w,w,-2,2,-2*w,2*w]){const j=i+o;if(j<0||j>=N)continue;const m=seg.lab[j];if(m&&ls.indexOf(m)<0)ls.push(m);}
@@ -3471,6 +3471,18 @@ function rilievoAI(seg,d,w,h,inArt,artArea,bw,bh,fill,mmpx){
   const colore=()=>{const A=new Float64Array(n+1),S0=new Float64Array(n+1),S1=new Float64Array(n+1),S2=new Float64Array(n+1);
     for(let i=0,p=0;i<N;i++,p+=4){const l=lab[i];if(!l)continue;A[l]++;S0[l]+=d[p];S1[l]+=d[p+1];S2[l]+=d[p+2];}
     const M=new Array(n+1);for(let l=1;l<=n;l++)M[l]=A[l]?[S0[l]/A[l],S1[l]/A[l],S2[l]/A[l]]:[0,0,0];return M;};
+  /* ELEMENTI INGLOBATI: una scritta bianca piccola dentro un nastro arancione puo' finire
+     dentro la regione del nastro gia' nella segmentazione (tratti troppo sottili per il
+     rilevatore di bordi). Dentro ogni zona, i pixel di colore molto diverso dalla media
+     della zona diventano zone proprie. */
+  {const M=colore();const mark=new Uint8Array(N);
+   for(let i=0,p=0;i<N;i++,p+=4){const l=lab[i];if(!l)continue;const m=M[l];if(Math.abs(d[p]-m[0])+Math.abs(d[p+1]-m[1])+Math.abs(d[p+2]-m[2])>90)mark[i]=1;}
+   const cl=new Int32Array(N);const st=[];let nuovi=0;
+   for(let s0=0;s0<N;s0++){if(!mark[s0]||cl[s0])continue;const L=lab[s0];const px=[];cl[s0]=1;st.push(s0);
+     while(st.length){const i=st.pop();px.push(i);const x=i%w,y=(i/w)|0;
+       for(const [dx,dy] of [[-1,0],[1,0],[0,-1],[0,1]]){const xx=x+dx,yy=y+dy;if(xx<0||yy<0||xx>=w||yy>=h)continue;const j=yy*w+xx;if(mark[j]&&!cl[j]&&lab[j]===L){cl[j]=1;st.push(j);}}}
+     if(px.length>=15){n++;nuovi++;for(const i of px)lab[i]=n;}}
+   if(nuovi)try{console.debug('[rilievo ai] elementi staccati dalle zone:',nuovi);}catch(e){}}
   /* ---- 2. ogni zona di sole linee si spacca in parte sottile e parte piena ---- */
   const r2=R0*R0;
   const bordi=()=>{const bd=new Uint8Array(N);for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=y*w+x;if(x===0||y===0||x===w-1||y===h-1||(x<w-1&&lab[i+1]!==lab[i])||(y<h-1&&lab[i+w]!==lab[i]))bd[i]=1;}return bd;};
