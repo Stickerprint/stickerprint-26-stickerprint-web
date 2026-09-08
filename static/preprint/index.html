@@ -2063,7 +2063,10 @@ function paintSwatch(){const c=contourColor(),m=$('colMode').value;
 function borderMM(){const v=+$('brd').value/10;
   return S.prod==='resin'?Math.max(RESIN_BORDER,v):v;}
 function neckMMset(){const v=+$('neck').value;
-  return S.prod==='resin'?Math.max(RESIN_NECK,v):v;}
+  /* [sito] la sagoma del resinato segue la STESSA regola degli adesivi (stesso collo): il collo
+     minimo di 5 mm chiudeva ogni rientranza e su un logo a pezzi separati riempiva fino al
+     quadrato. Restano il bordo minimo (niente "piccolo") e il raggio minimo di 2 mm sugli angoli */
+  return v;}
 /* R di sicurezza: calcolato su copia ridotta, poi riscalato */
 function ensureRsafe(targetW){
   const off=borderMM(), neck=neckMMset();
@@ -4350,7 +4353,7 @@ function applyBorderLevel(){
   $('bordInfo').textContent='contorno '+off.toFixed(1)+' mm su uno sticker da '+w.toFixed(0)+' mm';}
 
 function applyPreset(recalc){
-  const tab=(S.prod==='resin')?P_TAGLIO_L_RES:P_TAGLIO_L;
+  const tab=P_TAGLIO_L;   /* [sito] resinati: stessi valori degli adesivi (P_TAGLIO_L_RES non piu' usata) */
   const c=tab[CL.bord]||tab[1];   // segue la larghezza del bordo
   $('rie').value=c[0];$('rieV').textContent=c[0];
   $('sem').value=c[1];$('semV').textContent=c[1];
@@ -4501,7 +4504,7 @@ function setProd(p){
   const br=$('brd'),nk=$('neck');
   if(p==='resin'){
     if(+br.value/10<RESIN_BORDER){br.value=Math.round(RESIN_BORDER*10);$('brdV').textContent=RESIN_BORDER.toFixed(1);}
-    if(+nk.value<RESIN_NECK)nk.value=RESIN_NECK;
+    /* [sito] stesso collo degli adesivi: la sagoma del resinato segue la stessa regola */
   }
   /* i resinati si producono solo su questi quattro supporti */
   document.querySelectorAll('#mat option[data-sticker]').forEach(o=>{
