@@ -62,16 +62,24 @@ function estraiJson(testo: string): { rilievo: string[]; motivo: string } | null
 	}
 }
 
+/* il banco di prova locale (localhost:8790) chiama l'API con i file veri: CORS solo per lui */
+const CORS_OK = new Set(['http://localhost:8790', 'http://127.0.0.1:8790']);
+function cors(request: Request): Record<string, string> {
+	const o = request.headers.get('origin') ?? '';
+	return CORS_OK.has(o) ? { 'access-control-allow-origin': o, 'access-control-allow-headers': 'content-type', 'access-control-allow-methods': 'POST, OPTIONS' } : {};
+}
+export const OPTIONS: RequestHandler = async ({ request }) => new Response(null, { status: 204, headers: cors(request) });
+
 export const POST: RequestHandler = async ({ request }) => {
 	const body = await request.json().catch(() => null) as { hash?: string; img?: string; overlay?: string; zone?: Zona[] } | null;
-	if (!body?.hash || !body.img || !body.overlay || !Array.isArray(body.zone)) return json({ ok: false, motivo: 'richiesta incompleta' }, { status: 400 });
+	if (!body?.hash || !body.img || !body.overlay || !Array.isArray(body.zone)) return json({ ok: false, motivo: 'richiesta incompleta' }, { status: 400, headers: cors(request) });
 	const key = env.ANTHROPIC_API_KEY;
-	if (!key) return json({ ok: false, motivo: 'analisi visiva non configurata' }, { status: 503 });
+	if (!key) return json({ ok: false, motivo: 'analisi visiva non configurata' }, { status: 503, headers: cors(request) });
 
 	const db = admin();
 	if (db) {
 		const { data } = await db.from('rilievo_ai').select('zone').eq('hash', body.hash).maybeSingle();
-		if (data?.zone) return json({ ok: true, cache: true, ...(data.zone as object) });
+		if (data?.zone) return json({ ok: true, cache: true, ...(data.zone as object) }, { status: 200, headers: cors(request) });
 	}
 
 	const b64 = (u: string) => u.replace(/^data:image\/\w+;base64,/, '');
@@ -105,7 +113,7 @@ export const POST: RequestHandler = async ({ request }) => {
 	if (!res || !res.ok) {
 		const err = res ? await res.text().catch(() => '') : 'rete';
 		console.error('[rilievo ai]', res?.status, err.slice(0, 300));
-		return json({ ok: false, motivo: 'analisi non riuscita', dettaglio: `HTTP ${res?.status ?? 0} ${err.slice(0, 300)}` }, { status: 502 });
+		return json({ ok: false, motivo: 'analisi non riuscita', dettaglio: `HTTP ${res?.status ?? 0} ${err.slice(0, 300)}` }, { status: 502, headers: cors(request) });
 	}
 	const out = await res.json().catch(() => null) as { content?: { type: string; text?: string }[]; stop_reason?: string } | null;
 	const testo = (out?.content ?? []).map((c) => c.text ?? '').join('\n');
@@ -113,10 +121,10 @@ export const POST: RequestHandler = async ({ request }) => {
 	if (!scelta) {
 		console.error('[rilievo ai] risposta non leggibile', out?.stop_reason, JSON.stringify(out).slice(0, 600));
 		const blocchi = (out?.content ?? []).map((c) => `${c.type}:${(c.text ?? (c as { thinking?: string }).thinking ?? '').length}`).join(' ');
-		return json({ ok: false, motivo: 'risposta non leggibile', dettaglio: `stop=${out?.stop_reason ?? '?'} blocchi=[${blocchi}] testo=${testo.slice(0, 300)}` }, { status: 502 });
+		return json({ ok: false, motivo: 'risposta non leggibile', dettaglio: `stop=${out?.stop_reason ?? '?'} blocchi=[${blocchi}] testo=${testo.slice(0, 300)}` }, { status: 502, headers: cors(request) });
 	}
 	const valide = new Set(body.zone.map((z) => String(z.id).toUpperCase()));
 	scelta.rilievo = scelta.rilievo.filter((n) => valide.has(n));
 	if (db) await db.from('rilievo_ai').upsert({ hash: body.hash, zone: scelta, modello: MODELLO });
-	return json({ ok: true, ...scelta });
+	return json({ ok: true, ...scelta }, { status: 200, headers: cors(request) });
 };

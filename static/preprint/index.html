@@ -3653,7 +3653,7 @@ function rilievoAI(seg,d,w,h,inArt,artArea,bw,bh,fill,mmpx){
   const fake=q.get('rilfake');
   if(fake!=null){setTimeout(()=>fine(fake.split(',').map(x=>x.trim()).filter(Boolean),'prova',true),50);}
   else if(typeof fetch==='function'){
-    fetch('/api/rilievo',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({hash,img:img.toDataURL('image/jpeg',0.85),overlay:ovs.toDataURL('image/jpeg',0.9),zone})})
+    fetch(q.get('rilapi')||'/api/rilievo',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({hash,img:img.toDataURL('image/jpeg',0.85),overlay:ovs.toDataURL('image/jpeg',0.9),zone})})
       .then(r=>r.json().then(j=>({st:r.status,j}))).then(({st,j})=>{ if(j&&j.ok)fine(j.rilievo,j.motivo,true); else fine(null,((j&&j.motivo)||('errore '+st))+(j&&j.dettaglio?' · '+j.dettaglio:''),false); })
       .catch(e=>fine(null,String(e&&e.message||e),false));}
   if(q.get('rilshow')){const el=document.createElement('img');el.src=ovs.toDataURL('image/png');el.style.cssText='position:fixed;left:0;top:0;max-width:60vw;max-height:90vh;z-index:99;border:2px solid #f0f';el.id='rilOverlay';document.body.appendChild(el);}
