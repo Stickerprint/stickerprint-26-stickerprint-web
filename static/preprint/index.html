@@ -3481,8 +3481,11 @@ function rilievoMask(){
         tratti stanno quasi sempre DENTRO la regione; il contorno della foglia sta fuori, sul perimetro.
         Soglia 40 (non 60): una venatura di 1 px, ridotta alla scala di lavoro, si mescola col grigio */
      const tratto=(j)=>{const lj=lumMax?Math.max(lumMax[j],lum(d,j*4)):lum(d,j*4);return (lj-lr)*segno>0&&Math.abs(lj-lr)>=40;};
-     const tratti=[];let nFondo=0,lr2=0;
-     for(const i of px){if(tratto(i)){tratti.push(i);mk[i]=1;}else{lr2+=lum(d,i*4);nFondo++;}}
+     const tratti=[];let nFondo=0,lr2=0,lq2=0;
+     for(const i of px){if(tratto(i)){tratti.push(i);mk[i]=1;}else{const li=lum(d,i*4);lr2+=li;lq2+=li*li;nFondo++;}}
+     /* la campitura deve essere PIATTA (deviazione della luminosita' sotto 18): il grigio di una
+        foglia lo e', il corpo di una lettera cromata e' una sfumatura e NON e' una campitura a linea */
+     const lumStd=nFondo?Math.sqrt(Math.max(0,lq2/nFondo-(lr2/nFondo)*(lr2/nFondo))):0;
      let nPerim=0,nPT=0;
      for(const i of px){const x=i%w,y=(i/w)|0;let perim=false,pt=false;for(const [dx,dy] of dirs){const xx=x+dx,yy=y+dy;if(xx<0||yy<0||xx>=w||yy>=h)continue;const j=yy*w+xx;if(lab2[j]===rid)continue;perim=true;
        if(!mk[j]&&inArt[j]&&!bg[j]&&tratto(j)){tratti.push(j);mk[j]=1;}}
@@ -3496,7 +3499,7 @@ function rilievoMask(){
      /* soglie: molte venature (>=15% di tratti) oppure contorno chiaro su meta' del perimetro.
         Una lettera cromata (grigio chiaro con un filo di luce in cima: 7-11% di tratti, 20% del
         perimetro) NON e' una campitura a linea e resta in rilievo */
-     if(nFondo>0&&fracT<=0.6&&(fracT>=0.15||fracP>=0.5)){
+     if(nFondo>0&&lumStd<18&&fracT<=0.6&&(fracT>=0.15||fracP>=0.5)){
        lr2/=nFondo;
        if(Math.abs(lr2-lb)>=50){
          /* sottili: la corsa di pixel 'tratto' che passa per il pixel, lungo x o lungo y,
@@ -3509,7 +3512,7 @@ function rilievoMask(){
            if(best<=Wmax)thin++;}
          ok=thin>=0.8*nT;}}
      for(const i of tratti)mk[i]=0;
-     linee.push({area:+(n/artArea).toFixed(4),lum:Math.round(lr),lb:Math.round(lb),nT,fracT:+fracT.toFixed(3),fracP:+fracP.toFixed(2),thin,ok});
+     linee.push({area:+(n/artArea).toFixed(4),lum:Math.round(lr),lb:Math.round(lb),std:+lumStd.toFixed(1),nT,fracT:+fracT.toFixed(3),fracP:+fracP.toFixed(2),thin,ok});
      if(!ok)continue;
      const kcol=cols.length;cols.push([mr,mg,mb]);plateTouch[kcol]=false;
      /* sfondo = il grigio; i tratti restano grafica e andranno in rilievo */
