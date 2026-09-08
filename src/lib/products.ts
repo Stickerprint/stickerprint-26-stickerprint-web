@@ -73,7 +73,7 @@ export const PRODUCTS: Record<string, ProductContent> = {
 		checks: ['Prova automatica immediata', 'Spedizione stimata {ship}', 'Stampiamo solo se viene bene', 'Nessuna sorpresa sul risultato', 'Effetto rilievo applicato con precisione'],
 		cosa: 'Adesivi in rilievo. Dettagli che emergono. Risultati incredibili. Effetto rilievo applicato solo su parti specifiche della grafica. Alcuni elementi restano piatti, altri prendono profondità. Il risultato è un adesivo che non solo si vede, ma si percepisce al tatto.',
 		gallery: ['/images/prodotti/rilievo/1.webp', '/images/prodotti/rilievo/2.webp', '/images/prodotti/rilievo/3.webp', '/images/prodotti/rilievo/4.webp', '/images/prodotti/rilievo/5.webp', '/images/prodotti/rilievo/6.webp', '/images/prodotti/rilievo/7.webp', '/images/prodotti/rilievo/8.webp', '/images/prodotti/rilievo/9.webp'],
-		others: ['/images/prodotti/rilievo/4.webp', '/images/prodotti/rilievo/6.webp', '/images/prodotti/rilievo/2.webp'],
+		others: ['/images/prodotti/rilievo/9.webp', '/images/prodotti/rilievo/6.webp', '/images/prodotti/rilievo/2.webp'],
 		faq: [
 			{ q: 'Gli Adesivi in rilievo hanno lamina protettiva?', a: 'Sì, gli adesivi in rilievo vengono protetti con una lamina trasparente che preserva sia la stampa che l\'effetto rilievo. La lamina garantisce resistenza a graffi, raggi UV e agenti atmosferici, mantenendo intatto l\'effetto tridimensionale nel tempo.' },
 			{ q: 'Serve la stampa del colore bianco?', a: 'In genere no. I nostri adesivi in rilievo vengono stampati su vinile bianco, quindi il bianco è già presente come base. Il colore bianco in stampa serve solo se hai bisogno di un bianco coprente su materiali trasparenti o colorati.' },
