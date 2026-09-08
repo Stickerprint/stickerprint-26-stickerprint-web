@@ -3095,8 +3095,63 @@ function resinDomeMockup(core,ppm,shape){
   o.globalCompositeOperation='source-over';
   return out;}
 const DOME_SHAPES={circle:'circle',square:'square',ellipse:'ellipse',rect:'rect',rounded:'rect'};
+/* --------------------------------------------------------------------
+   CUPOLA PROCEDURALE CON LA LOGICA DEI PSD (sagomati, ovali e rettangoli fuori proporzione)
+   Misurato sui livelli del tondo: la moltiplica 'w' e' un velo quasi uniforme (0,88), un po'
+   piu' chiaro verso il basso a sinistra e piu' scuro verso destra e in alto; la scherma 'b'
+   e' una fascia di riflesso fra il 5% e il 15% della distanza dal bordo, fortissima in basso
+   a sinistra (105-150 gradi), media in alto (225-315), quasi nulla altrove, che si spegne
+   verso il centro. Su una sagoma qualsiasi 'angolo' = direzione della normale al bordo e
+   'distanza' = distanza dal bordo divisa per il raggio inscritto massimo: cosi' il riflesso
+   segue il contorno vero come nei PSD, dove segue il cerchio.
+   Tabelle (dal PSD del tondo): per angolo a passi di 15 gradi (0 = destra, 90 = basso),
+   per distanza a passi del 5% (0 = bordo, 1 = centro).
+   -------------------------------------------------------------------- */
+const DOME_SCR_ANG=[0.033,0.047,0.062,0.022,0,0,0.062,0.341,0.433,0.428,0.335,0.009,0.007,0.023,0.085,0.224,0.261,0.233,0.218,0.217,0.226,0.171,0.051,0.032];
+const DOME_MULT_ANG=[0.816,0.821,0.833,0.848,0.866,0.884,0.899,0.911,0.913,0.915,0.921,0.918,0.906,0.892,0.884,0.879,0.87,0.863,0.854,0.85,0.847,0.838,0.828,0.818];
+const DOME_SCR_RAD=[0.024,0.273,0.304,0.236,0.144,0.088,0.053,0.037,0.03,0.024,0.021,0.017,0.014,0.011,0.008,0.006,0.004,0.002,0.001,0,0];
+const DOME_MULT_RAD=[0.859,0.881,0.887,0.887,0.887,0.888,0.887,0.886,0.885,0.884,0.883,0.883,0.882,0.881,0.879,0.878,0.876,0.876,0.876,0.876,0.876];
+function domeTab(tab,x,n,wrap){ /* interpolazione lineare in una tabella */
+  let f=x*n; if(wrap){f=((f%n)+n)%n;} else f=Math.max(0,Math.min(n-0.001,f));
+  const i=Math.floor(f),t=f-i;const a=tab[i%tab.length],b=tab[(i+1)%tab.length];return a+(b-a)*t;}
+function resinDomeProc(core,ppm){
+  const W=core.width,H=core.height,N=W*H;
+  const gc=core.getContext('2d',{willReadFrequently:true});const id=gc.getImageData(0,0,W,H),d=id.data;
+  const inv=new Uint8Array(N);let any=0;for(let i=0;i<N;i++){inv[i]=d[i*4+3]>10?0:1;if(!inv[i])any++;}
+  if(!any)return core;
+  const d2=edt2d(inv,W,H);const dist=new Float32Array(N);let dmax=0;
+  for(let i=0;i<N;i++){if(inv[i])continue;const v=Math.sqrt(d2[i]);dist[i]=v;if(v>dmax)dmax=v;}
+  if(dmax<4)return core;
+  /* direzione della normale: dal gradiente della distanza LISCIATA (il taglio ondeggia) */
+  const sm=gaussRid(dist,W,H,Math.max(1.5,0.06*dmax));
+  const ANG_MEAN_SCR=0.157, ANG_MEAN_MULT=0.866;
+  const out=document.createElement('canvas');out.width=W;out.height=H;const go=out.getContext('2d');
+  const oid=go.createImageData(W,H),o=oid.data;
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++){const i=y*W+x,p=i*4;
+    if(inv[i]){o[p+3]=0;continue;}
+    const gx=(sm[Math.min(W-1,x+1)+y*W]-sm[Math.max(0,x-1)+y*W])*0.5, gy=(sm[x+Math.min(H-1,y+1)*W]-sm[x+Math.max(0,y-1)*W])*0.5;
+    /* normale uscente = -gradiente della distanza; angolo in coordinate schermo (0 destra, 90 basso) */
+    const ang=(Math.atan2(-gy,-gx)*180/Math.PI+360)%360;
+    const t=Math.min(1,dist[i]/dmax);
+    const mult=domeTab(DOME_MULT_ANG,ang/360,24,true)*domeTab(DOME_MULT_RAD,t,20,false)/ANG_MEAN_MULT;
+    const scr=Math.min(1,domeTab(DOME_SCR_ANG,ang/360,24,true)/ANG_MEAN_SCR*domeTab(DOME_SCR_RAD,t,20,false));
+    for(let c=0;c<3;c++){let v=d[p+c]/255;v*=mult;v=1-(1-v)*(1-scr);o[p+c]=Math.round(Math.max(0,Math.min(1,v))*255);}
+    o[p+3]=d[p+3];}
+  go.putImageData(oid,0,0);
+  return out;}
 function resinDome(core,ppm){
-  {const shp=$('shp')&&$('shp').value;const ds=DOME_SHAPES[shp];if(ds){try{const r=resinDomeMockup(core,ppm,ds);if(r)return r;}catch(e){console.error('[cupola]',e);}}}
+  {const shp=$('shp')&&$('shp').value;let ds=DOME_SHAPES[shp];
+   if(ds){try{
+     /* ovali e rettangoli: i livelli del PSD valgono fino a +-25% dalla sua proporzione (1,7:1);
+        oltre, la cupola procedurale con la stessa logica */
+     if(ds==='ellipse'||ds==='rect'){const gc=core.getContext('2d',{willReadFrequently:true});const dd=gc.getImageData(0,0,core.width,core.height).data;
+       let x0=core.width,y0=core.height,x1=-1,y1=-1;for(let y=0;y<core.height;y++)for(let x=0;x<core.width;x++){if(dd[(y*core.width+x)*4+3]>10){if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;}}
+       const bw=x1-x0+1,bh=y1-y0+1,ratio=Math.max(bw,bh)/Math.max(1,Math.min(bw,bh));
+       const quadrato=Math.abs(bw-bh)<=0.08*Math.max(bw,bh);
+       if(!quadrato&&(ratio<1.28||ratio>2.15))ds=null;}
+     if(ds){const r=resinDomeMockup(core,ppm,ds);if(r)return r;}
+   }catch(e){console.error('[cupola]',e);}}
+   try{return resinDomeProc(core,ppm);}catch(e){console.error('[cupola proc]',e);}}
   const W=core.width,H=core.height,N=W*H;
   const gc=core.getContext('2d',{willReadFrequently:true});
   const id=gc.getImageData(0,0,W,H),d=id.data;
