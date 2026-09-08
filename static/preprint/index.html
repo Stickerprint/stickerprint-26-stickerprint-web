@@ -3418,7 +3418,7 @@ function rilievoHash(){
   const src=S.src||S.work.canvas; const c=document.createElement('canvas');c.width=48;c.height=48;
   const g=c.getContext('2d',{willReadFrequently:true});g.drawImage(src,0,0,48,48);const q=g.getImageData(0,0,48,48).data;
   let h1=2166136261,h2=0x9e3779b9;for(let i=0;i<q.length;i+=4){h1=Math.imul(h1^q[i],16777619);h2=Math.imul(h2^q[i+1]^(q[i+2]<<8)^(q[i+3]<<16),2246822519);}
-  return (h1>>>0).toString(16)+(h2>>>0).toString(16)+'-'+src.width+'x'+src.height+'-z11';}
+  return (h1>>>0).toString(16)+(h2>>>0).toString(16)+'-'+src.width+'x'+src.height+'-z12';}
 function rilievoAI(seg,d,w,h,inArt,artArea,bw,bh,fill,mmpx){
   const N=w*h, hash=rilievoHash();
   const q=new URLSearchParams(location.search);
@@ -3570,7 +3570,7 @@ function rilievoAI(seg,d,w,h,inArt,artArea,bw,bh,fill,mmpx){
   const tints=[];for(let id=1;id<=numerate.length;id++)tints[id]=tinta(id);
   const gt=[[255,0,255],[0,200,255],[255,120,0],[0,220,90],[255,230,0],[160,60,255],[255,60,60],[0,140,140],[200,120,60],[120,120,255]];
   for(let i=0,p=0;i<N;i++,p+=4){const l=lab[i];
-    if(!l){od[p]=d[p];od[p+1]=d[p+1];od[p+2]=d[p+2];od[p+3]=255;continue;}
+    if(!l||(!zoneId[l]&&!grpOf[l])){od[p]=d[p];od[p+1]=d[p+1];od[p+2]=d[p+2];od[p+3]=255;continue;}   // fuori dal disegno: nessuna tinta
     if(bd[i]&&zoneId[l]){od[p]=20;od[p+1]=20;od[p+2]=20;od[p+3]=255;continue;}
     let t;if(zoneId[l]){t=tints[zoneId[l]];od[p]=Math.round(d[p]*0.72+t[0]*0.28);od[p+1]=Math.round(d[p+1]*0.72+t[1]*0.28);od[p+2]=Math.round(d[p+2]*0.72+t[2]*0.28);}
     else{t=gt[(grpOf[l]-1)%gt.length];od[p]=Math.round(d[p]*0.5+t[0]*0.5);od[p+1]=Math.round(d[p+1]*0.5+t[1]*0.5);od[p+2]=Math.round(d[p+2]*0.5+t[2]*0.5);}
