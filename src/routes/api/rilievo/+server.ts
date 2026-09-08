@@ -24,7 +24,6 @@ Come ragiona un grafico:
 - Pallini, bolle, stelline, coriandoli e puntini SPARSI SULLO SFONDO sono decorazione, non sfondo: vanno in rilievo (danno l'effetto 'wow' con il gioco di luci). Se sono in un gruppo G, scegli il gruppo.
 - Il CORPO PRINCIPALE di un personaggio o di una figura grande resta opaco (e' la base su cui i dettagli in rilievo risaltano), a meno che l'intero disegno sia un logo/lettering: allora le lettere vanno in rilievo per intero e i loro fori restano opachi.
 - Non mettere in rilievo un filo di contorno attorno alle lettere se le lettere stesse sono in rilievo: il rilievo segue la lettera.
-- Le zone segnate "a fascia" sono fili di contorno o ombre estruse attorno a un elemento: se l'elemento che circondano e' in rilievo, la fascia resta OPACA (il rilievo segue l'elemento, non il suo contorno ne' la sua ombra).
 - Le zone segnate come "tratto sottile" sono linee: il contorno nero di un personaggio o di un oggetto resta opaco (e' solo un bordo); vanno invece in rilievo le linee che SONO il disegno (illustrazione a linee, tatuaggio, ghirigori, ornamenti, venature).
 - Se un elemento e' diviso in piu' zone numerate (un teschio tagliato da linee nere, una lettera in due colori), scegli TUTTE le sue zone: mezzo elemento in rilievo e' un errore.
 - Le zone G1, G2… sono GRUPPI di pezzi piccoli dello stesso colore (scritte piccole, pallini, stelline, nocche, foglioline, dettagli minuti). Scegliendo un gruppo alzi tutti i suoi pezzi. Se il gruppo ha il colore dello sfondo (i fori delle lettere, gli spazi fra i dettagli) NON sceglierlo; se ha il colore delle scritte e dei dettagli, scegli il gruppo cosi' le scritte piccole e i dettagli sono in rilievo.
@@ -78,7 +77,7 @@ export const POST: RequestHandler = async ({ request }) => {
 	const b64 = (u: string) => u.replace(/^data:image\/\w+;base64,/, '');
 	const tipo = (u: string) => (/^data:image\/png/.test(u) ? 'image/png' : 'image/jpeg');
 	const lista = body.zone
-		.map((z) => `${z.id}: colore ${z.colore}, ${z.area}% dell'area, ${z.pos}${z.pezzi ? `, gruppo di ${z.pezzi} pezzi piccoli` : ''}${z.sottile ? ', tratto sottile' : ''}${z.fascia ? ', a fascia (filo di contorno o ombra)' : ''}${z.bordo ? ', tocca il bordo esterno' : ''}`)
+		.map((z) => `${z.id}: colore ${z.colore}, ${z.area}% dell'area, ${z.pos}${z.pezzi ? `, gruppo di ${z.pezzi} pezzi piccoli` : ''}${z.sottile ? ', tratto sottile' : ''}${z.bordo ? ', tocca il bordo esterno' : ''}`)
 		.join('\n');
 
 	const res = await fetch('https://api.anthropic.com/v1/messages', {
