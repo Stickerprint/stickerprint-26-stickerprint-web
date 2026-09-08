@@ -3418,7 +3418,7 @@ function rilievoHash(){
   const src=S.src||S.work.canvas; const c=document.createElement('canvas');c.width=48;c.height=48;
   const g=c.getContext('2d',{willReadFrequently:true});g.drawImage(src,0,0,48,48);const q=g.getImageData(0,0,48,48).data;
   let h1=2166136261,h2=0x9e3779b9;for(let i=0;i<q.length;i+=4){h1=Math.imul(h1^q[i],16777619);h2=Math.imul(h2^q[i+1]^(q[i+2]<<8)^(q[i+3]<<16),2246822519);}
-  return (h1>>>0).toString(16)+(h2>>>0).toString(16)+'-'+src.width+'x'+src.height+'-z8';}
+  return (h1>>>0).toString(16)+(h2>>>0).toString(16)+'-'+src.width+'x'+src.height+'-z9';}
 function rilievoAI(seg,d,w,h,inArt,artArea,bw,bh,fill,mmpx){
   const N=w*h, hash=rilievoHash();
   const q=new URLSearchParams(location.search);
@@ -3602,6 +3602,12 @@ function rilievoAI(seg,d,w,h,inArt,artArea,bw,bh,fill,mmpx){
        for(const y of numerate){if(y===x||zn.has(A.zoneId[y])||A.vic[y].size!==1)continue;const [cy]=A.vic[y];if(cy!==c)continue;
          if(dc(A.zmean[x],A.zmean[y])<40&&A.zart[y]<=A.zart[x]*4&&A.zart[y]>=A.zart[x]/4){zn.add(A.zoneId[y]);aggiunte++;}}}
      if(aggiunte)try{console.debug('[rilievo ai] completate',aggiunte,'zone della stessa scritta');}catch(e){}}
+    /* coerenza: una zona scelta attaccata a una zona PIU' GRANDE dello stesso colore lasciata
+       opaca e' un pezzo dello stesso elemento (le code del nastro): resta opaca anche lei */
+    {const A=S.rilAI;const dc=(a,b)=>Math.abs(a[0]-b[0])+Math.abs(a[1]-b[1])+Math.abs(a[2]-b[2]);let tolte=0;
+     for(let l=1;l<=A.nLab;l++){const z=A.zoneId[l];if(!z||!zn.has(z))continue;
+       for(const m of A.vic[l]){const zm=A.zoneId[m];if(!zm||zn.has(zm))continue;if(A.zart[m]>A.zart[l]*1.5&&A.zmean[m]&&A.zmean[l]&&dc(A.zmean[m],A.zmean[l])<40){zn.delete(z);tolte++;break;}}}
+     if(tolte)try{console.debug('[rilievo ai] zone lasciate opache perche\' parte di un elemento opaco:',tolte);}catch(e){}}
     /* sicurezza: una zona scelta che CONTIENE almeno 4 pezzi scelti (una scritta su un nastro,
        una targhetta con un testo) resta opaca: il rilievo va sulla scritta, non sul contenitore */
     {const A=S.rilAI;const sel=l=>(A.zoneId[l]&&zn.has(A.zoneId[l]))||(A.grpOf[l]&&gn.has(A.grpOf[l]));
