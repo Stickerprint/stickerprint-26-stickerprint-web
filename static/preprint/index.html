@@ -3138,16 +3138,22 @@ function resinDomeProc(core,ppm){
   for(let i=0;i<N;i++){if(inv[i])continue;const v=Math.sqrt(d2[i]);dist[i]=v;if(v>dmax)dmax=v;}
   if(dmax<4)return core;
   /* direzione della normale: dal gradiente della distanza LISCIATA (il taglio ondeggia) */
-  const sm=gaussRid(dist,W,H,Math.max(1.5,0.06*dmax));
+  const sm=gaussRid(dist,W,H,Math.max(2,0.12*dmax));   /* lisciatura ampia: le normali cambiano piano, niente chiazze */
+  /* la distanza lisciata e' ricampionata a blocchi di 4 px: il gradiente si prende su un passo
+     largo (2% del raggio), altrimenti la normale cambia a scatti e la luce esce a chiazze */
+  const hs=Math.max(3,Math.round(0.02*dmax));
   const out=document.createElement('canvas');out.width=W;out.height=H;const go=out.getContext('2d');
   const oid=go.createImageData(W,H),o=oid.data;
   for(let y=0;y<H;y++)for(let x=0;x<W;x++){const i=y*W+x,p=i*4;
     if(inv[i]){o[p+3]=0;continue;}
-    const gx=(sm[Math.min(W-1,x+1)+y*W]-sm[Math.max(0,x-1)+y*W])*0.5, gy=(sm[x+Math.min(H-1,y+1)*W]-sm[x+Math.max(0,y-1)*W])*0.5;
+    const gx=(sm[Math.min(W-1,x+hs)+y*W]-sm[Math.max(0,x-hs)+y*W])/(2*hs), gy=(sm[x+Math.min(H-1,y+hs)*W]-sm[x+Math.max(0,y-hs)*W])/(2*hs);
     const ang=(Math.atan2(-gy,-gx)*180/Math.PI+360)%360;   /* normale uscente, 0 destra, 90 basso */
     const t=Math.min(1,dist[i]/dmax);
     const kA=Math.min(1,t/0.3);
-    const angK=(domeTab(DC_MULT_ANG_E,ang/360,24,true)/0.901)*(1-kA)+(domeTab(DC_MULT_ANG_M,ang/360,24,true)/0.926)*kA;
+    /* verso il centro la direzione non conta piu' (sulla cresta della distanza la normale si
+       ribalta e farebbe una riga): il termine angolare si spegne fra il 30% e il 55% */
+    const kC=t<0.3?1:t>0.55?0:1-(t-0.3)/0.25;
+    const angK=1+kC*(((domeTab(DC_MULT_ANG_E,ang/360,24,true)/0.901)*(1-kA)+(domeTab(DC_MULT_ANG_M,ang/360,24,true)/0.926)*kA)-1);
     const mult=domeTab(DC_MULT_RAD,t,100,false)*angK;
     /* filetto uniforme del sagomato + riflesso direzionale del tondo (entrambi in scherma) */
     const scr1=t<0.21?domeTab(DC_SCR_RAD,t/0.21,21,false):0;
@@ -5424,12 +5430,17 @@ function ppGeoUI(){
        il file resta caricato e segmentato, si rifanno solo taglio e disegno */
     if(d.type==='config'){
       try{
-        const c=d.config||{}; let geom=false, mat=false;
+        const c=d.config||{}; let geom=false, mat=false, rimaschera=false;
         if(c.prodotto){const p=String(c.prodotto).toLowerCase().indexOf('resin')>=0?'resin':'sticker'; if(p!==S.prod){setProd(p);geom=true;try{ppGeoUI();}catch(e){}}}
         if(c.foglio!==undefined){const fg=!!c.foglio; if(fg!==S.foglio){S.foglio=fg;geom=true;}}
         if(c.rilievo!==undefined){const rl=!!c.rilievo; if(rl!==S.rilievo){S.rilievo=rl;mat=true;}}
         const f=U_FORMA[String(c.forma||'').toLowerCase()];
-        if(f&&f!==CL.shape){CL.shape=f;document.querySelectorAll('#cShape .chip').forEach(e=>e.classList.toggle('on',e.dataset.s===f));applyPreset(false);geom=true;
+        if(f&&f!==CL.shape){const eraDiecut=(CL.shape==='diecut');CL.shape=f;document.querySelectorAll('#cShape .chip').forEach(e=>e.classList.toggle('on',e.dataset.s===f));applyPreset(false);geom=true;
+          /* [sito] lo scontorno dipende dalla sagoma (geoIdx: col sagomato lo sfondo va tolto sempre,
+             con le forme geometriche puo' restare 'intero'): passando fra sagomato e forma
+             geometrica la maschera va RICALCOLATA, non basta rifare il taglio. Prima, caricato il
+             file su 'tondo' e poi passato a 'sagomato', la sagoma usciva un rettangolo */
+          if((f==='diecut')!==eraDiecut)rimaschera=true;
           /* nuova sagoma: il disegno riparte grande e centrato, e il pannello mostra i comandi giusti */
           try{ if($('gsc'))$('gsc').value=100; if($('gscV'))$('gscV').textContent='100'; if($('gdx'))$('gdx').value=0; if($('gdy'))$('gdy').value=0; const z=$('lvZoom'); if(z){z.value=100; const zv=$('zoomV'); if(zv)zv.textContent='100%';} ppGeoUI(); }catch(e){} }
         const m=U_MATER[String(c.materiale||'').toLowerCase()];
@@ -5446,7 +5457,7 @@ function ppGeoUI(){
           setTimeout(()=>{
             const t0=performance.now(); let t1=t0,t2=t0;
             /* il taglio si rifa' solo se cambiano sagoma o misura; per materiale e lamina basta ridisegnare */
-            try{if(geom)buildCut();t1=performance.now();draw();t2=performance.now();}catch(e){}
+            try{if(rimaschera&&S.work){computeMask();if(!S.bbox)throw new Error('maschera vuota');}if(geom)buildCut();t1=performance.now();draw();t2=performance.now();}catch(e){console.error('[motore] config',e);}
             try{console.debug('[motore] config',JSON.stringify(c),'taglio',Math.round(t1-t0),'ms · disegno',Math.round(t2-t1),'ms');}catch(e){}
             /* l'istantanea parte SUBITO, nello stesso passaggio: cosi' il sito
                la riceve senza aspettare timer e lavori di contorno */
