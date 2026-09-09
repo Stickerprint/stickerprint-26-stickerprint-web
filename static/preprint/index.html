@@ -655,6 +655,7 @@ const RESIN_R=2.0;          // raggio minimo obbligatorio sugli angoli, in mm
 const RESIN_NECK=5.0;       // collo minimo per il resinato, in mm
 const RESIN_BORDER=2.5;     // bordo minimo, così l'arrotondamento non mangia il disegno
 const EMBED=(new URLSearchParams(location.search)).get('embed')==='1';
+const NOANG=(new URLSearchParams(location.search)).get('noang')==='1';
 const S={prod:'sticker',foglio:false,lente:false,artClip:null,palette:null,palIdx:0,bgOpaque:true,viewTotW:50,resinR:0,src:null,artCanvas:null,name:'',srcW:0,srcH:0,srcMM:null,work:null,mask:null,mw:0,mh:0,bbox:null,
   bgCol:null,bgSrc:'',cands:[],chosen:-1,ctx0:null,seeds:[],lineSeed:null,wand:false,keptPct:0,
   Rsafe:null,RsafeFor:null,polys:null,pathD:'',cutW:0,cutH:0,bleed:0,art:null,quality:null,
@@ -5249,7 +5250,7 @@ function ppGeoUI(){
   /* [sito] zoom e centratura su tutte le sagome, sagomato compreso: li' il disegno
      si ingrandisce o rimpicciolisce dentro il tracciato ricavato a misura piena */
   const gs=$('ppGeoSec'); if(gs)gs.style.display='';
-  const as=$('ppAngSec'); if(as)as.style.display=((f==='rect'||f==='square')&&S.prod!=='resin')?'':'none';
+  const as=$('ppAngSec'); if(as)as.style.display=((f==='rect'||f==='square')&&S.prod!=='resin'&&!NOANG)?'':'none';   /* noang=1: rettangolo standard, niente angoli (cavallotto del kit) */
 }
 (function profilo(){
   const H=id=>{const e=$(id);if(e)e.style.display='none';};
@@ -5426,6 +5427,8 @@ function ppGeoUI(){
     if(d.type==='bgcol'&&S.src&&d.hex){ try{ if(window.__ppColore)window.__ppColore(String(d.hex)); }catch(e){}
       busy(true,'Aggiorno…'); setTimeout(()=>{try{buildCut();draw();}catch(e){} window.__busyOff=performance.now(); snapshot(); busy(false);},0); }
     if(d.type==='cut'){S.showCut=!!d.on;try{ridipingi();}catch(e){}}
+    /* [sito] zoom del disegno dentro la sagoma (il kit: il cavallotto va riempito tutto) */
+    if(d.type==='zoom'&&S.src){ const z=$('lvZoom'); if(z){ z.value=String(Math.max(+z.min,Math.min(+z.max,Math.round(+d.value||100)))); z.dispatchEvent(new Event('input')); } }
     /* cambio di sagoma, materiale, lamina o misura SENZA ricaricare il motore:
        il file resta caricato e segmentato, si rifanno solo taglio e disegno */
     if(d.type==='config'){

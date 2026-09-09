@@ -19,6 +19,7 @@
 		panel = false,
 		stage = 380,
 		showCut = true,
+		noang = false,
 		onrender
 	}: {
 		file: File | null;
@@ -33,6 +34,7 @@
 		panel?: boolean;
 		stage?: number;
 		showCut?: boolean;
+		noang?: boolean;
 		onrender?: (s: { png: string | null; name?: string | null; w: number; h: number; srcMM: { w: number; h: number } | null; palette?: { hex: string; img?: string }[]; palIdx?: number; rimuovi?: boolean; foglio?: { n: number; cols: number; rows: number; w: number; h: number } | null }) => void;
 	} = $props();
 
@@ -50,6 +52,7 @@
 		const q = new URLSearchParams({ embed: '1', forma, materiale, prodotto, lamina: finitura });
 		if (foglio) q.set('foglio', '1');
 		if (rilievo) q.set('rilievo', '1');
+		if (noang) q.set('noang', '1');
 		if (w > 0) q.set('w', String(w));
 		if (h > 0) q.set('h', String(h));
 		if (panel) {

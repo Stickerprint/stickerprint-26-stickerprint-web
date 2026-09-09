@@ -49,7 +49,7 @@
 	// sul sagomato puo' valere un minimo piu' alto (resinati: 40 mm)
 	const MIN_MM = $derived(minForShape(cfg, forma));
 	let materiale = $state('bianco');
-	let finitura = $state('lucida');
+	let finitura = $state(''); // la prima scelta e' senza lamina (vedi effetto sotto)
 	// svelte-ignore state_referenced_locally
 	let w = $state(cfg.size.defaultMm ?? 50);
 	// svelte-ignore state_referenced_locally
@@ -89,7 +89,8 @@
 	$effect(() => {
 		if (!SHAPES.some((s) => s.id === forma)) forma = SHAPES[0]?.id ?? 'sagomato';
 		if (!MATERIALS.some((m) => m.id === materiale)) materiale = MATERIALS[0]?.id ?? 'bianco';
-		if (!FINISHES.some((f) => f.id === finitura)) finitura = FINISHES.find((f) => f.laminate)?.id ?? FINISHES[0]?.id ?? 'nessuna';
+		/* la prima scelta e' SENZA lamina: il prezzo che il cliente vede all'inizio e' il piu' basso */
+		if (!FINISHES.some((f) => f.id === finitura)) finitura = FINISHES.find((f) => !f.laminate)?.id ?? FINISHES[0]?.id ?? 'nessuna';
 		if (!custom && !cfg.quantities.includes(qty)) qty = cfg.quantities[0];
 		if (!steps.includes(step)) step = steps[0];
 	});

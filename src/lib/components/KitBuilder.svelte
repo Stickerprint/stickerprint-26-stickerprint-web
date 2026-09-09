@@ -18,22 +18,24 @@
 	/* misure del cavallotto (linguetta piegata: il fronte e' 80 x 40 mm) */
 	const CAV = { w: 80, h: 40 };
 	type Render = { png: string; w: number; h: number };
-	type Slot = { file: File | null; png: string | null; w: number; h: number; misura: number; x: number; y: number; rot: number; dropped: boolean; landed: boolean; busy: boolean };
-	const blank = (): Slot => ({ file: null, png: null, w: 0, h: 0, misura: 50, x: 0, y: 0, rot: 0, dropped: false, landed: false, busy: false });
+	type Slot = { file: File | null; png: string | null; w: number; h: number; misura: number; forma: string; x: number; y: number; rot: number; dropped: boolean; landed: boolean; busy: boolean };
+	const blank = (): Slot => ({ file: null, png: null, w: 0, h: 0, misura: 50, forma: 'sagomato', x: 0, y: 0, rot: 0, dropped: false, landed: false, busy: false });
 	let slots = $state<Slot[]>(Array.from({ length: KIT_MAX }, blank));
 	let cav = $state<{ file: File | null; png: string | null }>({ file: null, png: null });
 	const MATERIALS = $derived(cfg.materials.filter((m) => m.visible));
 	const FINISHES = $derived(cfg.finishes.filter((f) => f.visible));
 	let materiale = $state('bianco');
-	let finitura = $state('lucida');
-	let qty = $state(50);
+	let finitura = $state('');
+	let qty = $state(10);
 	let vatIncluded = $state(true);
 	let step = $state<'materiale' | 'cavallotto' | 'adesivi' | 'qty'>('materiale');
 	const STEPS = ['materiale', 'cavallotto', 'adesivi', 'qty'] as const;
 	const stepNo = (s: string) => STEPS.indexOf(s as (typeof STEPS)[number]) + 1;
 	let adding = $state(false);
 	let flash = $state('');
-	$effect(() => { if (!MATERIALS.some((m) => m.id === materiale)) materiale = MATERIALS[0]?.id ?? 'bianco'; if (!FINISHES.some((f) => f.id === finitura)) finitura = FINISHES.find((f) => f.laminate)?.id ?? FINISHES[0]?.id ?? 'nessuna'; });
+	const SHAPES = $derived(cfg.shapes.filter((sh) => sh.visible));
+	/* la prima scelta e' SENZA lamina: il prezzo iniziale e' il piu' basso */
+	$effect(() => { if (!MATERIALS.some((m) => m.id === materiale)) materiale = MATERIALS[0]?.id ?? 'bianco'; if (!FINISHES.some((f) => f.id === finitura)) finitura = FINISHES.find((f) => !f.laminate)?.id ?? FINISHES[0]?.id ?? 'nessuna'; });
 	const material = $derived(MATERIALS.find((m) => m.id === materiale));
 	const finish = $derived(FINISHES.find((f) => f.id === finitura));
 	const filled = $derived(slots.filter((s) => s.file));
@@ -46,33 +48,50 @@
 	const progress = $derived((stepNo(step) / STEPS.length) * 100);
 
 	/* ---- popup con il motore: cavallotto o adesivo ---- */
-	type Pop = { kind: 'cav' | 'sticker'; index: number; file: File; misura: number; w: number; h: number; ratio: number; last: Render | null; busy: boolean };
+	type Pop = { kind: 'cav' | 'sticker'; index: number; file: File; misura: number; forma: string; w: number; h: number; ratio: number; last: Render | null; busy: boolean; covered: boolean };
 	let pop = $state<Pop | null>(null);
+	let popEngine = $state<EnginePreview | undefined>();
+	const equal = (forma: string) => forma === 'tondo' || forma === 'quadrato';
 	const ACCEPT = 'image/png,image/jpeg,image/svg+xml,application/pdf';
 	function ok(f: File) { return /^image\//.test(f.type) || /\.(pdf|svg|png|jpe?g|webp)$/i.test(f.name); }
 	function openPop(kind: 'cav' | 'sticker', index: number, file: File) {
 		if (!ok(file)) return;
 		const misura = kind === 'sticker' ? (slots[index]?.misura || 50) : CAV.w;
-		pop = { kind, index, file, misura, w: kind === 'cav' ? CAV.w : misura, h: kind === 'cav' ? CAV.h : Math.round(misura * 0.8), ratio: 0, last: null, busy: true };
+		const forma = kind === 'sticker' ? (slots[index]?.forma || 'sagomato') : 'rettangolare';
+		pop = { kind, index, file, misura, forma, w: kind === 'cav' ? CAV.w : misura, h: kind === 'cav' ? CAV.h : Math.round(misura * 0.8), ratio: 0, last: null, busy: true, covered: false };
+		if (kind === 'sticker') setPopSize(misura);
 	}
-	function popRender(r: { png: string | null; name?: string | null; w: number; h: number }) {
+	/** il cavallotto va riempito tutto: zoom del disegno fino a coprire 80 x 40 (dalle proporzioni del file) */
+	async function coverCav(srcMM?: { w: number; h: number } | null) {
+		if (!pop || pop.kind !== 'cav') return;
+		let ratio = srcMM && srcMM.w > 0 && srcMM.h > 0 ? srcMM.w / srcMM.h : 0;
+		if (!ratio && /^image\//.test(pop.file.type)) { try { const im = await load(URL.createObjectURL(pop.file)); ratio = im.width / im.height; } catch { /* niente */ } }
+		if (!ratio) return;
+		const card = CAV.w / CAV.h;
+		const zoom = Math.round((ratio >= card ? ratio / card : card / ratio) * 100);
+		popEngine?.post('zoom', { value: Math.min(220, zoom) });
+	}
+	function popRender(r: { png: string | null; name?: string | null; w: number; h: number; srcMM?: { w: number; h: number } | null }) {
 		if (!pop || !r.png) return;
 		if (r.name && r.name !== baseName(pop.file)) return;
 		pop.last = { png: r.png, w: r.w, h: r.h }; pop.busy = false;
-		if (pop.kind === 'sticker' && r.w > 0 && r.h > 0 && !pop.ratio) { pop.ratio = r.w / r.h; setPopSize(pop.misura); }
+		if (pop.kind === 'sticker' && pop.forma === 'sagomato' && r.w > 0 && r.h > 0 && !pop.ratio) { pop.ratio = r.w / r.h; setPopSize(pop.misura); }
+		if (pop.kind === 'cav' && !pop.covered) { pop.covered = true; coverCav(r.srcMM); }
 	}
 	function setPopSize(m: number) {
 		if (!pop) return;
 		pop.misura = m;
-		const r = pop.ratio || 1.25;
-		if (r >= 1) { pop.w = m; pop.h = Math.round((m / r) * 2) / 2; } else { pop.h = m; pop.w = Math.round(m * r * 2) / 2; }
+		if (equal(pop.forma)) { pop.w = m; pop.h = m; }
+		else if (pop.forma === 'sagomato') { const r = pop.ratio || 1.25; if (r >= 1) { pop.w = m; pop.h = Math.round((m / r) * 2) / 2; } else { pop.h = m; pop.w = Math.round(m * r * 2) / 2; } }
+		else { pop.w = m; pop.h = Math.round(m * 0.66 * 2) / 2; }
 		pop.busy = true;
 	}
+	function setPopShape(forma: string) { if (!pop) return; pop.forma = forma; pop.ratio = 0; setPopSize(pop.misura); }
 	function confirmPop() {
 		if (!pop?.last) return;
 		if (pop.kind === 'cav') { cav = { file: pop.file, png: pop.last.png }; pop = null; if (step === 'cavallotto') step = 'adesivi'; return; }
 		const s = slots[pop.index];
-		s.file = pop.file; s.png = pop.last.png; s.w = pop.last.w; s.h = pop.last.h; s.misura = pop.misura;
+		s.file = pop.file; s.png = pop.last.png; s.w = pop.last.w; s.h = pop.last.h; s.misura = pop.misura; s.forma = pop.forma;
 		s.rot = Math.round((Math.random() * 24 - 12) * 10) / 10;
 		s.x = Math.round(Math.random() * 30 - 15); s.y = -Math.min(5, filled.length - 1) * 7;
 		s.dropped = true; s.landed = false;
@@ -106,14 +125,14 @@
 	$effect(() => { if (!pop && pending.length) setTimeout(nextPending, 250); });
 
 	/* ---- materiale cambiato dopo i caricamenti: si rifanno adesivi e cavallotto in coda, con un motore nascosto ---- */
-	let job = $state<{ kind: 'cav' | 'sticker'; index: number; file: File; w: number; h: number } | null>(null);
+	let job = $state<{ kind: 'cav' | 'sticker'; index: number; file: File; w: number; h: number; forma?: string } | null>(null);
 	let queue: { kind: 'cav' | 'sticker'; index: number }[] = [];
 	let guard: ReturnType<typeof setTimeout> | undefined;
 	function pump() {
 		if (job) return;
 		const j = queue.shift(); if (!j) return;
 		if (j.kind === 'cav') { if (!cav.file) { pump(); return; } job = { ...j, file: cav.file, w: CAV.w, h: CAV.h }; }
-		else { const s = slots[j.index]; if (!s?.file) { pump(); return; } s.busy = true; job = { ...j, file: s.file, w: s.w || s.misura, h: s.h || s.misura }; }
+		else { const s = slots[j.index]; if (!s?.file) { pump(); return; } s.busy = true; job = { ...j, file: s.file, w: s.w || s.misura, h: s.h || s.misura, forma: s.forma }; }
 		clearTimeout(guard); guard = setTimeout(() => { if (job) { if (job.kind === 'sticker') slots[job.index].busy = false; job = null; pump(); } }, 25000);
 	}
 	function jobRender(r: { png: string | null; name?: string | null; w: number; h: number }) {
@@ -340,15 +359,16 @@
 		<div class="modal kit__modal">
 			<button type="button" class="modal__close" aria-label="Chiudi" onclick={() => (pop = null)}>✕</button>
 			<h3>{pop.kind === 'cav' ? 'Il cavallotto' : `Adesivo ${pop.index + 1}`} <small>{pop.file.name}</small></h3>
+			{#if pop.kind === 'sticker'}
+				<div class="kit__shapes">{#each SHAPES as sh (sh.id)}<button type="button" class="kit__shape" class:is-on={pop.forma === sh.id} onclick={() => setPopShape(sh.id)}><img src={sh.img} alt="" /><b>{sh.label}</b></button>{/each}</div>
+			{/if}
 			<div class="kit__modal-engine">
-				<EnginePreview file={pop.file} forma={pop.kind === 'cav' ? 'rettangolare' : 'sagomato'} {materiale} {finitura} prodotto="sticker" w={pop.w} h={pop.h} panel showCut={false} stage={340} onrender={popRender} />
+				<EnginePreview bind:this={popEngine} file={pop.file} forma={pop.forma} {materiale} {finitura} prodotto="sticker" w={pop.w} h={pop.h} panel showCut={pop.kind === 'sticker'} noang={pop.kind === 'cav'} stage={300} onrender={popRender} />
 			</div>
 			{#if pop.kind === 'sticker'}
-				<p class="step__hint">Misura dell'adesivo (lato lungo)</p>
-				<div class="kit__chips">{#each KIT_SIZES as m (m)}<button type="button" class="chip" class:is-on={pop.misura === m} onclick={() => setPopSize(m)}>{m} mm</button>{/each}</div>
-				{#if pop.last}<p class="step__hint">Esce {pop.last.w.toFixed(1).replace('.', ',')} × {pop.last.h.toFixed(1).replace('.', ',')} mm con il bordo.</p>{/if}
+				<div class="kit__row"><span class="step__hint">Misura (lato lungo)</span><div class="kit__chips">{#each KIT_SIZES as m (m)}<button type="button" class="chip" class:is-on={pop.misura === m} onclick={() => setPopSize(m)}>{m} mm</button>{/each}</div>{#if pop.last}<span class="step__hint">esce {pop.last.w.toFixed(1).replace('.', ',')} × {pop.last.h.toFixed(1).replace('.', ',')} mm</span>{/if}</div>
 			{:else}
-				<p class="step__hint">Il cavallotto è {CAV.w} × {CAV.h} mm. Sposta o ingrandisci la grafica con i comandi sotto l'anteprima.</p>
+				<div class="kit__row"><span class="step__hint">Anteprima esatta del cavallotto, {CAV.w} × {CAV.h} mm: il file deve coprirlo tutto. Sposta e ingrandisci con i comandi sotto l'anteprima.</span><button type="button" class="btn btn--sm" onclick={() => coverCav(null)}>Riempi tutto il cavallotto</button></div>
 			{/if}
 			<div class="kit__modal-actions">
 				<button type="button" class="btn btn--sm" onclick={() => (pop = null)}>Annulla</button>
@@ -361,6 +381,6 @@
 <!-- motore nascosto: rifa' adesivi e cavallotto quando cambia il materiale -->
 {#if job}
 	<div class="kit__engine" aria-hidden="true">
-		<EnginePreview file={job.file} forma={job.kind === 'cav' ? 'rettangolare' : 'sagomato'} {materiale} {finitura} prodotto="sticker" w={job.w} h={job.h} showCut={false} stage={260} onrender={jobRender} />
+		<EnginePreview file={job.file} forma={job.kind === 'cav' ? 'rettangolare' : (job.forma ?? 'sagomato')} {materiale} {finitura} prodotto="sticker" w={job.w} h={job.h} showCut={false} noang={job.kind === 'cav'} stage={260} onrender={jobRender} />
 	</div>
 {/if}
