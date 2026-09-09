@@ -78,7 +78,10 @@
 		   cavallotto e le forme geometriche la misura e' quella del kit, e si impone subito */
 		if ((pop.kind === 'cav' || !(pop.forma === 'sagomato')) && !pop.forced && (Math.abs(r.w - pop.w) > 0.6 || Math.abs(r.h - pop.h) > 0.6)) {
 			pop.forced = true;
-			popEngine?.post('config', { config: { forma: pop.forma, w: pop.w, h: pop.h, materiale, lamina: finitura, prodotto: 'sticker' } });
+			const cfgMsg = { source: 'sito', type: 'config', config: { forma: pop.forma, w: pop.w, h: pop.h, materiale, lamina: finitura, prodotto: 'sticker' } };
+			const fr = document.querySelector<HTMLIFrameElement>('.kit__modal-engine iframe');
+			console.debug('[kit] misura imposta al motore', cfgMsg.config, 'iframe', !!fr, 'ref', !!popEngine);
+			if (fr?.contentWindow) fr.contentWindow.postMessage(cfgMsg, location.origin); else popEngine?.post('config', { config: cfgMsg.config });
 			return;
 		}
 		pop.last = { png: r.png, w: r.w, h: r.h }; pop.busy = false;

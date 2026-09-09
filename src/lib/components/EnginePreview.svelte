@@ -137,6 +137,7 @@
 			const cur = file;
 			if (cur && w > 0 && h > 0 && forma !== 'sagomato' && !resentFor.has(cur) && (Math.abs(rw - w) > 0.6 || Math.abs(rh - h) > 0.6)) {
 				resentFor.add(cur);
+				console.debug('[anteprima] misura del sito rimandata al motore', { w, h, rw, rh });
 				frame?.contentWindow?.postMessage({ source: 'sito', type: 'config', config: { forma, materiale, lamina: finitura, w, h, prodotto, foglio, rilievo } }, location.origin);
 			}
 			onrender?.({ png: d.detail.png, name: d.detail.name ?? null, w: d.detail.w ?? 0, h: d.detail.h ?? 0, srcMM: d.detail.srcMM ?? null, palette: d.detail.palette ?? [], palIdx: d.detail.palIdx ?? 0, rimuovi: !!d.detail.rimuovi, foglio: d.detail.foglio ?? null });
