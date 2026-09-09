@@ -76,6 +76,7 @@
 		s.rot = Math.round((Math.random() * 24 - 12) * 10) / 10;
 		s.x = Math.round(Math.random() * 30 - 15); s.y = -Math.min(5, filled.length - 1) * 7;
 		s.dropped = true; s.landed = false;
+		const idx = pop.index; setTimeout(() => { if (slots[idx]?.file === s.file) slots[idx].landed = true; }, 1300);   /* anche senza animazione (riduci movimento) */
 		pop = null;
 		if (n >= KIT_MAX && step === 'adesivi') step = 'qty';
 	}
@@ -199,7 +200,7 @@
 				</label>
 				<div class="bag__body">
 					<i class="bag__zip"></i>
-					<div class="bag__inner" bind:this={inner} onpointermove={move} onpointerup={up} onpointercancel={up}>
+					<div class="bag__inner" role="presentation" bind:this={inner} onpointermove={move} onpointerup={up} onpointercancel={up}>
 						{#each slots as s, i (i)}
 							{#if s.png}
 								<img class="stk" class:drop={s.dropped && !s.landed} class:grab={s.landed} src={s.png} alt="Adesivo {i + 1}" draggable="false" style="--rot:{s.rot}deg; --x:{s.x}%; --y:{s.y}%; --k:{filled.indexOf(s)}" onanimationend={() => (slots[i].landed = true)} onpointerdown={(e) => down(e, i)} />
@@ -340,7 +341,7 @@
 			<button type="button" class="modal__close" aria-label="Chiudi" onclick={() => (pop = null)}>✕</button>
 			<h3>{pop.kind === 'cav' ? 'Il cavallotto' : `Adesivo ${pop.index + 1}`} <small>{pop.file.name}</small></h3>
 			<div class="kit__modal-engine">
-				<EnginePreview file={pop.file} forma={pop.kind === 'cav' ? 'rettangolare' : 'sagomato'} {materiale} {finitura} prodotto="sticker" w={pop.w} h={pop.h} panel stage={340} onrender={popRender} />
+				<EnginePreview file={pop.file} forma={pop.kind === 'cav' ? 'rettangolare' : 'sagomato'} {materiale} {finitura} prodotto="sticker" w={pop.w} h={pop.h} panel showCut={false} stage={340} onrender={popRender} />
 			</div>
 			{#if pop.kind === 'sticker'}
 				<p class="step__hint">Misura dell'adesivo (lato lungo)</p>
