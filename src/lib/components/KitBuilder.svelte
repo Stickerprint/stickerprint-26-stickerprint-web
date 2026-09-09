@@ -69,7 +69,7 @@
 		if (!ratio) return;
 		const card = CAV.w / CAV.h;
 		const zoom = Math.round((ratio >= card ? ratio / card : card / ratio) * 100);
-		popEngine?.post('zoom', { value: Math.min(220, zoom) });
+		popEngine?.post('zoom', { value: Math.min(400, zoom) });   /* un A4 verticale su 80x40 vuole il 283% */
 	}
 	function popRender(r: { png: string | null; name?: string | null; w: number; h: number; srcMM?: { w: number; h: number } | null }) {
 		if (!pop || !r.png) return;
