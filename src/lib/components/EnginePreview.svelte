@@ -89,6 +89,7 @@
 	let cfgTimer: ReturnType<typeof setTimeout> | undefined;
 	let cfgSentAt = 0;
 	let sentCfg = '';
+	const resentFor = new WeakSet<File>();
 	$effect(() => {
 		const f = file;
 		const next = f ? `${prodotto}|${foglio}|${rilievo}|${panel}|${stage}` : '';
@@ -130,6 +131,13 @@
 			ready = true;
 			sentCfg = JSON.stringify({ forma, materiale, lamina: finitura, w, h, prodotto, foglio, rilievo });
 			clearTimeout(retry);
+			/* al caricamento il motore propone una misura sua (dalle proporzioni del file); sulle forme
+			   geometriche la misura e' quella del sito e si rimanda subito (una volta per file) */
+			const rw = Number(d.detail.w ?? 0), rh = Number(d.detail.h ?? 0);
+			if (w > 0 && h > 0 && forma !== 'sagomato' && !resentFor.has(file) && (Math.abs(rw - w) > 0.6 || Math.abs(rh - h) > 0.6)) {
+				resentFor.add(file);
+				frame?.contentWindow?.postMessage({ source: 'sito', type: 'config', config: { forma, materiale, lamina: finitura, w, h, prodotto, foglio, rilievo } }, location.origin);
+			}
 			onrender?.({ png: d.detail.png, name: d.detail.name ?? null, w: d.detail.w ?? 0, h: d.detail.h ?? 0, srcMM: d.detail.srcMM ?? null, palette: d.detail.palette ?? [], palIdx: d.detail.palIdx ?? 0, rimuovi: !!d.detail.rimuovi, foglio: d.detail.foglio ?? null });
 			frame?.contentWindow?.postMessage({ source: 'sito', type: 'cut', on: showCut }, location.origin);
 		}
