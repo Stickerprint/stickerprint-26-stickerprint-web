@@ -48,7 +48,7 @@
 	const progress = $derived((stepNo(step) / STEPS.length) * 100);
 
 	/* ---- popup con il motore: cavallotto o adesivo ---- */
-	type Pop = { kind: 'cav' | 'sticker'; index: number; file: File; misura: number; forma: string; w: number; h: number; ratio: number; last: Render | null; busy: boolean; covered: boolean };
+	type Pop = { kind: 'cav' | 'sticker'; index: number; file: File; misura: number; forma: string; w: number; h: number; ratio: number; last: Render | null; busy: boolean; covered: boolean; forced: boolean };
 	let pop = $state<Pop | null>(null);
 	let popEngine = $state<EnginePreview | undefined>();
 	const equal = (forma: string) => forma === 'tondo' || forma === 'quadrato';
@@ -58,7 +58,7 @@
 		if (!ok(file)) return;
 		const misura = kind === 'sticker' ? (slots[index]?.misura || 50) : CAV.w;
 		const forma = kind === 'sticker' ? (slots[index]?.forma || 'sagomato') : 'rettangolare';
-		pop = { kind, index, file, misura, forma, w: kind === 'cav' ? CAV.w : misura, h: kind === 'cav' ? CAV.h : Math.round(misura * 0.8), ratio: 0, last: null, busy: true, covered: false };
+		pop = { kind, index, file, misura, forma, w: kind === 'cav' ? CAV.w : misura, h: kind === 'cav' ? CAV.h : Math.round(misura * 0.8), ratio: 0, last: null, busy: true, covered: false, forced: false };
 		if (kind === 'sticker') setPopSize(misura);
 	}
 	/** il cavallotto va riempito tutto: zoom del disegno fino a coprire 80 x 40 (dalle proporzioni del file) */
@@ -74,6 +74,13 @@
 	function popRender(r: { png: string | null; name?: string | null; w: number; h: number; srcMM?: { w: number; h: number } | null }) {
 		if (!pop || !r.png) return;
 		if (r.name && r.name !== baseName(pop.file)) return;
+		/* al caricamento il motore propone una misura sua (dalle proporzioni del file): per il
+		   cavallotto e le forme geometriche la misura e' quella del kit, e si impone subito */
+		if ((pop.kind === 'cav' || !(pop.forma === 'sagomato')) && !pop.forced && (Math.abs(r.w - pop.w) > 0.6 || Math.abs(r.h - pop.h) > 0.6)) {
+			pop.forced = true;
+			popEngine?.post('config', { config: { forma: pop.forma, w: pop.w, h: pop.h, materiale, lamina: finitura, prodotto: 'sticker' } });
+			return;
+		}
 		pop.last = { png: r.png, w: r.w, h: r.h }; pop.busy = false;
 		if (pop.kind === 'sticker' && pop.forma === 'sagomato' && r.w > 0 && r.h > 0 && !pop.ratio) { pop.ratio = r.w / r.h; setPopSize(pop.misura); }
 		if (pop.kind === 'cav' && !pop.covered) { pop.covered = true; coverCav(r.srcMM); }
@@ -86,7 +93,7 @@
 		else { pop.w = m; pop.h = Math.round(m * 0.66 * 2) / 2; }
 		pop.busy = true;
 	}
-	function setPopShape(forma: string) { if (!pop) return; pop.forma = forma; pop.ratio = 0; setPopSize(pop.misura); }
+	function setPopShape(forma: string) { if (!pop) return; pop.forma = forma; pop.ratio = 0; pop.forced = false; setPopSize(pop.misura); }
 	function confirmPop() {
 		if (!pop?.last) return;
 		if (pop.kind === 'cav') { cav = { file: pop.file, png: pop.last.png }; pop = null; if (step === 'cavallotto') step = 'adesivi'; return; }
