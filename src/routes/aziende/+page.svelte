@@ -3,6 +3,7 @@
 	import { enhance } from '$app/forms';
 	import { onMount } from 'svelte';
 	import Carousel from '$lib/components/Carousel.svelte';
+	import { BRANDS } from '$lib/brands';
 	let { form, data } = $props();
 	/* Reel dei clienti: per ognuno il logo dell'azienda (in alto), il link YouTube
 	   (anche Shorts; finché manca compare il segnaposto) e il caso studio in due
@@ -129,6 +130,16 @@
 				<li><span class="ck">✓</span>Spedizione organizzata</li>
 			</ul>
 			<p class="lead" style="margin-top:16px"><b>Produciamo solo quando siamo sicuri del risultato finale.</b></p>
+		</div>
+	</div>
+</section>
+
+<!-- LOGHI (come nella home) -->
+<section class="section--tight logos container center">
+	<h2><span class="hl hl--purple">Abbiamo fornito adesivi e esperienza per</span></h2>
+	<div class="marquee" aria-hidden="true">
+		<div class="marquee__track">
+			{#each [...BRANDS, ...BRANDS] as b, k (k)}{#if b.img}<img src="/images/brands/{b.img}" alt={b.name} title={b.name} onerror={(e) => { const el = e.currentTarget as HTMLImageElement; const s = document.createElement('span'); s.textContent = b.name; el.replaceWith(s); }} />{:else}<span>{b.name}</span>{/if}{/each}
 		</div>
 	</div>
 </section>

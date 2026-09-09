@@ -16,13 +16,7 @@
 	];
 	const eur0 = (v: number) => v.toLocaleString('it-IT', { maximumFractionDigits: 0 }) + ' €';
 
-	// loghi dei brand: immagine in /images/brands, oppure solo il nome se il logo non c'è ancora
-	const brands: { name: string; img?: string }[] = [
-		{ name: 'VeraLab', img: 'veralab.png' }, { name: 'Samsung', img: 'samsung.png' }, { name: 'Jordan', img: 'jordan.png' }, { name: 'Moscot NY', img: 'moscot.png' },
-		{ name: 'Sephora', img: 'sephora.png' }, { name: 'Golden Goose', img: 'goldengoose.png' }, { name: 'Red Bull', img: 'redbull.png' }, { name: 'Würth', img: 'wurth.png' },
-		{ name: 'Tiffany & Co.', img: 'tiffany.png' }, { name: 'Technogym', img: 'technogym.png' }, { name: 'Ralph Lauren', img: 'ralphlauren.png' }, { name: 'MAC Cosmetics', img: 'maccosmetics.png' },
-		{ name: 'Dolce & Gabbana', img: 'dolcegabbana.png' }, { name: 'Guerlain', img: 'guerlain.png' }, { name: 'Borotalco' }, { name: 'Rapid Bike' }
-	];
+	import { BRANDS as brands } from '$lib/brands';
 	const IG_URL = 'https://www.instagram.com/stickerprint.it/';
 	// feed e follower live: dal server, poi riletti ogni minuto dal browser (contatore che si aggiorna da solo)
 	// svelte-ignore state_referenced_locally
