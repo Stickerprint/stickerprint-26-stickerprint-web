@@ -3110,13 +3110,21 @@ const DOME_SHAPES={circle:'circle',square:'square',ellipse:'ellipse',rect:'rect'
    Tabelle (dal PSD del tondo): per angolo a passi di 15 gradi (0 = destra, 90 = basso),
    per distanza a passi del 5% (0 = bordo, 1 = centro).
    -------------------------------------------------------------------- */
-const DOME_SCR_ANG=[0.033,0.047,0.062,0.022,0,0,0.062,0.341,0.433,0.428,0.335,0.009,0.007,0.023,0.085,0.224,0.261,0.233,0.218,0.217,0.226,0.171,0.051,0.032];
-const DOME_MULT_ANG=[0.816,0.821,0.833,0.848,0.866,0.884,0.899,0.911,0.913,0.915,0.921,0.918,0.906,0.892,0.884,0.879,0.87,0.863,0.854,0.85,0.847,0.838,0.828,0.818];
-const DOME_SCR_RAD=[0.024,0.273,0.304,0.236,0.144,0.088,0.053,0.037,0.03,0.024,0.021,0.017,0.014,0.011,0.008,0.006,0.004,0.002,0.001,0,0];
-const DOME_MULT_RAD=[0.859,0.881,0.887,0.887,0.887,0.888,0.887,0.886,0.885,0.884,0.883,0.883,0.882,0.881,0.879,0.878,0.876,0.876,0.876,0.876,0.876];
-function domeTab(tab,x,n,wrap){ /* interpolazione lineare in una tabella */
+/* Tabelle misurate sul PSD del SAGOMATO ("SHAPE - top view", OMAR SAGOMATO): per distanza dal
+   bordo a passi dell'1% (0 = bordo, 1 = centro) e per angolo della normale a passi di 15 gradi
+   (0 = destra, 90 = basso). Livelli: 'Layer 13' + 'Rectangle 1 copy 3' in moltiplica (velo
+   0,93-0,97 con bordo scuro nel primo 3%, piu' scuro verso destra/alto e piu' chiaro in basso a
+   sinistra), 'Rectangle 1 copy 4' in scherma (filetto chiaro uniforme nel primo 13%),
+   'Layer 14' normale (mezzaluna bianca quasi opaca fra il 2% e il 13% dal bordo, normali 90-180). */
+const DC_MULT_RAD=[0.746,0.819,0.893,0.929,0.935,0.935,0.936,0.936,0.936,0.937,0.934,0.931,0.929,0.926,0.918,0.917,0.918,0.919,0.92,0.921,0.922,0.923,0.924,0.925,0.926,0.927,0.928,0.929,0.93,0.931,0.932,0.933,0.934,0.935,0.936,0.936,0.937,0.938,0.939,0.94,0.941,0.942,0.943,0.944,0.945,0.946,0.947,0.947,0.948,0.949,0.95,0.951,0.952,0.952,0.953,0.954,0.955,0.955,0.956,0.957,0.957,0.958,0.958,0.959,0.959,0.96,0.961,0.961,0.961,0.962,0.962,0.963,0.963,0.963,0.964,0.964,0.964,0.965,0.965,0.965,0.966,0.966,0.966,0.966,0.966,0.967,0.967,0.967,0.967,0.967,0.968,0.968,0.968,0.968,0.968,0.968,0.968,0.968,0.968,0.969,0.969];
+const DC_SCR_RAD=[0.178,0.058,0.057,0.057,0.057,0.057,0.057,0.057,0.057,0.057,0.057,0.057,0.057,0.054,0.046,0.037,0.028,0.019,0.01,0.002,0,0];
+const DC_GLARE_RAD=[0.442,0.822,0.919,0.975,0.987,0.988,0.988,0.988,0.989,0.989,0.969,0.885,0.82,0.693,0.227,0,0];
+const DC_MULT_ANG_E=[0.828,0.811,0.764,0.756,0.818,0.836,0.919,0.941,0.937,0.963,0.972,0.979,0.928,0.924,0.921,0.948,0.949,0.95,0.956,0.952,0.937,0.882,0.887,0.868];
+const DC_MULT_ANG_M=[0.906,0.907,0.909,0.887,0.887,0.888,0.891,0.898,0.903,0.918,0.912,0.904,0.934,0.931,0.93,0.967,0.964,0.963,0.97,0.97,0.972,0.939,0.941,0.943];
+const DC_GLARE_ANG=[0,0,0,0.076,0.319,0.228,0.964,0.959,0.879,0.864,0.881,0.902,0.041,0,0,0,0,0,0,0,0,0,0,0];
+function domeTab(tab,x,n,wrap){ /* interpolazione lineare: x in [0,1] su n intervalli */
   let f=x*n; if(wrap){f=((f%n)+n)%n;} else f=Math.max(0,Math.min(n-0.001,f));
-  const i=Math.floor(f),t=f-i;const a=tab[i%tab.length],b=tab[(i+1)%tab.length];return a+(b-a)*t;}
+  const i=Math.floor(f),t=f-i;const a=tab[Math.min(tab.length-1,i%tab.length)],b=tab[Math.min(tab.length-1,(i+1)%tab.length)];return a+(b-a)*t;}
 function resinDomeProc(core,ppm){
   const W=core.width,H=core.height,N=W*H;
   const gc=core.getContext('2d',{willReadFrequently:true});const id=gc.getImageData(0,0,W,H),d=id.data;
@@ -3127,18 +3135,19 @@ function resinDomeProc(core,ppm){
   if(dmax<4)return core;
   /* direzione della normale: dal gradiente della distanza LISCIATA (il taglio ondeggia) */
   const sm=gaussRid(dist,W,H,Math.max(1.5,0.06*dmax));
-  const ANG_MEAN_SCR=0.157, ANG_MEAN_MULT=0.866;
   const out=document.createElement('canvas');out.width=W;out.height=H;const go=out.getContext('2d');
   const oid=go.createImageData(W,H),o=oid.data;
   for(let y=0;y<H;y++)for(let x=0;x<W;x++){const i=y*W+x,p=i*4;
     if(inv[i]){o[p+3]=0;continue;}
     const gx=(sm[Math.min(W-1,x+1)+y*W]-sm[Math.max(0,x-1)+y*W])*0.5, gy=(sm[x+Math.min(H-1,y+1)*W]-sm[x+Math.max(0,y-1)*W])*0.5;
-    /* normale uscente = -gradiente della distanza; angolo in coordinate schermo (0 destra, 90 basso) */
-    const ang=(Math.atan2(-gy,-gx)*180/Math.PI+360)%360;
+    const ang=(Math.atan2(-gy,-gx)*180/Math.PI+360)%360;   /* normale uscente, 0 destra, 90 basso */
     const t=Math.min(1,dist[i]/dmax);
-    const mult=domeTab(DOME_MULT_ANG,ang/360,24,true)*domeTab(DOME_MULT_RAD,t,20,false)/ANG_MEAN_MULT;
-    const scr=Math.min(1,domeTab(DOME_SCR_ANG,ang/360,24,true)/ANG_MEAN_SCR*domeTab(DOME_SCR_RAD,t,20,false));
-    for(let c=0;c<3;c++){let v=d[p+c]/255;v*=mult;v=1-(1-v)*(1-scr);o[p+c]=Math.round(Math.max(0,Math.min(1,v))*255);}
+    const kA=Math.min(1,t/0.3);
+    const angK=(domeTab(DC_MULT_ANG_E,ang/360,24,true)/0.901)*(1-kA)+(domeTab(DC_MULT_ANG_M,ang/360,24,true)/0.926)*kA;
+    const mult=domeTab(DC_MULT_RAD,t,100,false)*angK;
+    const scr=t<0.21?domeTab(DC_SCR_RAD,t/0.21,21,false):0;
+    const gl=t<0.16?domeTab(DC_GLARE_RAD,t/0.16,16,false)*domeTab(DC_GLARE_ANG,ang/360,24,true):0;
+    for(let c=0;c<3;c++){let v=d[p+c]/255;v*=mult;v=1-(1-v)*(1-scr);v=v*(1-gl)+gl;o[p+c]=Math.round(Math.max(0,Math.min(1,v))*255);}
     o[p+3]=d[p+3];}
   go.putImageData(oid,0,0);
   return out;}
