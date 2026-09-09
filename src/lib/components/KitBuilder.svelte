@@ -41,6 +41,8 @@
 	let engineSlot = -1;
 	let queue: number[] = [];
 	function enqueue(i: number) { if (!queue.includes(i)) queue.push(i); pump(); }
+	let guard: ReturnType<typeof setTimeout> | undefined;
+	const baseName = (f: File) => f.name.replace(/\.[^.]+$/, '');
 	function pump() {
 		if (engineSlot >= 0) return;
 		const i = queue.shift();
@@ -50,12 +52,20 @@
 		engineSlot = i; s.busy = true;
 		engineFile = null;
 		queueMicrotask(() => { engineFile = s.file; });
+		// rete di sicurezza: se il motore non risponde, si passa al prossimo
+		clearTimeout(guard);
+		guard = setTimeout(() => { if (engineSlot === i) { s.busy = false; engineSlot = -1; pump(); } }, 25000);
 	}
-	function onRender(r: { png: string | null; w: number; h: number }) {
+	function onRender(r: { png: string | null; name?: string | null; w: number; h: number }) {
 		const i = engineSlot; if (i < 0) return;
 		const s = slots[i];
-		if (s && r.png) { s.png = r.png; s.w = r.w; s.h = r.h; if (!s.dropped) { s.dropped = true; } }
-		if (s) s.busy = false;
+		if (!s?.file) { engineSlot = -1; pump(); return; }
+		/* il motore manda un rendering anche in ritardo (del file precedente): si accetta solo
+		   quello del file in lavorazione, riconosciuto dal nome */
+		if (r.name && r.name !== baseName(s.file)) return;
+		if (r.png) { s.png = r.png; s.w = r.w; s.h = r.h; s.dropped = true; }
+		s.busy = false;
+		clearTimeout(guard);
 		engineSlot = -1;
 		pump();
 	}
