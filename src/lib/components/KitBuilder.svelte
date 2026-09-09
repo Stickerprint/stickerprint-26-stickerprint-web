@@ -131,7 +131,7 @@
 		// cavallotto
 		const cw = bw + 8, ch = 190, cx0 = bx - 4, cy0 = by - 60;
 		g.save(); g.shadowColor = 'rgba(0,0,0,0.22)'; g.shadowBlur = 18; g.shadowOffsetY = 8; rr(cx0, cy0, cw, ch, 14); g.fillStyle = '#fff'; g.fill(); g.restore();
-		if (cavUrl) { try { const im = await load(cavUrl); g.save(); rr(cx0, cy0, cw, ch, 14); g.clip(); const k = Math.max(cw / im.width, ch / im.height); const iw = im.width * k, ih = im.height * k; g.drawImage(im, cx0 + (cw - iw) / 2, cy0 + (ch - ih) / 2, iw, ih); g.restore(); } catch { /* senza immagine */ } }
+		if (cavUrl) { try { const im = await load(cavUrl); g.save(); rr(cx0, cy0, cw, ch, 14); g.clip(); const k = Math.min((cw - 40) / im.width, (ch - 36) / im.height); const iw = im.width * k, ih = im.height * k; g.drawImage(im, cx0 + (cw - iw) / 2, cy0 + (ch - ih) / 2, iw, ih); g.restore(); } catch { /* senza immagine */ } }
 		g.beginPath(); g.arc(cx0 + cw / 2, cy0 + 28, 11, 0, Math.PI * 2); g.fillStyle = '#f4f5f8'; g.fill(); g.strokeStyle = 'rgba(0,0,0,0.15)'; g.stroke();
 		return new Promise((r) => c.toBlob(r, 'image/png'));
 	}

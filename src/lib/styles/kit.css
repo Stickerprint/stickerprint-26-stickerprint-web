@@ -8,7 +8,7 @@
 /* cavallotto: linguetta piegata in cima, con il foro per il gancio */
 .cav { position: relative; z-index: 3; display: flex; align-items: center; justify-content: center; gap: 8px; height: 96px; margin: 0 -4px; background: #fff; border-radius: 12px; box-shadow: 0 10px 24px rgba(0,0,0,.16), 0 1px 0 rgba(0,0,0,.06); cursor: pointer; overflow: hidden; color: var(--navy); font: 700 14px/1.2 Montserrat, system-ui; transition: transform .15s; }
 .cav:hover { transform: translateY(-2px); }
-.cav img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.cav img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; padding: 10px 14px; box-sizing: border-box; background: #fff; }
 .cav__plus { width: 38px; height: 38px; border-radius: 50%; background: var(--blue); color: #fff; font-size: 28px; line-height: 38px; text-align: center; font-weight: 800; }
 .cav__hole { position: absolute; top: 9px; left: 50%; width: 12px; height: 12px; margin-left: -6px; border-radius: 50%; background: #eceef3; box-shadow: inset 0 1px 2px rgba(0,0,0,.25); z-index: 4; }
 /* bustina trasparente */
