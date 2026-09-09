@@ -1,39 +1,47 @@
-/* Kit di adesivi: mockup della bustina con cavallotto e adesivi che cadono dentro */
-.kit { display: grid; grid-template-columns: minmax(320px, 1.05fr) minmax(300px, 1fr); gap: 36px; align-items: start; }
-@media (max-width: 900px) { .kit { grid-template-columns: 1fr; } .kit__stage { position: sticky; top: 64px; z-index: 2; } }
-.kit__stage { position: relative; background: linear-gradient(180deg, #f7f8fb, #eceef3); border-radius: 24px; padding: 48px 28px 36px; min-height: 520px; display: flex; justify-content: center; align-items: flex-start; transition: box-shadow .2s, background .2s; }
-.kit__stage.is-over { background: linear-gradient(180deg, #eef4ff, #dfe9ff); box-shadow: inset 0 0 0 3px var(--blue); }
-.kit__busy { position: absolute; left: 16px; bottom: 14px; font: 600 12px/1 Montserrat, system-ui; color: var(--navy); background: #fff; border-radius: 999px; padding: 8px 12px; box-shadow: 0 4px 14px rgba(0,0,0,.08); }
-.bag { position: relative; width: min(340px, 92%); }
-/* cavallotto: linguetta piegata in cima, con il foro per il gancio */
-.cav { position: relative; z-index: 3; display: flex; align-items: center; justify-content: center; gap: 8px; height: 96px; margin: 0 -4px; background: #fff; border-radius: 12px; box-shadow: 0 10px 24px rgba(0,0,0,.16), 0 1px 0 rgba(0,0,0,.06); cursor: pointer; overflow: hidden; color: var(--navy); font: 700 14px/1.2 Montserrat, system-ui; transition: transform .15s; }
+/* Kit di adesivi: anteprima (bustina) dentro lo schema dei preventivatori (.cfg di product.css) */
+.kit__preview { align-content: stretch; }
+.kit__stage { position: relative; border-radius: 20px; padding: 44px 20px 30px; min-height: 560px; display: flex; flex-direction: column; align-items: center; background: radial-gradient(120% 80% at 50% 0%, #fbfbfd, #e9ecf2 70%, #dfe3ea); transition: box-shadow .2s, background .2s; }
+.kit__stage.is-over { box-shadow: inset 0 0 0 3px var(--blue); background: radial-gradient(120% 80% at 50% 0%, #eef4ff, #dfe9ff); }
+.kit__tip { margin: 14px 0 0; font: 600 12.5px/1.3 Montserrat, system-ui; color: #7a8399; }
+.bag { position: relative; width: min(330px, 94%); }
+/* cavallotto: la linguetta piegata in cima, con il foro per il gancio */
+.cav { position: relative; z-index: 4; display: flex; align-items: center; justify-content: center; gap: 8px; aspect-ratio: 2 / 1; margin: 0 -3px; background: #fff; border-radius: 10px; box-shadow: 0 10px 24px rgba(0,0,0,.16), 0 1px 0 rgba(0,0,0,.06); cursor: pointer; overflow: hidden; color: var(--navy); font: 700 14px/1.2 Montserrat, system-ui; transition: transform .15s; }
 .cav:hover { transform: translateY(-2px); }
-.cav img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; padding: 10px 14px; box-sizing: border-box; background: #fff; }
+.cav img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #fff; }
 .cav__plus { width: 38px; height: 38px; border-radius: 50%; background: var(--blue); color: #fff; font-size: 28px; line-height: 38px; text-align: center; font-weight: 800; }
-.cav__hole { position: absolute; top: 9px; left: 50%; width: 12px; height: 12px; margin-left: -6px; border-radius: 50%; background: #eceef3; box-shadow: inset 0 1px 2px rgba(0,0,0,.25); z-index: 4; }
-/* bustina trasparente */
-.bag__body { position: relative; margin-top: -14px; height: 440px; border-radius: 0 0 26px 26px; background: linear-gradient(180deg, rgba(255,255,255,.55), rgba(255,255,255,.35)); border: 2px solid rgba(20,30,60,.12); border-top: 0; box-shadow: 0 24px 44px rgba(0,0,0,.14), inset 0 0 0 1px rgba(255,255,255,.6); overflow: hidden; }
-.bag__inner { position: absolute; inset: 0; overflow: hidden; }
-.bag__shine { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(115deg, rgba(255,255,255,.7) 0%, rgba(255,255,255,.08) 34%, rgba(255,255,255,.35) 58%, rgba(255,255,255,.05) 100%); mix-blend-mode: screen; }
+.cav__hole { position: absolute; top: 8px; left: 50%; width: 12px; height: 12px; margin-left: -6px; border-radius: 50%; background: #e4e7ee; box-shadow: inset 0 1px 2px rgba(0,0,0,.25); z-index: 5; }
+/* bustina di plastica trasparente: fondo lattiginoso, riflessi diagonali, bordo saldato, zip in cima, piega in fondo */
+.bag__body { position: relative; margin-top: -12px; height: 430px; border-radius: 6px 6px 22px 22px; overflow: hidden;
+	background: linear-gradient(180deg, rgba(255,255,255,.62), rgba(255,255,255,.34) 40%, rgba(235,240,248,.5));
+	border: 2px solid rgba(20,30,60,.10); border-top: 0;
+	box-shadow: 0 26px 44px rgba(0,0,0,.16), inset 0 0 0 1px rgba(255,255,255,.75), inset 0 -18px 30px rgba(255,255,255,.35), inset 0 22px 30px rgba(255,255,255,.35); }
+.bag__zip { position: absolute; left: 0; right: 0; top: 14px; height: 10px; z-index: 3; pointer-events: none;
+	background: linear-gradient(180deg, rgba(120,130,150,.18), rgba(255,255,255,.55) 45%, rgba(120,130,150,.22)); border-top: 1px solid rgba(255,255,255,.8); border-bottom: 1px solid rgba(40,50,80,.12); }
+.bag__inner { position: absolute; inset: 0; overflow: hidden; touch-action: none; }
+.bag__shine { position: absolute; inset: 0; pointer-events: none; z-index: 5;
+	background:
+		linear-gradient(112deg, rgba(255,255,255,0) 18%, rgba(255,255,255,.55) 26%, rgba(255,255,255,.08) 33%, rgba(255,255,255,0) 40%),
+		linear-gradient(112deg, rgba(255,255,255,0) 55%, rgba(255,255,255,.35) 62%, rgba(255,255,255,0) 70%),
+		radial-gradient(60% 40% at 18% 12%, rgba(255,255,255,.55), rgba(255,255,255,0) 70%),
+		radial-gradient(50% 30% at 85% 92%, rgba(255,255,255,.35), rgba(255,255,255,0) 70%);
+	mix-blend-mode: screen; }
+.bag__fold { position: absolute; left: 0; right: 0; bottom: 0; height: 26px; z-index: 5; pointer-events: none; background: linear-gradient(180deg, rgba(20,30,60,0), rgba(20,30,60,.10)); border-bottom: 3px solid rgba(255,255,255,.7); }
 .bag__hint { position: absolute; inset: 0; margin: 0; display: grid; place-content: center; text-align: center; color: #7a8399; font: 700 16px/1.3 Montserrat, system-ui; }
 .bag__hint small { display: block; font-weight: 500; font-size: 13px; margin-top: 4px; }
-/* adesivi: cadono dall'alto ed entrano nella bustina, poi si appoggiano in fondo uno sull'altro */
-.stk { position: absolute; left: 50%; bottom: calc(46px + var(--k) * 34px); width: 64%; margin-left: -32%; transform: translateX(var(--dx)) rotate(var(--rot)); filter: drop-shadow(0 6px 10px rgba(0,0,0,.25)); z-index: calc(1 + var(--k)); }
-.stk.drop { animation: stk-drop .9s cubic-bezier(.2,.9,.3,1.15) both; }
+/* adesivi: cadono dall'alto, entrano dalla zip e si appoggiano in fondo; poi si trascinano col mouse */
+.stk { position: absolute; left: 50%; bottom: 42px; width: 62%; margin-left: -31%; transform: translate(var(--x), var(--y)) rotate(var(--rot)); filter: drop-shadow(0 6px 10px rgba(0,0,0,.28)); z-index: calc(2 + var(--k)); user-select: none; -webkit-user-drag: none; }
+.stk.grab { cursor: grab; }
+.stk.grab:active { cursor: grabbing; filter: drop-shadow(0 12px 18px rgba(0,0,0,.32)); }
+.stk.drop { animation: stk-drop .95s cubic-bezier(.2,.9,.3,1.12) both; }
 @keyframes stk-drop {
-	0% { transform: translate(var(--dx), -560px) rotate(calc(var(--rot) - 28deg)); opacity: .0; }
-	12% { opacity: 1; }
-	100% { transform: translateX(var(--dx)) rotate(var(--rot)); opacity: 1; }
+	0% { transform: translate(var(--x), -560px) rotate(calc(var(--rot) - 26deg)); opacity: 0; }
+	10% { opacity: 1; }
+	100% { transform: translate(var(--x), var(--y)) rotate(var(--rot)); opacity: 1; }
 }
-/* colonna dei comandi */
-.kit__side h3 { font: 800 20px/1.2 Montserrat, system-ui; margin: 22px 0 6px; color: var(--navy); }
-.kit__side h3:first-child { margin-top: 0; }
-.kit__side h3 small { font-weight: 600; color: #7a8399; margin-left: 6px; }
-.kit__p { margin: 0 0 12px; color: #4b5470; font-size: 14px; line-height: 1.45; }
-.kit__p.small { font-size: 12.5px; margin-top: 8px; }
+/* comandi nei passaggi */
 .kit__cav { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border: 2px dashed #cfd5e3; border-radius: 14px; cursor: pointer; font: 600 14px/1.2 Montserrat, system-ui; color: var(--navy); background: #fff; }
 .kit__cav.has { border-style: solid; border-color: var(--blue); }
-.kit__cav img { width: 56px; height: 36px; object-fit: cover; border-radius: 6px; }
+.kit__cav img { width: 72px; height: 36px; object-fit: contain; border-radius: 6px; background: #fff; }
 .kit__cav b { margin-left: auto; color: var(--blue); }
 .kit__plus { width: 30px; height: 30px; border-radius: 50%; background: var(--blue); color: #fff; font-size: 22px; line-height: 30px; text-align: center; font-weight: 800; flex: none; }
 .kit__slots { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
@@ -42,16 +50,16 @@
 .slot.busy { border-color: var(--yellow); }
 .slot img { width: 86%; height: 86%; object-fit: contain; }
 .slot__plus { color: var(--blue); font: 800 26px/1 Montserrat, system-ui; }
-.slot__wait { color: var(--navy); font: 800 22px/1 Montserrat, system-ui; }
 .slot em { position: absolute; left: 6px; top: 4px; font: 700 11px/1 Montserrat, system-ui; color: #7a8399; font-style: normal; }
 .slot__x { position: absolute; right: 4px; top: 4px; width: 20px; height: 20px; border: 0; border-radius: 50%; background: var(--navy); color: #fff; font-size: 11px; cursor: pointer; }
 .kit__flash { font-size: 13px; color: #b3261e; margin: 8px 0 0; }
 .kit__chips { display: flex; flex-wrap: wrap; gap: 8px; }
-.kit__chips--small { margin-top: 8px; }
 .kit__chips .chip { border: 2px solid #dfe3ea; background: #fff; border-radius: 999px; padding: 9px 14px; font: 700 13px/1 Montserrat, system-ui; color: var(--navy); cursor: pointer; }
 .kit__chips .chip.is-on { background: var(--navy); border-color: var(--navy); color: #fff; }
-.kit__chips--small .chip { padding: 7px 12px; font-size: 12px; }
-.kit__price { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 22px; padding: 16px 18px; border-radius: 16px; background: #f4f5f8; }
-.kit__price b { display: block; font: 800 30px/1.1 Montserrat, system-ui; color: var(--navy); margin: 4px 0; }
-.kit__price small { display: block; font-size: 12.5px; color: #4b5470; }
+/* popup del motore */
+.kit__modal { max-width: 640px; }
+.kit__modal h3 { margin: 0 24px 0 0; font: 800 20px/1.2 Montserrat, system-ui; color: var(--navy); }
+.kit__modal h3 small { display: block; font-weight: 500; font-size: 12.5px; color: #7a8399; margin-top: 2px; }
+.kit__modal-engine { border: 2px solid var(--line, #e6e9f0); border-radius: 16px; overflow: hidden; }
+.kit__modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 4px; }
 .kit__engine { position: absolute; width: 1px; height: 1px; overflow: hidden; opacity: 0; pointer-events: none; left: -9999px; }

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import '$lib/styles/pages.css';
+	import '$lib/styles/product.css';
 	import '$lib/styles/kit.css';
 	import KitBuilder from '$lib/components/KitBuilder.svelte';
 	let { data } = $props();
