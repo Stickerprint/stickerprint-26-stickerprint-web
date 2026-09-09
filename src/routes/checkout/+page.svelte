@@ -99,8 +99,22 @@
 					const { error: pe } = await data.supabase.storage.from('order-previews').upload(ppath, pv, { contentType: 'image/png', upsert: true });
 					if (!pe) previewUrl = data.supabase.storage.from('order-previews').getPublicUrl(ppath).data.publicUrl;
 				}
-				if (f) {
-					const ext = (f.name.split('.').pop() ?? 'bin').toLowerCase().replace(/[^a-z0-9]/g, '') || 'bin';
+				const extOf = (x: File) => (x.name.split('.').pop() ?? 'bin').toLowerCase().replace(/[^a-z0-9]/g, '') || 'bin';
+				if (it.product === 'kit_adesivi') {
+					/* kit di adesivi: piu' file in una cartella dell'ordine (cavallotto + adesivo-1..6); file_path = la cartella */
+					const dir = `${data.user?.id ?? 'guest'}/${it.id}`;
+					const n = Number(String(it.forma).replace(/\D/g, '')) || 0;
+					const keys = [':cav', ...Array.from({ length: n }, (_, k) => `:s${k + 1}`)];
+					for (const key of keys) {
+						const kf = await getCartFile(it.id + key);
+						if (!kf) continue;
+						const name = key === ':cav' ? 'cavallotto' : `adesivo-${key.slice(2)}`;
+						const { error } = await data.supabase.storage.from('order-files').upload(`${dir}/${name}.${extOf(kf)}`, kf, { contentType: kf.type || undefined, upsert: true });
+						if (error) throw new Error(`File non caricato (${kf.name}): ${error.message}`);
+					}
+					filePath = `${dir}/`;
+				} else if (f) {
+					const ext = extOf(f);
 					const path = `${data.user?.id ?? 'guest'}/${it.id}.${ext}`;
 					const { error } = await data.supabase.storage.from('order-files').upload(path, f, { contentType: f.type || undefined, upsert: true });
 					if (error) throw new Error(`File non caricato (${f.name}): ${error.message}`);
@@ -207,8 +221,8 @@
 						<div class="co-item">
 							<div class="co-item__thumb">{#if thumbs[it.id]}<img src={thumbs[it.id]} alt="" />{:else}<img src="/images/estimator/round_stickers.webp" alt="" />{/if}</div>
 							<div class="co-item__body">
-								<div class="co-item__top"><b>{#if it.product === 'campioni'}Kit campioni{:else}{it.qty.toLocaleString('it-IT')} {it.productName} {it.forma}{/if}</b><span class="co-item__price">{eur(it.gross)}</span><button type="button" class="co-item__x" aria-label="Rimuovi" onclick={() => remove(it.id)}>✕</button></div>
-								{#if it.product === 'campioni'}<small>Selezione dei nostri materiali e finiture · spedizione gratuita</small>{:else}<small>Misura: {fmtMm(it.w)} × {fmtMm(it.h)} mm · {MATERIAL_LABEL[it.materiale] ?? it.materiale}{#if it.finitura && it.finitura !== 'nessuna'} · lamina {it.finitura}{/if}</small>{/if}
+								<div class="co-item__top"><b>{#if it.product === 'campioni'}Kit campioni{:else if it.product === 'kit_adesivi'}{it.qty.toLocaleString('it-IT')} kit di adesivi ({it.forma.replace(/\D/g, '')} adesivi){:else}{it.qty.toLocaleString('it-IT')} {it.productName} {it.forma}{/if}</b><span class="co-item__price">{eur(it.gross)}</span><button type="button" class="co-item__x" aria-label="Rimuovi" onclick={() => remove(it.id)}>✕</button></div>
+								{#if it.product === 'campioni'}<small>Selezione dei nostri materiali e finiture · spedizione gratuita</small>{:else if it.product === 'kit_adesivi'}<small>Bustina con cavallotto personalizzato · adesivi da {fmtMm(it.w)} mm · {MATERIAL_LABEL[it.materiale] ?? it.materiale}{#if it.finitura && it.finitura !== 'nessuna'} · lamina {it.finitura}{/if}</small>{:else}<small>Misura: {fmtMm(it.w)} × {fmtMm(it.h)} mm · {MATERIAL_LABEL[it.materiale] ?? it.materiale}{#if it.finitura && it.finitura !== 'nessuna'} · lamina {it.finitura}{/if}</small>{/if}
 								{#if it.product !== 'campioni'}<small>File: {#if hasFile[it.id] || it.filePath}{it.fileName ?? 'file caricato'}{:else}<span class="err">mancante</span> <label class="link" style="cursor:pointer">carica<input type="file" hidden accept="image/*,.pdf,.svg,.ai,.eps" onchange={(e) => reupload(it.id, e)} /></label>{/if}</small>{/if}
 								{#if noteOpen === it.id}
 									<textarea rows="2" placeholder="Note per questo prodotto" value={it.note ?? ''} onchange={(e) => (items = updateCartItem(it.id, { note: (e.currentTarget as HTMLTextAreaElement).value }))}></textarea>

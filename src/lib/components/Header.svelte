@@ -37,6 +37,7 @@
 				{ href: '/adesivi-resinati', label: 'Adesivi Resinati', img: `${I}/res/round_res.webp` },
 				{ href: '/adesivi-personalizzati', label: 'Adesivi Personalizzati', img: `${I}/square_stickers.webp` },
 				{ href: '/adesivi-rilievo', label: 'Adesivi in Rilievo', img: `${I}/oval_stickers.webp` },
+				{ href: '/kit-adesivi', label: 'Kit di Adesivi', img: `${I}/custom_stickers.webp` },
 				{ href: '/vetrofanie', label: 'Vetrofanie', img: `${I}/vetr/vetr_round.webp` },
 				{ href: '/fogli', label: 'Fogli di Adesivi', img: `${I}/sheet/Sticker_sheet_1.webp` }
 			]

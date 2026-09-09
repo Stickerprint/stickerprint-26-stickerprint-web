@@ -4,6 +4,7 @@ import { env } from '$env/dynamic/private';
 import { PUBLIC_SUPABASE_URL, PUBLIC_SITE_URL } from '$env/static/public';
 import { loadEngine } from '$lib/server/pricing';
 import { quoteWith, PRODUCT_ENGINES } from '$lib/pricing/engine';
+import { kitQuote, kitN } from '$lib/pricing/kit';
 import { checkDiscount } from '$lib/server/discount';
 import { buildInvoicePdf, normalizeLines, type InvoiceLine } from '$lib/server/invoice';
 import { sendEmail } from '$lib/server/email';
@@ -95,9 +96,16 @@ export const actions: Actions = {
 				priced.push({ ...l, qty: 1, baseNet, net: baseNet, gross: SAMPLES_GROSS, expressNet: 0 });
 				continue;
 			}
-			engines[l.product] ??= (await loadEngine(supabase, l.product)).config;
-			const q = quoteWith(engines[l.product], { w: Number(l.w), h: Number(l.h), forma: l.forma, materiale: l.materiale, finitura: l.finitura ?? 'nessuna', qty: Number(l.qty), vatIncluded: true });
-			let baseNet = q.net;
+			let baseNet: number;
+			if (l.product === 'kit_adesivi') {
+				/* kit di adesivi: prezzo dal listino degli adesivi personalizzati + costi fissi del kit (vedi pricing/kit.ts) */
+				engines.adesivi_personalizzati ??= (await loadEngine(supabase, 'adesivi_personalizzati')).config;
+				baseNet = kitQuote(engines.adesivi_personalizzati, { materiale: l.materiale, finitura: l.finitura ?? 'lucida', misura: Number(l.w), n: kitN(l.forma), qty: Number(l.qty) }).net;
+			} else {
+				engines[l.product] ??= (await loadEngine(supabase, l.product)).config;
+				const q = quoteWith(engines[l.product], { w: Number(l.w), h: Number(l.h), forma: l.forma, materiale: l.materiale, finitura: l.finitura ?? 'nessuna', qty: Number(l.qty), vatIncluded: true });
+				baseNet = q.net;
+			}
 			// offerta: prezzo promo se l'offerta e' ancora attiva e quantita' e misura sono quelle dell'offerta
 			const promoId = String((l as { promoId?: string }).promoId ?? '');
 			if (promoId) {
@@ -140,7 +148,7 @@ export const actions: Actions = {
 			const { data: num, error: ne } = await db.rpc('next_order_number');
 			if (ne || !num) return fail(400, { error: 'Numero d’ordine non disponibile, riprova.' });
 			const share = productsNet > 0 ? l.baseNet / productsNet : 1 / priced.length;
-			const name = l.product === 'campioni' ? 'Kit campioni' : (PRODUCT_ENGINES.find((p) => p.slug === l.product)?.name ?? l.product);
+			const name = l.product === 'campioni' ? 'Kit campioni' : l.product === 'kit_adesivi' ? 'Kit di adesivi' : (PRODUCT_ENGINES.find((p) => p.slug === l.product)?.name ?? l.product);
 			const row = {
 				user_id: user?.id ?? null, number: num as string,
 				product_slug: l.product, product_name: name,
@@ -163,7 +171,7 @@ export const actions: Actions = {
 			const { error } = await db.from('orders').insert(row);
 			if (error) return fail(400, { error: `Ordine non registrato: ${error.message}` });
 			numbers.push(row.number);
-			invLines.push({ description: l.product === 'campioni' ? `${row.number} · Kit campioni` : `${row.number} · ${name} ${l.forma} ${MATERIAL_LABEL[l.materiale] ?? l.materiale}${l.finitura && l.finitura !== 'nessuna' ? ' lamina ' + l.finitura : ''} ${l.w}×${l.h} mm`, qty: l.qty, unit_net: r2(l.baseNet / l.qty), total_net: l.baseNet });
+			invLines.push({ description: l.product === 'campioni' ? `${row.number} · Kit campioni` : l.product === 'kit_adesivi' ? `${row.number} · Kit di adesivi (${kitN(l.forma)} adesivi da ${l.w} mm, ${MATERIAL_LABEL[l.materiale] ?? l.materiale}${l.finitura && l.finitura !== 'nessuna' ? ', lamina ' + l.finitura : ''})` : `${row.number} · ${name} ${l.forma} ${MATERIAL_LABEL[l.materiale] ?? l.materiale}${l.finitura && l.finitura !== 'nessuna' ? ' lamina ' + l.finitura : ''} ${l.w}×${l.h} mm`, qty: l.qty, unit_net: r2(l.baseNet / l.qty), total_net: l.baseNet });
 		}
 		if (creditUsed > 0) await supabase.from('credit_transactions').insert({ user_id: user!.id, amount: -creditUsed, kind: 'spend', order_ref: numbers[0], note: `Credito usato sull'ordine ${numbers.join(', ')}` });
 		if (discountCode) await db.rpc('discount_code_used', { p_code: discountCode });
