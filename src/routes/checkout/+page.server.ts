@@ -131,7 +131,7 @@ export const actions: Actions = {
 			discount = d.amount;
 			discountCode = d.code;
 		}
-		/* spedizione: gratuita da 50 € di prodotti IVA inclusa (dopo lo sconto), altrimenti 4,90 €; il kit campioni da solo viaggia gratis */
+		/* spedizione: gratuita da 50 € di prodotti IVA inclusa (dopo lo sconto), altrimenti 10 €; il kit campioni da solo viaggia gratis */
 		const shippingGross = shippingGrossFor(r2(Math.max(0, productsNet - discount) * VAT), priced.every((l) => l.product === 'campioni'));
 		const shippingNet = r2(shippingGross / VAT);
 		const taxable = r2(Math.max(0, productsNet + expressNet + shippingNet - discount));

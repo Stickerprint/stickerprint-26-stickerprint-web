@@ -41,7 +41,7 @@
 	const discountAmt = $derived(discount ? Math.min(discount.amount, subtotalNet) : 0);
 	const expressBase = $derived(items.filter((i) => i.product !== 'campioni').reduce((a, i) => a + i.net, 0));
 	const expressNet = $derived(express ? Math.round(expressBase * data.expressRate * 100) / 100 : 0);
-	/* spedizione: gratuita da 50 € di prodotti (IVA inclusa, dopo lo sconto), altrimenti 4,90 € */
+	/* spedizione: gratuita da 50 € di prodotti (IVA inclusa, dopo lo sconto), altrimenti 10 € */
 	const productsGrossForShip = $derived(Math.round(Math.max(0, subtotalNet - discountAmt) * VAT * 100) / 100);
 	const shippingGross = $derived(shippingGrossFor(productsGrossForShip, items.length > 0 && items.every((i) => i.product === 'campioni')));
 	const shippingNet = $derived(Math.round((shippingGross / VAT) * 100) / 100);
