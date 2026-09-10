@@ -140,17 +140,18 @@ export const actions: Actions = {
 		}
 		const toPay = r2(totalGross - creditUsed);
 
-		// ordini: una riga per prodotto
+		// ordini: UN numero per tutto il carrello, una riga per prodotto (stesso numero, stesso gruppo)
 		const group = crypto.randomUUID();
 		const numbers: string[] = [];
 		const invLines: InvoiceLine[] = [];
+		const { data: num0, error: ne0 } = await db.rpc('next_order_number');
+		if (ne0 || !num0) return fail(400, { error: 'Numero d’ordine non disponibile, riprova.' });
+		let num = num0 as string;
 		for (const l of priced) {
-			const { data: num, error: ne } = await db.rpc('next_order_number');
-			if (ne || !num) return fail(400, { error: 'Numero d’ordine non disponibile, riprova.' });
 			const share = productsNet > 0 ? l.baseNet / productsNet : 1 / priced.length;
 			const name = l.product === 'campioni' ? 'Kit campioni' : l.product === 'kit_adesivi' ? 'Kit di adesivi' : (PRODUCT_ENGINES.find((p) => p.slug === l.product)?.name ?? l.product);
 			const row = {
-				user_id: user?.id ?? null, number: num as string,
+				user_id: user?.id ?? null, number: num,
 				product_slug: l.product, product_name: name,
 				forma: l.forma, materiale: l.materiale, finitura: l.finitura ?? null,
 				width_mm: l.w, height_mm: l.h, qty: l.qty,
@@ -168,10 +169,16 @@ export const actions: Actions = {
 				credit_used: r2(creditUsed * share), express, checkout_group: group,
 				total_paid: r2(toPay * share)
 			};
-			const { error } = await db.from('orders').insert(row);
+			let { error } = await db.from('orders').insert(row);
+			/* finche' il vincolo di unicita' sul numero non e' tolto (migrazione 0031) la seconda riga
+			   riceve un numero suo: l'ordine passa comunque */
+			if (error && error.code === '23505') {
+				const { data: n2 } = await db.rpc('next_order_number');
+				if (n2) { row.number = n2 as string; num = row.number; ({ error } = await db.from('orders').insert(row)); }
+			}
 			if (error) return fail(400, { error: `Ordine non registrato: ${error.message}` });
-			numbers.push(row.number);
-			invLines.push({ description: l.product === 'campioni' ? `${row.number} · Kit campioni` : l.product === 'kit_adesivi' ? `${row.number} · Kit di adesivi (${kitN(l.forma)} adesivi da ${l.w} mm, ${MATERIAL_LABEL[l.materiale] ?? l.materiale}${l.finitura && l.finitura !== 'nessuna' ? ', lamina ' + l.finitura : ''})` : `${row.number} · ${name} ${l.forma} ${MATERIAL_LABEL[l.materiale] ?? l.materiale}${l.finitura && l.finitura !== 'nessuna' ? ' lamina ' + l.finitura : ''} ${l.w}×${l.h} mm`, qty: l.qty, unit_net: r2(l.baseNet / l.qty), total_net: l.baseNet });
+			if (!numbers.includes(row.number)) numbers.push(row.number);
+			invLines.push({ description: l.product === 'campioni' ? `Kit campioni` : l.product === 'kit_adesivi' ? `Kit di adesivi (${kitN(l.forma)} adesivi da ${l.w} mm, ${MATERIAL_LABEL[l.materiale] ?? l.materiale}${l.finitura && l.finitura !== 'nessuna' ? ', lamina ' + l.finitura : ''})` : `${name} ${l.forma} ${MATERIAL_LABEL[l.materiale] ?? l.materiale}${l.finitura && l.finitura !== 'nessuna' ? ' lamina ' + l.finitura : ''} ${l.w}×${l.h} mm`, qty: l.qty, unit_net: r2(l.baseNet / l.qty), total_net: l.baseNet });
 		}
 		if (creditUsed > 0) await supabase.from('credit_transactions').insert({ user_id: user!.id, amount: -creditUsed, kind: 'spend', order_ref: numbers[0], note: `Credito usato sull'ordine ${numbers.join(', ')}` });
 		if (discountCode) await db.rpc('discount_code_used', { p_code: discountCode });
@@ -193,7 +200,7 @@ export const actions: Actions = {
 		} catch (e) {
 			console.error('[invoice] pdf', e);
 		}
-		const { data: firstOrder } = await db.from('orders').select('id').eq('number', numbers[0]).maybeSingle();
+		const { data: firstOrder } = await db.from('orders').select('id').eq('checkout_group', group).order('created_at').limit(1).maybeSingle();
 		await db.from('invoices').insert({ user_id: user?.id ?? null, order_id: firstOrder?.id ?? null, number: invoice.number, issued_at: invoice.issued_at, amount_gross: toPay, pdf_path: pdfPath, email, billing: bill, lines: invoiceLines, payment_terms: payTerms, order_numbers: numbers, subtotal_net: productsNet, discount_net: discount, express_net: expressNet, credit_used: creditUsed, vat_amount: vatAmount, payment_method: payment, paid_at: new Date().toISOString(), checkout_group: group, sent_at: null });
 
 		// dati salvati per la prossima volta

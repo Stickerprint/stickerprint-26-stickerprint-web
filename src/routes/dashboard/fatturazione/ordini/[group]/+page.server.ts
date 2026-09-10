@@ -10,8 +10,21 @@ export const load: PageServerLoad = async ({ params, url, locals: { supabase } }
 	const group = groupOrders(data as OrderRow[])[0];
 	// file del cliente: link temporanei (1 ora)
 	const files: Record<string, string> = {};
+	/* kit di adesivi: file_path e' una cartella (cavallotto + adesivo-1..6), si elencano tutti i file */
+	const fileLists: Record<string, { name: string; url: string }[]> = {};
 	for (const it of group.items) {
-		if (it.file_path) {
+		if (!it.file_path) continue;
+		if (it.file_path.endsWith('/')) {
+			const dir = it.file_path.replace(/\/$/, '');
+			const { data: list } = await supabase.storage.from('order-files').list(dir, { limit: 50 });
+			const out: { name: string; url: string }[] = [];
+			for (const f of list ?? []) {
+				const { data: s } = await supabase.storage.from('order-files').createSignedUrl(`${dir}/${f.name}`, 3600, { download: f.name });
+				if (s) out.push({ name: f.name, url: s.signedUrl });
+			}
+			out.sort((a, b) => (a.name.startsWith('cavallotto') ? -1 : b.name.startsWith('cavallotto') ? 1 : a.name.localeCompare(b.name, 'it', { numeric: true })));
+			fileLists[it.id] = out;
+		} else {
 			const { data: s } = await supabase.storage.from('order-files').createSignedUrl(it.file_path, 3600);
 			if (s) files[it.id] = s.signedUrl;
 		}
@@ -21,7 +34,7 @@ export const load: PageServerLoad = async ({ params, url, locals: { supabase } }
 		supabase.from('ddts').select('id, number, issued_at').eq('checkout_group', group.key),
 		loadEditorData(supabase)
 	]);
-	return { group, files, invoices: invoices ?? [], ddts: ddts ?? [], created: url.searchParams.get('creato'), mail: url.searchParams.get('mail'), ...editor };
+	return { group, files, fileLists, invoices: invoices ?? [], ddts: ddts ?? [], created: url.searchParams.get('creato'), mail: url.searchParams.get('mail'), ...editor };
 };
 
 export const actions: Actions = {

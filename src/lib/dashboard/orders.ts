@@ -88,7 +88,7 @@ export function groupOrders(rows: OrderRow[]): OrderGroup[] {
 		const order = Object.keys(ORDER_STATUS);
 		const status = items.map((i) => i.status).sort((a, b) => order.indexOf(a) - order.indexOf(b))[0];
 		return {
-			key, number: f.number, numbers: items.map((i) => i.number), channel: f.channel, country: f.country ?? 'IT', customer, email: f.email ?? '',
+			key, number: f.number, numbers: [...new Set(items.map((i) => i.number))], channel: f.channel, country: f.country ?? 'IT', customer, email: f.email ?? '',
 			created_at: f.created_at, delivery_date: f.delivery_date, status, starred: items.some((i) => i.starred), items, device: f.device,
 			qty: items.reduce((s, i) => s + i.qty, 0), net: items.reduce((s, i) => s + Number(i.total_net), 0), gross: items.reduce((s, i) => s + Number(i.total_gross), 0),
 			paid: items.reduce((s, i) => s + Number(i.total_paid ?? 0), 0), express: items.some((i) => i.express), payment_method: f.payment_method, shipping_method: f.shipping_method

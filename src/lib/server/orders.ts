@@ -74,10 +74,12 @@ export async function saveOrderDraft(supabase: SupabaseClient, d: OrderDraft, gr
 			if (error) return { group: key, numbers, error: `Ordine non salvato: ${error.message}` };
 			keep.add(prev.id); numbers.push(prev.number);
 		} else {
-			const { data: num, error: ne } = await supabase.rpc('next_order_number');
-			if (ne || !num) return { group: key, numbers, error: 'Numero d’ordine non disponibile.' };
-			const row = { ...line, user_id: g?.items[0].user_id ?? null, number: num as string, checkout_group: key, channel: g?.channel ?? 'manuale', status: g?.status ?? 'in_produzione', prod_stage: g ? (g.items[0].prod_stage ?? 'stampa') : 'stampa', payment_status: paidUpfront ? 'paid' : 'pending', device: g?.device ?? null };
-			const { data: ins, error } = await supabase.from('orders').insert(row).select('id').single();
+			/* un solo numero per ordine: le righe nuove prendono quello del gruppo (o uno nuovo, una volta sola) */
+			let num = g?.number ?? numbers[0] ?? null;
+			if (!num) { const { data: n, error: ne } = await supabase.rpc('next_order_number'); if (ne || !n) return { group: key, numbers, error: 'Numero d’ordine non disponibile.' }; num = n as string; }
+			const row = { ...line, user_id: g?.items[0].user_id ?? null, number: num, checkout_group: key, channel: g?.channel ?? 'manuale', status: g?.status ?? 'in_produzione', prod_stage: g ? (g.items[0].prod_stage ?? 'stampa') : 'stampa', payment_status: paidUpfront ? 'paid' : 'pending', device: g?.device ?? null };
+			let { data: ins, error } = await supabase.from('orders').insert(row).select('id').single();
+			if (error && error.code === '23505') { const { data: n2 } = await supabase.rpc('next_order_number'); if (n2) { row.number = n2 as string; ({ data: ins, error } = await supabase.from('orders').insert(row).select('id').single()); } }
 			if (error) return { group: key, numbers, error: `Ordine non salvato: ${error.message}` };
 			if (ins) keep.add(ins.id); numbers.push(row.number);
 		}
