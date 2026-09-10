@@ -262,7 +262,6 @@ body { overflow-x: clip; }
 .product__from.pill--blue { background: var(--blue); color: #fff; }
 .product__from.pill--yellow { background: var(--yellow); color: var(--navy); }
 .product__from.pill--pink { background: var(--pink); color: #fff; }
-.pill--orange { background: #f7941d; color: #fff; }
 .product__from.pill--green { background: var(--green); color: var(--navy); }
 @media (max-width: 1000px) { .products { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 520px) { .products { grid-template-columns: 1fr; } .product { min-height: 260px; } }
