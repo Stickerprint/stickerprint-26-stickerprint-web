@@ -5415,6 +5415,10 @@ function ppGeoUI(){
   addEventListener('message',e=>{
     if(e.origin!==origin)return; const d=e.data||{}; if(d.source!=='sito')return;
     if(d.type==='file'&&d.file){ S.rilDettagli=false;
+      /* [sito] conferma di ricezione: il sito rimanda il file solo se questa non arriva
+         (prima lo rimandava dopo 5 s se il motore era ancora al lavoro, e un file grande
+         veniva caricato due volte: la seconda ripropone la misura e annulla quella del sito) */
+      send('ricevuto',{name:d.file.name||null,size:d.file.size||0});
       (window.__msgs=window.__msgs||[]).push({t:Date.now(),type:d.type,isFile:d.file instanceof File,size:d.file.size,ftype:d.file.type});
       loadFile(d.file).then(()=>{(window.__msgs||[]).push({t:Date.now(),done:true,src:!!S.src});setTimeout(snapshot,120);},
         e=>{(window.__msgs||[]).push({t:Date.now(),error:String(e&&e.message||e)});});

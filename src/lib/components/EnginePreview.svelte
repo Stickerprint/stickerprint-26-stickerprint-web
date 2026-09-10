@@ -45,6 +45,7 @@
 	let contentH = $state(0);
 	const height = $derived(Math.max(stage, contentH));
 	let sentFor: File | null = null;
+	let acked = false; // il motore ha confermato di aver ricevuto il file
 	let retry: ReturnType<typeof setTimeout> | undefined;
 	let reloadTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -75,10 +76,14 @@
 		if (!file || !frame?.contentWindow) return;
 		if (sentFor === file && !force) return;
 		sentFor = file;
+		acked = false;
 		frame.contentWindow.postMessage({ source: 'sito', type: 'file', file }, location.origin);
 		clearTimeout(retry);
+		// il file si rimanda SOLO se il motore non conferma la ricezione (messaggio perso):
+		// un file grande puo' restare in lavorazione ben oltre i 5 s, e rimandarlo lo faceva
+		// caricare due volte (la seconda riproponeva la misura del file al posto di quella del sito)
 		retry = setTimeout(() => {
-			if (busy && sentFor === file) send(true);
+			if (!acked && sentFor === file) send(true);
 		}, 5000);
 	}
 
@@ -89,7 +94,7 @@
 	let cfgTimer: ReturnType<typeof setTimeout> | undefined;
 	let cfgSentAt = 0;
 	let sentCfg = '';
-	const resentFor = new WeakSet<File>();
+	const resentFor = new WeakMap<File, number>(); // quante volte la misura del sito e' stata rimandata per quel file
 	$effect(() => {
 		const f = file;
 		const next = f ? `${prodotto}|${foglio}|${rilievo}|${panel}|${stage}` : '';
@@ -124,6 +129,7 @@
 		const d = e.data ?? {};
 		if (d.source !== 'preprint') return;
 		if (d.type === 'ready') send();
+		if (d.type === 'ricevuto') { acked = true; clearTimeout(retry); }
 		if (d.type === 'size' && panel && d.detail?.h) contentH = d.detail.h;
 		if (d.type === 'render' && d.detail?.png) {
 			if (cfgSentAt) { console.debug('[anteprima] aggiornata in', Math.round(performance.now() - cfgSentAt), 'ms'); cfgSentAt = 0; }
@@ -135,8 +141,9 @@
 			   geometriche la misura e' quella del sito e si rimanda subito (una volta per file) */
 			const rw = Number(d.detail.w ?? 0), rh = Number(d.detail.h ?? 0);
 			const cur = file;
-			if (cur && w > 0 && h > 0 && forma !== 'sagomato' && !resentFor.has(cur) && (Math.abs(rw - w) > 0.6 || Math.abs(rh - h) > 0.6)) {
-				resentFor.add(cur);
+			const n = cur ? (resentFor.get(cur) ?? 0) : 9;
+			if (cur && w > 0 && h > 0 && forma !== 'sagomato' && n < 3 && (Math.abs(rw - w) > 0.6 || Math.abs(rh - h) > 0.6)) {
+				resentFor.set(cur, n + 1);
 				console.debug('[anteprima] misura del sito rimandata al motore', { w, h, rw, rh });
 				frame?.contentWindow?.postMessage({ source: 'sito', type: 'config', config: { forma, materiale, lamina: finitura, w, h, prodotto, foglio, rilievo } }, location.origin);
 			}
