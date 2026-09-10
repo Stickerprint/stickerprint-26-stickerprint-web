@@ -20,7 +20,7 @@
 			<li><span class="ck">✓</span>Fino a 6 adesivi diversi per kit</li>
 			<li><span class="ck">✓</span>Cavallotto stampato con il tuo file</li>
 			<li><span class="ck">✓</span>Stesso materiale e stessa misura per tutto il kit</li>
-			<li><span class="ck">✓</span>Spedizione stimata {data.shipDate}</li>
+			<li><span class="ck">✓</span>Spedizione stimata {data.shipDate} · gratuita da 50 €</li>
 		</ul>
 	</div>
 </section>

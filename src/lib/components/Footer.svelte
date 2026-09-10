@@ -55,7 +55,7 @@
 				<div class="footer__block">
 					<div class="footer__head">
 						<img src="/icons/footer/furgowh.svg" alt="" width="26" height="26" />
-						<p>Spedizioni Tracciate</p>
+						<p>Spedizione gratuita da 50 €</p>
 					</div>
 					<div class="footer__logos footer__logos--ship">
 						<img src="/icons/footer/brt.webp" alt="BRT" />

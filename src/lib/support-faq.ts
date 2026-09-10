@@ -233,6 +233,10 @@ export const SUPPORT_TOPICS: SupportTopic[] = [
   "title": "Ordini e spedizioni",
   "faqs": [
    {
+    "q": "Quanto costa la spedizione?",
+    "a": "La spedizione in Italia è gratuita per ordini da 50 € in su (IVA inclusa). Sotto i 50 € costa 10 €, oppure 15 € per Sicilia, Sardegna e Calabria, dove il corriere ha tariffe più alte. Nel carrello vedi sempre quanto manca per la spedizione gratuita."
+   },
+   {
     "q": "Quali sono i tempi di produzione e consegna?",
     "a": "I tempi di produzione standard sono di 3-5 giorni lavorativi dalla approvazione della prova di stampa. La spedizione standard impiega ulteriori 2-4 giorni lavorativi. È disponibile anche la spedizione express per consegne più rapide con un supplemento del 30%."
    },

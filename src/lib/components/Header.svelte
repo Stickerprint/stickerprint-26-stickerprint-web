@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { User } from '@supabase/supabase-js';
+	import { FREE_SHIPPING_GROSS, SHIPPING_GROSS, SHIPPING_REMOTE_GROSS } from '$lib/shipping-rules';
 	import { page } from '$app/state';
 
 	let { user }: { user: User | null } = $props();
@@ -65,6 +66,7 @@
 	});
 </script>
 
+<div class="announce"><span>🚚 <b>Spedizione gratuita da {FREE_SHIPPING_GROSS} €</b> in tutta Italia</span><span class="announce__sub">· sotto i {FREE_SHIPPING_GROSS} € costa {SHIPPING_GROSS} € ({SHIPPING_REMOTE_GROSS} € per Sicilia, Sardegna e Calabria)</span></div>
 <header class="header">
 	<div class="container header__inner">
 		<div class="header__left">

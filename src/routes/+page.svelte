@@ -63,8 +63,8 @@
 				<a class="btn btn--blue btn--lg" href="/adesivi-personalizzati">Stampa ora</a>
 				<a class="btn btn--yellow btn--lg" href="/campioni">Campioni</a>
 			</div>
-			<div class="pills"><div class="pills__row"><span class="pill pill--blue">✦ Anteprima immediata</span><span class="pill pill--yellow">✦ Fino al 6% di Credito Stickerprint</span></div></div>
-			<p class="hero__ship"><span class="hero__rocket" aria-hidden="true">🚀</span><span>Ordina ora: spedizione stimata <b>{data.shipDate}</b>.</span></p>
+			<div class="pills"><div class="pills__row"><span class="pill pill--blue">✦ Anteprima immediata</span><span class="pill pill--yellow">✦ Fino al 6% di Credito Stickerprint</span><span class="pill pill--blue">🚚 Spedizione gratuita da 50 €</span></div></div>
+			<p class="hero__ship"><span class="hero__rocket" aria-hidden="true">🚀</span><span>Ordina ora: spedizione stimata <b>{data.shipDate}</b>, gratuita da 50 €.</span></p>
 		</div>
 		<div class="hero__visual">
 			<img src="/images/ig-3.jpg" alt="Adesivi fustellati Bubu's Smashburger stampati da Stickerprint" width="600" height="600" />

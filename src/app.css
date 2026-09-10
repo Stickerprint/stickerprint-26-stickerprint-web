@@ -557,3 +557,9 @@ body { overflow-x: clip; }
   /* header: menu a tre trattini a sinistra, logo al centro, account e carrello a destra */
   .header__left { display: flex; align-items: center; }
 }
+
+/* barra annuncio sopra l'header: la regola della spedizione si legge prima del carrello */
+.announce { background: #fbe36b; color: var(--navy); text-align: center; font: 600 13px/1.3 Montserrat, system-ui; padding: 7px 12px; display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 6px; }
+.announce b { font-weight: 800; }
+.announce__sub { font-weight: 500; opacity: .85; }
+@media (max-width: 640px) { .announce__sub { display: none; } }
