@@ -1,5 +1,7 @@
 <script lang="ts">
 	import '$lib/styles/product.css';
+	import FreeShippingBar from './FreeShippingBar.svelte';
+	import { readCart } from '$lib/cart';
 	/**
 	 * Preventivatore prodotto (adesivi, etichette, vetrofanie…).
 	 * Sinistra: il logo del cliente con i comandi del motore di anteprima.
@@ -13,6 +15,9 @@
 	import { addToCart } from '$lib/cart';
 	import { quoteWith, minForShape, startSize, sizeProposals, roundHalf, eur0, eur2, showFinishStep, showMaterialStep, type EngineConfig } from '$lib/pricing/engine';
 
+	/* totale prodotti gia' nel carrello (per la barra della spedizione gratuita) */
+	let cartGross = $state(0);
+	onMount(() => { try { cartGross = readCart().filter((i) => i.product !== 'campioni').reduce((a, i) => a + (Number(i.gross) || 0), 0); } catch { cartGross = 0; } });
 	let {
 		shipDate,
 		cfg,
@@ -456,6 +461,7 @@
 	</aside>
 
 	<!-- RIEPILOGO: spedizione, credito, totale e bottone, tutti alla stessa altezza -->
+	<div class="cfg__freeship"><FreeShippingBar gross={cartGross + q.gross} compact prefix={cartGross > 0 ? 'Con il carrello attuale: ' : 'Con questo ordine: '} /></div>
 	<div class="cfg__summary">
 		<div class="sum sum--ship">
 			<span class="sum__ico">🚀</span>

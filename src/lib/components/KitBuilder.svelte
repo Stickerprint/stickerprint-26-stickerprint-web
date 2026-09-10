@@ -7,12 +7,18 @@
 	 * misura); alla conferma l'adesivo cade nella bustina, dove si puo' spostare col mouse.
 	 */
 	import { goto } from '$app/navigation';
+	import FreeShippingBar from './FreeShippingBar.svelte';
+	import { readCart } from '$lib/cart';
+	import { onMount } from 'svelte';
 	import { addToCart } from '$lib/cart';
 	import { saveCartFile, saveCartPreview } from '$lib/utils/draftStore';
 	import { kitQuote, KIT_QTY, KIT_SIZES, KIT_MAX } from '$lib/pricing/kit';
 	import type { EngineConfig } from '$lib/pricing/engine';
 	import EnginePreview from './EnginePreview.svelte';
 
+	/* totale prodotti gia' nel carrello (per la barra della spedizione gratuita) */
+	let cartGross = $state(0);
+	onMount(() => { try { cartGross = readCart().filter((i) => i.product !== 'campioni').reduce((a, i) => a + (Number(i.gross) || 0), 0); } catch { cartGross = 0; } });
 	let { cfg, shipDate }: { cfg: EngineConfig; shipDate: string } = $props();
 
 	/* misure del cavallotto (linguetta piegata: il fronte e' 80 x 40 mm) */
@@ -403,6 +409,7 @@
 	</aside>
 
 	<!-- RIEPILOGO: spedizione, credito, totale, come negli altri preventivatori -->
+	<div class="cfg__freeship"><FreeShippingBar gross={cartGross + q.gross} compact prefix={cartGross > 0 ? 'Con il carrello attuale: ' : 'Con questo ordine: '} /></div>
 	<div class="cfg__summary">
 		<div class="sum sum--ship"><span class="sum__ico">🚀</span><div class="sum__text"><span class="sum__label">Spedizione stimata</span><span class="sum__value">{shipDate}</span><span class="sum__sub">Corriere espresso tracciato</span></div></div>
 		<div class="sum sum--credit"><span class="sum__ico"><img src="/images/coin-sp.png" alt="Credito Stickerprint" /></span><div class="sum__text"><span class="sum__label">Guadagni in credito</span><span class="sum__value">{eur2(q.net * cfg.creditRate)}</span><span class="sum__sub">da usare sul prossimo ordine</span></div></div>

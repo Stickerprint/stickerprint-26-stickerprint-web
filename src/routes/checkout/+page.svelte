@@ -1,5 +1,7 @@
 <script lang="ts">
 	import '$lib/styles/checkout.css';
+	import FreeShippingBar from '$lib/components/FreeShippingBar.svelte';
+	import { shippingGrossFor } from '$lib/shipping-rules';
 	import { onMount, tick } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { deserialize } from '$app/forms';
@@ -39,7 +41,11 @@
 	const discountAmt = $derived(discount ? Math.min(discount.amount, subtotalNet) : 0);
 	const expressBase = $derived(items.filter((i) => i.product !== 'campioni').reduce((a, i) => a + i.net, 0));
 	const expressNet = $derived(express ? Math.round(expressBase * data.expressRate * 100) / 100 : 0);
-	const totalNet = $derived(Math.max(0, subtotalNet - discountAmt) + expressNet);
+	/* spedizione: gratuita da 50 € di prodotti (IVA inclusa, dopo lo sconto), altrimenti 4,90 € */
+	const productsGrossForShip = $derived(Math.round(Math.max(0, subtotalNet - discountAmt) * VAT * 100) / 100);
+	const shippingGross = $derived(shippingGrossFor(productsGrossForShip, items.length > 0 && items.every((i) => i.product === 'campioni')));
+	const shippingNet = $derived(Math.round((shippingGross / VAT) * 100) / 100);
+	const totalNet = $derived(Math.max(0, subtotalNet - discountAmt) + expressNet + shippingNet);
 	const totalGross = $derived(Math.round(totalNet * VAT * 100) / 100);
 	const creditUsed = $derived(useCredit ? Math.min(data.credit, totalGross) : 0);
 	const toPay = $derived(Math.round((totalGross - creditUsed) * 100) / 100);
@@ -232,6 +238,7 @@
 							</div>
 						</div>
 					{/each}
+					{#if !items.every((i) => i.product === 'campioni')}<FreeShippingBar gross={productsGrossForShip} />{/if}
 					<div class="co-row"><span>Prova automatica immediata</span><b>Inclusa</b></div>
 					<div class="co-ship">🚀 Pronti per la spedizione entro <b>{express ? data.expressDate : data.shipDate}</b>.</div>
 
@@ -250,7 +257,7 @@
 						<div class="co-row"><span>Subtotale</span><span>{eur(subtotalGross)}</span></div>
 						{#if discountAmt > 0}<div class="co-row"><span>Sconto {discount?.code}</span><span>−{eur(discountAmt * VAT)}</span></div>{/if}
 						{#if express}<div class="co-row"><span>Produzione express</span><span>{eur(expressNet * VAT)}</span></div>{/if}
-						<div class="co-row"><span>Spedizione</span><span>Gratuita</span></div>
+						<div class="co-row"><span>Spedizione</span><span>{shippingGross > 0 ? eur(shippingGross) : 'Gratuita'}</span></div>
 						{#if creditUsed > 0}<div class="co-row"><span>Credito Stickerprint</span><span>−{eur(creditUsed)}</span></div>{/if}
 						<div class="co-row co-row--total"><span>Totale:</span><span>{eur(toPay)}</span></div>
 						<small class="center">IVA {eur(vatAmount)} inclusa</small>
