@@ -57,6 +57,11 @@
 	type Pop = { kind: 'cav' | 'sticker'; index: number; file: File; misura: number; forma: string; w: number; h: number; ratio: number; last: Render | null; busy: boolean; covered: boolean; forced: number };
 	let pop = $state<Pop | null>(null);
 	let popEngine = $state<EnginePreview | undefined>();
+	/* il motore del popup resta montato (nascosto) fra un file e l'altro: niente ricaricamento
+	   e niente riscaldamento del codice a ogni apertura; il file precedente resta finche' non
+	   arriva il nuovo */
+	let engFile = $state<File | null>(null);
+	let engKind = $state<'cav' | 'sticker'>('sticker');
 	const equal = (forma: string) => forma === 'tondo' || forma === 'quadrato';
 	const ACCEPT = 'image/png,image/jpeg,image/svg+xml,application/pdf';
 	function ok(f: File) { return /^image\//.test(f.type) || /\.(pdf|svg|png|jpe?g|webp)$/i.test(f.name); }
@@ -66,6 +71,10 @@
 		const forma = kind === 'sticker' ? (slots[index]?.forma || 'sagomato') : 'rettangolare';
 		pop = { kind, index, file, misura, forma, w: kind === 'cav' ? CAV.w : misura, h: kind === 'cav' ? CAV.h : Math.round(misura * 0.8), ratio: 0, last: null, busy: true, covered: false, forced: 0 };
 		if (kind === 'sticker') setPopSize(misura);
+		/* stesso file gia' nel motore (si riapre il popup): nessun nuovo caricamento, si chiede l'istantanea */
+		const same = engFile === file;
+		engFile = file; engKind = kind;
+		if (same) setTimeout(() => popEngine?.post('snapshot'), 150);
 	}
 	/** il cavallotto va riempito tutto: zoom del disegno fino a coprire 80 x 40 (dalle proporzioni del file) */
 	async function coverCav(srcMM?: { w: number; h: number } | null) {
@@ -400,41 +409,46 @@
 	</div>
 </section>
 
-<!-- POPUP: il motore per il file appena caricato (bordo, sfondo, zoom dal pannello del motore; misura qui sotto) -->
-{#if pop}
-	<div class="modal-backdrop" role="dialog" aria-modal="true" aria-label={pop.kind === 'cav' ? 'Cavallotto' : 'Adesivo'}>
+<!-- POPUP: il motore per il file appena caricato (bordo, sfondo, zoom dal pannello del motore; misura qui sotto).
+     Il contenitore resta nel DOM anche da chiuso: il motore dentro non si ricrea a ogni file. -->
+{#if engFile}
+	<div class="modal-backdrop" role="dialog" aria-modal="true" aria-label={engKind === 'cav' ? 'Cavallotto' : 'Adesivo'} hidden={!pop}>
 		<div class="modal kit__modal">
 			<button type="button" class="modal__close" aria-label="Chiudi" onclick={() => (pop = null)}>✕</button>
-			<h3>{pop.kind === 'cav' ? 'Il cavallotto' : `Adesivo ${pop.index + 1}`} <small>{pop.file.name}</small></h3>
-			{#if pop.kind === 'sticker'}
-				<div class="kit__shapes">{#each SHAPES as sh (sh.id)}<button type="button" class="kit__shape" class:is-on={pop.forma === sh.id} onclick={() => setPopShape(sh.id)}><img src={sh.img} alt="" /><b>{sh.label}</b></button>{/each}</div>
+			{#if pop}
+				<h3>{pop.kind === 'cav' ? 'Il cavallotto' : `Adesivo ${pop.index + 1}`} <small>{pop.file.name}</small></h3>
+				{#if pop.kind === 'sticker'}
+					<div class="kit__shapes">{#each SHAPES as sh (sh.id)}<button type="button" class="kit__shape" class:is-on={pop.forma === sh.id} onclick={() => setPopShape(sh.id)}><img src={sh.img} alt="" /><b>{sh.label}</b></button>{/each}</div>
+				{/if}
 			{/if}
 			<div class="kit__modal-engine">
-				<EnginePreview bind:this={popEngine} file={pop.file} forma={pop.forma} {materiale} {finitura} prodotto="sticker" w={pop.w} h={pop.h} panel showCut={pop.kind === 'sticker'} noang={pop.kind === 'cav'} stage={300} onrender={popRender} />
+				<EnginePreview bind:this={popEngine} file={engFile} forma={pop?.forma ?? 'sagomato'} {materiale} {finitura} prodotto="sticker" w={pop?.w ?? 0} h={pop?.h ?? 0} panel showCut={engKind === 'sticker'} noang={engKind === 'cav'} stage={300} onrender={popRender} />
 			</div>
-			{#if pop.kind === 'sticker'}
-				<div class="kit__row kit__row--size">
-					<span class="step__hint">Misura (lato lungo)</span>
-					<div class="kit__chips">{#each KIT_SIZES as m (m)}<button type="button" class="chip" class:is-on={pop.misura === m} onclick={() => setPopSize(m)}>{m} mm</button>{/each}</div>
-					<label class="kit__free">
-						<span>Su misura</span>
-						{#if pop.forma === 'ovale' || pop.forma === 'rettangolare'}
-							<input type="number" min={FREE_MIN} max={FREE_MAX} step="0.5" value={pop.w} onchange={(e) => setPopWH(+e.currentTarget.value, pop?.h ?? 0)} aria-label="Larghezza in mm" /> ×
-							<input type="number" min={FREE_MIN} max={FREE_MAX} step="0.5" value={pop.h} onchange={(e) => setPopWH(pop?.w ?? 0, +e.currentTarget.value)} aria-label="Altezza in mm" /> mm
-						{:else}
-							<input type="number" min={FREE_MIN} max={FREE_MAX} step="0.5" value={pop.misura} onchange={(e) => setPopSize(+e.currentTarget.value)} aria-label="Lato lungo in mm" /> mm
-							<small>proporzioni bloccate</small>
-						{/if}
-					</label>
-					{#if pop.last}<span class="step__hint">esce {pop.last.w.toFixed(1).replace('.', ',')} × {pop.last.h.toFixed(1).replace('.', ',')} mm</span>{/if}
+			{#if pop}
+				{#if pop.kind === 'sticker'}
+					<div class="kit__row kit__row--size">
+						<span class="step__hint">Misura (lato lungo)</span>
+						<div class="kit__chips">{#each KIT_SIZES as m (m)}<button type="button" class="chip" class:is-on={pop.misura === m} onclick={() => setPopSize(m)}>{m} mm</button>{/each}</div>
+						<label class="kit__free">
+							<span>Su misura</span>
+							{#if pop.forma === 'ovale' || pop.forma === 'rettangolare'}
+								<input type="number" min={FREE_MIN} max={FREE_MAX} step="0.5" value={pop.w} onchange={(e) => setPopWH(+e.currentTarget.value, pop?.h ?? 0)} aria-label="Larghezza in mm" /> ×
+								<input type="number" min={FREE_MIN} max={FREE_MAX} step="0.5" value={pop.h} onchange={(e) => setPopWH(pop?.w ?? 0, +e.currentTarget.value)} aria-label="Altezza in mm" /> mm
+							{:else}
+								<input type="number" min={FREE_MIN} max={FREE_MAX} step="0.5" value={pop.misura} onchange={(e) => setPopSize(+e.currentTarget.value)} aria-label="Lato lungo in mm" /> mm
+								<small>proporzioni bloccate</small>
+							{/if}
+						</label>
+						{#if pop.last}<span class="step__hint">esce {pop.last.w.toFixed(1).replace('.', ',')} × {pop.last.h.toFixed(1).replace('.', ',')} mm</span>{/if}
+					</div>
+				{:else}
+					<div class="kit__row kit__row--cav"><span class="step__hint">Anteprima esatta del cavallotto, {CAV.w} × {CAV.h} mm: il file deve coprirlo tutto. Sposta e ingrandisci con i comandi sotto l'anteprima.</span><button type="button" class="btn btn--sm" onclick={() => coverCav(null)}>Riempi tutto il cavallotto</button></div>
+				{/if}
+				<div class="kit__modal-actions">
+					<button type="button" class="btn btn--sm" onclick={() => (pop = null)}>Annulla</button>
+					<button type="button" class="btn btn--green" disabled={pop.busy || !pop.last} onclick={confirmPop}>{pop.busy ? 'Preparo l’anteprima…' : pop.kind === 'cav' ? 'Conferma il cavallotto' : 'Conferma: mettilo nella bustina'}</button>
 				</div>
-			{:else}
-				<div class="kit__row"><span class="step__hint">Anteprima esatta del cavallotto, {CAV.w} × {CAV.h} mm: il file deve coprirlo tutto. Sposta e ingrandisci con i comandi sotto l'anteprima.</span><button type="button" class="btn btn--sm" onclick={() => coverCav(null)}>Riempi tutto il cavallotto</button></div>
 			{/if}
-			<div class="kit__modal-actions">
-				<button type="button" class="btn btn--sm" onclick={() => (pop = null)}>Annulla</button>
-				<button type="button" class="btn btn--green" disabled={pop.busy || !pop.last} onclick={confirmPop}>{pop.busy ? 'Preparo l’anteprima…' : pop.kind === 'cav' ? 'Conferma il cavallotto' : 'Conferma: mettilo nella bustina'}</button>
-			</div>
 		</div>
 	</div>
 {/if}

@@ -655,7 +655,7 @@ const RESIN_R=2.0;          // raggio minimo obbligatorio sugli angoli, in mm
 const RESIN_NECK=5.0;       // collo minimo per il resinato, in mm
 const RESIN_BORDER=2.5;     // bordo minimo, così l'arrotondamento non mangia il disegno
 const EMBED=(new URLSearchParams(location.search)).get('embed')==='1';
-const NOANG=(new URLSearchParams(location.search)).get('noang')==='1';
+let NOANG=(new URLSearchParams(location.search)).get('noang')==='1';
 const S={prod:'sticker',foglio:false,lente:false,artClip:null,palette:null,palIdx:0,bgOpaque:true,viewTotW:50,resinR:0,src:null,artCanvas:null,name:'',srcW:0,srcH:0,srcMM:null,work:null,mask:null,mw:0,mh:0,bbox:null,
   bgCol:null,bgSrc:'',cands:[],chosen:-1,ctx0:null,seeds:[],lineSeed:null,wand:false,keptPct:0,
   Rsafe:null,RsafeFor:null,polys:null,pathD:'',cutW:0,cutH:0,bleed:0,art:null,quality:null,
@@ -667,11 +667,19 @@ function edt1d(f,d,v,z,n){let k=0;v[0]=0;z[0]=-1e20;z[1]=1e20;
     while(s<=z[k]){k--;s=((f[q]+q*q)-(f[v[k]]+v[k]*v[k]))/(2*q-2*v[k]);}
     k++;v[k]=q;z[k]=s;z[k+1]=1e20;}
   k=0;for(let q=0;q<n;q++){while(z[k+1]<q)k++;d[q]=(q-v[k])*(q-v[k])+f[v[k]];}}
-function edt2d(bin,w,h){const g=new Float64Array(w*h);
-  for(let i=0;i<w*h;i++)g[i]=bin[i]?0:1e20;
-  const n=Math.max(w,h),f=new Float64Array(n),d=new Float64Array(n),v=new Int32Array(n),z=new Float64Array(n+1);
-  for(let x=0;x<w;x++){for(let y=0;y<h;y++)f[y]=g[y*w+x];edt1d(f,d,v,z,h);for(let y=0;y<h;y++)g[y*w+x]=d[y];}
-  for(let y=0;y<h;y++){const o=y*w;for(let x=0;x<w;x++)f[x]=g[o+x];edt1d(f,d,v,z,w);for(let x=0;x<w;x++)g[o+x]=d[x];}
+/* distanze al quadrato in Float32 (esatte fino a 4096 px di distanza: ne bastano 1100) e
+   colonne tutte piene o tutte vuote saltate: stesso risultato, meno memoria e meno tempo */
+function edt2d(bin,w,h){const N=w*h,g=new Float32Array(N);
+  for(let i=0;i<N;i++)g[i]=bin[i]?0:1e20;
+  const n=Math.max(w,h),f=new Float32Array(n),d=new Float32Array(n),v=new Int32Array(n),z=new Float64Array(n+1);
+  for(let x=0;x<w;x++){let any0=false,anyInf=false;
+    for(let y=0,i=x;y<h;y++,i+=w){const t=g[i];f[y]=t;if(t===0)any0=true;else anyInf=true;}
+    if(!any0||!anyInf)continue;
+    edt1d(f,d,v,z,h);for(let y=0,i=x;y<h;y++,i+=w)g[i]=d[y];}
+  for(let y=0;y<h;y++){const o=y*w;let allInf=true;
+    for(let x=0;x<w;x++){const t=g[o+x];f[x]=t;if(t<1e19)allInf=false;}
+    if(allInf)continue;
+    edt1d(f,d,v,z,w);for(let x=0;x<w;x++)g[o+x]=d[x];}
   return g;}
 function fillHoles(bin,w,h){const seen=new Uint8Array(w*h),st=[];
   const push=i=>{if(!seen[i]&&!bin[i]){seen[i]=1;st.push(i);}};
@@ -1072,6 +1080,10 @@ function searchSegmentation(d,w,h){
     dRef=Math.max(6,ds[Math.floor(ds.length*0.90)]||10);}
   const bgm={C:km[3],dRef},ctx={ref,km,bgm};
   const cands=[];
+  /* molte strategie producono la STESSA maschera (tolleranze diverse su uno sfondo pulito):
+     il punteggio si calcola una volta per maschera e si riusa, il risultato non cambia */
+  const memo=new Map();
+  const hashOf=m=>{let a=2166136261,b=0;for(let i=0;i<m.length;i++){if(m[i]){a=Math.imul(a^i,16777619);b+=i;}}return (a>>>0)+':'+b+':'+m.length;};
   const add=st=>{
     const raw=applyStrategy(d,w,h,st,ctx);
     const m=st.kind==='intero'?raw:despeckle(raw,w,h,0.0004);
@@ -1083,7 +1095,9 @@ function searchSegmentation(d,w,h){
       cands.push({mask:m,st,w,h,label:labelOf(st),score:0.055,keptPct:k/(w*h),
         edge:0,contrast:0,bgFit:1,borderTouch:1,bgStd:0,compact:0,comps:1,holeFrac:0,edgeIsBg:0,eaten:0});
       return;}
-    const s=scoreMask(m,d,w,h,grad,gRef,bgm);
+    const hk=hashOf(m);
+    let s=memo.get(hk);
+    if(s)s=Object.assign({},s); else {s=scoreMask(m,d,w,h,grad,gRef,bgm);memo.set(hk,Object.assign({},s));}
     if(s.score<0)return;
     const t=st.tol||st.gt||0;s.score*=(1-Math.min(0.35,t*0.006));
     cands.push(Object.assign({mask:m,st,w,h,label:labelOf(st)},s));};
@@ -5453,6 +5467,8 @@ function ppGeoUI(){
         if(c.prodotto){const p=String(c.prodotto).toLowerCase().indexOf('resin')>=0?'resin':'sticker'; if(p!==S.prod){setProd(p);geom=true;try{ppGeoUI();}catch(e){}}}
         if(c.foglio!==undefined){const fg=!!c.foglio; if(fg!==S.foglio){S.foglio=fg;geom=true;}}
         if(c.rilievo!==undefined){const rl=!!c.rilievo; if(rl!==S.rilievo){S.rilievo=rl;mat=true;}}
+        /* cavallotto del kit (spigoli vivi, niente angoli) e adesivi passano dallo stesso motore */
+        if(c.noang!==undefined&&(!!c.noang)!==NOANG){NOANG=!!c.noang;try{applyPreset(false);ppGeoUI();}catch(e){}geom=true;}
         const f=U_FORMA[String(c.forma||'').toLowerCase()];
         if(f&&f!==CL.shape){const eraDiecut=(CL.shape==='diecut');CL.shape=f;document.querySelectorAll('#cShape .chip').forEach(e=>e.classList.toggle('on',e.dataset.s===f));applyPreset(false);geom=true;
           /* [sito] lo scontorno dipende dalla sagoma (geoIdx: col sagomato lo sfondo va tolto sempre,

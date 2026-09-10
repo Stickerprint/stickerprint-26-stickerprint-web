@@ -104,7 +104,7 @@
 		});
 	});
 	$effect(() => {
-		const cfg = JSON.stringify({ forma, materiale, lamina: finitura, w, h, prodotto, foglio, rilievo });
+		const cfg = JSON.stringify({ forma, materiale, lamina: finitura, w, h, prodotto, foglio, rilievo, noang });
 		untrack(() => {
 			if (!file || !src || cfg === sentCfg) return;
 			clearTimeout(cfgTimer);
@@ -135,7 +135,7 @@
 			if (cfgSentAt) { console.debug('[anteprima] aggiornata in', Math.round(performance.now() - cfgSentAt), 'ms'); cfgSentAt = 0; }
 			busy = false;
 			ready = true;
-			sentCfg = JSON.stringify({ forma, materiale, lamina: finitura, w, h, prodotto, foglio, rilievo });
+			sentCfg = JSON.stringify({ forma, materiale, lamina: finitura, w, h, prodotto, foglio, rilievo, noang });
 			clearTimeout(retry);
 			/* al caricamento il motore propone una misura sua (dalle proporzioni del file); sulle forme
 			   geometriche la misura e' quella del sito e si rimanda subito (una volta per file) */
@@ -145,7 +145,7 @@
 			if (cur && w > 0 && h > 0 && forma !== 'sagomato' && n < 3 && (Math.abs(rw - w) > 0.6 || Math.abs(rh - h) > 0.6)) {
 				resentFor.set(cur, n + 1);
 				console.debug('[anteprima] misura del sito rimandata al motore', { w, h, rw, rh });
-				frame?.contentWindow?.postMessage({ source: 'sito', type: 'config', config: { forma, materiale, lamina: finitura, w, h, prodotto, foglio, rilievo } }, location.origin);
+				frame?.contentWindow?.postMessage({ source: 'sito', type: 'config', config: { forma, materiale, lamina: finitura, w, h, prodotto, foglio, rilievo, noang } }, location.origin);
 			}
 			onrender?.({ png: d.detail.png, name: d.detail.name ?? null, w: d.detail.w ?? 0, h: d.detail.h ?? 0, srcMM: d.detail.srcMM ?? null, cut: d.detail.cut ?? null, view: d.detail.view ?? null, palette: d.detail.palette ?? [], palIdx: d.detail.palIdx ?? 0, rimuovi: !!d.detail.rimuovi, foglio: d.detail.foglio ?? null });
 			frame?.contentWindow?.postMessage({ source: 'sito', type: 'cut', on: showCut }, location.origin);
