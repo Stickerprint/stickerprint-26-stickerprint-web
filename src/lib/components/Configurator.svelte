@@ -465,7 +465,7 @@
 	<div class="cfg__summary">
 		<div class="sum sum--ship">
 			<span class="sum__ico">🚀</span>
-			<div class="sum__text"><span class="sum__label">Spedizione stimata</span><span class="sum__value">{shipDate}</span><span class="sum__sub">Gratuita da 50 €, altrimenti 10 €</span></div>
+			<div class="sum__text"><span class="sum__label">Spedizione stimata</span><span class="sum__value">{shipDate}</span><span class="sum__sub">Spedizione gratuita da 50 €</span></div>
 		</div>
 		<div class="sum sum--credit">
 			<span class="sum__ico"><img src="/images/coin-sp.png" alt="Credito Stickerprint" /></span>

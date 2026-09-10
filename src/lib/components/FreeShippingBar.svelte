@@ -1,6 +1,6 @@
 <script lang="ts">
 	/** Barra "ti mancano X € per la spedizione gratuita": nel carrello e sotto i preventivatori */
-	import { FREE_SHIPPING_GROSS, SHIPPING_GROSS, SHIPPING_REMOTE_GROSS, missingForFree } from '$lib/shipping-rules';
+	import { FREE_SHIPPING_GROSS, missingForFree } from '$lib/shipping-rules';
 	let { gross, compact = false, prefix = '' }: { gross: number; compact?: boolean; prefix?: string } = $props();
 	const missing = $derived(missingForFree(gross));
 	const pct = $derived(Math.max(4, Math.min(100, (gross / FREE_SHIPPING_GROSS) * 100)));
@@ -16,7 +16,7 @@
 		{/if}
 	</div>
 	<div class="fship__bar"><i style="width:{pct}%"></i></div>
-	{#if !compact}<small>Spedizione gratuita in Italia da {eur(FREE_SHIPPING_GROSS)} · sotto la soglia {eur(SHIPPING_GROSS)} ({eur(SHIPPING_REMOTE_GROSS)} per Sicilia, Sardegna e Calabria)</small>{/if}
+	{#if !compact}<small>Spedizione gratuita in Italia da {eur(FREE_SHIPPING_GROSS)}</small>{/if}
 </div>
 
 <style>
