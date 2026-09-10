@@ -1,7 +1,7 @@
 <script lang="ts">
 	import '$lib/styles/checkout.css';
 	import FreeShippingBar from '$lib/components/FreeShippingBar.svelte';
-	import { shippingGrossFor } from '$lib/shipping-rules';
+	import { shippingGrossFor, isRemote } from '$lib/shipping-rules';
 	import { onMount, tick } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { deserialize } from '$app/forms';
@@ -43,7 +43,8 @@
 	const expressNet = $derived(express ? Math.round(expressBase * data.expressRate * 100) / 100 : 0);
 	/* spedizione: gratuita da 50 € di prodotti (IVA inclusa, dopo lo sconto), altrimenti 10 € */
 	const productsGrossForShip = $derived(Math.round(Math.max(0, subtotalNet - discountAmt) * VAT * 100) / 100);
-	const shippingGross = $derived(shippingGrossFor(productsGrossForShip, items.length > 0 && items.every((i) => i.product === 'campioni')));
+	let province = $state(addr?.province ?? '');
+	const shippingGross = $derived(shippingGrossFor(productsGrossForShip, items.length > 0 && items.every((i) => i.product === 'campioni'), province));
 	const shippingNet = $derived(Math.round((shippingGross / VAT) * 100) / 100);
 	const totalNet = $derived(Math.max(0, subtotalNet - discountAmt) + expressNet + shippingNet);
 	const totalGross = $derived(Math.round(totalNet * VAT * 100) / 100);
@@ -180,7 +181,7 @@
 					<label>Città <i>obbligatorio</i><input name="city" required value={addr?.city ?? ''} /></label>
 					<label>CAP <i>obbligatorio</i><input name="zip" required inputmode="numeric" value={addr?.zip ?? ''} /></label>
 					<label>Provincia <i>obbligatorio</i>
-						<select name="province" required>
+						<select name="province" required bind:value={province}>
 							<option value="">Seleziona</option>
 							{#each PROVINCES as [sigla, nome] (sigla)}<option value={sigla} selected={addr?.province === sigla}>{nome}</option>{/each}
 						</select>
@@ -257,7 +258,7 @@
 						<div class="co-row"><span>Subtotale</span><span>{eur(subtotalGross)}</span></div>
 						{#if discountAmt > 0}<div class="co-row"><span>Sconto {discount?.code}</span><span>−{eur(discountAmt * VAT)}</span></div>{/if}
 						{#if express}<div class="co-row"><span>Produzione express</span><span>{eur(expressNet * VAT)}</span></div>{/if}
-						<div class="co-row"><span>Spedizione</span><span>{shippingGross > 0 ? eur(shippingGross) : 'Gratuita'}</span></div>
+						<div class="co-row"><span>Spedizione{#if shippingGross > 0 && isRemote(province)} <small>(isole e zone remote)</small>{/if}</span><span>{shippingGross > 0 ? eur(shippingGross) : 'Gratuita'}</span></div>
 						{#if creditUsed > 0}<div class="co-row"><span>Credito Stickerprint</span><span>−{eur(creditUsed)}</span></div>{/if}
 						<div class="co-row co-row--total"><span>Totale:</span><span>{eur(toPay)}</span></div>
 						<small class="center">IVA {eur(vatAmount)} inclusa</small>

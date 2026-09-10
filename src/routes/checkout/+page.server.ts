@@ -1,6 +1,6 @@
 import { fail } from '@sveltejs/kit';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { shippingGrossFor } from '$lib/shipping-rules';
+import { shippingGrossFor, isRemote } from '$lib/shipping-rules';
 import { env } from '$env/dynamic/private';
 import { PUBLIC_SUPABASE_URL, PUBLIC_SITE_URL } from '$env/static/public';
 import { loadEngine } from '$lib/server/pricing';
@@ -132,7 +132,7 @@ export const actions: Actions = {
 			discountCode = d.code;
 		}
 		/* spedizione: gratuita da 50 € di prodotti IVA inclusa (dopo lo sconto), altrimenti 10 €; il kit campioni da solo viaggia gratis */
-		const shippingGross = shippingGrossFor(r2(Math.max(0, productsNet - discount) * VAT), priced.every((l) => l.product === 'campioni'));
+		const shippingGross = shippingGrossFor(r2(Math.max(0, productsNet - discount) * VAT), priced.every((l) => l.product === 'campioni'), ship.province);
 		const shippingNet = r2(shippingGross / VAT);
 		const taxable = r2(Math.max(0, productsNet + expressNet + shippingNet - discount));
 		const vatAmount = r2(taxable * (VAT - 1));
@@ -190,7 +190,7 @@ export const actions: Actions = {
 		// fattura: registrata, PDF generato e inviato via email (con la conferma d'ordine)
 		const { data: invNum } = await db.rpc('next_invoice_number');
 		const invoiceLines = normalizeLines(invLines, discount, creditUsed);
-		if (shippingNet > 0) invoiceLines.push({ description: 'Spedizione', qty: 1, unit_net: shippingNet, total_net: shippingNet });
+		if (shippingNet > 0) invoiceLines.push({ description: isRemote(ship.province) ? 'Spedizione (isole e zone remote)' : 'Spedizione', qty: 1, unit_net: shippingNet, total_net: shippingNet });
 		const payTerms = [{ due: new Date().toISOString().slice(0, 10), amount: toPay, method: ({ paypal: 'PayPal', stripe: 'Carta di credito (Stripe)' } as Record<string, string>)[payment] ?? 'Test', xml_code: 'MP08' }];
 		const invoice = { number: (invNum as string) ?? `FT-${Date.now()}`, issued_at: new Date().toISOString().slice(0, 10), email, billing: bill, lines: invoiceLines, payment_terms: payTerms, subtotal_net: productsNet, discount_net: discount, discount_code: discountCode, express_net: expressNet, credit_used: creditUsed, vat_amount: vatAmount, total_gross: totalGross, to_pay: toPay, payment_method: payment, orders: numbers };
 		let pdfPath: string | null = null;
