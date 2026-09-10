@@ -4298,8 +4298,12 @@ $('preview').addEventListener('click',e=>{
 let ratio=1;
 function syncRatio(){const w=+$('wmm').value,h=+$('hmm').value;if(w>0&&h>0)ratio=h/w;}
 let t1;function deb(fn,ms){clearTimeout(t1);t1=setTimeout(fn,ms===undefined?200:ms);}
-function redo(ms){deb(()=>{if(S.src&&S.bbox){try{buildCut();draw();computeLayout();}
+function redo(ms){deb(()=>{if(S.src&&S.bbox){try{buildCut();draw();computeLayout();snapEmbed();}
   catch(e){console.error(e);toast('Errore: '+e.message,1);}}},ms);}
+/* [sito] ogni ritocco a mano (zoom, spostamento, misura, angoli) manda l'istantanea al sito:
+   prima la mandava solo alla fine di un lavoro, e lo zoom fatto nel popup del kit restava
+   solo a schermo: alla conferma il sito teneva l'ultima istantanea, senza zoom */
+let snapT;function snapEmbed(){if(!window.__snap)return;clearTimeout(snapT);snapT=setTimeout(()=>{try{window.__snap();}catch(e){}},90);}
 $('lev').addEventListener('input',()=>{$('levV').textContent=$('lev').value;redo(180);});
 $('sem').addEventListener('input',()=>{$('semV').textContent=$('sem').value;redo(180);});
 $('rie').addEventListener('input',()=>{$('rieV').textContent=$('rie').value;redo(260);});
@@ -4384,6 +4388,7 @@ function applyPreset(recalc){
   /* [sito] sul resinato gli angoli non si scelgono: restano fissi su 'medio' */
   let rad=P_CORNER[S.prod==='resin'?1:CL.corner];
   if(S.prod==='resin')rad=Math.max(RESIN_R,rad);   // resinato: mai spigolo vivo
+  if(NOANG)rad=0;   // [sito] cavallotto del kit: rettangolo a spigoli vivi, si chiude con la pinzatrice
   $('rad').value=rad;
   if(CL.shape==='square'||CL.shape==='rect')$('shp').value='rounded';
   if(CL.shape==='square'){ // il quadrato resta quadrato
@@ -4452,7 +4457,7 @@ levelSlider('lvCompl','tkCompl',v=>{CL.compl=v;applyPreset();});
 $('lvZoom').addEventListener('input',()=>{
   const v=+$('lvZoom').value;$('zoomV').textContent=v+'%';
   $('gsc').value=v;$('gscV').textContent=v;
-  if($('shp').value==='diecut'&&S.src&&S.bbox)deb(()=>{try{draw();computeLayout();}catch(e){}},40); else redo(90);});
+  if($('shp').value==='diecut'&&S.src&&S.bbox)deb(()=>{try{draw();computeLayout();snapEmbed();}catch(e){}},40); else redo(90);});
 $('gCenter2').onclick=()=>{$('lvZoom').value=100;$('zoomV').textContent='100%';
   $('gsc').value=100;$('gscV').textContent='100';$('gdx').value=0;$('gdy').value=0;redo(0);};
 
@@ -4474,7 +4479,7 @@ $('gCenter2').onclick=()=>{$('lvZoom').value=100;$('zoomV').textContent='100%';
     if(!raf)raf=requestAnimationFrame(()=>{raf=0;
       try{if($('shp').value==='diecut')draw(); else {buildCut();draw();}}catch(err){}});
     e.preventDefault();}
-  function up(){ if(!drag)return;drag=null;cv.classList.remove('grabbing');computeLayout();}
+  function up(){ if(!drag)return;drag=null;cv.classList.remove('grabbing');computeLayout();snapEmbed();}
   cv.addEventListener('mousedown',down);cv.addEventListener('touchstart',down,{passive:false});
   window.addEventListener('mousemove',move);window.addEventListener('touchmove',move,{passive:false});
   window.addEventListener('mouseup',up);window.addEventListener('touchend',up);
@@ -5406,7 +5411,11 @@ function ppGeoUI(){
       let palette=[]; try{ const mat=matKind(), bare=mat!=='white';
         palette=(S.palette||[[255,255,255]]).map((c,i)=>{ const o={hex:hexOf(c)};
           if(i===0&&mat==='clear')o.img='checker'; else if(i===0&&bare)o.img=materialTexture(48,48,mat).toDataURL(); return o; }); }catch(e){}
-      send('render',{name:S.name||null,w:+((S.cutW||0)).toFixed(1),h:+((S.cutH||0)).toFixed(1),srcMM:S.srcMM||null,
+      /* rettangolo del taglio dentro l'istantanea (px) e regolazioni a mano: il sito ritaglia
+         il cavallotto a misura esatta e rimette zoom/spostamento quando rifa' l'anteprima */
+      let cut=null,view=null; try{ const a=S._an; if(a&&!a.sheet&&a.ppm){const o=(a.pad+a.b)*a.ppm; cut={x:o,y:o,w:S.cutW*a.ppm,h:S.cutH*a.ppm};}
+        view={zoom:+($('lvZoom').value)||100,dx:+($('gdx').value)||0,dy:+($('gdy').value)||0}; }catch(e){}
+      send('render',{name:S.name||null,w:+((S.cutW||0)).toFixed(1),h:+((S.cutH||0)).toFixed(1),srcMM:S.srcMM||null,cut,view,
         materiale:(typeof matKind==='function')?matKind():null,png,palette,palIdx:S.palIdx,rimuovi:!!S.rimuoviSfondo,
         foglio:(S.foglio&&S.cutW)?(()=>{try{const L=layoutFoglio();return L?{n:L.n,cols:L.cols,rows:L.rows,w:L.SW,h:L.SH}:null;}catch(e){return null;}})():null});
       try{console.debug('[motore] istantanea: attesa',Math.round(t0-(window.__busyOff||t0)),'ms · inquadratura',Math.round(t1-t0),'ms · png',Math.round(t2-t1),'ms ·',cv.width+'x'+cv.height);}catch(e){}
@@ -5424,6 +5433,9 @@ function ppGeoUI(){
         e=>{(window.__msgs||[]).push({t:Date.now(),error:String(e&&e.message||e)});});
     }
     if(d.type==='snapshot')snapshot();
+    /* regolazioni a mano rimesse dal sito (zoom, spostamento) dopo un nuovo rendering */
+    if(d.type==='view'&&S.src){ try{ const z=$('lvZoom'); if(z&&d.zoom){z.value=String(Math.max(+z.min,Math.min(+z.max,Math.round(+d.zoom)))); $('zoomV').textContent=z.value+'%'; $('gsc').value=z.value; $('gscV').textContent=z.value;}
+      if(d.dx!==undefined)$('gdx').value=(+d.dx||0).toFixed(2); if(d.dy!==undefined)$('gdy').value=(+d.dy||0).toFixed(2); }catch(e){} redo(0); }
     /* barra del sito: colore di sfondo e "rimuovi sfondo" */
     if(d.type==='bg'&&S.src){ const i=Math.max(0,+d.idx||0); S.palIdx=i; try{paintPalette();paintSwatch();}catch(e){}
       busy(true,'Aggiorno…'); setTimeout(()=>{try{buildCut();draw();}catch(e){} window.__busyOff=performance.now(); snapshot(); busy(false);},0); }
@@ -5484,6 +5496,7 @@ function ppGeoUI(){
     const _busy=busy;
     busy=function(on){const r=_busy.apply(this,arguments); if(on===false&&S.src){window.__busyOff=performance.now();setTimeout(snapshot,30);} return r;};
   }catch(e){}
+  window.__snap=snapshot;
   send('ready');
   addEventListener('load',()=>send('ready'));
   setTimeout(()=>send('ready'),400);

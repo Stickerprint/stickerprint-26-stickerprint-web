@@ -35,7 +35,7 @@
 		stage?: number;
 		showCut?: boolean;
 		noang?: boolean;
-		onrender?: (s: { png: string | null; name?: string | null; w: number; h: number; srcMM: { w: number; h: number } | null; palette?: { hex: string; img?: string }[]; palIdx?: number; rimuovi?: boolean; foglio?: { n: number; cols: number; rows: number; w: number; h: number } | null }) => void;
+		onrender?: (s: { png: string | null; name?: string | null; w: number; h: number; srcMM: { w: number; h: number } | null; cut?: { x: number; y: number; w: number; h: number } | null; view?: { zoom: number; dx: number; dy: number } | null; palette?: { hex: string; img?: string }[]; palIdx?: number; rimuovi?: boolean; foglio?: { n: number; cols: number; rows: number; w: number; h: number } | null }) => void;
 	} = $props();
 
 	let frame = $state<HTMLIFrameElement | undefined>();
@@ -147,7 +147,7 @@
 				console.debug('[anteprima] misura del sito rimandata al motore', { w, h, rw, rh });
 				frame?.contentWindow?.postMessage({ source: 'sito', type: 'config', config: { forma, materiale, lamina: finitura, w, h, prodotto, foglio, rilievo } }, location.origin);
 			}
-			onrender?.({ png: d.detail.png, name: d.detail.name ?? null, w: d.detail.w ?? 0, h: d.detail.h ?? 0, srcMM: d.detail.srcMM ?? null, palette: d.detail.palette ?? [], palIdx: d.detail.palIdx ?? 0, rimuovi: !!d.detail.rimuovi, foglio: d.detail.foglio ?? null });
+			onrender?.({ png: d.detail.png, name: d.detail.name ?? null, w: d.detail.w ?? 0, h: d.detail.h ?? 0, srcMM: d.detail.srcMM ?? null, cut: d.detail.cut ?? null, view: d.detail.view ?? null, palette: d.detail.palette ?? [], palIdx: d.detail.palIdx ?? 0, rimuovi: !!d.detail.rimuovi, foglio: d.detail.foglio ?? null });
 			frame?.contentWindow?.postMessage({ source: 'sito', type: 'cut', on: showCut }, location.origin);
 		}
 	}

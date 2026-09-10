@@ -17,11 +17,17 @@
 
 	/* misure del cavallotto (linguetta piegata: il fronte e' 80 x 40 mm) */
 	const CAV = { w: 80, h: 40 };
-	type Render = { png: string; w: number; h: number };
-	type Slot = { file: File | null; png: string | null; w: number; h: number; misura: number; forma: string; x: number; y: number; rot: number; dropped: boolean; landed: boolean; busy: boolean };
-	const blank = (): Slot => ({ file: null, png: null, w: 0, h: 0, misura: 50, forma: 'sagomato', x: 0, y: 0, rot: 0, dropped: false, landed: false, busy: false });
+	/* regolazioni fatte a mano nel motore (zoom, spostamento): si rimettono quando l'anteprima si rifa' */
+	type View = { zoom: number; dx: number; dy: number };
+	type Cut = { x: number; y: number; w: number; h: number };
+	type Render = { png: string; w: number; h: number; view: View | null; cut: Cut | null };
+	type Slot = { file: File | null; png: string | null; w: number; h: number; misura: number; forma: string; view: View | null; x: number; y: number; rot: number; dropped: boolean; landed: boolean; busy: boolean };
+	const blank = (): Slot => ({ file: null, png: null, w: 0, h: 0, misura: 50, forma: 'sagomato', view: null, x: 0, y: 0, rot: 0, dropped: false, landed: false, busy: false });
 	let slots = $state<Slot[]>(Array.from({ length: KIT_MAX }, blank));
-	let cav = $state<{ file: File | null; png: string | null }>({ file: null, png: null });
+	let cav = $state<{ file: File | null; png: string | null; view: View | null }>({ file: null, png: null, view: null });
+	/* misura libera: lato lungo fra questi limiti */
+	const FREE_MIN = 15, FREE_MAX = 120;
+	const clampMM = (v: number) => Math.round(Math.max(FREE_MIN, Math.min(FREE_MAX, v || 0)) * 2) / 2;
 	const MATERIALS = $derived(cfg.materials.filter((m) => m.visible));
 	const FINISHES = $derived(cfg.finishes.filter((f) => f.visible));
 	let materiale = $state('bianco');
@@ -71,7 +77,7 @@
 		const zoom = Math.round((ratio >= card ? ratio / card : card / ratio) * 100);
 		popEngine?.post('zoom', { value: Math.min(400, zoom) });   /* un A4 verticale su 80x40 vuole il 283% */
 	}
-	function popRender(r: { png: string | null; name?: string | null; w: number; h: number; srcMM?: { w: number; h: number } | null }) {
+	function popRender(r: { png: string | null; name?: string | null; w: number; h: number; srcMM?: { w: number; h: number } | null; view?: View | null; cut?: Cut | null }) {
 		if (!pop || !r.png) return;
 		if (r.name && r.name !== baseName(pop.file)) return;
 		/* al caricamento il motore propone una misura sua (dalle proporzioni del file): per il
@@ -84,24 +90,34 @@
 			if (fr?.contentWindow) fr.contentWindow.postMessage(cfgMsg, location.origin); else popEngine?.post('config', { config: cfgMsg.config });
 			return;
 		}
-		pop.last = { png: r.png, w: r.w, h: r.h }; pop.busy = false;
+		pop.last = { png: r.png, w: r.w, h: r.h, view: r.view ?? null, cut: r.cut ?? null }; pop.busy = false;
 		if (pop.kind === 'sticker' && pop.forma === 'sagomato' && r.w > 0 && r.h > 0 && !pop.ratio) { pop.ratio = r.w / r.h; setPopSize(pop.misura); }
 		if (pop.kind === 'cav' && !pop.covered) { pop.covered = true; coverCav(r.srcMM); }
 	}
 	function setPopSize(m: number) {
 		if (!pop) return;
-		pop.misura = m;
+		m = clampMM(m); pop.misura = m;
 		if (equal(pop.forma)) { pop.w = m; pop.h = m; }
 		else if (pop.forma === 'sagomato') { const r = pop.ratio || 1.25; if (r >= 1) { pop.w = m; pop.h = Math.round((m / r) * 2) / 2; } else { pop.h = m; pop.w = Math.round(m * r * 2) / 2; } }
 		else { pop.w = m; pop.h = Math.round(m * 0.66 * 2) / 2; }
 		pop.busy = true;
 	}
+	/** misura libera su ovale e rettangolo: larghezza e altezza indipendenti */
+	function setPopWH(w: number, h: number) {
+		if (!pop) return;
+		pop.w = clampMM(w); pop.h = clampMM(h); pop.misura = Math.max(pop.w, pop.h); pop.busy = true;
+	}
 	function setPopShape(forma: string) { if (!pop) return; pop.forma = forma; pop.ratio = 0; pop.forced = 0; setPopSize(pop.misura); }
 	function confirmPop() {
 		if (!pop?.last) return;
-		if (pop.kind === 'cav') { cav = { file: pop.file, png: pop.last.png }; pop = null; if (step === 'cavallotto') step = 'adesivi'; return; }
+		if (pop.kind === 'cav') {
+			/* il cavallotto si ritaglia a misura esatta (senza il margine dell'istantanea): copre tutta la linguetta */
+			const p = pop, last = pop.last; pop = null;
+			cropCut(last.png, last.cut).then((png) => { cav = { file: p.file, png, view: last.view }; });
+			if (step === 'cavallotto') step = 'adesivi'; return;
+		}
 		const s = slots[pop.index];
-		s.file = pop.file; s.png = pop.last.png; s.w = pop.last.w; s.h = pop.last.h; s.misura = pop.misura; s.forma = pop.forma;
+		s.file = pop.file; s.png = pop.last.png; s.w = pop.last.w; s.h = pop.last.h; s.misura = pop.misura; s.forma = pop.forma; s.view = pop.last.view;
 		s.rot = Math.round((Math.random() * 24 - 12) * 10) / 10;
 		s.x = Math.round(Math.random() * 30 - 15); s.y = -Math.min(5, filled.length - 1) * 7;
 		s.dropped = true; s.landed = false;
@@ -110,6 +126,14 @@
 		if (n >= KIT_MAX && step === 'adesivi') step = 'qty';
 	}
 	const baseName = (f: File) => f.name.replace(/\.[^.]+$/, '');
+	async function cropCut(png: string, cut: Cut | null): Promise<string> {
+		if (!cut || cut.w < 2 || cut.h < 2) return png;
+		try {
+			const im = await load(png); const c = document.createElement('canvas'); c.width = Math.round(cut.w); c.height = Math.round(cut.h);
+			const g = c.getContext('2d'); if (!g) return png;
+			g.drawImage(im, cut.x, cut.y, cut.w, cut.h, 0, 0, c.width, c.height); return c.toDataURL('image/png');
+		} catch { return png; }
+	}
 
 	/* ---- caricamento ---- */
 	function pickCav(e: Event) { const f = (e.currentTarget as HTMLInputElement).files?.[0]; (e.currentTarget as HTMLInputElement).value = ''; if (f) openPop('cav', 0, f); }
@@ -135,21 +159,31 @@
 	$effect(() => { if (!pop && pending.length) setTimeout(nextPending, 250); });
 
 	/* ---- materiale cambiato dopo i caricamenti: si rifanno adesivi e cavallotto in coda, con un motore nascosto ---- */
-	let job = $state<{ kind: 'cav' | 'sticker'; index: number; file: File; w: number; h: number; forma?: string } | null>(null);
+	let job = $state<{ kind: 'cav' | 'sticker'; index: number; file: File; w: number; h: number; forma?: string; view: View | null; forced: number; viewSent: boolean } | null>(null);
+	let jobEngine = $state<EnginePreview | undefined>();
 	let queue: { kind: 'cav' | 'sticker'; index: number }[] = [];
 	let guard: ReturnType<typeof setTimeout> | undefined;
 	function pump() {
 		if (job) return;
 		const j = queue.shift(); if (!j) return;
-		if (j.kind === 'cav') { if (!cav.file) { pump(); return; } job = { ...j, file: cav.file, w: CAV.w, h: CAV.h }; }
-		else { const s = slots[j.index]; if (!s?.file) { pump(); return; } s.busy = true; job = { ...j, file: s.file, w: s.w || s.misura, h: s.h || s.misura, forma: s.forma }; }
+		if (j.kind === 'cav') { if (!cav.file) { pump(); return; } job = { ...j, file: cav.file, w: CAV.w, h: CAV.h, view: cav.view, forced: 0, viewSent: false }; }
+		else { const s = slots[j.index]; if (!s?.file) { pump(); return; } s.busy = true; job = { ...j, file: s.file, w: s.w || s.misura, h: s.h || s.misura, forma: s.forma, view: s.view, forced: 0, viewSent: false }; }
 		clearTimeout(guard); guard = setTimeout(() => { if (job) { if (job.kind === 'sticker') slots[job.index].busy = false; job = null; pump(); } }, 25000);
 	}
-	function jobRender(r: { png: string | null; name?: string | null; w: number; h: number }) {
+	function jobRender(r: { png: string | null; name?: string | null; w: number; h: number; view?: View | null; cut?: Cut | null }) {
 		if (!job || !r.png) return;
 		if (r.name && r.name !== baseName(job.file)) return;
-		if (job.kind === 'cav') cav.png = r.png; else { const s = slots[job.index]; s.png = r.png; s.w = r.w; s.h = r.h; s.busy = false; }
-		clearTimeout(guard); job = null; pump();
+		/* stessa misura di prima (il motore al caricamento ne propone una sua), poi le stesse regolazioni a mano */
+		if (job.forced < 3 && (Math.abs(r.w - job.w) > 0.6 || Math.abs(r.h - job.h) > 0.6)) {
+			job.forced++;
+			jobEngine?.post('config', { config: { forma: job.kind === 'cav' ? 'rettangolare' : (job.forma ?? 'sagomato'), w: job.w, h: job.h, materiale, lamina: finitura, prodotto: 'sticker' } });
+			return;
+		}
+		if (job.view && !job.viewSent) { job.viewSent = true; jobEngine?.post('view', job.view); return; }
+		const j = job; clearTimeout(guard); job = null;
+		if (j.kind === 'cav') cropCut(r.png, r.cut ?? null).then((png) => { cav.png = png; });
+		else { const s = slots[j.index]; s.png = r.png; s.w = r.w; s.h = r.h; s.busy = false; }
+		pump();
 	}
 	let lastMat = '';
 	$effect(() => {
@@ -195,8 +229,10 @@
 		g.save(); rr(bx, by, bw, bh, 26); g.clip(); const gr = g.createLinearGradient(bx, by, bx + bw, by + bh); gr.addColorStop(0, 'rgba(255,255,255,0.55)'); gr.addColorStop(0.35, 'rgba(255,255,255,0.05)'); gr.addColorStop(0.6, 'rgba(255,255,255,0.28)'); gr.addColorStop(1, 'rgba(255,255,255,0.05)'); g.fillStyle = gr; g.fillRect(bx, by, bw, bh); g.restore();
 		rr(bx, by, bw, bh, 26); g.strokeStyle = 'rgba(0,0,0,0.12)'; g.lineWidth = 2; g.stroke();
 		const cw = bw + 8, ch = Math.round((cw * CAV.h) / CAV.w), cx0 = bx - 4, cy0 = by - 60;
-		g.save(); g.shadowColor = 'rgba(0,0,0,0.22)'; g.shadowBlur = 18; g.shadowOffsetY = 8; rr(cx0, cy0, cw, ch, 14); g.fillStyle = '#fff'; g.fill(); g.restore();
-		if (cav.png) { try { const im = await load(cav.png); g.save(); rr(cx0, cy0, cw, ch, 14); g.clip(); g.drawImage(im, cx0, cy0, cw, ch); g.restore(); } catch { /* senza immagine */ } }
+		g.save(); g.shadowColor = 'rgba(0,0,0,0.22)'; g.shadowBlur = 18; g.shadowOffsetY = 8; rr(cx0, cy0, cw, ch, 3); g.fillStyle = '#fff'; g.fill(); g.restore();
+		if (cav.png) { try { const im = await load(cav.png); g.save(); rr(cx0, cy0, cw, ch, 3); g.clip(); g.drawImage(im, cx0, cy0, cw, ch); g.restore(); } catch { /* senza immagine */ } }
+		/* le due pinzature con cui si chiude il cavallotto */
+		[cx0 + cw * 0.08, cx0 + cw * 0.92 - cw * 0.09].forEach((sx) => { const sw = cw * 0.09, sh = ch * 0.05, sy = cy0 + ch * 0.86; g.fillStyle = 'rgba(0,0,0,0.18)'; g.fillRect(sx, sy + 1.5, sw, sh); g.fillStyle = '#d7dbe3'; g.fillRect(sx, sy, sw, sh); g.strokeStyle = 'rgba(0,0,0,0.28)'; g.lineWidth = 1; g.strokeRect(sx + 0.5, sy + 0.5, sw - 1, sh - 1); });
 		g.beginPath(); g.arc(cx0 + cw / 2, cy0 + 26, 11, 0, Math.PI * 2); g.fillStyle = '#f4f5f8'; g.fill(); g.strokeStyle = 'rgba(0,0,0,0.15)'; g.stroke();
 		return new Promise((r) => c.toBlob(r, 'image/png'));
 	}
@@ -226,6 +262,7 @@
 					<input type="file" hidden accept={ACCEPT} onchange={pickCav} />
 					{#if cav.png}<img src={cav.png} alt="Cavallotto" />{:else}<span class="cav__plus">+</span><span class="cav__txt">Carica il cavallotto</span>{/if}
 					<i class="cav__hole"></i>
+					<i class="cav__staple cav__staple--l"></i><i class="cav__staple cav__staple--r"></i>
 				</label>
 				<div class="bag__body">
 					<i class="bag__zip"></i>
@@ -376,7 +413,21 @@
 				<EnginePreview bind:this={popEngine} file={pop.file} forma={pop.forma} {materiale} {finitura} prodotto="sticker" w={pop.w} h={pop.h} panel showCut={pop.kind === 'sticker'} noang={pop.kind === 'cav'} stage={300} onrender={popRender} />
 			</div>
 			{#if pop.kind === 'sticker'}
-				<div class="kit__row"><span class="step__hint">Misura (lato lungo)</span><div class="kit__chips">{#each KIT_SIZES as m (m)}<button type="button" class="chip" class:is-on={pop.misura === m} onclick={() => setPopSize(m)}>{m} mm</button>{/each}</div>{#if pop.last}<span class="step__hint">esce {pop.last.w.toFixed(1).replace('.', ',')} × {pop.last.h.toFixed(1).replace('.', ',')} mm</span>{/if}</div>
+				<div class="kit__row kit__row--size">
+					<span class="step__hint">Misura (lato lungo)</span>
+					<div class="kit__chips">{#each KIT_SIZES as m (m)}<button type="button" class="chip" class:is-on={pop.misura === m} onclick={() => setPopSize(m)}>{m} mm</button>{/each}</div>
+					<label class="kit__free">
+						<span>Su misura</span>
+						{#if pop.forma === 'ovale' || pop.forma === 'rettangolare'}
+							<input type="number" min={FREE_MIN} max={FREE_MAX} step="0.5" value={pop.w} onchange={(e) => setPopWH(+e.currentTarget.value, pop?.h ?? 0)} aria-label="Larghezza in mm" /> ×
+							<input type="number" min={FREE_MIN} max={FREE_MAX} step="0.5" value={pop.h} onchange={(e) => setPopWH(pop?.w ?? 0, +e.currentTarget.value)} aria-label="Altezza in mm" /> mm
+						{:else}
+							<input type="number" min={FREE_MIN} max={FREE_MAX} step="0.5" value={pop.misura} onchange={(e) => setPopSize(+e.currentTarget.value)} aria-label="Lato lungo in mm" /> mm
+							<small>proporzioni bloccate</small>
+						{/if}
+					</label>
+					{#if pop.last}<span class="step__hint">esce {pop.last.w.toFixed(1).replace('.', ',')} × {pop.last.h.toFixed(1).replace('.', ',')} mm</span>{/if}
+				</div>
 			{:else}
 				<div class="kit__row"><span class="step__hint">Anteprima esatta del cavallotto, {CAV.w} × {CAV.h} mm: il file deve coprirlo tutto. Sposta e ingrandisci con i comandi sotto l'anteprima.</span><button type="button" class="btn btn--sm" onclick={() => coverCav(null)}>Riempi tutto il cavallotto</button></div>
 			{/if}
@@ -391,6 +442,6 @@
 <!-- motore nascosto: rifa' adesivi e cavallotto quando cambia il materiale -->
 {#if job}
 	<div class="kit__engine" aria-hidden="true">
-		<EnginePreview file={job.file} forma={job.kind === 'cav' ? 'rettangolare' : (job.forma ?? 'sagomato')} {materiale} {finitura} prodotto="sticker" w={job.w} h={job.h} showCut={false} noang={job.kind === 'cav'} stage={260} onrender={jobRender} />
+		<EnginePreview bind:this={jobEngine} file={job.file} forma={job.kind === 'cav' ? 'rettangolare' : (job.forma ?? 'sagomato')} {materiale} {finitura} prodotto="sticker" w={job.w} h={job.h} showCut={false} noang={job.kind === 'cav'} stage={260} onrender={jobRender} />
 	</div>
 {/if}
