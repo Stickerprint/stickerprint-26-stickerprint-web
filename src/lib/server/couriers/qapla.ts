@@ -63,9 +63,20 @@ export const qapla: CourierAdapter = {
 				parcels: Array.from({ length: Math.max(1, s.parcels) }, () => ({ weight: perParcel, length: 30, width: 20, height: 10 }))
 			}
 		};
-		const res = await post<{ id: number; trackingNumber: string; format: string; labels: string[]; courier: string; isShipped: boolean }>('createLabel', body);
-		const labelPdf = res.format === 'PDF' ? await mergePdfs(res.labels ?? []) : null;
-		return { tracking: res.trackingNumber, labelPdf, labelId: res.id, trackingUrl: trackingPageUrl(res.trackingNumber), raw: { id: res.id, courier: res.courier, format: res.format, isShipped: res.isShipped } };
+		try {
+			const res = await post<{ id: number; trackingNumber: string; format: string; labels: string[]; courier: string; isShipped: boolean }>('createLabel', body);
+			const labelPdf = res.format === 'PDF' ? await mergePdfs(res.labels ?? []) : null;
+			return { tracking: res.trackingNumber, labelPdf, labelId: res.id, trackingUrl: trackingPageUrl(res.trackingNumber), raw: { id: res.id, courier: res.courier, format: res.format, isShipped: res.isShipped } };
+		} catch (e) {
+			/* createLabel non abilitato sulla chiave (serve il Customer Care Qapla'): l'ordine va comunque a Qapla'
+			   (sezione "Crea"), l'etichetta si stampa dal pannello Qapla' e il tracking torna qui dal webhook
+			   "generazione spedizioni" (o dalla sincronizzazione con getOrder) */
+			if (!/not allowed/i.test(e instanceof Error ? e.message : '')) throw e;
+			const now = new Date().toISOString().slice(0, 19).replace('T', ' ');
+			const o = body.createLabel as Record<string, unknown>;
+			await post('pushOrder', { origin: 'public', pushOrder: [{ reference: o.reference, courier, courierService: o.courierService, status: 'processing', createdAt: now, updatedAt: now, name: o.name, street: o.address, city: o.city, state: o.state, postCode: o.postCode, country: o.country, email: o.email, telephone: o.telephone, currencyCode: 'EUR', notes: `${s.contents}${s.notes ? ' · ' + s.notes : ''}`.slice(0, 255), custom1: s.group }] });
+			return { tracking: '', labelPdf: null, pending: 'Ordine inviato a Qapla: stampa l\'etichetta dal pannello Qapla (Etichette → Crea). Tracking e stato arriveranno qui da soli.' };
+		}
 	},
 	async closeDay() {
 		/* conferma e trasmette al corriere tutte le etichette create oggi (servizio da attivare con il Customer Care Qapla) */

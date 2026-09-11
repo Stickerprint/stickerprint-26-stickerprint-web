@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { env } from '$env/dynamic/private';
 import { PUBLIC_SUPABASE_URL } from '$env/static/public';
 import { applyQaplaUpdate } from '$lib/server/qapla-status';
-import { qaplaGet } from '$lib/server/couriers/qapla';
+import { qaplaGet, trackingPageUrl } from '$lib/server/couriers/qapla';
 import type { RequestHandler } from './$types';
 
 /**
@@ -29,5 +29,15 @@ export const GET: RequestHandler = async ({ request, url }) => {
 			out[t] = await applyQaplaUpdate(db, { trackingNumber: t, reference: (sh.reference as string) ?? null, courier: ((sh.courier as Record<string, string>)?.code ?? (sh.courier as string)) ?? null, date: (st.date as string) ?? null, place: (st.place as string) ?? null, qaplaStatusID: id, qaplaStatus: (st.status as string) ?? null, statusDetails: st.statusDetailID ? [{ id: Number(st.statusDetailID), detail: String(st.statusDetail ?? '') }] : [] }, url.origin);
 		} catch (e) { out[t] = e instanceof Error ? e.message : 'errore'; }
 	}
-	return json({ checked: trackings.length, out });
+	/* ordini mandati a Qapla' in attesa di etichetta: il tracking arriva da getOrder */
+	const { data: pend } = await db.from('orders').select('number, checkout_group, id').eq('courier', 'Qapla').is('tracking_number', null).not('labels_generated_at', 'is', null).limit(50);
+	const pending: Record<string, string> = {};
+	for (const p of pend ?? []) {
+		try {
+			const r = await qaplaGet<{ orders?: { trackingNumber?: string | null; isShipped?: boolean }[] }>('getOrder', { reference: p.number });
+			const tn = r.orders?.[0]?.trackingNumber;
+			if (tn) { await db.from('orders').update({ tracking_number: tn, tracking_url: trackingPageUrl(tn) }).eq(p.checkout_group ? 'checkout_group' : 'id', p.checkout_group ?? p.id); pending[p.number] = tn; }
+		} catch (e) { pending[p.number] = e instanceof Error ? e.message : 'errore'; }
+	}
+	return json({ checked: trackings.length, out, pending });
 };

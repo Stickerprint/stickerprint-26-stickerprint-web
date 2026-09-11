@@ -4,7 +4,7 @@ export interface ShipmentInput {
 	recipient: { name: string; contact?: string; street: string; zip: string; city: string; province: string; country: string; phone?: string; email?: string };
 	parcels: number; weightKg: number; contents: string; notes?: string;
 }
-export interface ShipmentResult { tracking: string; labelPdf: Uint8Array | null; raw?: unknown; trackingUrl?: string | null; labelId?: number | null }
+export interface ShipmentResult { tracking: string; labelPdf: Uint8Array | null; raw?: unknown; trackingUrl?: string | null; labelId?: number | null; /** spedizione inviata alla piattaforma, etichetta e tracking arriveranno dopo (webhook) */ pending?: string | null }
 export interface CloseDayResult { manifestPdf: Uint8Array | null; raw?: unknown }
 export interface CourierAdapter {
 	id: string;
