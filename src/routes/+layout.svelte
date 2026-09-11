@@ -33,7 +33,7 @@
 
 <div class="app">
 	{#if tracking && !isDashboard}{@html GTM_BODY}{/if}
-	{#if !isDashboard}<Header {user} />{/if}
+	{#if !isDashboard}<Header {user} avatar={data.avatar} />{/if}
 	<main>
 		{@render children()}
 	</main>

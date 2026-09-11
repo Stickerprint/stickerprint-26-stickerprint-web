@@ -180,6 +180,7 @@ body { overflow-x: clip; }
 .header__logo:hover { transform: translateX(-50%) rotate(-3deg) scale(1.04); }
 .header__logo img { width: 100%; height: auto; }
 .header__right { display: flex; align-items: center; gap: 14px; }
+.avatar--img { object-fit: cover; display: block; }
 .avatar { width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg, var(--blue), var(--pink)); display: grid; place-items: center; font-weight: 800; font-size: 13px; }
 .icon-btn { background: none; border: 0; color: #fff; padding: 6px; border-radius: 8px; cursor: pointer; display: inline-flex; position: relative; }
 .icon-btn:hover { background: rgba(255,255,255,.1); }
