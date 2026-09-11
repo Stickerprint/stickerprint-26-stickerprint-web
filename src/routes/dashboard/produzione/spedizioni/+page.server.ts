@@ -47,7 +47,7 @@ export const actions: Actions = {
 		const { data } = await supabase.from('orders').select('*').eq('checkout_group', group);
 		if (!data?.length) return fail(404, { error: 'Ordine non trovato.' });
 		const g = groupOrders(data as OrderRow[])[0];
-		if (!env.QAPLA_API_KEY) return fail(400, { error: 'Qapla non e' ancora collegato: manca QAPLA_API_KEY su Vercel.' });
+		if (!env.QAPLA_API_KEY) return fail(400, { error: "Qapla non è ancora collegato: manca QAPLA_API_KEY su Vercel." });
 		let r: { count: number; warnings: string[] };
 		try { r = await generateLabels(supabase, 'Qapla', [group]); } catch (e) { return fail(400, { error: e instanceof Error ? e.message : 'Errore Qapla' }); }
 		const hard = r.warnings.filter((w) => !/Ordine inviato a Qapla/.test(w));
