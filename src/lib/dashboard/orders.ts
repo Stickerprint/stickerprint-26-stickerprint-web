@@ -36,7 +36,7 @@ export function categoryFromCode(code: string): string | null {
 export const PAYMENT_METHODS_MANUALI = ['Bonifico immediato vista fattura', 'Ricevuta bancaria 30gg fm', 'Ricevuta bancaria 60gg fm', 'Ricevuta bancaria 90gg fm', 'Bonifico anticipato', 'Personalizzato'];
 export const SHIPPING_METHODS = ['Corriere a carico del mittente', 'Corriere a carico del destinatario', 'Consegna diretta Stickerprint'];
 /** Corrieri con cui spediamo noi */
-export const COURIERS: Record<string, { name: string; logo: string }> = { GLS: { name: 'GLS', logo: '/icons/couriers/gls.svg' }, FedEx: { name: 'FedEx', logo: '/icons/couriers/fedex.svg' }, TNT: { name: 'TNT', logo: '/icons/couriers/tnt.svg' } };
+export const COURIERS: Record<string, { name: string; logo: string }> = { Qapla: { name: 'Qapla (GLS e altri)', logo: '/icons/couriers/qapla.svg' }, GLS: { name: 'GLS', logo: '/icons/couriers/gls.svg' }, FedEx: { name: 'FedEx', logo: '/icons/couriers/fedex.svg' }, TNT: { name: 'TNT', logo: '/icons/couriers/tnt.svg' } };
 /** Come si consegna un ordine: con il nostro corriere, con quello del cliente o a mano */
 export function deliveryMode(g: { shipping_method: string | null; channel: string }): 'ours' | 'customer' | 'direct' {
 	const m = g.shipping_method ?? '';
