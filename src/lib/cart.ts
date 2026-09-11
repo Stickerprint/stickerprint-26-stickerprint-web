@@ -61,3 +61,12 @@ export function clearCart() {
 	emit([]);
 }
 export const cartCount = () => readCart().length;
+/** totale prodotti nel carrello (IVA inclusa), senza il kit campioni: serve alla barra della spedizione gratuita */
+export const cartGross = () => { try { return readCart().filter((i) => i.product !== 'campioni').reduce((a, i) => a + (Number(i.gross) || 0), 0); } catch { return 0; } };
+/** richiama cb a ogni cambio del carrello: da questa scheda (sp-cart), da un'altra scheda (storage), al ritorno indietro (pageshow) o al rientro sulla pagina (focus) */
+export function onCartChange(cb: () => void): () => void {
+	const on = () => cb();
+	window.addEventListener('sp-cart', on); window.addEventListener('storage', on); window.addEventListener('pageshow', on); window.addEventListener('focus', on);
+	document.addEventListener('visibilitychange', on);
+	return () => { window.removeEventListener('sp-cart', on); window.removeEventListener('storage', on); window.removeEventListener('pageshow', on); window.removeEventListener('focus', on); document.removeEventListener('visibilitychange', on); };
+}

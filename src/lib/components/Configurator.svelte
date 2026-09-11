@@ -3,7 +3,7 @@
 	import { track, type ItemIn } from '$lib/tracking';
 	import { klaviyo } from '$lib/klaviyo';
 	import FreeShippingBar from './FreeShippingBar.svelte';
-	import { readCart } from '$lib/cart';
+	import { readCart, cartGross as cartGrossOf, onCartChange } from '$lib/cart';
 	/**
 	 * Preventivatore prodotto (adesivi, etichette, vetrofanie…).
 	 * Sinistra: il logo del cliente con i comandi del motore di anteprima.
@@ -19,7 +19,7 @@
 
 	/* totale prodotti gia' nel carrello (per la barra della spedizione gratuita) */
 	let cartGross = $state(0);
-	onMount(() => { try { cartGross = readCart().filter((i) => i.product !== 'campioni').reduce((a, i) => a + (Number(i.gross) || 0), 0); } catch { cartGross = 0; } });
+	onMount(() => { cartGross = cartGrossOf(); return onCartChange(() => { cartGross = cartGrossOf(); }); });
 	let {
 		shipDate,
 		cfg,
@@ -472,7 +472,7 @@
 	</aside>
 
 	<!-- RIEPILOGO: spedizione, credito, totale e bottone, tutti alla stessa altezza -->
-	<div class="cfg__freeship"><FreeShippingBar gross={cartGross + q.gross} compact prefix={cartGross > 0 ? 'Con il carrello attuale: ' : 'Con questo ordine: '} /></div>
+	<div class="cfg__freeship"><FreeShippingBar gross={cartGross + (added ? 0 : q.gross)} compact prefix={cartGross > 0 ? (added ? 'Con il carrello attuale: ' : 'Con il carrello e questo ordine: ') : 'Con questo ordine: '} /></div>
 	<div class="cfg__summary">
 		<div class="sum sum--ship">
 			<span class="sum__ico">🚀</span>

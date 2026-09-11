@@ -10,7 +10,7 @@
 	import { track } from '$lib/tracking';
 	import { klaviyo } from '$lib/klaviyo';
 	import FreeShippingBar from './FreeShippingBar.svelte';
-	import { readCart } from '$lib/cart';
+	import { readCart, cartGross as cartGrossOf, onCartChange } from '$lib/cart';
 	import { onMount } from 'svelte';
 	import { addToCart } from '$lib/cart';
 	import { saveCartFile, saveCartPreview } from '$lib/utils/draftStore';
@@ -20,7 +20,7 @@
 
 	/* totale prodotti gia' nel carrello (per la barra della spedizione gratuita) */
 	let cartGross = $state(0);
-	onMount(() => { try { cartGross = readCart().filter((i) => i.product !== 'campioni').reduce((a, i) => a + (Number(i.gross) || 0), 0); } catch { cartGross = 0; } });
+	onMount(() => { cartGross = cartGrossOf(); return onCartChange(() => { cartGross = cartGrossOf(); }); });
 	let { cfg, shipDate }: { cfg: EngineConfig; shipDate: string } = $props();
 	onMount(() => { setTimeout(() => track.viewItem({ product: 'kit_adesivi', productName: 'Kit di adesivi', forma: 'kit', w: 50, h: 50, materiale, finitura, qty, gross: q.gross }), 500); });
 
