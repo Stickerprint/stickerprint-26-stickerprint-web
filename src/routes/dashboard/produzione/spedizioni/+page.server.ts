@@ -1,5 +1,5 @@
 import { fail } from '@sveltejs/kit';
-import { groupOrders, itemMeta, deliveryMode, type OrderRow } from '$lib/dashboard/orders';
+import { groupOrders, itemMeta, deliveryMode, thumbOf, type OrderRow } from '$lib/dashboard/orders';
 import { generateLabels } from '$lib/server/shipping';
 import { sendEmail } from '$lib/server/email';
 import { shippingUpdateEmail } from '$lib/server/email-templates';
@@ -58,7 +58,7 @@ export const actions: Actions = {
 		const first = g.items[0];
 		let emailed = false;
 		if (g.email) {
-			const mail = shippingUpdateEmail({ kind: 'affidato', name: first.shipping?.first_name || g.customer, number: g.number, trackingUrl: `${url.origin}/account/ordini`, items: g.items.map((i) => `${i.qty} × ${i.product_name}`), accountUrl: first.user_id ? `${url.origin}/account/ordini` : null });
+			const mail = shippingUpdateEmail({ kind: 'affidato', name: first.shipping?.first_name || g.customer, number: g.number, trackingUrl: `${url.origin}/account/ordini`, items: g.items.map((i) => ({ name: i.product_name, qty: i.qty, meta: itemMeta(i) || null, preview: thumbOf(i) })), accountUrl: first.user_id ? `${url.origin}/account/ordini` : null });
 			const res = await sendEmail({ to: g.email, subject: mail.subject, html: mail.html, tag: mail.tag, metadata: { order: g.number } });
 			emailed = res.ok;
 			if (res.ok) await supabase.from('orders').update({ shipping_notified: ['affidato'] }).eq('checkout_group', group);
@@ -112,7 +112,7 @@ export const actions: Actions = {
 		await supabase.from('orders').update({ status: mode === 'ours' ? 'in_spedizione' : 'spedito', courier, parcels, weight_kg: weight, shipped_at: new Date().toISOString(), ddt_id: row.id }).eq('checkout_group', group);
 		// email "ordine concluso" anche per consegna diretta e corriere del cliente
 		if (g.email && mode !== 'ours') {
-			const mail = shippingUpdateEmail({ kind: 'affidato', consegna: mode === 'direct' ? 'noi' : 'cliente', name: first.shipping?.first_name || g.customer, number: g.number, trackingUrl: `${url.origin}/account/ordini`, items: g.items.map((i) => `${i.qty} × ${i.product_name}`), accountUrl: first.user_id ? `${url.origin}/account/ordini` : null });
+			const mail = shippingUpdateEmail({ kind: 'affidato', consegna: mode === 'direct' ? 'noi' : 'cliente', name: first.shipping?.first_name || g.customer, number: g.number, trackingUrl: `${url.origin}/account/ordini`, items: g.items.map((i) => ({ name: i.product_name, qty: i.qty, meta: itemMeta(i) || null, preview: thumbOf(i) })), accountUrl: first.user_id ? `${url.origin}/account/ordini` : null });
 			sendEmail({ to: g.email, subject: mail.subject, html: mail.html, tag: mail.tag, metadata: { order: g.number } }).catch(() => {});
 		}
 		return { ok: true, labels: `/dashboard/produzione/spedizioni/etichette?ddt=${row.id}&courier=${encodeURIComponent(courier)}`, ddt: ddt.number };

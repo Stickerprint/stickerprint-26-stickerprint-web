@@ -11,6 +11,7 @@ import { sendEmail } from './email';
 import { shippingUpdateEmail } from './email-templates';
 import { pushStaff } from './push';
 import { trackingPageUrl } from './couriers/qapla';
+import { thumbOf } from '$lib/dashboard/orders';
 
 export interface QaplaUpdate { trackingNumber: string; reference?: string | null; courier?: string | null; date?: string | null; place?: string | null; qaplaStatusID: number | string; qaplaStatus?: string | null; statusDetails?: { id: number; detail: string }[] | null }
 
@@ -55,7 +56,7 @@ export async function applyQaplaUpdate(db: SupabaseClient, u: QaplaUpdate, origi
 	let emailed: string | null = null;
 	if (kind && !sent.includes(kind) && first.email) {
 		const ship = first.shipping ?? {};
-		const mail = shippingUpdateEmail({ kind, name: ship.first_name || first.customer_name || null, number: first.number, trackingUrl: first.tracking_url || trackingPageUrl(u.trackingNumber), courier: u.courier ?? first.courier ?? null, detail, place: u.place ?? null, items: rows.map((r) => `${r.qty} × ${r.product_name}`), accountUrl: first.user_id ? `${origin}/account/ordini` : null });
+		const mail = shippingUpdateEmail({ kind, name: ship.first_name || first.customer_name || null, number: first.number, trackingUrl: first.tracking_url || trackingPageUrl(u.trackingNumber), courier: u.courier ?? first.courier ?? null, detail, place: u.place ?? null, items: rows.map((r) => ({ name: r.product_name, qty: r.qty, preview: thumbOf(r) })), accountUrl: first.user_id ? `${origin}/account/ordini` : null });
 		const r = await sendEmail({ to: first.email, subject: mail.subject, html: mail.html, tag: mail.tag, metadata: { order: first.number } });
 		if (r.ok) { emailed = kind; for (const k of keys) await db.from('orders').update({ shipping_notified: [...sent, kind] }).eq(first.checkout_group ? 'checkout_group' : 'id', k); }
 	}

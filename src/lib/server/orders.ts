@@ -106,7 +106,7 @@ export async function sendOrderConfirmation(supabase: SupabaseClient, group: str
 	if (!g?.email) return { ok: false, message: 'L’ordine non ha un indirizzo email.' };
 	const doc = await orderPdfForGroup(supabase, group);
 	const f = g.items[0];
-	const mail = manualOrderEmail({ name: f.billing?.first_name || g.customer, number: g.number, total: money(g.gross), lines: g.items.map((i) => `${i.qty.toLocaleString('it-IT')} × ${i.product_name}${i.description ? ' · ' + i.description : ''}`), shipDate: g.delivery_date ? new Date(g.delivery_date).toLocaleDateString('it-IT') : 'da confermare', terms: (f.payment_terms ?? []).map((t) => `${new Date(t.due).toLocaleDateString('it-IT')} · ${money(Number(t.amount))} · ${t.method}`) });
+	const mail = manualOrderEmail({ name: f.billing?.first_name || g.customer, number: g.number, total: money(g.gross), lines: g.items.map((i) => ({ name: i.product_name, qty: i.qty, meta: i.description ?? null, preview: i.mockup_url ?? i.preview_url ?? null })), shipDate: g.delivery_date ? new Date(g.delivery_date).toLocaleDateString('it-IT') : 'da confermare', terms: (f.payment_terms ?? []).map((t) => `${new Date(t.due).toLocaleDateString('it-IT')} · ${money(Number(t.amount))} · ${t.method}`) });
 	const r = await sendEmail({ to: g.email, ...mail, attachments: doc ? [{ name: `Conferma-ordine-${g.number}.pdf`, content: toB64(doc.pdf), contentType: 'application/pdf' }] : [] });
 	if (!r.ok) return { ok: false, message: r.error ?? 'Email non inviata.' };
 	return { ok: true, message: r.skipped ? 'Postmark non configurato: email non inviata (simulata).' : `Conferma inviata a ${g.email}.` };

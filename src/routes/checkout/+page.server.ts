@@ -226,7 +226,7 @@ export const actions: Actions = {
 		}
 		// email di conferma con fattura allegata (se Postmark è configurato)
 		const origin = PUBLIC_SITE_URL || 'https://stickerprint.it';
-		const mail = orderConfirmationEmail({ name: ship.first_name, numbers, invoiceNumber: invoice.number, total: `${toPay.toFixed(2).replace('.', ',')} €`, lines: invLines.map((l) => `${l.qty} × ${l.description}`), shipDate: formatItDate(estimatedShipDate(express ? 3 : 5)), accountUrl: user ? `${origin}/account/ordini` : null });
+		const mail = orderConfirmationEmail({ name: ship.first_name, numbers, invoiceNumber: invoice.number, total: `${toPay.toFixed(2).replace('.', ',')} €`, lines: invLines.map((l, i) => ({ name: l.description, qty: l.qty, preview: priced[i]?.previewUrl ?? null })), shipDate: formatItDate(estimatedShipDate(express ? 3 : 5)), accountUrl: user ? `${origin}/account/ordini` : null });
 		sendEmail({ to: email, ...mail, attachments: pdfB64 ? [{ name: `${invoice.number}.pdf`, content: pdfB64, contentType: 'application/pdf' }] : undefined })
 			.then((r) => { if (r.ok && !r.skipped) db.from('invoices').update({ sent_at: new Date().toISOString() }).eq('number', invoice.number).then(() => {}); })
 			.catch((e) => console.error('[checkout] email', e));

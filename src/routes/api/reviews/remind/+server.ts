@@ -17,7 +17,7 @@ export const GET: RequestHandler = async ({ request, url }) => {
 	if (!env.SUPABASE_SERVICE_ROLE_KEY) return json({ skipped: true });
 	const db = createClient(PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
 	const limit = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
-	const { data, error } = await db.from('orders').select('id, number, checkout_group, user_id, email, shipping, product_name, qty, delivered_at').eq('status', 'consegnato').is('review_asked_at', null).not('email', 'is', null).lte('delivered_at', limit).limit(100);
+	const { data, error } = await db.from('orders').select('id, number, checkout_group, user_id, email, shipping, product_name, qty, delivered_at, preview_url, proof_url, mockup_url').eq('status', 'consegnato').is('review_asked_at', null).not('email', 'is', null).lte('delivered_at', limit).limit(100);
 	if (error) return json({ error: error.message }, { status: 500 });
 	const groups = new Map<string, typeof data>();
 	for (const o of data ?? []) { const k = o.checkout_group ?? o.id; if (!groups.has(k)) groups.set(k, []); groups.get(k)!.push(o); }
@@ -25,7 +25,7 @@ export const GET: RequestHandler = async ({ request, url }) => {
 	for (const [k, rows] of groups) {
 		const f = rows[0];
 		const href = f.user_id ? `${url.origin}/account/recensioni` : `${url.origin}/recensione/${f.id}`;
-		const mail = reviewRequestEmail({ name: f.shipping?.first_name ?? null, number: f.number, items: rows.map((r) => `${r.qty} × ${r.product_name}`), href });
+		const mail = reviewRequestEmail({ name: f.shipping?.first_name ?? null, number: f.number, items: rows.map((r) => ({ name: r.product_name, qty: r.qty, preview: r.proof_url ?? r.preview_url ?? r.mockup_url ?? null, cta: { label: 'Scrivi recensione', href: f.user_id ? `${url.origin}/account/recensioni` : `${url.origin}/recensione/${r.id}` } })), href });
 		const r = await sendEmail({ to: f.email, subject: mail.subject, html: mail.html, tag: mail.tag, metadata: { order: f.number } });
 		if (r.ok) { sent.push(f.number); await db.from('orders').update({ review_asked_at: new Date().toISOString() }).eq(f.checkout_group ? 'checkout_group' : 'id', k); }
 	}

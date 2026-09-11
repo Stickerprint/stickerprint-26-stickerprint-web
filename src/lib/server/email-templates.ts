@@ -12,6 +12,21 @@ function esc(s: string): string {
 	return s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 }
 
+
+/** riga prodotto nelle email: mockup generato dal sito, nome, quantita' e (opzionale) bottone a destra */
+export interface EmailItem { name: string; qty?: number | null; preview?: string | null; meta?: string | null; cta?: { label: string; href: string } | null }
+export function itemsBlock(items: (string | EmailItem)[]): string {
+	if (!items.length) return '';
+	const rows = items.map((raw) => {
+		const i: EmailItem = typeof raw === 'string' ? { name: raw } : raw;
+		const img = i.preview ? `<img src="${i.preview}" width="96" height="96" alt="" style="display:block;width:96px;height:96px;object-fit:contain;border-radius:12px;background:#f4f5fa;">` : `<div style="width:96px;height:96px;border-radius:12px;background:#f4f5fa;"></div>`;
+		const qty = i.qty ? `<span style="color:#8e92b0;">${Number(i.qty).toLocaleString('it-IT')} pz</span>` : '';
+		const cta = i.cta ? `<td align="right" valign="middle" style="padding-left:12px;white-space:nowrap;"><a href="${i.cta.href}" style="display:inline-block;background:#fbe36b;color:#0b0b3b;text-decoration:none;font-weight:800;font-size:13px;padding:11px 16px;border-radius:6px;">${esc(i.cta.label)}</a></td>` : '';
+		return `<tr><td style="padding:10px 0;border-top:1px solid #eceef5;"><table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr><td width="96" valign="middle">${img}</td><td valign="middle" style="padding-left:14px;font-size:15px;line-height:1.4;color:#0b0b3b;"><b>${esc(i.name)}</b>${i.meta ? `<br><span style="color:#8e92b0;font-size:13px;">${esc(i.meta)}</span>` : ''}${qty ? `<br>${qty}` : ''}</td>${cta}</tr></table></td></tr>`;
+	}).join('');
+	return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:16px 0 4px;border-bottom:1px solid #eceef5;">${rows}</table>`;
+}
+
 function layout(title: string, body: string, cta?: { label: string; href: string }): string {
 	return `<!doctype html>
 <html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${esc(title)}</title></head>
@@ -102,28 +117,28 @@ export function ownerNotifyEmail(opts: { title: string; lines: string[]; href?: 
 
 export const OWNER_EMAIL = env.OWNER_NOTIFY_EMAIL || 'info@stickerprint.it';
 
-export function orderConfirmationEmail(opts: { name?: string | null; numbers: string[]; invoiceNumber: string; total: string; lines: string[]; shipDate: string; accountUrl?: string | null }) {
-	const items = opts.lines.map((l) => `<li>${l}</li>`).join('');
+export function orderConfirmationEmail(opts: { name?: string | null; numbers: string[]; invoiceNumber: string; total: string; lines: (string | EmailItem)[]; shipDate: string; accountUrl?: string | null }) {
+	const items = itemsBlock(opts.lines);
 	return {
 		subject: `Ordine ${opts.numbers.join(', ')} confermato – Stickerprint`,
 		tag: 'order-confirmation',
 		html: `<p>Ciao ${opts.name || ''},</p>
 <p>grazie per il tuo ordine! Abbiamo ricevuto il pagamento e stiamo già preparando la <strong>prova di stampa</strong>, che ti invieremo a breve via email.</p>
 <p><strong>Ordine:</strong> ${opts.numbers.join(', ')}<br><strong>Fattura:</strong> ${opts.invoiceNumber} (in allegato)<br><strong>Totale pagato:</strong> ${opts.total}<br><strong>Pronti per la spedizione entro:</strong> ${opts.shipDate}</p>
-<ul>${items}</ul>
+${items}
 ${opts.accountUrl ? `<p>Trovi ordine e fattura anche nella tua <a href="${opts.accountUrl}">area personale</a>.</p>` : '<p>Vuoi seguire l’ordine e guadagnare credito sul prossimo? <a href="https://stickerprint.it/signup">Crea il tuo account</a> con questa stessa email: ordine e fattura saranno già lì.</p>'}
 <p>A presto,<br>Il team Stickerprint</p>`
 	};
 }
 
 /** Conferma d'ordine per gli ordini inseriti dalla dashboard (con PDF allegato) */
-export function manualOrderEmail(opts: { name?: string | null; number: string; total: string; lines: string[]; shipDate: string; terms: string[] }) {
+export function manualOrderEmail(opts: { name?: string | null; number: string; total: string; lines: (string | EmailItem)[]; shipDate: string; terms: string[] }) {
 	return {
 		subject: `Conferma d'ordine ${opts.number} – Stickerprint`,
 		tag: 'order-confirmation-manual',
 		html: `<p>Ciao ${opts.name || ''},</p>
 <p>ti confermiamo l'ordine <strong>${opts.number}</strong>. In allegato trovi il riepilogo in PDF.</p>
-<ul>${opts.lines.map((l) => `<li>${l}</li>`).join('')}</ul>
+${itemsBlock(opts.lines)}
 <p><strong>Totale IVA inclusa:</strong> ${opts.total}<br><strong>Pronti per la spedizione entro:</strong> ${opts.shipDate}</p>
 ${opts.terms.length ? `<p><strong>Scadenze di pagamento</strong><br>${opts.terms.join('<br>')}</p>` : ''}
 <p>Per qualsiasi modifica rispondi a questa email.</p>
@@ -138,9 +153,9 @@ const hl = (t: string) => `<span style="display:inline-block;border-bottom:6px s
  * Email di stato spedizione: stesso impianto per tutti gli stati, cambia solo la parola sottolineata
  * ("concluso", "partito", "in consegna", "consegnato"...) e il testo sotto.
  */
-export function shippingUpdateEmail(o: { kind: 'affidato' | 'spedito' | 'in_consegna' | 'consegnato' | 'problema' | 'punto_ritiro'; name?: string | null; number: string; trackingUrl: string; courier?: string | null; detail?: string; place?: string | null; items: string[]; accountUrl?: string | null; consegna?: 'corriere' | 'noi' | 'cliente' }) {
+export function shippingUpdateEmail(o: { kind: 'affidato' | 'spedito' | 'in_consegna' | 'consegnato' | 'problema' | 'punto_ritiro'; name?: string | null; number: string; trackingUrl: string; courier?: string | null; detail?: string; place?: string | null; items: (string | EmailItem)[]; accountUrl?: string | null; consegna?: 'corriere' | 'noi' | 'cliente' }) {
 	const hi = `<p>Ciao ${esc(o.name || '')},</p>`;
-	const list = o.items.length ? `<ul style="margin:14px 0 0;padding-left:18px;">${o.items.map((i) => `<li>${esc(i)}</li>`).join('')}</ul>` : '';
+	const list = itemsBlock(o.items);
 	const courier = o.courier ? ` con ${esc(o.courier.replace('-ITA', ''))}` : '';
 	const n = esc(o.number);
 	const dopo = o.consegna === 'noi' ? 'lo consegniamo noi direttamente nei prossimi giorni.' : o.consegna === 'cliente' ? 'è pronto per il ritiro da parte del tuo corriere.' : 'ora è in attesa di ritiro da parte del corriere. Appena parte ti scriviamo con il link per seguirlo.';
@@ -158,14 +173,15 @@ export function shippingUpdateEmail(o: { kind: 'affidato' | 'spedito' | 'in_cons
 }
 
 /** richiesta di recensione, 24 ore dopo la consegna (registrati e ospiti) */
-export function reviewRequestEmail(o: { name?: string | null; number: string; items: string[]; href: string }) {
+export function reviewRequestEmail(o: { name?: string | null; number: string; items: (string | EmailItem)[]; href: string }) {
 	const n = esc(o.number);
-	const list = o.items.length ? `<ul style="margin:14px 0 0;padding-left:18px;">${o.items.map((i) => `<li>${esc(i)}</li>`).join('')}</ul>` : '';
-	return { subject: `Com'è andata con l'ordine ${o.number}? ⭐`, tag: 'review-request', html: layoutHtml(`Il tuo ordine ${n} è ${hl('arrivato')} ⭐`, `<p>Ciao ${esc(o.name || '')},</p><p>ieri il corriere ti ha consegnato i tuoi adesivi. Ci racconti com'è andata? Bastano due righe e una stella da 1 a 5: aiutano noi a migliorare e chi deve ancora scegliere.</p>${list}`, { label: 'Lascia una recensione', href: o.href }) };
+	/* ogni prodotto ha il suo bottone giallo "Scrivi recensione" (se non ne ha uno suo, usa il link generale) */
+	const list = itemsBlock(o.items.map((i) => (typeof i === 'string' ? { name: i, cta: { label: 'Scrivi recensione', href: o.href } } : { ...i, cta: i.cta ?? { label: 'Scrivi recensione', href: o.href } })));
+	return { subject: `Com'è andata con l'ordine ${o.number}? ⭐`, tag: 'review-request', html: layoutHtml(`Il tuo ordine ${n} è ${hl('arrivato')} ⭐`, `<p>Ciao ${esc(o.name || '')},</p><p>ieri il corriere ti ha consegnato i tuoi adesivi. Ci racconti com'è andata? Bastano due righe e una stella da 1 a 5: aiutano noi a migliorare e chi deve ancora scegliere.</p>${list}`) };
 }
 
 /** stesso layout delle altre email, ma il titolo puo' contenere HTML (la parola sottolineata) */
-function layoutHtml(titleHtml: string, body: string, cta?: { label: string; href: string }): string {
+function layoutHtml(titleHtml: string, body: string, cta?: { label: string; href: string } | null): string {
 	const plain = titleHtml.replace(/<[^>]+>/g, '');
-	return layout('§TITLE§', body, cta).replace('<h1 style="margin:0 0 14px;font-size:26px;line-height:1.15;letter-spacing:-0.02em;">§TITLE§</h1>', `<h1 style="margin:0 0 14px;font-size:26px;line-height:1.25;letter-spacing:-0.02em;">${titleHtml}</h1>`).replace('<title>§TITLE§</title>', `<title>${esc(plain)}</title>`);
+	return layout('§TITLE§', body, cta ?? undefined).replace('<h1 style="margin:0 0 14px;font-size:26px;line-height:1.15;letter-spacing:-0.02em;">§TITLE§</h1>', `<h1 style="margin:0 0 14px;font-size:26px;line-height:1.25;letter-spacing:-0.02em;">${titleHtml}</h1>`).replace('<title>§TITLE§</title>', `<title>${esc(plain)}</title>`);
 }
