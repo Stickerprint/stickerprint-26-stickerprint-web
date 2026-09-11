@@ -27,14 +27,14 @@
 <svelte:head><title>In spedizione | Dashboard</title></svelte:head>
 
 <div class="ship-head">
-	<div><h1>🚀 In spedizione</h1><p class="lead">Scegli il corriere dalla tendina. Nelle colonne: <b>Genera spedizioni</b> scarica in un unico PDF le etichette del corriere, poi <b>Trasmetti spedizioni</b> invia al corriere e scarica il MANIFEST da consegnare all'autista. Infine <b>Concludi</b>: DDT ed etichette dei colli. Consegna diretta e corriere del cliente si concludono subito.</p></div>
+	<div><h1>🚀 In spedizione</h1><p class="lead">Scegli il corriere dalla tendina. Con <b>Qapla</b>: <b>Invia a Qapla</b> trasmette gli ordini, le etichette si stampano dal pannello Qapla, tracking e stati tornano qui da soli e il cliente riceve le nostre email. Con i corrieri diretti: <b>Genera spedizioni</b> scarica le etichette, <b>Trasmetti spedizioni</b> invia al corriere e scarica il MANIFEST. Infine <b>Concludi</b>: DDT ed etichette dei colli. Consegna diretta e corriere del cliente si concludono subito.</p></div>
 	<div class="ship-cols">
 		{#each data.couriers as c (c.id)}
 			<div class="ship-col" class:is-off={!c.today}>
 				<img src={COURIERS[c.id].logo} alt={c.id} />
 				<b class="ship-col__n">{c.today}</b>
 				<span class="ship-col__cap">{c.today === 1 ? 'spedizione affidata oggi' : 'spedizioni affidate oggi'}{#if !c.configured}<br /><span title="Collega le API in Setup → Corrieri">senza API</span>{/if}</span>
-				<form method="POST" action="?/labels" use:enhance><input type="hidden" name="courier" value={c.id} /><button class="btn btn--blue btn--xs" type="submit" disabled={!c.toGenerate.length} title={c.toGenerate.length ? 'Crea le spedizioni e scarica le etichette' : 'Nessuna spedizione da generare'}>🏷️ Genera spedizioni{#if c.toGenerate.length} ({c.toGenerate.length}){/if}</button></form>
+				<form method="POST" action="?/labels" use:enhance><input type="hidden" name="courier" value={c.id} /><button class="btn btn--blue btn--xs" type="submit" disabled={!c.toGenerate.length} title={c.id === 'Qapla' ? 'Invia gli ordini a Qapla: le etichette si stampano dal pannello Qapla, tracking e stati tornano qui da soli' : c.toGenerate.length ? 'Crea le spedizioni e scarica le etichette' : 'Nessuna spedizione da generare'}>{c.id === 'Qapla' ? '📦 Invia a Qapla' : '🏷️ Genera spedizioni'}{#if c.toGenerate.length} ({c.toGenerate.length}){/if}</button></form>
 				{#if c.toTransmit.length}
 					<form method="POST" action="?/transmit" use:enhance><input type="hidden" name="courier" value={c.id} /><button class="btn btn--green btn--xs" type="submit" title="Invia al corriere e scarica il manifest">📤 Trasmetti spedizioni ({c.toTransmit.length})</button></form>
 				{/if}
@@ -80,7 +80,8 @@
 									{/if}
 								</form>
 							</div>
-							{#if f.courier}<div class="osub">{f.transmitted_at ? '✓ trasmessa' : f.labels_generated_at ? 'etichette pronte · da trasmettere' : 'da generare'}{#if f.tracking_number} · {f.tracking_number}{/if}</div>{/if}
+							{#if f.courier === 'Qapla'}<div class="osub">{f.transmitted_at ? (f.tracking_number ? '✓ etichetta creata su Qapla' : '✓ inviata a Qapla · stampa l’etichetta dal pannello Qapla') : 'da inviare a Qapla'}{#if f.tracking_number} · {f.tracking_number}{/if}</div>
+							{:else if f.courier}<div class="osub">{f.transmitted_at ? '✓ trasmessa' : f.labels_generated_at ? 'etichette pronte · da trasmettere' : 'da generare'}{#if f.tracking_number} · {f.tracking_number}{/if}</div>{/if}
 						{/if}
 						{#if f.parcels && g.status !== 'pronto'}<div class="osub">{f.parcels} {f.parcels === 1 ? 'collo' : 'colli'}</div>{/if}
 					</td>
@@ -94,7 +95,7 @@
 					<td style="white-space:nowrap">
 						{#if g.status === 'pronto'}
 							<button type="button" class="btn btn--green btn--xs" disabled={!canConclude(g)} title={canConclude(g) ? 'DDT ed etichette dei colli' : 'Scegli il corriere e trasmetti la spedizione'} onclick={() => openDdt(g)}>✓ Concludi</button>
-							{#if f.courier && f.labels_generated_at}<a class="btn btn--ghost btn--xs" href="/dashboard/produzione/spedizioni/etichette?groups={g.key}&courier={f.courier}&day=1" target="_blank" title="Etichetta di spedizione">🏷️</a>{/if}
+							{#if f.courier && f.labels_generated_at && (f.courier !== 'Qapla' || f.courier_label_path)}<a class="btn btn--ghost btn--xs" href="/dashboard/produzione/spedizioni/etichette?groups={g.key}&courier={f.courier}&day=1" target="_blank" title="Etichetta di spedizione">🏷️</a>{/if}
 						{:else}
 							<form method="POST" action="?/status" use:enhance style="display:flex;gap:6px">
 								<input type="hidden" name="group" value={g.key} />

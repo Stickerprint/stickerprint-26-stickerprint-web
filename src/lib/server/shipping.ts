@@ -41,7 +41,9 @@ export async function generateLabels(supabase: SupabaseClient, courier: string, 
 					const { error } = await supabase.storage.from('order-files').upload(labelPath, r.labelPdf, { contentType: 'application/pdf', upsert: true });
 					if (error) labelPath = null;
 				}
-				if (r.pending) { warnings.push(`${g.number}: ${r.pending}`); }
+				/* Qapla': l'ordine e' inviato, l'etichetta si stampa dal pannello Qapla' che trasmette anche al corriere:
+				   niente passaggio "trasmetti" qui, l'ordine si puo' concludere subito */
+				if (r.pending) { warnings.push(`${g.number}: ${r.pending}`); patch = { ...patch, transmitted_at: new Date().toISOString() }; }
 				else patch = { ...patch, tracking_number: r.tracking, courier_label_path: labelPath, ...(r.trackingUrl ? { tracking_url: r.trackingUrl } : {}) };
 			} catch (e) {
 				warnings.push(`${g.number}: ${e instanceof Error ? e.message : 'errore API'} (etichetta interna)`);
