@@ -67,14 +67,16 @@ async function loadReviewsFresh(supabase: SupabaseClient, productType?: string):
 	let stats = productType ? { total: 15, average: 4.9 } : { total: 225, average: 4.9 };
 
 	try {
+		/* schema del nuovo sito: reviews → orders (prodotto, nome di spedizione) e profiles (nome dell'utente);
+		   le recensioni degli ospiti hanno il nome nella colonna author */
 		let q = supabase
 			.from('reviews')
-			.select('title, comment, rating, created_at, guest_name, customer_name, order_item:order_items!inner(product_type)')
+			.select('title, comment, rating, created_at, author, order:orders!inner(product_slug, shipping), profile:profiles(full_name)')
 			.eq('is_public', true)
 			.gte('rating', 4)
 			.order('created_at', { ascending: false })
 			.limit(40);
-		if (productType) q = q.eq('order_item.product_type', productType);
+		if (productType) q = q.eq('order.product_slug', productType);
 		const { data: rows } = await q;
 
 		if (rows && rows.length >= 4) {
@@ -82,11 +84,13 @@ async function loadReviewsFresh(supabase: SupabaseClient, productType?: string):
 				.filter((r) => (r.comment ?? '').length >= 30)
 				.slice(0, 12)
 				.map((r) => {
-					const item = Array.isArray(r.order_item) ? r.order_item[0] : r.order_item;
-					const type = item?.product_type ?? productType ?? 'adesivi_personalizzati';
+					const order = (Array.isArray(r.order) ? r.order[0] : r.order) as { product_slug?: string; shipping?: { first_name?: string; last_name?: string } } | null;
+					const profile = (Array.isArray(r.profile) ? r.profile[0] : r.profile) as { full_name?: string } | null;
+					const type = order?.product_slug ?? productType ?? 'adesivi_personalizzati';
 					const p = PRODUCTS[type] ?? PRODUCTS.adesivi_personalizzati;
+					const name = r.author || profile?.full_name || [order?.shipping?.first_name, order?.shipping?.last_name].filter(Boolean).join(' ') || 'Cliente';
 					return {
-						author: shortName(r.customer_name ?? r.guest_name),
+						author: shortName(name),
 						title: r.title ?? 'Recensione',
 						comment: r.comment ?? '',
 						rating: r.rating ?? 5,
