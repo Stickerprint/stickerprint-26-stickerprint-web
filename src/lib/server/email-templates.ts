@@ -131,19 +131,40 @@ ${opts.terms.length ? `<p><strong>Scadenze di pagamento</strong><br>${opts.terms
 	};
 }
 
-/** email di stato spedizione (al posto di quelle di Qapla'): spedito, in consegna, consegnato, problema, punto di ritiro */
+/** parola chiave sottolineata di verde (stesso segno del sito): regge anche in Gmail e Outlook */
+const hl = (t: string) => `<span style="display:inline-block;border-bottom:6px solid #8be33a;line-height:1.05;padding-bottom:1px;">${esc(t)}</span>`;
+
+/**
+ * Email di stato spedizione: stesso impianto per tutti gli stati, cambia solo la parola sottolineata
+ * ("concluso", "partito", "in consegna", "consegnato"...) e il testo sotto.
+ */
 export function shippingUpdateEmail(o: { kind: 'affidato' | 'spedito' | 'in_consegna' | 'consegnato' | 'problema' | 'punto_ritiro'; name?: string | null; number: string; trackingUrl: string; courier?: string | null; detail?: string; place?: string | null; items: string[]; accountUrl?: string | null }) {
 	const hi = `<p>Ciao ${esc(o.name || '')},</p>`;
-	const list = o.items.length ? `<ul>${o.items.map((i) => `<li>${esc(i)}</li>`).join('')}</ul>` : '';
+	const list = o.items.length ? `<ul style="margin:14px 0 0;padding-left:18px;">${o.items.map((i) => `<li>${esc(i)}</li>`).join('')}</ul>` : '';
 	const courier = o.courier ? ` con ${esc(o.courier.replace('-ITA', ''))}` : '';
+	const n = esc(o.number);
 	const T = {
-		affidato: { subject: `Il tuo ordine ${o.number} è pronto: in attesa del corriere 📦`, title: 'Il tuo ordine è concluso', body: `${hi}<p>l'ordine <b>${esc(o.number)}</b> è stato completato e confezionato: è in attesa di ritiro da parte del corriere. Appena parte ti mandiamo il link per seguirlo.</p>${list}`, cta: o.accountUrl ? 'Vedi il tuo ordine' : 'Vai su Stickerprint' },
-		spedito: { subject: `Il tuo ordine ${o.number} è partito 🚚`, title: 'I tuoi adesivi sono in viaggio', body: `${hi}<p>l'ordine <b>${esc(o.number)}</b> è stato affidato al corriere${courier}. Puoi seguirlo passo passo dal link qui sotto.</p>${list}`, cta: 'Segui la spedizione' },
-		in_consegna: { subject: `Ordine ${o.number}: in consegna oggi`, title: 'Arriva oggi', body: `${hi}<p>il corriere ha in carico l'ordine <b>${esc(o.number)}</b> per la consegna di oggi${o.place ? ` (zona ${esc(o.place)})` : ''}. Se non ci sei, il corriere lascerà un avviso o riproverà domani.</p>`, cta: 'Segui la spedizione' },
-		consegnato: { subject: `Ordine ${o.number} consegnato ✅`, title: 'Consegnato!', body: `${hi}<p>l'ordine <b>${esc(o.number)}</b> risulta consegnato. Speriamo che i tuoi adesivi ti piacciano: se qualcosa non va, rispondi a questa email e ci pensiamo noi.</p>${list}`, cta: o.accountUrl ? 'Lascia una recensione' : 'Vedi la spedizione' },
-		problema: { subject: `Ordine ${o.number}: serve un tuo aiuto per la consegna`, title: 'La consegna si è fermata', body: `${hi}<p>il corriere segnala un problema sull'ordine <b>${esc(o.number)}</b>${o.detail ? `: <b>${esc(o.detail)}</b>` : ''}${o.place ? ` (${esc(o.place)})` : ''}. Di solito basta un contatto con il corriere o un indirizzo più preciso: controlla il tracking e, se serve, rispondi a questa email con un recapito telefonico.</p>`, cta: 'Vedi il tracking' },
-		punto_ritiro: { subject: `Ordine ${o.number}: pacco al punto di ritiro`, title: 'Ti aspetta al punto di ritiro', body: `${hi}<p>il pacco dell'ordine <b>${esc(o.number)}</b> è stato lasciato in un punto di ritiro${o.place ? ` (${esc(o.place)})` : ''}. Nel tracking trovi indirizzo e orari.</p>`, cta: 'Vedi dove ritirarlo' }
+		affidato: { subject: `Il tuo ordine ${o.number} è concluso 🚀`, title: `Il tuo ordine ${n} è ${hl('concluso')} 🚀`, body: `${hi}<p>l'abbiamo stampato, controllato e confezionato: ora è in attesa di ritiro da parte del corriere. Appena parte ti scriviamo con il link per seguirlo.</p>${list}`, cta: o.accountUrl ? 'Vedi il tuo ordine' : 'Vai su Stickerprint', gif: false },
+		spedito: { subject: `Il tuo ordine ${o.number} è partito 🚚`, title: `Il tuo ordine ${n} è ${hl('partito')} 🚚`, body: `${hi}<p>il corriere${courier} lo ha preso in carico. Puoi seguirlo passo passo dal link qui sotto.</p>${list}`, cta: 'Segui la spedizione', gif: true },
+		in_consegna: { subject: `Il tuo ordine ${o.number} è in consegna 📦`, title: `Il tuo ordine ${n} è ${hl('in consegna')} 📦`, body: `${hi}<p>arriva oggi${o.place ? ` (zona ${esc(o.place)})` : ''}. Se non ci sei, il corriere lascia un avviso o riprova domani.</p>`, cta: 'Segui la spedizione', gif: false },
+		consegnato: { subject: `Il tuo ordine ${o.number} è stato consegnato ✅`, title: `Il tuo ordine ${n} è stato ${hl('consegnato')} ✅`, body: `${hi}<p>speriamo che i tuoi adesivi ti piacciano. Se qualcosa non va, rispondi a questa email e ci pensiamo noi.</p>${list}`, cta: o.accountUrl ? 'Vedi il tuo ordine' : 'Vedi la spedizione', gif: false },
+		problema: { subject: `Il tuo ordine ${o.number} ha bisogno di te ⚠️`, title: `Il tuo ordine ${n} è ${hl('fermo')} ⚠️`, body: `${hi}<p>il corriere segnala un problema${o.detail ? `: <b>${esc(o.detail)}</b>` : ''}${o.place ? ` (${esc(o.place)})` : ''}. Di solito basta un contatto con il corriere o un indirizzo più preciso: controlla il tracking e, se serve, rispondi a questa email con un recapito telefonico.</p>`, cta: 'Vedi il tracking', gif: false },
+		punto_ritiro: { subject: `Il tuo ordine ${o.number} è al punto di ritiro 📍`, title: `Il tuo ordine ${n} è ${hl('al punto di ritiro')} 📍`, body: `${hi}<p>il pacco è stato lasciato in un punto di ritiro${o.place ? ` (${esc(o.place)})` : ''}. Nel tracking trovi indirizzo e orari.</p>`, cta: 'Vedi dove ritirarlo', gif: false }
 	}[o.kind];
 	const href = (o.kind === 'consegnato' || o.kind === 'affidato') && o.accountUrl ? o.accountUrl : o.trackingUrl;
-	return { subject: T.subject, tag: `shipping-${o.kind}`, html: layout(T.title, T.body, { label: T.cta, href }) };
+	const gif = T.gif ? `<p style="margin:18px 0 0;"><img src="${SITE}/images/email/partito.gif" width="496" alt="" style="width:100%;max-width:496px;height:auto;display:block;border-radius:12px;"></p>` : '';
+	return { subject: T.subject, tag: `shipping-${o.kind}`, html: layoutHtml(T.title, T.body + gif, { label: T.cta, href }) };
+}
+
+/** richiesta di recensione, 24 ore dopo la consegna (registrati e ospiti) */
+export function reviewRequestEmail(o: { name?: string | null; number: string; items: string[]; href: string }) {
+	const n = esc(o.number);
+	const list = o.items.length ? `<ul style="margin:14px 0 0;padding-left:18px;">${o.items.map((i) => `<li>${esc(i)}</li>`).join('')}</ul>` : '';
+	return { subject: `Com'è andata con l'ordine ${o.number}? ⭐`, tag: 'review-request', html: layoutHtml(`Il tuo ordine ${n} è ${hl('arrivato')} ⭐`, `<p>Ciao ${esc(o.name || '')},</p><p>ieri il corriere ti ha consegnato i tuoi adesivi. Ci racconti com'è andata? Bastano due righe e una stella da 1 a 5: aiutano noi a migliorare e chi deve ancora scegliere.</p>${list}`, { label: 'Lascia una recensione', href: o.href }) };
+}
+
+/** stesso layout delle altre email, ma il titolo puo' contenere HTML (la parola sottolineata) */
+function layoutHtml(titleHtml: string, body: string, cta?: { label: string; href: string }): string {
+	const plain = titleHtml.replace(/<[^>]+>/g, '');
+	return layout('§TITLE§', body, cta).replace('<h1 style="margin:0 0 14px;font-size:26px;line-height:1.15;letter-spacing:-0.02em;">§TITLE§</h1>', `<h1 style="margin:0 0 14px;font-size:26px;line-height:1.25;letter-spacing:-0.02em;">${titleHtml}</h1>`).replace('<title>§TITLE§</title>', `<title>${esc(plain)}</title>`);
 }
