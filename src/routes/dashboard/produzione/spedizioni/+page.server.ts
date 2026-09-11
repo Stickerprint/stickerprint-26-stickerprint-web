@@ -2,9 +2,20 @@ import { fail } from '@sveltejs/kit';
 import { groupOrders, itemMeta, deliveryMode, COURIERS, type OrderRow } from '$lib/dashboard/orders';
 import { courierDay, generateLabels, transmitShipments } from '$lib/server/shipping';
 import { courierStatus } from '$lib/server/couriers';
+import { env } from '$env/dynamic/private';
+
+/* stati Qapla': oltre al webhook, quando lo staff apre questa pagina si rileggono le spedizioni in viaggio
+   (al massimo ogni 20 minuti). Il cron di Vercel gira solo una volta al giorno sul piano attuale. */
+let lastSync = 0;
+function syncQapla(origin: string) {
+	if (!env.QAPLA_API_KEY || !env.INTERNAL_API_KEY || Date.now() - lastSync < 20 * 60 * 1000) return;
+	lastSync = Date.now();
+	fetch(`${origin}/api/qapla/sync`, { headers: { 'x-internal-key': env.INTERNAL_API_KEY } }).catch(() => {});
+}
 import type { Actions, PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ locals: { supabase } }) => {
+export const load: PageServerLoad = async ({ locals: { supabase }, url }) => {
+	syncQapla(url.origin);
 	const { data } = await supabase.from('orders').select('*').in('status', ['pronto', 'in_spedizione', 'spedito', 'in_consegna']).order('created_at', { ascending: false });
 	const groups = groupOrders((data ?? []) as OrderRow[]);
 	// le tre colonne corriere: spedizioni di oggi, da generare, da trasmettere
