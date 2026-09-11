@@ -138,13 +138,14 @@ const hl = (t: string) => `<span style="display:inline-block;border-bottom:6px s
  * Email di stato spedizione: stesso impianto per tutti gli stati, cambia solo la parola sottolineata
  * ("concluso", "partito", "in consegna", "consegnato"...) e il testo sotto.
  */
-export function shippingUpdateEmail(o: { kind: 'affidato' | 'spedito' | 'in_consegna' | 'consegnato' | 'problema' | 'punto_ritiro'; name?: string | null; number: string; trackingUrl: string; courier?: string | null; detail?: string; place?: string | null; items: string[]; accountUrl?: string | null }) {
+export function shippingUpdateEmail(o: { kind: 'affidato' | 'spedito' | 'in_consegna' | 'consegnato' | 'problema' | 'punto_ritiro'; name?: string | null; number: string; trackingUrl: string; courier?: string | null; detail?: string; place?: string | null; items: string[]; accountUrl?: string | null; consegna?: 'corriere' | 'noi' | 'cliente' }) {
 	const hi = `<p>Ciao ${esc(o.name || '')},</p>`;
 	const list = o.items.length ? `<ul style="margin:14px 0 0;padding-left:18px;">${o.items.map((i) => `<li>${esc(i)}</li>`).join('')}</ul>` : '';
 	const courier = o.courier ? ` con ${esc(o.courier.replace('-ITA', ''))}` : '';
 	const n = esc(o.number);
+	const dopo = o.consegna === 'noi' ? 'lo consegniamo noi direttamente nei prossimi giorni.' : o.consegna === 'cliente' ? 'è pronto per il ritiro da parte del tuo corriere.' : 'ora è in attesa di ritiro da parte del corriere. Appena parte ti scriviamo con il link per seguirlo.';
 	const T = {
-		affidato: { subject: `Il tuo ordine ${o.number} è concluso 🚀`, title: `Il tuo ordine ${n} è ${hl('concluso')} 🚀`, body: `${hi}<p>l'abbiamo stampato, controllato e confezionato: ora è in attesa di ritiro da parte del corriere. Appena parte ti scriviamo con il link per seguirlo.</p>${list}`, cta: o.accountUrl ? 'Vedi il tuo ordine' : 'Vai su Stickerprint', gif: false },
+		affidato: { subject: `Il tuo ordine ${o.number} è concluso 🚀`, title: `Il tuo ordine ${n} è ${hl('concluso')} 🚀`, body: `${hi}<p>l'abbiamo stampato, controllato e confezionato: ${dopo}</p>${list}`, cta: o.accountUrl ? 'Vedi il tuo ordine' : 'Vai su Stickerprint', gif: false },
 		spedito: { subject: `Il tuo ordine ${o.number} è partito 🚚`, title: `Il tuo ordine ${n} è ${hl('partito')} 🚚`, body: `${hi}<p>il corriere${courier} lo ha preso in carico. Puoi seguirlo passo passo dal link qui sotto.</p>${list}`, cta: 'Segui la spedizione', gif: true },
 		in_consegna: { subject: `Il tuo ordine ${o.number} è in consegna 📦`, title: `Il tuo ordine ${n} è ${hl('in consegna')} 📦`, body: `${hi}<p>arriva oggi${o.place ? ` (zona ${esc(o.place)})` : ''}. Se non ci sei, il corriere lascia un avviso o riprova domani.</p>`, cta: 'Segui la spedizione', gif: false },
 		consegnato: { subject: `Il tuo ordine ${o.number} è stato consegnato ✅`, title: `Il tuo ordine ${n} è stato ${hl('consegnato')} ✅`, body: `${hi}<p>speriamo che i tuoi adesivi ti piacciano. Se qualcosa non va, rispondi a questa email e ci pensiamo noi.</p>${list}`, cta: o.accountUrl ? 'Vedi il tuo ordine' : 'Vedi la spedizione', gif: false },

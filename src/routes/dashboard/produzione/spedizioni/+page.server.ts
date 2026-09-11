@@ -66,7 +66,7 @@ export const actions: Actions = {
 		return { ok: true, qapla: g.number, emailed, notes: r.warnings };
 	},
 	/** Concludi: DDT ed etichette dei colli per qualsiasi ordine (consegna diretta, corriere del cliente o nostro corriere già trasmesso). Le quantità possono cambiare rispetto all'ordine. */
-	ddt: async ({ request, locals: { supabase } }) => {
+	ddt: async ({ request, url, locals: { supabase } }) => {
 		const f = await request.formData();
 		const group = String(f.get('group') ?? '');
 		const parcels = Math.max(1, Number(f.get('parcels') ?? 1));
@@ -110,6 +110,11 @@ export const actions: Actions = {
 		const { data: row, error } = await supabase.from('ddts').insert(ddt).select('id').single();
 		if (error) return fail(400, { error: `DDT non creato: ${error.message}` });
 		await supabase.from('orders').update({ status: mode === 'ours' ? 'in_spedizione' : 'spedito', courier, parcels, weight_kg: weight, shipped_at: new Date().toISOString(), ddt_id: row.id }).eq('checkout_group', group);
+		// email "ordine concluso" anche per consegna diretta e corriere del cliente
+		if (g.email && mode !== 'ours') {
+			const mail = shippingUpdateEmail({ kind: 'affidato', consegna: mode === 'direct' ? 'noi' : 'cliente', name: first.shipping?.first_name || g.customer, number: g.number, trackingUrl: `${url.origin}/account/ordini`, items: g.items.map((i) => `${i.qty} × ${i.product_name}`), accountUrl: first.user_id ? `${url.origin}/account/ordini` : null });
+			sendEmail({ to: g.email, subject: mail.subject, html: mail.html, tag: mail.tag, metadata: { order: g.number } }).catch(() => {});
+		}
 		return { ok: true, labels: `/dashboard/produzione/spedizioni/etichette?ddt=${row.id}&courier=${encodeURIComponent(courier)}`, ddt: ddt.number };
 	},
 	status: async ({ request, locals: { supabase } }) => {
