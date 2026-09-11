@@ -182,7 +182,12 @@
 .cmenu__list { position: absolute; left: 0; top: calc(100% + 4px); z-index: 30; background: #fff; border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 12px 30px rgba(11,11,59,.15); padding: 6px; display: grid; gap: 4px; min-width: 170px; }
 .cmenu__list button { display: flex; align-items: center; gap: 10px; background: none; border: 0; border-radius: 8px; padding: 6px 10px; font: inherit; font-weight: 700; font-size: 13px; cursor: pointer; text-align: left; }
 .cmenu__list button:hover, .cmenu__list button.is-on { background: #eef2ff; }
-.cmenu__list img { height: 28px; }
+.cmenu__list img { height: 28px; flex: 0 0 auto; }
+.cmenu__list { min-width: 260px; }
+.cmenu__opt { white-space: normal; }
+.cmenu__txt { display: flex; flex-direction: column; gap: 2px; text-align: left; }
+.cmenu__txt b { font-weight: 800; white-space: nowrap; }
+.cmenu__txt small { font-weight: 500; font-size: 11.5px; color: var(--muted); line-height: 1.25; }
 .transmit-bar { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 .transmit-btn { display: inline-flex; align-items: center; gap: 10px; padding: 9px 16px; font-size: 13px; }
 .transmit-btn img { height: 28px; border-radius: 6px; }

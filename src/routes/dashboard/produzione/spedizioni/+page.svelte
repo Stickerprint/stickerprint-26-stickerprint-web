@@ -62,7 +62,7 @@
 									</button>
 									{#if openMenu === g.key}
 										<div class="cmenu__list">
-											{#each CHOICES as x (x.id)}<button type="submit" name="mode" value={x.id} class:is-on={c === x.id}>{#if x.logo}<img src={x.logo} alt="" />{/if} {x.label}<small style="display:block;font-weight:500;color:var(--muted)">{x.sub}</small></button>{/each}
+											{#each CHOICES as x (x.id)}<button type="submit" name="mode" value={x.id} class:is-on={c === x.id} class="cmenu__opt">{#if x.logo}<img src={x.logo} alt="" />{/if}<span class="cmenu__txt"><b>{x.label}</b><small>{x.sub}</small></span></button>{/each}
 										</div>
 									{/if}
 								</form>
