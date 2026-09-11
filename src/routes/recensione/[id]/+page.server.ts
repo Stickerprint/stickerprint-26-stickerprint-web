@@ -11,7 +11,9 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export const load: PageServerLoad = async ({ params }) => {
 	const db = admin();
 	if (!db || !UUID.test(params.id)) error(404, 'Ordine non trovato');
-	const { data: o } = await db.from('orders').select('id, number, checkout_group, user_id, shipping, product_name, qty, status').eq('id', params.id).maybeSingle();
+	/* il link puo' portare l'id della riga (un prodotto) o l'id dell'ordine intero (checkout_group) */
+	const { data: found } = await db.from('orders').select('id, number, checkout_group, user_id, shipping, product_name, qty, status').or(`id.eq.${params.id},checkout_group.eq.${params.id}`).order('created_at').limit(1);
+	const o = found?.[0];
 	if (!o) error(404, 'Ordine non trovato');
 	const { data: items } = await db.from('orders').select('product_name, qty').eq(o.checkout_group ? 'checkout_group' : 'id', o.checkout_group ?? o.id);
 	const { data: existing } = await db.from('reviews').select('id, rating').eq('order_id', o.id).maybeSingle();
@@ -24,7 +26,8 @@ export const actions: Actions = {
 		if (!db || !UUID.test(params.id)) return fail(400, { error: 'Ordine non trovato.' });
 		const f = await request.formData();
 		const rating = Math.max(1, Math.min(5, Number(f.get('rating') ?? 5)));
-		const { data: o } = await db.from('orders').select('id, user_id, email, shipping').eq('id', params.id).maybeSingle();
+		const { data: found } = await db.from('orders').select('id, user_id, email, shipping').or(`id.eq.${params.id},checkout_group.eq.${params.id}`).order('created_at').limit(1);
+		const o = found?.[0];
 		if (!o) return fail(404, { error: 'Ordine non trovato.' });
 		const author = [o.shipping?.first_name, o.shipping?.last_name].filter(Boolean).join(' ') || null;
 		const { error: e } = await db.from('reviews').insert({ user_id: o.user_id ?? null, order_id: o.id, rating, title: String(f.get('title') ?? '').trim().slice(0, 120) || null, comment: String(f.get('comment') ?? '').trim().slice(0, 2000) || null, author, email: o.email ?? null });
