@@ -1,7 +1,8 @@
 import { fail } from '@sveltejs/kit';
-import { groupOrders, itemMeta, deliveryMode, COURIERS, type OrderRow } from '$lib/dashboard/orders';
-import { courierDay, generateLabels, transmitShipments } from '$lib/server/shipping';
-import { courierStatus } from '$lib/server/couriers';
+import { groupOrders, itemMeta, deliveryMode, type OrderRow } from '$lib/dashboard/orders';
+import { generateLabels } from '$lib/server/shipping';
+import { sendEmail } from '$lib/server/email';
+import { shippingUpdateEmail } from '$lib/server/email-templates';
 import { env } from '$env/dynamic/private';
 
 /* stati Qapla': oltre al webhook, quando lo staff apre questa pagina si rileggono le spedizioni in viaggio
@@ -18,52 +19,51 @@ export const load: PageServerLoad = async ({ locals: { supabase }, url }) => {
 	syncQapla(url.origin);
 	const { data } = await supabase.from('orders').select('*').in('status', ['pronto', 'in_spedizione', 'spedito', 'in_consegna']).order('created_at', { ascending: false });
 	const groups = groupOrders((data ?? []) as OrderRow[]);
-	// le tre colonne corriere: spedizioni di oggi, da generare, da trasmettere
-	const status = Object.fromEntries(courierStatus().map((c) => [c.id, c.configured]));
-	const couriers = Object.keys(COURIERS).map((c) => ({ id: c, ...courierDay(groups, c), configured: !!status[c] }));
-	return { groups, couriers };
+	return { groups, qaplaOk: !!env.QAPLA_API_KEY };
 };
 const r2 = (v: number) => Math.round(v * 100) / 100;
 
 export const actions: Actions = {
-	/** Scelta del corriere dalla tendina (ordini e-commerce e manuali con nostro corriere) */
-	courier: async ({ request, locals: { supabase } }) => {
+	/** Tendina "Spedizione": Qapla (nostro corriere via Qapla'), consegna diretta o corriere del cliente */
+	mode: async ({ request, locals: { supabase } }) => {
 		const f = await request.formData();
-		const courier = String(f.get('courier') ?? '');
-		if (!COURIERS[courier]) return fail(400, { error: 'Corriere non valido.' });
-		// cambiando corriere si ricomincia: etichette e tracking del corriere precedente non valgono più
-		const { error } = await supabase.from('orders').update({ courier, transmitted_at: null, labels_generated_at: null, tracking_number: null, courier_label_path: null, manifest_id: null }).eq('checkout_group', String(f.get('group')));
+		const mode = String(f.get('mode') ?? '');
+		const map: Record<string, { courier: string | null; shipping_method: string }> = {
+			qapla: { courier: 'Qapla', shipping_method: 'Corriere a carico del mittente' },
+			direct: { courier: null, shipping_method: 'Consegna diretta Stickerprint' },
+			customer: { courier: null, shipping_method: 'Corriere a carico del destinatario' }
+		};
+		if (!map[mode]) return fail(400, { error: 'Scelta non valida.' });
+		// cambiando modalita' si ricomincia: invio a Qapla' e tracking precedenti non valgono piu'
+		const { error } = await supabase.from('orders').update({ ...map[mode], transmitted_at: null, labels_generated_at: null, tracking_number: null, courier_label_path: null, manifest_id: null }).eq('checkout_group', String(f.get('group')));
 		if (error) return fail(400, { error: error.message });
 		return { ok: true };
 	},
-	/** Genera spedizioni: crea le spedizioni presso il corriere (se collegato) e scarica il PDF unico delle etichette */
-	labels: async ({ request, locals: { supabase } }) => {
+	/** Invia a Qapla': l'ordine passa a Qapla' (sezione Crea, etichetta dal pannello), l'ordine e' concluso
+	    e il cliente riceve l'email "in attesa di ritiro"; poi gli stati arrivano dal webhook */
+	qapla: async ({ request, url, locals: { supabase } }) => {
 		const f = await request.formData();
-		const courier = String(f.get('courier') ?? '');
-		if (!COURIERS[courier]) return fail(400, { error: 'Corriere non valido.' });
-		const { data } = await supabase.from('orders').select('*').eq('status', 'pronto').eq('courier', courier).is('labels_generated_at', null).is('transmitted_at', null);
-		const keys = groupOrders((data ?? []) as OrderRow[]).filter((g) => deliveryMode(g) === 'ours').map((g) => g.key);
-		if (!keys.length) return fail(400, { error: `Nessuna spedizione ${courier} da generare.` });
-		try {
-			const r = await generateLabels(supabase, courier, keys);
-			// il PDF contiene tutte le etichette del corriere non ancora trasmesse (anche quelle generate prima)
-			const { data: all } = await supabase.from('orders').select('*').eq('status', 'pronto').eq('courier', courier).is('transmitted_at', null);
-			const allKeys = groupOrders((all ?? []) as OrderRow[]).filter((g) => deliveryMode(g) === 'ours').map((g) => g.key);
-			return { ok: true, generated: courier, count: r.count, warnings: r.warnings, labels: `/dashboard/produzione/spedizioni/etichette?groups=${allKeys.join(',')}&courier=${courier}&day=1` };
-		} catch (e) { return fail(400, { error: e instanceof Error ? e.message : 'Errore' }); }
-	},
-	/** Trasmetti spedizioni: invio al corriere e manifest da consegnare all'autista */
-	transmit: async ({ request, locals: { supabase } }) => {
-		const f = await request.formData();
-		const courier = String(f.get('courier') ?? '');
-		if (!COURIERS[courier]) return fail(400, { error: 'Corriere non valido.' });
-		const { data } = await supabase.from('orders').select('*').eq('status', 'pronto').eq('courier', courier).not('labels_generated_at', 'is', null).is('transmitted_at', null);
-		const keys = groupOrders((data ?? []) as OrderRow[]).filter((g) => deliveryMode(g) === 'ours').map((g) => g.key);
-		if (!keys.length) return fail(400, { error: `Nessuna spedizione ${courier} da trasmettere: prima genera le spedizioni.` });
-		try {
-			const r = await transmitShipments(supabase, courier, keys);
-			return { ok: true, transmitted: courier, count: r.count, warnings: r.warnings, manifest: r.number, labels: `/dashboard/produzione/spedizioni/manifest/${r.manifestId}` };
-		} catch (e) { return fail(400, { error: e instanceof Error ? e.message : 'Errore' }); }
+		const group = String(f.get('group') ?? '');
+		const { data } = await supabase.from('orders').select('*').eq('checkout_group', group);
+		if (!data?.length) return fail(404, { error: 'Ordine non trovato.' });
+		const g = groupOrders(data as OrderRow[])[0];
+		if (!env.QAPLA_API_KEY) return fail(400, { error: 'Qapla non e' ancora collegato: manca QAPLA_API_KEY su Vercel.' });
+		let r: { count: number; warnings: string[] };
+		try { r = await generateLabels(supabase, 'Qapla', [group]); } catch (e) { return fail(400, { error: e instanceof Error ? e.message : 'Errore Qapla' }); }
+		const hard = r.warnings.filter((w) => !/Ordine inviato a Qapla/.test(w));
+		if (hard.length) return fail(400, { error: hard.join(' · ') });
+		const now = new Date().toISOString();
+		await supabase.from('orders').update({ status: 'in_spedizione', courier: 'Qapla', shipped_at: now, transmitted_at: now }).eq('checkout_group', group);
+		// email al cliente: ordine concluso, in attesa del ritiro del corriere
+		const first = g.items[0];
+		let emailed = false;
+		if (g.email) {
+			const mail = shippingUpdateEmail({ kind: 'affidato', name: first.shipping?.first_name || g.customer, number: g.number, trackingUrl: `${url.origin}/account/ordini`, items: g.items.map((i) => `${i.qty} × ${i.product_name}`), accountUrl: first.user_id ? `${url.origin}/account/ordini` : null });
+			const res = await sendEmail({ to: g.email, subject: mail.subject, html: mail.html, tag: mail.tag, metadata: { order: g.number } });
+			emailed = res.ok;
+			if (res.ok) await supabase.from('orders').update({ shipping_notified: ['affidato'] }).eq('checkout_group', group);
+		}
+		return { ok: true, qapla: g.number, emailed, notes: r.warnings };
 	},
 	/** Concludi: DDT ed etichette dei colli per qualsiasi ordine (consegna diretta, corriere del cliente o nostro corriere già trasmesso). Le quantità possono cambiare rispetto all'ordine. */
 	ddt: async ({ request, locals: { supabase } }) => {
@@ -97,7 +97,7 @@ export const actions: Actions = {
 			for (const it of g.items) it.payment_terms = terms;
 		}
 		const mode = deliveryMode(g);
-		if (mode === 'ours' && !(first.courier && first.transmitted_at)) return fail(400, { error: 'Scegli il corriere e trasmetti la spedizione prima di concludere.' });
+		if (mode === 'ours' && !(first.courier && first.transmitted_at)) return fail(400, { error: 'Con il nostro corriere usa "Invia a Qapla"; Concludi vale per consegna diretta e corriere del cliente.' });
 		const courier = mode === 'direct' ? 'Consegna diretta' : mode === 'customer' ? 'Corriere del destinatario' : first.courier!;
 		const trasporto = mode === 'direct' ? 'Consegna diretta Stickerprint' : mode === 'customer' ? 'Corriere a carico del destinatario' : `Corriere a carico del mittente (${courier})`;
 		const { data: num } = await supabase.rpc('next_ddt_number');
