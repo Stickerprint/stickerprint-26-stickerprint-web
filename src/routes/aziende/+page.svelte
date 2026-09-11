@@ -1,10 +1,12 @@
 <script lang="ts">
 	import '$lib/styles/pages.css';
+	import { track } from '$lib/tracking';
 	import { enhance } from '$app/forms';
 	import { onMount } from 'svelte';
 	import Carousel from '$lib/components/Carousel.svelte';
 	import { BRANDS } from '$lib/brands';
 	let { form, data } = $props();
+	$effect(() => { if (form?.ok) track.generateLead('aziende'); });
 	/* Reel dei clienti: per ognuno il logo dell'azienda (in alto), il link YouTube
 	   (anche Shorts; finché manca compare il segnaposto) e il caso studio in due
 	   righe: cosa abbiamo fatto e con che risultato. Basta compilare qui. */

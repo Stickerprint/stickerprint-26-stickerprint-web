@@ -1,5 +1,7 @@
 <script lang="ts">
 	import '$lib/styles/product.css';
+	import { track, type ItemIn } from '$lib/tracking';
+	import { klaviyo } from '$lib/klaviyo';
 	import FreeShippingBar from './FreeShippingBar.svelte';
 	import { readCart } from '$lib/cart';
 	/**
@@ -211,8 +213,15 @@
 		const img = e.currentTarget as HTMLImageElement;
 		if (img.naturalWidth && img.naturalHeight) fileRatio = img.naturalWidth / img.naturalHeight;
 	}
+	/* articolo corrente per il tracciamento (stessa struttura del sito attuale) */
+	const trackItem = (): ItemIn => ({ product, productName: productName.replace(/^(i tuoi|le tue) /, ''), forma, w, h, materiale, finitura: showFinish ? finitura : null, qty, gross: q.gross });
+	let viewed = false;
+	$effect(() => { if (!viewed && q.gross > 0) { viewed = true; setTimeout(() => track.viewItem(trackItem()), 500); } });
+	const FILE_OK = /\.(pdf|svg|png|jpe?g|webp)$/i;
 	function pick(f: File | undefined) {
 		if (!f) return;
+		if (!FILE_OK.test(f.name)) track.fileUpload(false, f, q.gross, { code: 'ERR_FILE_TYPE', message: 'Unsupported file type.' });
+		else track.fileUpload(true, f, q.gross);
 		if (fileUrl) URL.revokeObjectURL(fileUrl);
 		file = f;
 		fileUrl = URL.createObjectURL(f);
@@ -238,6 +247,8 @@
 	async function addCart() {
 		if (!file) return;
 		const it = addToCart({ product, productName: productName.replace(/^(i tuoi|le tue) /, ''), engineProduct, forma, materiale, finitura: showFinish ? finitura : undefined, w, h, qty, net: q.net, gross: q.gross, promoId: promoOk && promo ? promo.id : undefined, fileName: file.name, note });
+		track.addToCart(trackItem());
+		klaviyo.addedToCart({ productId: `${product}_${forma}`, productName: `${it.productName} ${forma}`, quantity: qty, dimension: `${w} x ${h} mm`, material: materiale, price: q.gross });
 		try {
 			await saveCartFile(it.id, file);
 			if (lastPng) {

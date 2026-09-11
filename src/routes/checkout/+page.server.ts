@@ -1,5 +1,6 @@
 import { fail } from '@sveltejs/kit';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { klaviyoPlacedOrder } from '$lib/server/klaviyo';
 import { shippingGrossFor, isRemote } from '$lib/shipping-rules';
 import { env } from '$env/dynamic/private';
 import { PUBLIC_SUPABASE_URL, PUBLIC_SITE_URL } from '$env/static/public';
@@ -30,14 +31,18 @@ function adminClient(): SupabaseClient | null {
 export const load: PageServerLoad = async ({ locals: { supabase, user } }) => {
 	const ship = estimatedShipDate(5);
 	const base = { shipDate: formatItDate(ship), expressDate: formatItDate(estimatedShipDate(3)), expressRate: EXPRESS_RATE, guestAllowed: !!env.SUPABASE_SERVICE_ROLE_KEY };
-	if (!user) return { ...base, profile: null, addresses: [], credit: 0, loyalty: null };
+	if (!user) return { ...base, profile: null, addresses: [], credit: 0, loyalty: null, orderCount: 0, lifetimeValue: 0 };
 	const [{ data: profile }, { data: addresses }, { data: credit }, { data: loyalty }] = await Promise.all([
 		supabase.from('profiles').select('full_name, email, phone, company_name, vat_number, fiscal_code, sdi_code').eq('id', user.id).maybeSingle(),
 		supabase.from('addresses').select('*').eq('user_id', user.id).order('is_default', { ascending: false }),
 		supabase.rpc('my_credit_balance'),
 		supabase.rpc('loyalty_status')
 	]);
-	return { ...base, profile, addresses: addresses ?? [], credit: Number(credit ?? 0), loyalty };
+	/* storico per il tracciamento dell'acquisto: cliente nuovo o di ritorno, numero ordini, valore a vita */
+	const { data: prev } = await supabase.from('orders').select('checkout_group, total_paid, total_gross').eq('user_id', user.id);
+	const groups = new Set((prev ?? []).map((o) => o.checkout_group ?? Math.random()));
+	const lifetimeValue = Math.round((prev ?? []).reduce((a, o) => a + Number(o.total_paid ?? o.total_gross ?? 0), 0) * 100) / 100;
+	return { ...base, profile, addresses: addresses ?? [], credit: Number(credit ?? 0), loyalty, orderCount: groups.size, lifetimeValue };
 };
 
 interface Line { id: string; product: string; forma: string; materiale: string; finitura?: string; w: number; h: number; qty: number; filePath: string | null; fileName: string | null; previewUrl?: string | null; note?: string; reorderOf?: string | null }
@@ -186,6 +191,9 @@ export const actions: Actions = {
 		}
 		if (creditUsed > 0) await supabase.from('credit_transactions').insert({ user_id: user!.id, amount: -creditUsed, kind: 'spend', order_ref: numbers[0], note: `Credito usato sull'ordine ${numbers.join(', ')}` });
 		if (discountCode) await db.rpc('discount_code_used', { p_code: discountCode });
+
+		// Klaviyo "Placed Order" (solo con KLAVIYO_PRIVATE_KEY impostata)
+		klaviyoPlacedOrder({ email, firstName: ship.first_name, lastName: ship.last_name, orderNumber: numbers[0], total: toPay, items: priced.map((l) => ({ productId: `${l.product}_${l.forma}`, productName: l.product === 'campioni' ? 'Kit campioni' : l.product === 'kit_adesivi' ? 'Kit di adesivi' : `${PRODUCT_ENGINES.find((p) => p.slug === l.product)?.name ?? l.product} ${l.forma}`, price: l.gross, quantity: Number(l.qty) })), discountCode, discountAmount: r2(discount * VAT) }).catch(() => {});
 
 		// fattura: registrata, PDF generato e inviato via email (con la conferma d'ordine)
 		const { data: invNum } = await db.rpc('next_invoice_number');

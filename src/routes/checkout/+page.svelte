@@ -9,6 +9,8 @@
 	import { getCartFile, getCartPreview, deleteCartFile } from '$lib/utils/draftStore';
 	import { PROVINCES } from '$lib/provinces';
 	import { MATERIAL_LABEL, eur, fmtMm } from '$lib/account';
+	import { track, cartItems, trackingOn } from '$lib/tracking';
+	import { klaviyo } from '$lib/klaviyo';
 
 	let { data } = $props();
 	let items = $state<CartItem[]>([]);
@@ -66,11 +68,29 @@
 			else if (f && f.type.startsWith('image/')) thumbs[it.id] = URL.createObjectURL(f);
 		}
 		loaded = true;
+		if (items.length) {
+			const ti = cartItems(items);
+			track.viewCart(ti); track.beginCheckout(ti);
+			klaviyo.startedCheckout(items.map((i) => ({ productId: `${i.product}_${i.forma}`, productName: `${i.productName} ${i.forma}`, quantity: i.qty, price: i.gross })));
+		}
 	});
 	function remove(id: string) {
+		const it = items.find((i) => i.id === id);
+		if (it) track.removeFromCart(cartItems([it])[0]);
 		items = removeFromCart(id);
 		deleteCartFile(id);
 	}
+	/* add_contact_info quando nome ed email ci sono, add_payment_info alla scelta del pagamento: una volta sola */
+	let contactSent = false, paymentSent = false;
+	function contactInfo() {
+		if (contactSent || !formEl || !items.length) return;
+		const fd = new FormData(formEl);
+		const email = data.user?.email ?? String(fd.get('email') ?? '');
+		if (!String(fd.get('first_name') ?? '').trim() || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return;
+		contactSent = true; track.addContactInfo(cartItems(items), discount?.code ?? null); klaviyo.identify(email);
+	}
+	const PAY_LABEL: Record<string, string> = { stripe: 'Carta di credito', paypal: 'PayPal', test: 'Test' };
+	$effect(() => { const p = payment; if (loaded && items.length && p && !paymentSent) { paymentSent = true; track.addPaymentInfo(cartItems(items), PAY_LABEL[p] ?? p, discount?.code ?? null); } });
 	async function applyCode() {
 		codeMsg = '';
 		const r = await fetch('/api/discount', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code, subtotalNet }) }).then((r) => r.json());
@@ -134,6 +154,10 @@
 			const res = await fetch('?/order', { method: 'POST', body: fd, headers: { 'x-sveltekit-action': 'true' } });
 			const result = deserialize(await res.text());
 			if (result.type === 'success' && result.data?.numbers) {
+				const numbers = result.data.numbers as string[];
+				const g = (k: string) => String(fd.get(k) ?? '');
+				track.purchase({ orderNumber: numbers[0], items: cartItems(items), value: toPay, tax: Math.round(vatAmount * 100) / 100, paymentType: PAY_LABEL[payment] ?? payment, express, coupon: discount?.code ?? null, discount: Math.round(discountAmt * VAT * 100) / 100, returning: !!data.user && (data.orderCount ?? 0) > 0, userId: data.user?.id ?? null, orderCount: (data.orderCount ?? 0) + 1, lifetimeValue: Math.round(((data.lifetimeValue ?? 0) + toPay) * 100) / 100, user: { email: data.user?.email ?? g('email'), phone: g('phone'), first_name: g('first_name'), last_name: g('last_name'), street: g('street'), city: g('city'), province: g('province'), zip: g('zip') } });
+				if (trackingOn()) await new Promise((r) => setTimeout(r, 400));   /* il tempo di far partire i tag prima di cambiare pagina */
 				for (const it of items) deleteCartFile(it.id);
 				clearCart();
 				await goto(`/checkout/grazie?n=${encodeURIComponent((result.data.numbers as string[]).join(','))}${express ? '&e=1' : ''}`);
@@ -173,9 +197,9 @@
 
 				<h2>Dati di spedizione</h2>
 				<div class="co-grid">
-					<label>Nome <i>obbligatorio</i><input name="first_name" required value={addr?.first_name ?? fn ?? ''} /></label>
+					<label>Nome <i>obbligatorio</i><input name="first_name" required value={addr?.first_name ?? fn ?? ''} onblur={contactInfo} /></label>
 					<label>Cognome <i>obbligatorio</i><input name="last_name" required value={addr?.last_name ?? ln.join(' ')} /></label>
-					<label class="full">Indirizzo email <i>obbligatorio</i>{#if data.user}<input type="email" value={data.user.email ?? ''} readonly /><small>Stai ordinando come <b>{data.user.email}</b>. Per usare un’altra email, esci dall’account.</small>{:else}<input type="email" name="email" required bind:value={guestEmail} autocomplete="email" /><small>Conferma d’ordine e fattura arrivano a questo indirizzo.</small>{/if}</label>
+					<label class="full">Indirizzo email <i>obbligatorio</i>{#if data.user}<input type="email" value={data.user.email ?? ''} readonly /><small>Stai ordinando come <b>{data.user.email}</b>. Per usare un’altra email, esci dall’account.</small>{:else}<input type="email" name="email" required bind:value={guestEmail} autocomplete="email" onblur={contactInfo} /><small>Conferma d’ordine e fattura arrivano a questo indirizzo.</small>{/if}</label>
 					<label class="full">Indirizzo <i>obbligatorio</i><input name="street" required value={addr?.street ?? ''} /></label>
 					<label class="full"><span class="sr-only">Dettagli indirizzo</span><input name="street2" placeholder="Appartamento, scala, piano, ecc." /></label>
 					<label>Città <i>obbligatorio</i><input name="city" required value={addr?.city ?? ''} /></label>

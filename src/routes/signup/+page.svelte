@@ -1,7 +1,9 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { track } from '$lib/tracking';
 	import { page } from '$app/state';
 	let { form } = $props();
+	$effect(() => { if (form?.success) track.signUp(null, false); });
 	let kind = $state<'privato' | 'azienda'>('privato');
 	const next = $derived(page.url.searchParams.get('next') ?? '/account');
 	let loading = $state(false);

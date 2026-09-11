@@ -7,6 +7,8 @@
 	 * misura); alla conferma l'adesivo cade nella bustina, dove si puo' spostare col mouse.
 	 */
 	import { goto } from '$app/navigation';
+	import { track } from '$lib/tracking';
+	import { klaviyo } from '$lib/klaviyo';
 	import FreeShippingBar from './FreeShippingBar.svelte';
 	import { readCart } from '$lib/cart';
 	import { onMount } from 'svelte';
@@ -20,6 +22,7 @@
 	let cartGross = $state(0);
 	onMount(() => { try { cartGross = readCart().filter((i) => i.product !== 'campioni').reduce((a, i) => a + (Number(i.gross) || 0), 0); } catch { cartGross = 0; } });
 	let { cfg, shipDate }: { cfg: EngineConfig; shipDate: string } = $props();
+	onMount(() => { setTimeout(() => track.viewItem({ product: 'kit_adesivi', productName: 'Kit di adesivi', forma: 'kit', w: 50, h: 50, materiale, finitura, qty, gross: q.gross }), 500); });
 
 	/* misure del cavallotto (linguetta piegata: il fronte e' 80 x 40 mm) */
 	const CAV = { w: 80, h: 40 };
@@ -272,6 +275,8 @@
 			if (cav.file) { await saveCartFile(item.id, cav.file); await saveCartFile(item.id + ':cav', cav.file); }
 			let k = 0; for (const s of slots) if (s.file) { k++; await saveCartFile(`${item.id}:s${k}`, s.file); }
 			if (photo) await saveCartPreview(item.id, photo);
+			track.addToCart({ product: 'kit_adesivi', productName: 'Kit di adesivi', forma: `kit${n}`, w: misuraMedia, h: misuraMedia, materiale, finitura, qty, gross: quote.gross });
+			klaviyo.addedToCart({ productId: `kit_adesivi_kit${n}`, productName: `Kit di adesivi (${n} adesivi)`, quantity: qty, dimension: `${misuraMedia} x ${misuraMedia} mm`, material: materiale, price: quote.gross });
 			await goto('/checkout');
 		} finally { adding = false; }
 	}
