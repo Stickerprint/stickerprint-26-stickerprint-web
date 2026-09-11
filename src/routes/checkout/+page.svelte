@@ -127,6 +127,13 @@
 					if (!pe) previewUrl = data.supabase.storage.from('order-previews').getPublicUrl(ppath).data.publicUrl;
 				}
 				const extOf = (x: File) => (x.name.split('.').pop() ?? 'bin').toLowerCase().replace(/[^a-z0-9]/g, '') || 'bin';
+				/* file d'ordine: gli utenti registrati scrivono nel bucket direttamente; gli ospiti passano dal server (il bucket non accetta scritture anonime) */
+				const putFile = async (path: string, kf: File) => {
+					if (data.user) { const { error } = await data.supabase.storage.from('order-files').upload(path, kf, { contentType: kf.type || undefined, upsert: true }); if (error) throw new Error(`File non caricato (${kf.name}): ${error.message}`); return; }
+					const fdu = new FormData(); fdu.set('path', path); fdu.set('file', kf);
+					const r = await fetch('/api/order-file', { method: 'POST', body: fdu }).then((x) => x.json()).catch(() => ({ error: 'rete' }));
+					if (!r.ok) throw new Error(`File non caricato (${kf.name}): ${r.error ?? 'errore'}`);
+				};
 				if (it.product === 'kit_adesivi') {
 					/* kit di adesivi: piu' file in una cartella dell'ordine (cavallotto + adesivo-1..6); file_path = la cartella */
 					const dir = `${data.user?.id ?? 'guest'}/${it.id}`;
@@ -136,15 +143,13 @@
 						const kf = await getCartFile(it.id + key);
 						if (!kf) continue;
 						const name = key === ':cav' ? 'cavallotto' : `adesivo-${key.slice(2)}`;
-						const { error } = await data.supabase.storage.from('order-files').upload(`${dir}/${name}.${extOf(kf)}`, kf, { contentType: kf.type || undefined, upsert: true });
-						if (error) throw new Error(`File non caricato (${kf.name}): ${error.message}`);
+						await putFile(`${dir}/${name}.${extOf(kf)}`, kf);
 					}
 					filePath = `${dir}/`;
 				} else if (f) {
 					const ext = extOf(f);
 					const path = `${data.user?.id ?? 'guest'}/${it.id}.${ext}`;
-					const { error } = await data.supabase.storage.from('order-files').upload(path, f, { contentType: f.type || undefined, upsert: true });
-					if (error) throw new Error(`File non caricato (${f.name}): ${error.message}`);
+					await putFile(path, f);
 					filePath = path;
 				}
 				lines.push({ id: it.id, product: it.product, forma: it.forma, materiale: it.materiale, finitura: it.finitura, w: it.w, h: it.h, qty: it.qty, filePath, fileName: it.fileName ?? null, previewUrl, note: it.note, reorderOf: it.reorderOf ?? null, promoId: it.promoId ?? null });
