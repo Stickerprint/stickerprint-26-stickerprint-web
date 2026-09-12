@@ -1910,16 +1910,34 @@ function buildArtHi(){
     const up=document.createElement('canvas');up.width=W;up.height=H;const gu=up.getContext('2d',{willReadFrequently:true});
     gu.imageSmoothingEnabled=true;gu.imageSmoothingQuality='high';gu.drawImage(S.artCanvas,0,0,W,H);const uu=gu.getImageData(0,0,W,H).data;
     const B=S.bgCol;const opaco=!!(S.bgOpaque&&B);
+    /* FILO SCURO SUL BORDO A PIENA RISOLUZIONE
+       La maschera (calcolata sulla copia ridotta) copre per intero anche i pixel del file
+       che sono una miscela fra il disegno e il vecchio sfondo: sono la rampa di antialiasing
+       del file. Tenuti com'erano, su uno sfondo nuovo (es. bianco al posto del nero) restano
+       come un filetto scuro lungo tutto il contorno. Qui la fascia di 3 px verso l'esterno viene
+       trattata come il bordo: colore VERO del disegno (dalla copia gia' ripulita) e trasparenza
+       pari a quanto disegno c'e' davvero nel pixel. Il resto dell'interno non si tocca. */
+    let gIn=null;
+    if(opaco){ const fuori=new Uint8Array(W*H); for(let i=0,q=3;i<W*H;i++,q+=4)fuori[i]=uu[q]<250?1:0; gIn=edt2d(fuori,W,H); }
+    const BANDA2=3*3;
     for(let i=0,q=0;i<W*H;i++,q+=4){
       const au=uu[q+3];
       if(au===0){dd[q+3]=0;continue;}
-      if(au>=250)continue;                       /* dentro: il pixel originale com'e' */
+      const bordoInterno=opaco&&au>=250&&gIn[i]<=BANDA2;
+      if(au>=250&&!bordoInterno)continue;        /* dentro: il pixel originale com'e' */
       if(!opaco){dd[q+3]=Math.round(dd[q+3]*au/255);continue;}   /* file con trasparenza: vale la sua alfa */
       /* fascia del bordo: quanto disegno c'e' davvero in QUESTO pixel del file vero */
       const sr=dd[q]-B[0],sg=dd[q+1]-B[1],sb=dd[q+2]-B[2];const scarto=Math.sqrt(sr*sr+sg*sg+sb*sb);
       const fr=uu[q]-B[0],fg=uu[q+1]-B[1],fb=uu[q+2]-B[2];const dF=Math.max(60,Math.sqrt(fr*fr+fg*fg+fb*fb));
       const a=(scarto>=26)?Math.min(1,scarto/dF):0;
-      dd[q+3]=Math.round(255*Math.max(au/255,a>=0.05?a:0));}
+      if(bordoInterno){
+        if(a>=0.97)continue;                     /* pixel pieno del disegno: resta com'e' */
+        /* miscela col vecchio sfondo: prende il colore vero del disegno e la sua copertura */
+        dd[q]=uu[q];dd[q+1]=uu[q+1];dd[q+2]=uu[q+2];dd[q+3]=Math.round(255*(a>=0.05?a:0));continue;}
+      /* fascia esterna, sfondo opaco: vale solo quanto disegno c'e' nel pixel (a); la copertura
+         della maschera (au) non aggiunge niente, era lei a tenere i pixel del vecchio sfondo */
+      if(a>0&&a<0.97){dd[q]=uu[q];dd[q+1]=uu[q+1];dd[q+2]=uu[q+2];}
+      dd[q+3]=Math.round(255*(a>=0.05?a:0));}
     g.putImageData(id,0,0);
     S.artHi=c;
   }catch(e){S.artHi=null;}}
