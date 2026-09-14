@@ -37,6 +37,18 @@
 		}
 		return true;
 	}));
+	/* paginazione (70 per pagina) e totali dell'elenco filtrato: imponibile, IVA e totale, senza gli annullati */
+	const PER_PAGE = 70;
+	let page = $state(1);
+	$effect(() => { void [search, cat, channel, status, star, month]; page = 1; });
+	const pages = $derived(Math.max(1, Math.ceil(list.length / PER_PAGE)));
+	const pageList = $derived(list.slice((page - 1) * PER_PAGE, page * PER_PAGE));
+	const totals = $derived.by(() => {
+		const valid = list.filter((g: OrderGroup) => g.status !== 'annullato');
+		const net = valid.reduce((s: number, g: OrderGroup) => s + g.net, 0), gross = valid.reduce((s: number, g: OrderGroup) => s + g.gross, 0);
+		const pv = pageList.filter((g: OrderGroup) => g.status !== 'annullato');
+		return { n: valid.length, net, vat: gross - net, gross, pageNet: pv.reduce((s: number, g: OrderGroup) => s + g.net, 0), pageGross: pv.reduce((s: number, g: OrderGroup) => s + g.gross, 0), cancelled: list.length - valid.length };
+	});
 	const stats = $derived({
 		total: data.groups.length,
 		produzione: data.groups.filter((g: OrderGroup) => PRODUCTION_STATUSES.includes(g.status)).length,
@@ -51,7 +63,7 @@
 <svelte:head><title>Ordini | Dashboard Stickerprint</title></svelte:head>
 
 <div class="toolbar" style="justify-content:space-between">
-	<div><h1>Ordini {data.year}</h1><p class="lead">E-commerce e manuali, in un'unica vista · {list.length} risultati</p></div>
+	<div><h1>Ordini {data.year}</h1><p class="lead">E-commerce e manuali, in un'unica vista · {list.length} risultati{#if pages > 1} · pagina {page} di {pages}{/if}</p></div>
 	<div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
 		<div class="year-bar">{#each data.years as y (y)}<a href="?anno={y}" class:is-active={y === data.year}>{y}</a>{/each}</div>
 		<a class="btn btn--green" href="/dashboard/fatturazione/ordini/nuovo">+ Nuovo ordine</a>
@@ -89,7 +101,7 @@
 	<table class="dtable otable">
 		<thead><tr><th></th><th>Ordine</th><th>Cliente</th><th>Articolo</th><th>Categoria</th><th>Q.tà</th><th>Spedizione</th><th>Stato</th><th style="text-align:right">Importo</th><th></th></tr></thead>
 		<tbody>
-			{#each list as g (g.key)}
+			{#each pageList as g (g.key)}
 				{@const first = g.items[0]}
 				<tr class="orow-main">
 					<td>{COUNTRIES[g.country]?.flag ?? '🌍'}</td>
@@ -130,5 +142,22 @@
 				<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:30px">Nessun ordine corrisponde ai filtri selezionati.</td></tr>
 			{/each}
 		</tbody>
+		{#if list.length}
+			<tfoot class="otot">
+				<tr>
+					<td colspan="8"><b>Totale {totals.n} {totals.n === 1 ? 'ordine' : 'ordini'}</b> con i filtri attivi{#if totals.cancelled} <span class="osub">({totals.cancelled} {totals.cancelled === 1 ? 'annullato escluso' : 'annullati esclusi'})</span>{/if}{#if pages > 1}<div class="osub">In questa pagina: {money(totals.pageNet)} imponibile · {money(totals.pageGross)} IVA inclusa</div>{/if}</td>
+					<td style="text-align:right"><div class="otot__row"><span>Imponibile</span><b>{money(totals.net)}</b></div><div class="otot__row"><span>IVA</span><b>{money(totals.vat)}</b></div><div class="otot__row otot__row--tot"><span>Totale IVA inclusa</span><b>{money(totals.gross)}</b></div></td>
+					<td></td>
+				</tr>
+			</tfoot>
+		{/if}
 	</table>
 </div>
+{#if pages > 1}
+	<div class="pager">
+		<button type="button" class="btn btn--ghost btn--xs" disabled={page === 1} onclick={() => (page = Math.max(1, page - 1))}>‹ Precedente</button>
+		{#each Array.from({ length: pages }, (_, i) => i + 1) as n (n)}<button type="button" class="pager__n" class:is-active={n === page} onclick={() => (page = n)}>{n}</button>{/each}
+		<button type="button" class="btn btn--ghost btn--xs" disabled={page === pages} onclick={() => (page = Math.min(pages, page + 1))}>Successiva ›</button>
+		<span class="osub">{PER_PAGE} per pagina</span>
+	</div>
+{/if}
