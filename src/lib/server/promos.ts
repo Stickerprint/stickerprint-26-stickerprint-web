@@ -33,7 +33,18 @@ export function normalizePromo(r: Record<string, unknown>): Promo {
 }
 
 /** Offerte attive, nell'ordine deciso in dashboard */
+const PROMO_MS = 2 * 60 * 1000;
+let promoCache: { at: number; value: Promo[] } | null = null;
+export function invalidatePromos() { promoCache = null; }
 export async function loadPromos(supabase: SupabaseClient, all = false): Promise<Promo[]> {
+	/* cache in memoria per la pagina pubblica (2 minuti, rinnovo in sottofondo): la dashboard legge sempre dal database */
+	if (!all && promoCache && Date.now() - promoCache.at < PROMO_MS) return promoCache.value;
+	if (!all && promoCache) { loadPromosFresh(supabase, false).then((v) => { promoCache = { at: Date.now(), value: v }; }).catch(() => {}); return promoCache.value; }
+	const v = await loadPromosFresh(supabase, all);
+	if (!all) promoCache = { at: Date.now(), value: v };
+	return v;
+}
+async function loadPromosFresh(supabase: SupabaseClient, all: boolean): Promise<Promo[]> {
 	try {
 		let q = supabase.from('promos').select('*').order('sort', { ascending: true }).order('created_at', { ascending: false });
 		if (!all) q = q.eq('active', true);

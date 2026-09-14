@@ -1,5 +1,5 @@
 import { fail } from '@sveltejs/kit';
-import { loadPromos, parseLines } from '$lib/server/promos';
+import { invalidatePromos, loadPromos, parseLines } from '$lib/server/promos';
 import { loadEngine } from '$lib/server/pricing';
 import { PRODUCT_ENGINES } from '$lib/pricing/engine';
 import type { Actions, PageServerLoad } from './$types';
@@ -49,6 +49,7 @@ function leggi(f: FormData) {
 
 export const actions: Actions = {
 	save: async ({ request, locals: { supabase } }) => {
+		invalidatePromos();
 		const f = await request.formData();
 		const r = leggi(f);
 		if ('error' in r) return fail(400, { error: r.error });
@@ -59,12 +60,14 @@ export const actions: Actions = {
 		return { ok: true };
 	},
 	toggle: async ({ request, locals: { supabase } }) => {
+		invalidatePromos();
 		const f = await request.formData();
 		const { error } = await supabase.from('promos').update({ active: f.get('active') === 'true' }).eq('id', String(f.get('id')));
 		if (error) return fail(400, { error: error.message });
 		return { ok: true };
 	},
 	delete: async ({ request, locals: { supabase } }) => {
+		invalidatePromos();
 		const f = await request.formData();
 		const { error } = await supabase.from('promos').delete().eq('id', String(f.get('id')));
 		if (error) return fail(400, { error: error.message });
