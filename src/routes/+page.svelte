@@ -111,7 +111,7 @@
 	<div class="center">
 		<span class="tag tag--blue">Anteprima automatica</span>
 		<h2 style="margin-top:14px">Prima lo vedi. <span class="hl hl--blue">Poi lo stampiamo.</span></h2>
-		<p class="lead" style="margin-top:14px;max-width:640px;margin-inline:auto">Scegli prodotto, sagoma e materiale, carica il file: in pochi secondi vedi il tuo adesivo com'è davvero, con la linea di taglio. Niente attese, niente salti nel buio.</p>
+		<p class="lead" style="margin-top:14px;max-width:640px;margin-inline:auto"><b>Ti diamo un assaggio della nostra anteprima automatica.</b><br />Carica il tuo file e vedi subito come verrà realizzato il tuo adesivo, con sagoma, materiale e linea di taglio.</p>
 	</div>
 	<div class="up-card">
 		<UploadPreview />
