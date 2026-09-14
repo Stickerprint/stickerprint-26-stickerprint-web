@@ -339,3 +339,6 @@
 .pager { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; justify-content: center; }
 .pager__n { min-width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--line); background: #fff; font: inherit; font-weight: 700; font-size: 13px; cursor: pointer; }
 .pager__n.is-active { background: var(--navy); color: #fff; border-color: var(--navy); }
+
+.delay { margin: 8px 0; font-size: 13px; }
+.delay summary { cursor: pointer; font-weight: 700; color: var(--blue); }

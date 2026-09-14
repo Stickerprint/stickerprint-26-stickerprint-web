@@ -3,6 +3,9 @@ import { groupOrders, ORDER_STATUS, type OrderRow } from '$lib/dashboard/orders'
 import { loadEditorData, parseDraft, saveOrderDraft, upsertContact } from '$lib/server/orders';
 import { ensurePlan, operatorName } from '$lib/server/produzione';
 import { getConfirmation, loadMessages, markConfirmationRead, remindPayment, replyCustomer, sendConfirmation, setPaymentStatus, syncPayments } from '$lib/server/conferme';
+import { sendEmail } from '$lib/server/email';
+import { shippingUpdateEmail } from '$lib/server/email-templates';
+import { thumbOf } from '$lib/dashboard/orders';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ params, url, locals: { supabase, user } }) => {
@@ -80,6 +83,22 @@ export const actions: Actions = {
 		const op = await operatorName(locals.supabase, locals.user);
 		const e = await replyCustomer(locals.supabase, params.group, String((await request.formData()).get('body') ?? ''), op, url.origin);
 		return e ? fail(400, { error: e }) : { ok: true, message: 'Risposta inviata.' };
+	},
+	/** Ritardo nostro: scuse al cliente con motivo e nuova data di spedizione (aggiorna anche la data prevista) */
+	ritardo: async ({ request, params, url, locals: { supabase } }) => {
+		const f = await request.formData();
+		const { data } = await supabase.from('orders').select('*').eq('checkout_group', params.group);
+		const g = data?.length ? groupOrders(data as OrderRow[])[0] : null;
+		if (!g?.email) return fail(400, { error: "L'ordine non ha un'email." });
+		const newDate = String(f.get('nuova_data') ?? '').trim() || null;
+		const first = g.items[0];
+		const mail = shippingUpdateEmail({ kind: 'ritardo_nostro', name: first.billing?.first_name || first.shipping?.first_name || g.customer, number: g.number, trackingUrl: `${url.origin}`, reason: String(f.get('motivo') ?? '').trim() || null, newDate: newDate ? new Date(newDate + 'T12:00:00').toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' }) : null, items: g.items.map((i) => ({ name: i.product_name, qty: i.qty, meta: i.description ?? null, preview: thumbOf(i) })), accountUrl: first.user_id ? `${url.origin}/account/ordini` : null });
+		const r = await sendEmail({ to: g.email, ...mail, metadata: { order: g.number } });
+		if (!r.ok) return fail(400, { error: r.error ?? 'Email non inviata.' });
+		const patch: Record<string, unknown> = { shipping_notified: [...new Set([...(first.shipping_notified ?? []), 'ritardo_nostro'])] };
+		if (newDate) { patch.delivery_date = newDate; patch.ship_by = newDate; }
+		await supabase.from('orders').update(patch).eq('checkout_group', params.group);
+		return { ok: true, message: `Email di scuse inviata a ${g.email}${newDate ? ', data di spedizione aggiornata' : ''}.` };
 	},
 	promemoria: async ({ params, url, locals: { supabase } }) => {
 		const r = await remindPayment(supabase, params.group, url.origin);

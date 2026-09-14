@@ -15,7 +15,7 @@ import { thumbOf } from '$lib/dashboard/orders';
 
 export interface QaplaUpdate { trackingNumber: string; reference?: string | null; courier?: string | null; date?: string | null; place?: string | null; qaplaStatusID: number | string; qaplaStatus?: string | null; statusDetails?: { id: number; detail: string }[] | null }
 
-type Kind = 'spedito' | 'in_consegna' | 'consegnato' | 'problema' | 'punto_ritiro' | null;
+type Kind = 'spedito' | 'in_consegna' | 'consegnato' | 'problema' | 'punto_ritiro' | 'ritardo_corriere' | null;
 export function interpret(u: QaplaUpdate): { status: string | null; kind: Kind; detail: string } {
 	const id = Number(u.qaplaStatusID);
 	const det = (u.statusDetails ?? []).map((d) => d.detail).join(', ');
@@ -24,7 +24,8 @@ export function interpret(u: QaplaUpdate): { status: string | null; kind: Kind; 
 	if (id === 4) return { status: 'in_consegna', kind: 'in_consegna', detail: label };
 	if (id === 99) return { status: 'consegnato', kind: 'consegnato', detail: label };
 	if (id === 10) return { status: 'in_consegna', kind: 'punto_ritiro', detail: label };
-	if (id === 5 || id === 6 || id === 8 || id === 95) return { status: null, kind: 'problema', detail: label };
+	if (id === 8) return { status: null, kind: 'ritardo_corriere', detail: label }; // ritardo del corriere: email dedicata, non e' colpa nostra
+	if (id === 5 || id === 6 || id === 95) return { status: null, kind: 'problema', detail: label };
 	return { status: null, kind: null, detail: label }; // 0, 1, 2: ancora niente da dire al cliente
 }
 
@@ -56,10 +57,10 @@ export async function applyQaplaUpdate(db: SupabaseClient, u: QaplaUpdate, origi
 	let emailed: string | null = null;
 	if (kind && !sent.includes(kind) && first.email) {
 		const ship = first.shipping ?? {};
-		const mail = shippingUpdateEmail({ kind, name: ship.first_name || first.customer_name || null, number: first.number, trackingUrl: first.tracking_url || trackingPageUrl(u.trackingNumber), courier: u.courier ?? first.courier ?? null, detail, place: u.place ?? null, items: rows.map((r) => ({ name: r.product_name, qty: r.qty, preview: thumbOf(r) })), accountUrl: first.user_id ? `${origin}/account/ordini` : null });
+		const mail = shippingUpdateEmail({ kind, name: ship.first_name || first.customer_name || null, number: first.number, trackingUrl: first.tracking_url || trackingPageUrl(u.trackingNumber), courier: u.courier ?? first.courier ?? null, detail, place: u.place ?? null, shippedAt: first.shipped_at ? new Date(first.shipped_at).toLocaleDateString('it-IT') : null, items: rows.map((r) => ({ name: r.product_name, qty: r.qty, preview: thumbOf(r) })), accountUrl: first.user_id ? `${origin}/account/ordini` : null });
 		const r = await sendEmail({ to: first.email, subject: mail.subject, html: mail.html, tag: mail.tag, metadata: { order: first.number } });
 		if (r.ok) { emailed = kind; for (const k of keys) await db.from('orders').update({ shipping_notified: [...sent, kind] }).eq(first.checkout_group ? 'checkout_group' : 'id', k); }
 	}
-	if (kind === 'problema') pushStaff({ title: `Spedizione ${first.number}: ${detail || 'problema'}`, body: `${first.customer_name ?? first.email ?? ''} · ${u.place ?? ''}`.trim(), url: `/dashboard/produzione/spedizioni`, tag: `ship-${first.number}` }).catch(() => {});
+	if (kind === 'problema' || kind === 'ritardo_corriere') pushStaff({ title: `Spedizione ${first.number}: ${detail || 'problema'}`, body: `${first.customer_name ?? first.email ?? ''} · ${u.place ?? ''}`.trim(), url: `/dashboard/produzione/spedizioni`, tag: `ship-${first.number}` }).catch(() => {});
 	return { matched: rows.length, emailed };
 }
