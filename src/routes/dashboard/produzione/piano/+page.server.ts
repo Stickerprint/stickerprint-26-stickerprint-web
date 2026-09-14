@@ -30,7 +30,7 @@ export const load: PageServerLoad = async ({ locals: { supabase, user } }) => {
 	const approvals = rows.filter((r) => APPROVAL_STATUSES.has(r.status)).map((r) => {
 		const ts = byOrder.get(r.id) ?? [];
 		const deadline = proofDeadline(r, ts);
-		const since = r.proof_sent_at ?? r.updated_at ?? r.created_at;
+		const since = r.status === 'approvazione' ? (r.proof_sent_at ?? r.updated_at) : r.created_at; // da quando aspetta: il cliente dall'invio dell'anteprima, noi dall'ordine
 		return { order: r, deadline: deadline?.toISOString() ?? null, overdue: !!deadline && deadline < now, since, waitingCustomer: r.status === 'approvazione' || r.status === 'attesa_file' };
 	}).sort((a, b) => (a.deadline ?? '9').localeCompare(b.deadline ?? '9'));
 	const problems = open.filter((p) => p.task.status === 'bloccato' || p.risk.late);

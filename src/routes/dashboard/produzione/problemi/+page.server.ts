@@ -18,7 +18,7 @@ export const load: PageServerLoad = async ({ locals: { supabase, user } }) => {
 	const risky = open.filter((p) => !p.risk.late && p.task.status !== 'bloccato' && (p.risk.colour === 'rosso' || p.risk.colour === 'arancione'));
 	const approvals = rows.filter((r) => APPROVAL_STATUSES.has(r.status)).map((r) => {
 		const deadline = proofDeadline(r, byOrder.get(r.id) ?? []);
-		return { order: r, deadline: deadline?.toISOString() ?? null, overdue: !!deadline && deadline < now, since: r.proof_sent_at ?? r.updated_at ?? r.created_at };
+		return { order: r, deadline: deadline?.toISOString() ?? null, overdue: !!deadline && deadline < now, since: r.status === 'approvazione' ? (r.proof_sent_at ?? r.updated_at) : r.created_at };
 	}).filter((a) => a.overdue || a.order.status === 'attesa_file' || a.order.status === 'modifiche_richieste');
 	const missingFile = approvals.filter((a) => a.order.status === 'attesa_file');
 	const waiting = approvals.filter((a) => a.order.status !== 'attesa_file');

@@ -27,13 +27,14 @@ export async function loadTasks(db: DB, statuses: string[] = PLANNABLE_STATUSES)
 	return ((data ?? []) as unknown as TaskWithOrder[]).filter((t) => t.order);
 }
 
-/** la macchina di stampa meno carica tra le due Roland */
-async function pickRoland(db: DB): Promise<string> {
-	const { data } = await db.from('production_tasks').select('machine, minutes').eq('stage', 'stampa').in('status', ['pronto', 'in_corso', 'bloccato']);
+/** carico aperto delle due Roland: la stampa nuova va sulla meno carica (il carico si aggiorna mentre si pianifica un lotto) */
+async function rolandLoad(db: DB): Promise<Record<string, number>> {
+	const { data } = await db.from('production_tasks').select('machine, minutes').eq('stage', 'stampa').in('status', ['da_fare', 'pronto', 'in_corso', 'bloccato']);
 	const load: Record<string, number> = { 'Roland SG3-300 #1': 0, 'Roland SG3-300 #2': 0 };
 	for (const t of data ?? []) if (t.machine && t.machine in load) load[t.machine] += t.minutes;
-	return load['Roland SG3-300 #1'] <= load['Roland SG3-300 #2'] ? 'Roland SG3-300 #1' : 'Roland SG3-300 #2';
+	return load;
 }
+const pickRoland = (load: Record<string, number>) => (load['Roland SG3-300 #1'] <= load['Roland SG3-300 #2'] ? 'Roland SG3-300 #1' : 'Roland SG3-300 #2');
 
 /** Costruisce le lavorazioni di una commessa (senza salvarle) */
 export function buildPlan(o: OrderRow, shipBy: string, roland: string) {
@@ -67,14 +68,16 @@ export async function ensurePlan(db: DB, rows: OrderRow[], operator: string | nu
 	const { data: existing } = await db.from('production_tasks').select('*').in('order_id', open.map((r) => r.id)).order('seq');
 	const byOrder = new Map<string, Task[]>();
 	for (const t of (existing ?? []) as Task[]) { if (!byOrder.has(t.order_id)) byOrder.set(t.order_id, []); byOrder.get(t.order_id)!.push(t); }
-	let roland: string | null = null;
+	let load: Record<string, number> | null = null;
 	const now = new Date();
 	for (const o of open) {
 		const ts = byOrder.get(o.id) ?? [];
 		if (!ts.length) {
-			roland ??= await pickRoland(db);
+			load ??= await rolandLoad(db);
+			const roland = pickRoland(load);
 			const shipBy = o.ship_by ?? o.delivery_date ?? defaultShipBy(o.created_at, o.express);
 			const plan = buildPlan(o, shipBy, roland);
+			for (const p of plan) if (p.machine === roland) load[roland] += p.minutes;
 			if (o.status === 'in_produzione') {
 				// commessa gia' in lavorazione (fase manuale): le fasi precedenti risultano fatte
 				const stages = plan.map((p) => p.stage);
@@ -195,7 +198,7 @@ export async function reprint(db: DB, orderId: string, reason: string, operator:
 	const from = ts.find((t) => t.stage === 'stampa') ?? ts[0];
 	if (!from) return 'Nessuna lavorazione da ripetere.';
 	const now = new Date().toISOString();
-	for (const t of ts) if (t.seq >= from.seq) await db.from('production_tasks').update({ status: t.id === from.id ? 'pronto' : 'da_fare', started_at: null, completed_at: null, block_reason: null, updated_at: now }).eq('id', t.id);
+	for (const t of ts) if (t.seq >= from.seq) await db.from('production_tasks').update({ status: t.id === from.id ? 'pronto' : 'da_fare', started_at: null, completed_at: null, operator: null, block_reason: null, updated_at: now }).eq('id', t.id);
 	const { data: o } = await db.from('orders').select('reprints').eq('id', orderId).maybeSingle();
 	await db.from('orders').update({ status: 'in_produzione', prod_stage: from.stage, reprints: (Number(o?.reprints) || 0) + 1 }).eq('id', orderId);
 	await logEvent(db, { order_id: orderId, task_id: from.id, kind: 'ristampa', detail: reason.trim() || 'Ristampa', operator });
