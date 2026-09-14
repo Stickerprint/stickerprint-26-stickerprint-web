@@ -10,11 +10,11 @@ export const load: PageServerLoad = async ({ locals: { supabase } }) => {
 };
 
 export const actions: Actions = {
-	default: async ({ request, locals: { supabase } }) => {
+	default: async ({ request, url, locals: { supabase } }) => {
 		const f = await request.formData();
 		const s = (k: string) => String(f.get(k) ?? '').trim();
 		if (!s('name') || !s('company')) return fail(400, { error: 'Nome e azienda sono obbligatori.' });
-		const r = await saveRequest(supabase, 'aziende', f, { name: s('name'), company: s('company'), email: s('email'), phone: s('phone'), message: s('message') });
+		const r = await saveRequest(supabase, 'aziende', f, { name: s('name'), company: s('company'), email: s('email'), phone: s('phone'), message: s('message') }, url.origin);
 		if (!r.ok) return fail(400, { error: r.error });
 		return { ok: true };
 	}

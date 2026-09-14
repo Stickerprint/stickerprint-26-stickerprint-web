@@ -1,0 +1,61 @@
+<script lang="ts">
+	import { enhance } from '$app/forms';
+	import { page } from '$app/state';
+	import { QUOTE_REMIND_DAYS, QUOTE_STATUS, type QuoteStatus } from '$lib/dashboard/richieste';
+	import { money, dmy } from '$lib/dashboard/orders';
+	import { fmtAgo } from '$lib/dashboard/produzione';
+	let { data, form } = $props();
+	const years = Array.from({ length: 4 }, (_, i) => new Date().getFullYear() - i);
+	const filter = $derived(page.url.searchParams.get('stato') ?? 'tutti');
+	const list = $derived(data.quotes.filter((q) => (filter === 'tutti' ? true : q.status === filter)));
+	const toRemind = (q: { status: string; sent_at: string | null; reminded_at: string | null }) => q.status === 'inviato' && !q.reminded_at && !!q.sent_at && Date.now() - new Date(q.sent_at).getTime() > QUOTE_REMIND_DAYS * 864e5;
+	const totals = $derived({ inviati: data.quotes.filter((q) => q.status === 'inviato').reduce((a, q) => a + Number(q.total_gross), 0), vinti: data.quotes.filter((q) => q.status === 'accettato' || q.status === 'ordinato').reduce((a, q) => a + Number(q.total_gross), 0) });
+</script>
+
+<svelte:head><title>Preventivi | Dashboard</title></svelte:head>
+
+<div class="toolbar" style="justify-content:space-between;align-items:flex-start">
+	<div><h1>Preventivi {data.year}</h1><p class="lead">Numerazione SPP00001, riparte ogni 1° gennaio. Inviati con PDF e link di accettazione; dopo {QUOTE_REMIND_DAYS} giorni senza risposta compare il sollecito.</p></div>
+	<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+		<div class="year-bar">{#each years as y (y)}<a href="?anno={y}" class:is-active={y === data.year}>{y}</a>{/each}</div>
+		<a class="btn btn--xs" href="/dashboard/aziende/preventivi/nuovo">＋ Nuovo preventivo</a>
+	</div>
+</div>
+{#if form?.error}<p class="error">{form.error}</p>{/if}
+{#if form?.message}<p class="ok">{form.message}</p>{/if}
+
+<div class="pr-kpis" style="grid-template-columns:repeat(4,1fr)">
+	<div class="pr-kpi"><b>{data.quotes.length}</b><span>preventivi nell'anno</span></div>
+	<div class="pr-kpi"><b>{data.quotes.filter((q) => q.status === 'inviato').length}</b><span>in attesa · {money(totals.inviati)}</span></div>
+	<div class="pr-kpi"><b>{data.quotes.filter((q) => q.status === 'accettato' || q.status === 'ordinato').length}</b><span>accettati · {money(totals.vinti)}</span></div>
+	<div class="pr-kpi" class:is-warn={data.quotes.some(toRemind)}><b>{data.quotes.filter(toRemind).length}</b><span>da sollecitare</span></div>
+</div>
+
+<div class="tabs">
+	<a class="tab-link" class:is-active={filter === 'tutti'} href="?anno={data.year}&stato=tutti">Tutti</a>
+	{#each Object.entries(QUOTE_STATUS) as [k, v] (k)}<a class="tab-link" class:is-active={filter === k} href="?anno={data.year}&stato={k}">{v.label} ({data.quotes.filter((q) => q.status === k).length})</a>{/each}
+</div>
+
+{#if list.length === 0}
+	<div class="dcard" style="text-align:center;color:var(--muted)">Nessun preventivo.</div>
+{:else}
+	<div class="dcard" style="padding:0;overflow:auto">
+		<table class="dtable">
+			<thead><tr><th>Numero</th><th>Cliente</th><th>Totale</th><th>Stato</th><th>Validità</th><th>Inviato</th><th></th></tr></thead>
+			<tbody>
+				{#each list as q (q.id)}
+					{@const st = QUOTE_STATUS[q.status as QuoteStatus]}
+					<tr>
+						<td><a class="pr-num" href="/dashboard/aziende/preventivi/{q.id}">{q.number}</a>{#if q.version > 1} <small class="osub">rev. {q.version}</small>{/if}</td>
+						<td>{q.draft.customer.name}<div class="osub">{q.draft.customer.email}</div></td>
+						<td><b>{money(Number(q.total_gross))}</b><div class="osub">{q.draft.items.length} {q.draft.items.length === 1 ? 'riga' : 'righe'}</div></td>
+						<td><span class="pill" style="background:{st.soft};color:{st.color}">{st.label}</span>{#if q.order_group}<div><a class="link" style="font-size:12px" href="/dashboard/fatturazione/ordini/{q.order_group}">ordine ›</a></div>{/if}</td>
+						<td>{dmy(q.valid_until)}</td>
+						<td>{#if q.sent_at}{fmtAgo(q.sent_at)}{#if q.reminded_at}<div class="osub">sollecitato {fmtAgo(q.reminded_at)}</div>{/if}{:else}—{/if}</td>
+						<td>{#if toRemind(q)}<form method="POST" action="?/sollecita" use:enhance><input type="hidden" name="id" value={q.id} /><button class="btn btn--ghost btn--xs" type="submit">✉ Sollecita</button></form>{/if}</td>
+					</tr>
+				{/each}
+			</tbody>
+		</table>
+	</div>
+{/if}

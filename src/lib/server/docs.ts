@@ -96,7 +96,7 @@ export async function buildDdtPdf(d: DdtData): Promise<Uint8Array> {
 	return pdf.save();
 }
 
-export interface OrderDocData { number: string; numbers: string[]; issued_at: string; customer: Record<string, string>; shipping: Record<string, string>; email: string | null; lines: { description: string; qty: number; unit_net: number; total_net: number }[]; subtotal_net: number; vat_amount: number; total_gross: number; payment_method: string; payment_terms: { due: string; amount: number; method: string }[]; shipping_method: string; delivery_date: string | null; notes?: string | null }
+export interface OrderDocData { kind?: 'ordine' | 'preventivo'; valid_until?: string | null; number: string; numbers: string[]; issued_at: string; customer: Record<string, string>; shipping: Record<string, string>; email: string | null; lines: { description: string; qty: number; unit_net: number; total_net: number }[]; subtotal_net: number; vat_amount: number; total_gross: number; payment_method: string; payment_terms: { due: string; amount: number; method: string }[]; shipping_method: string; delivery_date: string | null; notes?: string | null }
 
 /** Conferma d'ordine A4: articoli, riepilogo con totali e scadenze di pagamento */
 export async function buildOrderPdf(d: OrderDocData): Promise<Uint8Array> {
@@ -104,7 +104,8 @@ export async function buildOrderPdf(d: OrderDocData): Promise<Uint8Array> {
 	const page = pdf.addPage([595.28, 841.89]);
 	const font = await pdf.embedFont(StandardFonts.Helvetica); const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
 	const logo = await pdf.embedPng(b64(LOGO_PNG_B64));
-	docHeader(page, font, bold, logo, "CONFERMA D'ORDINE", d.number, new Date(d.issued_at).toLocaleDateString('it-IT'));
+	const quote = d.kind === 'preventivo';
+	docHeader(page, font, bold, logo, quote ? 'PREVENTIVO' : "CONFERMA D'ORDINE", d.number, new Date(d.issued_at).toLocaleDateString('it-IT'));
 	const M = 48; let y = 700;
 	const t = (txt: string, x: number, yy: number, size = 10, f: PDFFont = font, color = navy) => page.drawText(txt, { x, y: yy, size, font: f, color });
 	const rt = (txt: string, xr: number, yy: number, size = 10, f: PDFFont = font, color = navy) => page.drawText(txt, { x: xr - f.widthOfTextAtSize(txt, size), y: yy, size, font: f, color });
@@ -124,7 +125,7 @@ export async function buildOrderPdf(d: OrderDocData): Promise<Uint8Array> {
 	y -= 10;
 	// riepilogo: scadenze a sinistra, totali a destra
 	const top = y;
-	t('Scadenze di pagamento', M, y, 9, bold, gray); y -= 14;
+	t(quote ? 'Condizioni di pagamento' : 'Scadenze di pagamento', M, y, 9, bold, gray); y -= 14;
 	for (const p of d.payment_terms) { t(`${new Date(p.due).toLocaleDateString('it-IT')}   ${eur(p.amount)}   ${p.method}`, M, y, 10); y -= 13; }
 	if (!d.payment_terms.length) { t(d.payment_method || '—', M, y, 10); y -= 13; }
 	if (COMPANY.iban) { t(`IBAN ${COMPANY.iban} · ${COMPANY.name}`, M, y, 9, font, gray); y -= 13; }
@@ -133,6 +134,11 @@ export async function buildOrderPdf(d: OrderDocData): Promise<Uint8Array> {
 	tot('Imponibile', eur(d.subtotal_net)); tot('IVA 22%', eur(d.vat_amount)); tot('Totale IVA inclusa', eur(d.total_gross), true);
 	y = Math.min(y, yy) - 10;
 	if (d.notes) { t(`Note: ${d.notes}`.slice(0, 140), M, y, 9, font, gray); y -= 13; }
+	if (quote) {
+		y -= 6;
+		t(`Preventivo valido fino al ${d.valid_until ? new Date(d.valid_until).toLocaleDateString('it-IT') : '30 giorni dalla data'}. Prezzi IVA esclusa salvo diversa indicazione; i tempi di produzione partono dall'approvazione dell'anteprima.`.slice(0, 150), M, y, 9, font, gray); y -= 13;
+		t('Per accettare basta un clic sul link ricevuto via email, oppure rispondere "confermo il preventivo".', M, y, 9, font, gray); y -= 13;
+	}
 	t('Documento generato da stickerprint.it', M, 40, 8, font, gray);
 	return pdf.save();
 }

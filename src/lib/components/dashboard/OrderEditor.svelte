@@ -7,7 +7,8 @@
 	import { categoryOf, draftTotals, emptyItem, splitAmounts, termsForMethod, type OrderDraft, type ProductCode } from '$lib/dashboard/orderDraft';
 
 	export interface PickContact { id: string; kind: 'contact' | 'profile'; name: string; first_name: string; last_name: string; email: string; phone: string; street: string; city: string; zip: string; province: string; country: string; vat: string; fiscal_code: string; sdi: string; pec: string }
-	let { draft, methods, codes, contacts, supabase, mode, form, title, oncancel }: { draft: OrderDraft; methods: PaymentMethod[]; codes: ProductCode[]; contacts: PickContact[]; supabase: SupabaseClient; mode: 'create' | 'edit'; form: Record<string, unknown> | null | undefined; title: string; oncancel?: () => void } = $props();
+	export interface EditorLabels { lead?: string; save?: string; send?: string; back?: string }
+	let { draft, methods, codes, contacts, supabase, mode, form, title, oncancel, labels = {} }: { draft: OrderDraft; methods: PaymentMethod[]; codes: ProductCode[]; contacts: PickContact[]; supabase: SupabaseClient; mode: 'create' | 'edit'; form: Record<string, unknown> | null | undefined; title: string; oncancel?: () => void; labels?: EditorLabels } = $props();
 
 	// svelte-ignore state_referenced_locally
 	let d = $state<OrderDraft>(structuredClone($state.snapshot(draft)));
@@ -67,12 +68,12 @@
 	}
 </script>
 
-<form method="POST" action="?/save" class="editor" use:enhance={() => { saving = true; return async ({ update }) => { saving = false; await update({ reset: false }); }; }}>
+<form id="order-editor" method="POST" action="?/save" class="editor" use:enhance={() => { saving = true; return async ({ update }) => { saving = false; await update({ reset: false }); }; }}>
 	<input type="hidden" name="payload" value={JSON.stringify(d)} />
 	<datalist id="codes-list">{#each codes as c (c.id)}<option value={c.code}>{c.name}{c.description ? ' · ' + c.description : ''}</option>{/each}</datalist>
 	<div class="toolbar" style="justify-content:space-between">
-		<div><h1>{title}</h1><p class="lead">{mode === 'create' ? 'Ordine inserito a mano (telefono, email, fiera). Entra subito in produzione.' : 'Modifica tutto l’ordine: cliente, articoli, spedizione e scadenze.'}</p></div>
-		<div style="display:flex;gap:8px">{#if oncancel}<button type="button" class="btn btn--ghost btn--xs" onclick={oncancel}>Annulla</button>{:else}<a class="btn btn--ghost btn--xs" href="/dashboard/fatturazione/ordini">Annulla</a>{/if}</div>
+		<div><h1>{title}</h1><p class="lead">{labels.lead ?? (mode === 'create' ? 'Ordine inserito a mano (telefono, email, fiera). Entra subito in produzione.' : 'Modifica tutto l’ordine: cliente, articoli, spedizione e scadenze.')}</p></div>
+		<div style="display:flex;gap:8px">{#if oncancel}<button type="button" class="btn btn--ghost btn--xs" onclick={oncancel}>Annulla</button>{:else}<a class="btn btn--ghost btn--xs" href={labels.back ?? '/dashboard/fatturazione/ordini'}>Annulla</a>{/if}</div>
 	</div>
 	{#if form?.error}<p class="error">{String(form.error)}</p>{/if}
 	{#if form?.contactMsg}<p class="success">{String(form.contactMsg)}</p>{/if}
@@ -169,7 +170,7 @@
 
 	<div class="editor-actions">
 		{#if saving}<span class="note">Salvataggio…</span>{/if}
-		<button class="btn btn--blue" type="submit" formaction="?/confirm" disabled={saving || !d.customer.email} title={d.customer.email ? '' : 'Inserisci l’email del cliente'}>✉️ Invia conferma per email</button>
-		<button class="btn btn--green" type="submit" formaction="?/save" disabled={saving}>💾 Salva ordine</button>
+		<button class="btn btn--blue" type="submit" formaction="?/confirm" disabled={saving || !d.customer.email} title={d.customer.email ? '' : 'Inserisci l’email del cliente'}>✉️ {labels.send ?? 'Invia conferma per email'}</button>
+		<button class="btn btn--green" type="submit" formaction="?/save" disabled={saving}>💾 {labels.save ?? 'Salva ordine'}</button>
 	</div>
 </form>
