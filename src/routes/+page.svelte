@@ -4,7 +4,7 @@
 	import ReviewsCarousel from '$lib/components/ReviewsCarousel.svelte';
 	import SamplesBlock from '$lib/components/SamplesBlock.svelte';
 	import FinalCta from '$lib/components/FinalCta.svelte';
-	import CompareBlock from '$lib/components/CompareBlock.svelte';
+	import HowTo from '$lib/components/HowTo.svelte';
 
 	let { data } = $props();
 
@@ -145,7 +145,7 @@
 
 <!-- CREDITO -->
 <!-- PERCHE' STICKERPRINT -->
-<CompareBlock />
+<HowTo shipDate={data.shipDate} />
 
 <section class="section container">
 	<div class="credit">

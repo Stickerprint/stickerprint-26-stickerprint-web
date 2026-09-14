@@ -5,11 +5,13 @@
 	import ReviewsCarousel from '$lib/components/ReviewsCarousel.svelte';
 	import Stars from '$lib/components/Stars.svelte';
 	import FinalCta from '$lib/components/FinalCta.svelte';
+	import HowTo from '$lib/components/HowTo.svelte';
 	import EnginePreview from '$lib/components/EnginePreview.svelte';
 	import { addToCart } from '$lib/cart';
 	import { saveCartFile, saveCartPreview } from '$lib/utils/draftStore';
 	import { track } from '$lib/tracking';
 	import { klaviyo } from '$lib/klaviyo';
+	import { onMount } from 'svelte';
 	import { PRODUCT_ENGINES } from '$lib/pricing/engine';
 	import type { Promo } from '$lib/server/promos';
 
@@ -25,11 +27,20 @@
 	const engineInfo = $derived(PRODUCT_ENGINES.find((p) => p.slug === promo?.product_slug));
 	const engine = $derived(promo ? data.engines[promo.product_slug] : null);
 	const SHAPES = $derived(engine ? engine.shapes.filter((s) => s.visible) : []);
-	const giorni = $derived.by(() => {
+	/* conto alla rovescia sulla scadenza: giorni, ore, minuti, secondi */
+	let now = $state(Date.now());
+	onMount(() => { const t = setInterval(() => (now = Date.now()), 1000); return () => clearInterval(t); });
+	const left = $derived.by(() => {
 		if (!promo?.ends_at) return null;
-		const ms = new Date(promo.ends_at).getTime() - Date.now();
-		return ms <= 0 ? 0 : Math.ceil(ms / 86_400_000);
+		const ms = Math.max(0, new Date(promo.ends_at).getTime() - now);
+		const s = Math.floor(ms / 1000);
+		return { d: Math.floor(s / 86400), h: Math.floor((s % 86400) / 3600), m: Math.floor((s % 3600) / 60), s: s % 60 };
 	});
+	const two = (n: number) => String(n).padStart(2, '0');
+	/* "come ti facciamo risparmiare tempo": dalla dashboard se compilato, altrimenti le voci standard */
+	const PERKS_STD = [{ label: 'Anteprima immediata', saves: '1-2 giorni' }, { label: 'Produzione in 5 giorni', saves: '3-4 giorni' }, { label: 'Corriere espresso tracciato', saves: '1-2 giorni' }];
+	const perks = $derived(promo?.perks?.length ? promo.perks : PERKS_STD);
+	const normally = $derived(promo?.price_normal ? eur(promo.price_normal) : (promo?.includes?.[0]?.normally ?? ''));
 	/* misura dell'offerta: il lato lungo e' quello deciso in dashboard, l'altro segue le proporzioni del file */
 	const lato = $derived(Math.max(promo?.w ?? 50, promo?.h ?? 50));
 	let over = $state(false);
@@ -106,25 +117,30 @@
 		<span class="offer__spark" style="left:6%;top:14%">✦</span><span class="offer__spark" style="right:8%;top:22%;font-size:26px">✦</span><span class="offer__spark" style="left:12%;bottom:18%;font-size:22px">✦</span><span class="offer__spark" style="right:5%;bottom:26%">✦</span>
 		<div class="container offer__inner">
 			<div class="offer__head">
-			<h1><mark>{promo.qty.toLocaleString('it-IT')}</mark> {promo.product_label}<br />{mm(promo.w)}×{mm(promo.h)} mm a <mark>{eur(price)}</mark></h1>
-			<p class="offer__sub"><b>Solo questa settimana:</b> {promo.qty.toLocaleString('it-IT')} {promo.product_label} {mm(promo.w)}×{mm(promo.h)} mm a {eur(price)}.<br />Anteprima immediata compresa.</p>
-			{#if giorni !== null}
-				<p class="offer__ends">{#if giorni === 0}<b>Ultimo giorno</b>{:else if giorni === 1}Scade <b>domani</b>{:else}Scade tra <b>{giorni} giorni</b>{/if}</p>
+			<h1><mark>{promo.qty.toLocaleString('it-IT')}</mark> {promo.product_label}<br />a <mark>{eur(price)}</mark></h1>
+			{#if left}
+				<div class="offer__count" aria-live="off"><span class="offer__count-lbl">Scade tra</span>
+					<div class="offer__count-box">
+						<span><b>{left.d}</b><small>{left.d === 1 ? 'giorno' : 'giorni'}</small></span><i>:</i>
+						<span><b>{two(left.h)}</b><small>ore</small></span><i>:</i>
+						<span><b>{two(left.m)}</b><small>min</small></span><i>:</i>
+						<span><b>{two(left.s)}</b><small>sec</small></span>
+					</div>
+				</div>
 			{/if}
+			<p class="offer__sub"><b>Solo questa settimana:</b> {promo.qty.toLocaleString('it-IT')} {promo.product_label} a {eur(price)}.<br />Anteprima immediata compresa.</p>
 			<div class="offer__stars"><Stars value={data.stats?.average ?? 4.9} count={data.stats?.total ?? null} size={22} countLabel="recensioni verificate" /></div>
-			{#if promo.chips.length}<div class="offer__chips">{#each promo.chips as c (c)}<span>{c}</span>{/each}</div>{/if}
+			<div class="offer__chips"><span class="is-size">{mm(promo.w)}×{mm(promo.h)} mm</span>{#each promo.chips as c (c)}<span>{c}</span>{/each}</div>
 			</div>
 
 			<div class="offer__grid">
 				<div class="offer__box">
-					{#if promo.includes.length}
-						<h4>Cosa ricevi</h4>
-						{#each promo.includes as i (i.label)}<div class="offer__row"><span>{i.label}</span><b>{i.normally ? `Normalmente ${i.normally}` : ''}</b></div>{/each}
-					{/if}
-					{#if promo.perks.length}
-						<h4>Come ti facciamo risparmiare tempo</h4>
-						{#each promo.perks as p (p.label)}<div class="offer__row"><span>{p.label}</span><b>{p.saves ? `Risparmi ${p.saves}` : ''}</b></div>{/each}
-					{/if}
+					<h4>Cosa ricevi</h4>
+					<div class="offer__row"><span>{promo.qty.toLocaleString('it-IT')} {promo.product_label}</span><b>{normally ? `Normalmente ${normally}` : ''}</b></div>
+					<div class="offer__row"><span>Anteprima automatica del file</span><b>Sempre inclusa</b></div>
+					<h4>Come ti facciamo risparmiare tempo rispetto ai competitor</h4>
+					{#each perks as p (p.label)}<div class="offer__row"><span>{p.label}</span><b>{p.saves ? `Risparmi ${p.saves}` : ''}</b></div>{/each}
+					<div class="offer__row is-date"><span>Consegna stimata</span><b>{data.deliveryDate}</b></div>
 					{#if promo.save_text}<div class="offer__row is-save"><span>Risparmi</span><b>{promo.save_text}</b></div>{/if}
 					<div class="offer__row is-pay"><span>Paghi</span><b>{eur(price)}</b></div>
 				</div>
@@ -195,15 +211,7 @@
 </section>
 
 <!-- COME FUNZIONA -->
-<section class="section container center">
-	<h2>Te li portiamo <span class="hl hl--blue">fino alla porta.</span></h2>
-	<div class="howto" style="text-align:left">
-		<div class="howto__step"><div class="howto__n">1</div><b>Carica il tuo file</b><p>PNG, PDF, JPG, SVG. Va bene anche se non è pronto per la stampa: lo sistemiamo noi.</p></div>
-		<div class="howto__step"><div class="howto__n">2</div><b>Anteprima immediata</b><p>Vedi subito sagoma e linea di taglio, prima di pagare. Nessun salto nel buio.</p></div>
-		<div class="howto__step"><div class="howto__n">3</div><b>Approvi, stampiamo</b><p>Un controllo umano sul file, poi in produzione. Pronti per la spedizione entro <b>{data.shipDate}</b>.</p></div>
-		<div class="howto__step"><div class="howto__n">4</div><b>Ricevi gli adesivi</b><p>Corriere espresso tracciato. E quando arrivano, ci lasci una recensione come gli altri.</p></div>
-	</div>
-</section>
+<HowTo shipDate={data.shipDate} dark />
 
 <!-- DOMANDE -->
 <section class="section container center">

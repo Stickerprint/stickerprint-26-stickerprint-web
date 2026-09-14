@@ -10,5 +10,5 @@ export const load: PageServerLoad = async ({ locals: { supabase } }) => {
 	// il preventivatore del prodotto in offerta si apre dentro la pagina: serve il suo listino
 	const engines: Record<string, EngineConfig> = {};
 	for (const slug of [...new Set(promos.map((p) => p.product_slug))]) engines[slug] = (await loadEngine(supabase, slug)).config;
-	return { promos, reviews, stats, engines, shipDate: formatItDate(estimatedShipDate(5)) };
+	return { promos, reviews, stats, engines, shipDate: formatItDate(estimatedShipDate(5)), deliveryDate: formatItDate(estimatedShipDate(7)) };
 };
