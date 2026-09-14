@@ -9,4 +9,4 @@
 <svelte:head><title>Nuovo preventivo | Dashboard</title></svelte:head>
 
 <p class="lead" style="margin:0"><a class="link" href="/dashboard/aziende/preventivi">Preventivi</a> › <b>Nuovo preventivo</b></p>
-<OrderEditor {draft} methods={data.methods} codes={data.codes} contacts={data.contacts} supabase={data.supabase} mode="create" {form} title="Nuovo preventivo" labels={{ lead: 'Cliente, articoli con prezzi e condizioni: si salva come bozza oppure parte subito via email con PDF e link di accettazione.', save: 'Salva bozza', send: 'Invia preventivo per email', back: '/dashboard/aziende/preventivi' }} />
+<OrderEditor {draft} methods={data.methods} codes={data.codes} contacts={data.contacts} supabase={data.supabase} mode="create" {form} title="Nuovo preventivo" labels={{ lead: 'Cliente, articoli con prezzi e condizioni: si salva come bozza, oppure si passa subito all’email da scrivere al cliente.', save: 'Salva bozza', send: 'Salva e prepara l’email', back: '/dashboard/aziende/preventivi' }} />

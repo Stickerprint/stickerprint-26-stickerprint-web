@@ -7,7 +7,7 @@
 	import { categoryOf, draftTotals, emptyItem, splitAmounts, termsForMethod, type OrderDraft, type ProductCode } from '$lib/dashboard/orderDraft';
 
 	export interface PickContact { id: string; kind: 'contact' | 'profile'; name: string; first_name: string; last_name: string; email: string; phone: string; street: string; city: string; zip: string; province: string; country: string; vat: string; fiscal_code: string; sdi: string; pec: string }
-	export interface EditorLabels { lead?: string; save?: string; send?: string; back?: string }
+	export interface EditorLabels { lead?: string; save?: string; send?: string | null; back?: string }
 	let { draft, methods, codes, contacts, supabase, mode, form, title, oncancel, labels = {} }: { draft: OrderDraft; methods: PaymentMethod[]; codes: ProductCode[]; contacts: PickContact[]; supabase: SupabaseClient; mode: 'create' | 'edit'; form: Record<string, unknown> | null | undefined; title: string; oncancel?: () => void; labels?: EditorLabels } = $props();
 
 	// svelte-ignore state_referenced_locally
@@ -170,7 +170,7 @@
 
 	<div class="editor-actions">
 		{#if saving}<span class="note">Salvataggio…</span>{/if}
-		<button class="btn btn--blue" type="submit" formaction="?/confirm" disabled={saving || !d.customer.email} title={d.customer.email ? '' : 'Inserisci l’email del cliente'}>✉️ {labels.send ?? 'Invia conferma per email'}</button>
+		{#if labels.send !== null}<button class="btn btn--blue" type="submit" formaction="?/confirm" disabled={saving || !d.customer.email} title={d.customer.email ? '' : 'Inserisci l’email del cliente'}>✉️ {labels.send ?? 'Invia conferma per email'}</button>{/if}
 		<button class="btn btn--green" type="submit" formaction="?/save" disabled={saving}>💾 {labels.save ?? 'Salva ordine'}</button>
 	</div>
 </form>

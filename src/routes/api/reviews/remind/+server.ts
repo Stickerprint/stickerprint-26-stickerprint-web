@@ -4,6 +4,7 @@ import { env } from '$env/dynamic/private';
 import { PUBLIC_SUPABASE_URL } from '$env/static/public';
 import { sendEmail } from '$lib/server/email';
 import { reviewRequestEmail } from '$lib/server/email-templates';
+import { remindDueQuotes } from '$lib/server/richieste';
 import type { RequestHandler } from './$types';
 
 /**
@@ -29,5 +30,7 @@ export const GET: RequestHandler = async ({ request, url }) => {
 		const r = await sendEmail({ to: f.email, subject: mail.subject, html: mail.html, tag: mail.tag, metadata: { order: f.number } });
 		if (r.ok) { sent.push(f.number); await db.from('orders').update({ review_asked_at: new Date().toISOString() }).eq(f.checkout_group ? 'checkout_group' : 'id', k); }
 	}
-	return json({ candidates: groups.size, sent });
+	// stesso cron (piano Hobby: massimo due): solleciti automatici dei preventivi senza risposta
+	const quotes = await remindDueQuotes(db, url.origin, true).catch(() => [] as string[]);
+	return json({ candidates: groups.size, sent, quotesReminded: quotes });
 };

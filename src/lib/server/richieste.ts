@@ -7,14 +7,14 @@ import { money } from '$lib/dashboard/orders';
 import { draftTotals, emptyDraft, type OrderDraft } from '$lib/dashboard/orderDraft';
 import { buildOrderPdf } from './docs';
 import { sendEmail } from './email';
-import { OWNER_EMAIL, ownerNotifyEmail, quoteAcceptedEmail, quoteEmail, quoteReminderEmail } from './email-templates';
+import { OWNER_EMAIL, ownerNotifyEmail, quoteAcceptedEmail, quoteEmail, quoteReminderEmail, quoteReplyEmail } from './email-templates';
 import { loadEditorData, saveOrderDraft, sendOrderConfirmation, upsertContact } from './orders';
 import { pushStaff } from './push';
 import { ensurePlan } from './produzione';
 import type { OrderRow } from '$lib/dashboard/orders';
 
 export * from '$lib/dashboard/richieste';
-import { QUOTE_VALID_DAYS, QUOTE_REMIND_DAYS, REQUEST_STATUS, type ContactRequest, type Quote, type QuoteStatus } from '$lib/dashboard/richieste';
+import { QUOTE_VALID_DAYS, QUOTE_REMIND_DAYS, REQUEST_STATUS, type ContactRequest, type Quote, type QuoteMessage, type QuoteStatus } from '$lib/dashboard/richieste';
 type DB = SupabaseClient;
 export const toB64 = (bytes: Uint8Array) => { let s = ''; for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000)); return btoa(s); };
 const today = () => new Date().toISOString().slice(0, 10);
@@ -118,31 +118,85 @@ export async function quotePdf(q: Quote): Promise<Uint8Array> {
 		shipping_method: d.ship_method, delivery_date: d.ship_date || null, notes: d.notes?.replace(/^Richiesta dal sito:.*$/s, '') || null
 	});
 }
-/** Invia il preventivo (PDF + link pubblico) e lo segna come inviato */
-export async function sendQuote(db: DB, id: string, origin: string, message: string | null): Promise<{ ok: boolean; message: string }> {
+/** Invia il preventivo: email scritta dallo staff con il solo bottone "Apri il preventivo" (niente allegato) */
+export async function sendQuote(db: DB, id: string, origin: string, o: { to?: string | null; cc?: string | null; subject: string; message: string; sender: string | null; autoRemind: boolean }): Promise<{ ok: boolean; message: string }> {
 	const q = await getQuote(db, id);
 	if (!q) return { ok: false, message: 'Preventivo non trovato.' };
-	const email = q.draft.customer.email?.trim();
-	if (!email) return { ok: false, message: 'Il preventivo non ha un indirizzo email.' };
+	const email = (o.to || q.draft.customer.email || '').trim().toLowerCase();
+	if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return { ok: false, message: 'Indirizzo email del cliente non valido.' };
 	if (!q.draft.items.some((i) => Number(i.qty) > 0)) return { ok: false, message: 'Aggiungi almeno un articolo.' };
+	if (!o.subject.trim() || !o.message.trim()) return { ok: false, message: 'Oggetto e testo dell\'email sono obbligatori.' };
 	const validUntil = q.valid_until ?? addDays(today(), QUOTE_VALID_DAYS);
-	const pdf = await quotePdf({ ...q, valid_until: validUntil });
-	const mail = quoteEmail({ name: q.draft.customer.first_name || q.draft.customer.name, number: q.number, total: money(Number(q.total_gross)), validUntil: itDate(validUntil), href: `${origin}/preventivo/${q.token}`, message });
-	const r = await sendEmail({ to: email, ...mail, attachments: [{ name: `Preventivo-${q.number}.pdf`, content: toB64(pdf), contentType: 'application/pdf' }] });
+	const mail = quoteEmail({ subject: o.subject.trim(), message: o.message.trim(), senderName: o.sender, number: q.number, validUntil: itDate(validUntil), href: `${origin}/preventivo/${q.token}` });
+	const cc = (o.cc || '').split(/[,;\s]+/).map((x) => x.trim().toLowerCase()).filter((x) => /^[^@]+@[^@]+\.[^@]+$/.test(x));
+	const r = await sendEmail({ to: [email, ...cc], ...mail, metadata: { quote: q.number } });
 	if (!r.ok) return { ok: false, message: r.error ?? 'Email non inviata.' };
-	await db.from('quotes').update({ status: 'inviato', sent_at: new Date().toISOString(), valid_until: validUntil, updated_at: new Date().toISOString() }).eq('id', id);
+	await db.from('quotes').update({ status: 'inviato', sent_at: new Date().toISOString(), valid_until: validUntil, sent_subject: o.subject.trim(), sent_message: o.message.trim(), sender_name: o.sender, auto_remind: o.autoRemind, reminded_at: null, updated_at: new Date().toISOString() }).eq('id', id);
 	if (q.request_id) await db.from('contact_requests').update({ status: 'quoted' }).eq('id', q.request_id).in('status', ['new', 'in_progress']);
-	return { ok: true, message: r.skipped ? 'Postmark non configurato: email simulata.' : `Preventivo inviato a ${email}.` };
+	return { ok: true, message: r.skipped ? 'Postmark non configurato: email simulata.' : `Preventivo inviato a ${email}${cc.length ? ` (copia a ${cc.join(', ')})` : ''}.` };
 }
 export async function remindQuote(db: DB, id: string, origin: string): Promise<{ ok: boolean; message: string }> {
 	const q = await getQuote(db, id);
 	if (!q || q.status !== 'inviato') return { ok: false, message: 'Solo i preventivi inviati si possono sollecitare.' };
-	const mail = quoteReminderEmail({ name: q.draft.customer.first_name || q.draft.customer.name, number: q.number, validUntil: itDate(q.valid_until), href: `${origin}/preventivo/${q.token}` });
+	const mail = quoteReminderEmail({ name: q.draft.customer.first_name || q.draft.customer.name, number: q.number, validUntil: itDate(q.valid_until), href: `${origin}/preventivo/${q.token}`, senderName: q.sender_name });
 	const r = await sendEmail({ to: q.draft.customer.email, ...mail });
 	if (!r.ok) return { ok: false, message: r.error ?? 'Email non inviata.' };
 	await db.from('quotes').update({ reminded_at: new Date().toISOString() }).eq('id', id);
 	return { ok: true, message: 'Sollecito inviato.' };
 }
+/** Sollecito automatico: inviati da QUOTE_REMIND_DAYS giorni, senza risposta ne' domande, con il promemoria attivo */
+let lastAutoRemind = 0;
+export async function remindDueQuotes(db: DB, origin: string, force = false): Promise<string[]> {
+	if (!force && Date.now() - lastAutoRemind < 20 * 60 * 1000) return [];
+	lastAutoRemind = Date.now();
+	const since = new Date(Date.now() - QUOTE_REMIND_DAYS * 864e5).toISOString();
+	const { data } = await db.from('quotes').select('id, number').eq('status', 'inviato').eq('auto_remind', true).is('reminded_at', null).lt('sent_at', since);
+	const sent: string[] = [];
+	for (const q of data ?? []) {
+		const { count } = await db.from('quote_messages').select('id', { count: 'exact', head: true }).eq('quote_id', q.id).eq('direction', 'in');
+		if (count) continue; // ha scritto: se ne occupa lo staff
+		const r = await remindQuote(db, q.id, origin);
+		if (r.ok) sent.push(q.number);
+	}
+	return sent;
+}
+
+/* ---------- pagina del cliente: aperture, PDF, domande ---------- */
+export async function trackQuoteOpen(db: DB, q: Quote) {
+	await db.from('quotes').update({ opened_count: (q.opened_count ?? 0) + 1, opened_at: new Date().toISOString() }).eq('id', q.id);
+}
+export async function trackQuotePdf(db: DB, id: string) { await db.from('quotes').update({ pdf_downloaded_at: new Date().toISOString() }).eq('id', id); }
+export async function loadQuoteMessages(db: DB, id: string): Promise<QuoteMessage[]> {
+	const { data } = await db.from('quote_messages').select('*').eq('quote_id', id).order('created_at');
+	return (data ?? []) as QuoteMessage[];
+}
+/** Domanda del cliente dalla pagina (client di servizio): entra nel preventivo, avvisa lo staff */
+export async function quoteQuestionByToken(db: DB, token: string, body: string, origin: string, kind: 'domanda' | 'aggiornamento' = 'domanda'): Promise<string | null> {
+	const q = await getQuoteByToken(db, token);
+	if (!q) return 'Preventivo non trovato.';
+	const text = kind === 'aggiornamento' ? `Chiede un preventivo aggiornato${body.trim() ? `: ${body.trim()}` : '.'}` : body.trim();
+	if (!text) return 'Scrivi la domanda.';
+	await db.from('quote_messages').insert({ quote_id: q.id, direction: 'in', author: q.draft.customer.name, body: text });
+	await db.from('quotes').update({ unread: true, updated_at: new Date().toISOString() }).eq('id', q.id);
+	await Promise.all([
+		sendEmail({ to: OWNER_EMAIL, ...ownerNotifyEmail({ title: `${q.draft.customer.name} ha scritto sul preventivo ${q.number}`, lines: [text.slice(0, 300)], href: `${origin}/dashboard/aziende/preventivi/${q.id}` }) }),
+		pushStaff({ title: `Domanda sul preventivo ${q.number}`, body: text.slice(0, 120), url: `/dashboard/aziende/preventivi/${q.id}`, tag: `quote-${q.id}` })
+	]);
+	return null;
+}
+/** Risposta dello staff: messaggio + email con lo stesso link */
+export async function replyQuote(db: DB, id: string, body: string, author: string | null, origin: string): Promise<string | null> {
+	if (!body.trim()) return 'Scrivi la risposta.';
+	const q = await getQuote(db, id);
+	if (!q) return 'Preventivo non trovato.';
+	await db.from('quote_messages').insert({ quote_id: id, direction: 'out', author, body: body.trim() });
+	const r = await sendEmail({ to: q.draft.customer.email, ...quoteReplyEmail({ name: q.draft.customer.first_name || q.draft.customer.name, number: q.number, body: body.trim(), author, href: `${origin}/preventivo/${q.token}` }) });
+	if (!r.ok) return r.error ?? 'Email non inviata.';
+	await db.from('quotes').update({ unread: false, updated_at: new Date().toISOString() }).eq('id', id);
+	return null;
+}
+export async function markQuoteRead(db: DB, id: string) { await db.from('quotes').update({ unread: false }).eq('id', id).eq('unread', true); }
+
 /** Nuova versione: copia in bozza con lo stesso numero (rev. 2, 3…); la precedente resta in archivio */
 export async function newQuoteVersion(db: DB, id: string): Promise<{ id: string | null; error?: string }> {
 	const q = await getQuote(db, id);
@@ -210,9 +264,10 @@ export async function orderFromQuote(db: DB, id: string, sendMail: boolean): Pro
 /** contatori del menu: richieste nuove + preventivi inviati senza risposta da QUOTE_REMIND_DAYS giorni */
 export async function aziendeCounts(db: DB): Promise<{ nuove: number; daSollecitare: number }> {
 	const since = new Date(Date.now() - QUOTE_REMIND_DAYS * 864e5).toISOString();
-	const [{ count: nuove }, { count: sol }] = await Promise.all([
+	const [{ count: nuove }, { count: sol }, { count: unread }] = await Promise.all([
 		db.from('contact_requests').select('id', { count: 'exact', head: true }).eq('kind', 'aziende').eq('status', 'new'),
-		db.from('quotes').select('id', { count: 'exact', head: true }).eq('status', 'inviato').lt('sent_at', since).is('reminded_at', null)
+		db.from('quotes').select('id', { count: 'exact', head: true }).eq('status', 'inviato').lt('sent_at', since).is('reminded_at', null).eq('auto_remind', false),
+		db.from('quotes').select('id', { count: 'exact', head: true }).eq('unread', true)
 	]);
-	return { nuove: nuove ?? 0, daSollecitare: sol ?? 0 };
+	return { nuove: nuove ?? 0, daSollecitare: (sol ?? 0) + (unread ?? 0) };
 }

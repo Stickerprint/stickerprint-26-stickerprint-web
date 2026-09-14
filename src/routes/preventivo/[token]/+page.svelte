@@ -1,64 +1,129 @@
 <script lang="ts">
+	import '$lib/styles/quote.css';
 	import { enhance } from '$app/forms';
+	import Stars from '$lib/components/Stars.svelte';
 	import { money } from '$lib/dashboard/orders';
 	let { data, form } = $props();
 	const q = $derived(data.q);
-	let rejecting = $state(false);
-	const pdfHref = $derived(`data:application/pdf;base64,${data.pdf}`);
+	const first = $derived(data.customer.first_name?.trim() || data.customer.name);
 	const it = (d: string | null) => (d ? new Date(d + 'T12:00:00').toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' }) : '');
-	const lordi = $derived(q.draft.price_type === 'lordi');
-	const done = $derived(q.status === 'accettato' || q.status === 'ordinato' || form?.ok);
+	const daysLeft = $derived(q.valid_until ? Math.ceil((new Date(q.valid_until + 'T23:59:59').getTime() - Date.now()) / 864e5) : null);
+	const done = $derived(q.status === 'accettato' || q.status === 'ordinato' || form?.accepted);
+	const dead = $derived(!done && (q.status === 'rifiutato' || q.status === 'scaduto' || form?.rejected));
+	const open = $derived(!done && !dead && q.status === 'inviato');
+	let asking = $state(false);
+	let rejecting = $state(false);
+	let sending = $state(false);
+	const initials = $derived((q.sender_name ?? 'SP').split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase());
+	const when = (d: string) => new Date(d).toLocaleString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+	const submit = () => { sending = true; return async ({ update }: { update: (o?: { reset?: boolean }) => Promise<void> }) => { await update({ reset: false }); sending = false; asking = false; rejecting = false; }; };
 </script>
 
 <svelte:head><title>Preventivo {q.number} | Stickerprint</title><meta name="robots" content="noindex" /></svelte:head>
 
-<section class="section" style="padding-top:40px">
-	<div class="container" style="max-width:820px">
-		<p class="kicker">Preventivo {q.number}{#if q.version > 1} · rev. {q.version}{/if}</p>
-		<h1 style="margin-bottom:8px">{done ? 'Preventivo confermato ✅' : q.status === 'rifiutato' ? 'Preventivo rifiutato' : q.status === 'scaduto' ? 'Preventivo scaduto' : `Ciao ${q.draft.customer.first_name || q.draft.customer.name}, ecco il tuo preventivo`}</h1>
-		{#if form?.error}<p class="error">{form.error}</p>{/if}
-		{#if form?.message}<p class="ok">{form.message}</p>{/if}
-		{#if done}
-			<p class="lead">Grazie: abbiamo registrato la conferma. Ti mandiamo la conferma d'ordine con il riepilogo e i tempi. Per qualsiasi cosa rispondi all'email che hai ricevuto.</p>
-		{:else if q.status === 'scaduto' || q.status === 'rifiutato'}
-			<p class="lead">Questo preventivo non è più attivo. Scrivici a <a href="mailto:info@stickerprint.it">info@stickerprint.it</a> e te ne prepariamo uno aggiornato.</p>
-		{:else}
-			<p class="lead">Preparato per <b>{q.draft.customer.name}</b>{#if q.valid_until}, valido fino al <b>{it(q.valid_until)}</b>{/if}. Guarda le righe, scarica il PDF e conferma con un clic: la commessa entra subito in lavorazione.</p>
-		{/if}
+<section class="qp">
+	<div class="qp__wrap">
+		<header class="qp__head">
+			<p class="qp__kicker">Preventivo {q.number}{#if q.version > 1} · rev. {q.version}{/if} · {it(q.created_at.slice(0, 10))}</p>
+			{#if done}
+				<h1>Grazie {first}, è tutto <span class="hl">confermato</span> ✅</h1>
+				<p class="qp__lead">La commessa è in lavorazione. I prossimi passi: ti mandiamo la conferma d'ordine, poi l'anteprima di stampa da approvare, e si parte. Per qualsiasi cosa scrivici qui sotto o rispondi all'email.</p>
+			{:else if dead}
+				<h1>{q.status === 'rifiutato' || form?.rejected ? 'Preventivo chiuso' : 'Preventivo scaduto'}</h1>
+				<p class="qp__lead">Questa proposta non è più attiva. Se ti serve ancora, chiedici un aggiornamento: te lo rifacciamo con prezzi e tempi di oggi.</p>
+			{:else}
+				<h1>Ciao {first}, ecco il preventivo per <span class="hl">{data.customer.name}</span></h1>
+				<p class="qp__lead">Guarda cosa ricevi, controlla il totale e conferma con un clic: la commessa entra subito in lavorazione. {#if daysLeft !== null}<b class="qp__valid" class:is-soon={daysLeft <= 5}>{daysLeft > 0 ? `Valido ancora ${daysLeft} ${daysLeft === 1 ? 'giorno' : 'giorni'}` : 'Scade oggi'}</b> (fino al {it(q.valid_until)}).{/if}</p>
+			{/if}
+			{#if form?.error}<p class="error">{form.error}</p>{/if}
+			{#if form?.message && !form?.accepted}<p class="ok">{form.message}</p>{/if}
+		</header>
 
-		<div class="panel" style="margin-top:22px;overflow:auto">
-			<table class="dtable">
-				<thead><tr><th>Descrizione</th><th style="text-align:right">Quantità</th><th style="text-align:right">Prezzo {lordi ? 'IVA incl.' : 'unitario'}</th><th style="text-align:right">Totale</th></tr></thead>
-				<tbody>
-					{#each q.draft.items.filter((i) => Number(i.qty) > 0) as i, k (k)}
-						<tr><td>{i.code ? i.code + ' · ' : ''}{i.description}</td><td style="text-align:right">{Number(i.qty).toLocaleString('it-IT')}</td><td style="text-align:right">{money(Number(i.price))}</td><td style="text-align:right"><b>{money(Number(i.price) * Number(i.qty))}</b></td></tr>
-					{/each}
-				</tbody>
-			</table>
-			<div style="display:grid;justify-content:end;gap:4px;margin-top:14px;font-size:15px">
-				<div>Imponibile <b>{money(Number(q.total_net))}</b></div>
-				<div>IVA 22% <b>{money(Number(q.total_gross) - Number(q.total_net))}</b></div>
-				<div style="font-size:20px">Totale <b>{money(Number(q.total_gross))}</b></div>
-			</div>
-			{#if q.draft.terms?.length}<p class="note" style="margin-top:10px">Pagamento: {[...new Set(q.draft.terms.map((t) => t.method))].join(' + ')}{#if q.draft.ship_date} · spedizione prevista {it(q.draft.ship_date)}{/if}</p>{/if}
+		<h2 class="qp__h2">Cosa ricevi</h2>
+		<div class="qp__items">
+			{#each data.items as i, k (k)}
+				<article class="qp__item">
+					<div class="qp__img" class:is-mockup={i.isMockup}>{#if i.image}<img src={i.image} alt="" loading="lazy" />{/if}</div>
+					<div class="qp__item-body">
+						<span class="qp__cat">{i.category}</span>
+						<h3>{i.description}</h3>
+						<div class="qp__meta">{i.qty.toLocaleString('it-IT')} pezzi{#if i.lamination && i.lamination !== 'nessuna'} · lamina {i.lamination}{/if}{#if i.code} · cod. {i.code}{/if}</div>
+						<div class="qp__price"><span>{money(i.price)} <small>cad.{data.lordi ? ' IVA incl.' : ''}</small></span><b>{money(i.total)}</b></div>
+					</div>
+				</article>
+			{/each}
 		</div>
 
-		<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:20px;align-items:center">
-			<a class="btn btn--ghost" href={pdfHref} download="Preventivo-{q.number}.pdf">📄 Scarica il PDF</a>
-			{#if !done && q.status === 'inviato'}
-				<form method="POST" action="?/accetta" use:enhance style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-					<input name="nome" placeholder="Nome e cognome di chi conferma" required style="padding:12px 14px;border:1px solid var(--line);border-radius:12px;font:inherit;min-width:260px" />
-					<button class="btn btn--green" type="submit">✓ Accetto il preventivo</button>
+		<div class="qp__two">
+			<div class="qp__sum">
+				<h2 class="qp__h2">Riepilogo</h2>
+				<div class="qp__row"><span>Imponibile</span><b>{money(q.total_net)}</b></div>
+				<div class="qp__row"><span>IVA 22%</span><b>{money(q.total_gross - q.total_net)}</b></div>
+				<div class="qp__row qp__row--tot"><span>Totale</span><b>{money(q.total_gross)}</b></div>
+				<ul class="qp__terms">
+					<li>⏱ Produzione in 3–5 giorni lavorativi dall'approvazione dell'anteprima di stampa{#if data.shipDate}, spedizione prevista {it(data.shipDate)}{/if}.</li>
+					<li>🚚 {data.shipMethod === 'Consegna diretta Stickerprint' ? 'Consegna diretta' : data.shipMethod?.includes('destinatario') ? 'Ritiro con il tuo corriere' : 'Spedizione con corriere espresso, tracking via email'}.</li>
+					{#if data.terms.length}<li>💳 Pagamento: {data.terms.join(' + ')}.</li>{/if}
+					<li>🔍 Prima di stampare ricevi l'anteprima: si va in macchina solo con il tuo ok.</li>
+				</ul>
+			</div>
+			<aside class="qp__why">
+				<div class="qp__person"><span class="qp__avatar">{initials}</span><div><b>{q.sender_name ?? 'Il team Stickerprint'}</b><br /><span>ti seguo io: per qualsiasi dubbio scrivimi qui sotto o rispondi all'email.</span></div></div>
+				<ul class="qp__perks">
+					<li>🇮🇹 Stampato in Italia, nel nostro laboratorio</li>
+					<li>🖨️ Materiali premium e taglio di precisione</li>
+					<li>📦 Spedizione gratuita da 50 €</li>
+				</ul>
+				{#if data.stats}<div class="qp__stars"><Stars value={data.stats.average ?? 4.9} count={data.stats.total ?? null} size={18} countLabel="recensioni verificate" /></div>{/if}
+			</aside>
+		</div>
+
+		<div class="qp__cta" id="conferma">
+			{#if open}
+				<form method="POST" action="?/accetta" use:enhance={submit} class="qp__accept">
+					<input name="nome" placeholder="Nome e cognome di chi conferma" required />
+					<button class="btn btn--green btn--lg" type="submit" disabled={sending}>✓ Confermo il preventivo</button>
 				</form>
-				{#if !rejecting}<button class="link-btn" type="button" onclick={() => (rejecting = true)}>Non fa per me</button>{/if}
+				<div class="qp__more">
+					<a class="btn btn--ghost" href="/preventivo/{data.q ? '' : ''}{location_token()}/pdf">📄 Scarica il PDF</a>
+					<button class="btn btn--ghost" type="button" onclick={() => { asking = !asking; rejecting = false; }}>💬 Ho una domanda</button>
+					<button class="link-btn" type="button" onclick={() => { rejecting = !rejecting; asking = false; }}>Non fa per me</button>
+				</div>
+				<p class="note">Confermando accetti la proposta alle condizioni indicate. Nessun pagamento adesso: ricevi la conferma d'ordine con i dettagli.</p>
+			{:else if done}
+				<div class="qp__more"><a class="btn btn--ghost" href="/preventivo/{location_token()}/pdf">📄 Scarica il PDF</a><button class="btn btn--ghost" type="button" onclick={() => (asking = !asking)}>💬 Scrivici</button></div>
+			{:else}
+				<form method="POST" action="?/aggiorna" use:enhance={submit} class="qp__ask">
+					<textarea name="testo" rows="2" placeholder="Se qualcosa è cambiato (quantità, misura, materiale) scrivilo qui."></textarea>
+					<button class="btn btn--blue" type="submit" disabled={sending}>Chiedi un preventivo aggiornato</button>
+				</form>
+			{/if}
+			{#if asking}
+				<form method="POST" action="?/domanda" use:enhance={submit} class="qp__ask">
+					<textarea name="testo" rows="3" required placeholder="Scrivi qui: materiali, tempi, quantità diverse, fatturazione…"></textarea>
+					<button class="btn btn--blue" type="submit" disabled={sending}>Invia la domanda</button>
+				</form>
+			{/if}
+			{#if rejecting && open}
+				<form method="POST" action="?/rifiuta" use:enhance={submit} class="qp__ask">
+					<textarea name="motivo" rows="2" placeholder="Se ci dici cosa non torna (prezzo, tempi, materiale) proviamo a sistemarlo."></textarea>
+					<button class="btn btn--ghost" type="submit" disabled={sending}>Chiudi il preventivo</button>
+				</form>
 			{/if}
 		</div>
-		{#if rejecting && !done}
-			<form method="POST" action="?/rifiuta" use:enhance style="display:grid;gap:8px;margin-top:14px;max-width:520px">
-				<textarea name="motivo" rows="3" placeholder="Se ci dici cosa non torna (prezzo, tempi, materiale) proviamo a sistemarlo." style="padding:10px 12px;border:1px solid var(--line);border-radius:12px;font:inherit"></textarea>
-				<div style="display:flex;gap:8px"><button class="btn btn--ghost btn--xs" type="submit">Invia</button><button class="btn btn--ghost btn--xs" type="button" onclick={() => (rejecting = false)}>Annulla</button></div>
-			</form>
+
+		{#if data.messages.length}
+			<div class="qp__thread">
+				<h2 class="qp__h2">Conversazione</h2>
+				{#each data.messages as m (m.id)}
+					<div class="qp__msg qp__msg--{m.direction}"><div class="qp__msg-head"><b>{m.direction === 'in' ? 'Tu' : (m.author ?? 'Stickerprint')}</b><span>{when(m.created_at)}</span></div><p>{m.body}</p></div>
+				{/each}
+			</div>
 		{/if}
-		<p class="note" style="margin-top:26px">Accettando il preventivo confermi l'ordine alle condizioni indicate. I tempi di produzione partono dall'approvazione dell'anteprima di stampa.</p>
 	</div>
 </section>
+
+<script lang="ts" module>
+	// token dalla URL (la pagina non lo espone nei dati per non mostrarlo altrove)
+	function location_token() { return typeof location !== 'undefined' ? location.pathname.split('/')[2] : ''; }
+</script>

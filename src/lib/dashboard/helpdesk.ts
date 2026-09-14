@@ -22,7 +22,7 @@ export interface Ticket {
 	last_message_at: string; closed_at: string | null; created_at: string; updated_at: string;
 }
 export interface TicketMessage { id: number; ticket_id: string; direction: 'in' | 'out' | 'note'; author: string | null; body: string; file_path: string | null; created_at: string }
-export interface ReplyTemplate { id: string; title: string; body: string; sort: number }
+export interface ReplyTemplate { id: string; title: string; body: string; sort: number; kind?: 'supporto' | 'preventivo'; subject?: string | null }
 
 /** ore di attesa del cliente: dall'ultimo messaggio in entrata senza risposta */
 export function waitingHours(t: Ticket, now = Date.now()): number | null {

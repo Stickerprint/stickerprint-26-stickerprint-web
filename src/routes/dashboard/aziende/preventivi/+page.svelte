@@ -8,7 +8,7 @@
 	const years = Array.from({ length: 4 }, (_, i) => new Date().getFullYear() - i);
 	const filter = $derived(page.url.searchParams.get('stato') ?? 'tutti');
 	const list = $derived(data.quotes.filter((q) => (filter === 'tutti' ? true : q.status === filter)));
-	const toRemind = (q: { status: string; sent_at: string | null; reminded_at: string | null }) => q.status === 'inviato' && !q.reminded_at && !!q.sent_at && Date.now() - new Date(q.sent_at).getTime() > QUOTE_REMIND_DAYS * 864e5;
+	const toRemind = (q: { status: string; sent_at: string | null; reminded_at: string | null; auto_remind?: boolean }) => q.status === 'inviato' && !q.reminded_at && !!q.sent_at && Date.now() - new Date(q.sent_at).getTime() > QUOTE_REMIND_DAYS * 864e5;
 	const totals = $derived({ inviati: data.quotes.filter((q) => q.status === 'inviato').reduce((a, q) => a + Number(q.total_gross), 0), vinti: data.quotes.filter((q) => q.status === 'accettato' || q.status === 'ordinato').reduce((a, q) => a + Number(q.total_gross), 0) });
 </script>
 
@@ -46,12 +46,12 @@
 				{#each list as q (q.id)}
 					{@const st = QUOTE_STATUS[q.status as QuoteStatus]}
 					<tr>
-						<td><a class="pr-num" href="/dashboard/aziende/preventivi/{q.id}">{q.number}</a>{#if q.version > 1} <small class="osub">rev. {q.version}</small>{/if}</td>
+						<td>{#if q.unread}<span class="rq-dot" style="display:inline-block;background:var(--blue);box-shadow:0 0 0 3px #dbeafe;margin:0 8px 0 0;vertical-align:middle" title="Il cliente ha scritto"></span>{/if}<a class="pr-num" href="/dashboard/aziende/preventivi/{q.id}">{q.number}</a>{#if q.version > 1} <small class="osub">rev. {q.version}</small>{/if}</td>
 						<td>{q.draft.customer.name}<div class="osub">{q.draft.customer.email}</div></td>
 						<td><b>{money(Number(q.total_gross))}</b><div class="osub">{q.draft.items.length} {q.draft.items.length === 1 ? 'riga' : 'righe'}</div></td>
 						<td><span class="pill" style="background:{st.soft};color:{st.color}">{st.label}</span>{#if q.order_group}<div><a class="link" style="font-size:12px" href="/dashboard/fatturazione/ordini/{q.order_group}">ordine ›</a></div>{/if}</td>
 						<td>{dmy(q.valid_until)}</td>
-						<td>{#if q.sent_at}{fmtAgo(q.sent_at)}{#if q.reminded_at}<div class="osub">sollecitato {fmtAgo(q.reminded_at)}</div>{/if}{:else}—{/if}</td>
+						<td>{#if q.sent_at}{fmtAgo(q.sent_at)}<div class="osub">{q.opened_count ? `👁 aperto ${q.opened_count}×, ${fmtAgo(q.opened_at ?? null)}` : 'mai aperto'}{#if q.pdf_downloaded_at} · 📄 PDF{/if}</div>{#if q.reminded_at}<div class="osub">sollecitato {fmtAgo(q.reminded_at)}</div>{/if}{:else}—{/if}</td>
 						<td>{#if toRemind(q)}<form method="POST" action="?/sollecita" use:enhance><input type="hidden" name="id" value={q.id} /><button class="btn btn--ghost btn--xs" type="submit">✉ Sollecita</button></form>{/if}</td>
 					</tr>
 				{/each}

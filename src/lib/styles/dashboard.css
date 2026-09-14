@@ -312,3 +312,20 @@
 .hd-tpl input, .hd-tpl textarea { padding: 9px 11px; border: 1px solid var(--line); border-radius: 8px; font: inherit; font-size: 14px; }
 .ok { background: #dcfce7; color: #15803d; padding: 8px 12px; border-radius: 8px; font-weight: 600; font-size: 13.5px; }
 @media (max-width: 1100px) { .rq-detail { grid-template-columns: 1fr; } }
+
+/* popup di invio preventivo con anteprima dell'email */
+.qt-send__grid { display: grid; grid-template-columns: 1.1fr 1fr; gap: 18px; align-items: start; }
+.qt-send__form { display: grid; gap: 8px; }
+.qt-send__form label { display: grid; gap: 3px; font-weight: 700; }
+.qt-send__form input, .qt-send__form textarea, .qt-send__form select { padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; font: inherit; font-size: 13.5px; }
+.qt-check { display: flex !important; gap: 8px; align-items: center; font-weight: 600 !important; }
+.qt-mail { border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: #f4f5fa; font-size: 13px; }
+.qt-mail__head { background: #050538; color: var(--yellow); font-family: var(--font-display); font-weight: 800; text-align: center; padding: 14px; letter-spacing: .1em; font-size: 12px; }
+.qt-mail__body { background: #fff; margin: 12px; border-radius: 12px; padding: 18px 20px; display: grid; gap: 6px; }
+.qt-mail__subject { font-size: 11.5px; color: var(--muted); font-weight: 700; margin-bottom: 4px; }
+.qt-mail__body h4 { font-size: 19px; margin: 0 0 6px; }
+.qt-mail__body h4 u { text-decoration: none; border-bottom: 5px solid #8be33a; }
+.qt-mail__body p { margin: 0; line-height: 1.5; color: #3d3f63; }
+.qt-mail__sig { color: #8e92b0 !important; font-size: 12px; }
+.qt-mail__btn { display: inline-block; justify-self: start; margin: 10px 0 4px; background: #0e8bff; color: #fff; font-weight: 800; font-size: 12px; padding: 10px 16px; border-radius: 10px; letter-spacing: .04em; }
+@media (max-width: 900px) { .qt-send__grid { grid-template-columns: 1fr; } }

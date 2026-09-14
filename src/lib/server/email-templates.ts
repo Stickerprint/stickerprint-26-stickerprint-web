@@ -204,18 +204,22 @@ export function proofReminderEmail(o: { name?: string | null; number: string; mi
 }
 
 /* ---------- Aziende: preventivi ---------- */
-export function quoteEmail(o: { name?: string | null; number: string; total: string; validUntil: string | null; href: string; message?: string | null }) {
-	const n = esc(o.number);
-	const extra = o.message ? `<p style="white-space:pre-wrap;background:#f4f5fa;padding:14px;border-radius:10px;">${esc(o.message)}</p>` : '';
-	return { subject: `Il tuo preventivo ${o.number} da Stickerprint`, tag: 'quote', html: layoutHtml(`Preventivo ${n} ${hl('pronto')} 📄`, `<p>Ciao ${esc(o.name || '')},</p><p>in allegato trovi il preventivo <b>${n}</b> per un totale di <b>${esc(o.total)}</b> IVA inclusa${o.validUntil ? `, valido fino al <b>${esc(o.validUntil)}</b>` : ''}.</p>${extra}<p>Per confermarlo basta un clic sul bottone: da lì la commessa entra subito in lavorazione. Se vuoi cambiare qualcosa, rispondi a questa email.</p>`, { label: 'Vedi e accetta il preventivo', href: o.href }) };
+/** email di invio scritta dallo staff: solo testo e un bottone, niente allegato (il preventivo si apre sul sito) */
+export function quoteEmail(o: { subject: string; message: string; senderName: string | null; number: string; validUntil: string | null; href: string }) {
+	const body = `<div style="white-space:pre-wrap;">${esc(o.message)}</div>${o.senderName ? `<p style="margin:18px 0 0;color:#8e92b0;font-size:13px;">${esc(o.senderName)} · Stickerprint · ti seguo io: rispondi pure a questa email.</p>` : ''}`;
+	return { subject: o.subject, tag: 'quote', html: layoutHtml(`Preventivo ${esc(o.number)} ${hl('pronto')} 📄`, body + (o.validUntil ? `<p style="margin:14px 0 0;font-size:13px;color:#8e92b0;">Valido fino al ${esc(o.validUntil)}.</p>` : ''), { label: 'Apri il preventivo', href: o.href }) };
 }
-export function quoteReminderEmail(o: { name?: string | null; number: string; validUntil: string | null; href: string }) {
+export function quoteReminderEmail(o: { name?: string | null; number: string; validUntil: string | null; href: string; senderName?: string | null }) {
 	const n = esc(o.number);
-	return { subject: `Preventivo ${o.number}: ti serve altro?`, tag: 'quote-reminder', html: layoutHtml(`Il preventivo ${n} è ${hl('in attesa')} ⏳`, `<p>Ciao ${esc(o.name || '')},</p><p>qualche giorno fa ti abbiamo mandato il preventivo <b>${n}</b>${o.validUntil ? `, valido fino al <b>${esc(o.validUntil)}</b>` : ''}. Se hai dubbi su materiali, quantità o tempi, rispondi a questa email: ci pensiamo noi.</p>`, { label: 'Rivedi il preventivo', href: o.href }) };
+	return { subject: `Preventivo ${o.number}: ti serve altro?`, tag: 'quote-reminder', html: layoutHtml(`Il preventivo ${n} è ${hl('in attesa')} ⏳`, `<p>Ciao ${esc(o.name || '')},</p><p>qualche giorno fa ti ho mandato il preventivo <b>${n}</b>${o.validUntil ? `, valido fino al <b>${esc(o.validUntil)}</b>` : ''}. Se hai dubbi su materiali, quantità o tempi, scrivimi dalla pagina del preventivo o rispondi a questa email: ci penso io.</p>${o.senderName ? `<p style="color:#8e92b0;font-size:13px;">${esc(o.senderName)} · Stickerprint</p>` : ''}`, { label: 'Rivedi il preventivo', href: o.href }) };
+}
+export function quoteReplyEmail(o: { name?: string | null; number: string; body: string; author?: string | null; href: string }) {
+	const n = esc(o.number);
+	return { subject: `Re: preventivo ${o.number}`, tag: 'quote-reply', html: layoutHtml(`Novità sul preventivo ${n} 💬`, `<p>Ciao ${esc(o.name || '')},</p><div style="white-space:pre-wrap;background:#f4f5fa;padding:14px 16px;border-radius:10px;">${esc(o.body)}</div>${o.author ? `<p style="margin-top:10px;color:#8e92b0;font-size:13px;">${esc(o.author)} · Stickerprint</p>` : ''}`, { label: 'Apri il preventivo', href: o.href }) };
 }
 export function quoteAcceptedEmail(o: { name?: string | null; number: string; orderNumber: string | null }) {
 	const n = esc(o.number);
-	return { subject: `Preventivo ${o.number} confermato ✅`, tag: 'quote-accepted', html: layoutHtml(`Preventivo ${n} ${hl('confermato')} ✅`, `<p>Ciao ${esc(o.name || '')},</p><p>grazie, abbiamo registrato la tua conferma.${o.orderNumber ? ` L'ordine <b>${esc(o.orderNumber)}</b> è in lavorazione: ricevi la conferma d'ordine con il riepilogo a parte.` : ' Ti mandiamo a breve la conferma d\'ordine con il riepilogo.'}</p>`) };
+	return { subject: `Preventivo ${o.number} confermato ✅`, tag: 'quote-accepted', html: layoutHtml(`Preventivo ${n} ${hl('confermato')} ✅`, `<p>Ciao ${esc(o.name || '')},</p><p>grazie, abbiamo registrato la tua conferma.${o.orderNumber ? ` L'ordine <b>${esc(o.orderNumber)}</b> è in lavorazione: ricevi la conferma d'ordine con il riepilogo a parte.` : ' Prossimi passi: ti mandiamo la conferma d\'ordine, poi l\'anteprima di stampa da approvare, e si parte.'}</p>`) };
 }
 
 /* ---------- Helpdesk ---------- */

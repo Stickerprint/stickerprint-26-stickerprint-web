@@ -8,7 +8,7 @@ export const actions: Actions = {
 	salva: async ({ request, locals: { supabase } }) => {
 		const f = await request.formData();
 		const id = String(f.get('id') ?? '');
-		const row = { title: String(f.get('title') ?? '').trim(), body: String(f.get('body') ?? '').trim(), sort: Number(f.get('sort')) || 0 };
+		const row = { title: String(f.get('title') ?? '').trim(), body: String(f.get('body') ?? '').trim(), sort: Number(f.get('sort')) || 0, kind: f.get('kind') === 'preventivo' ? 'preventivo' : 'supporto', subject: String(f.get('subject') ?? '').trim() || null };
 		if (!row.title || !row.body) return fail(400, { error: 'Titolo e testo sono obbligatori.' });
 		const { error } = id ? await supabase.from('reply_templates').update(row).eq('id', id) : await supabase.from('reply_templates').insert(row);
 		return error ? fail(400, { error: error.message }) : { ok: true, message: 'Risposta salvata.' };

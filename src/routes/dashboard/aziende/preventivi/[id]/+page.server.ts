@@ -1,16 +1,23 @@
 import { error, fail, redirect } from '@sveltejs/kit';
 import { loadEditorData, parseDraft, upsertContact } from '$lib/server/orders';
-import { getQuote, newQuoteVersion, orderFromQuote, quotePdf, remindQuote, saveQuote, sendQuote, setQuoteStatus, setQuoteValidity } from '$lib/server/richieste';
-import { toB64 } from '$lib/server/richieste';
+import { getQuote, loadQuoteMessages, markQuoteRead, newQuoteVersion, orderFromQuote, quotePdf, remindQuote, replyQuote, saveQuote, sendQuote, setQuoteStatus, setQuoteValidity, toB64 } from '$lib/server/richieste';
+import { listTemplates } from '$lib/server/helpdesk';
+import { operatorName } from '$lib/server/produzione';
 import type { Actions, PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ params, url, locals: { supabase } }) => {
+export const load: PageServerLoad = async ({ params, url, locals: { supabase, user } }) => {
 	const q = await getQuote(supabase, params.id);
 	if (!q) error(404, 'Preventivo non trovato');
-	const editor = await loadEditorData(supabase);
-	const { data: versions } = await supabase.from('quotes').select('id, version, status, total_gross, created_at').eq('year', q.year).eq('seq', q.seq).order('version');
-	const { data: req } = q.request_id ? await supabase.from('contact_requests').select('id, company, name, message').eq('id', q.request_id).maybeSingle() : { data: null };
-	return { q, versions: versions ?? [], req, created: url.searchParams.get('creato'), mail: url.searchParams.get('mail'), ...editor };
+	await markQuoteRead(supabase, q.id);
+	const [editor, messages, templates, sender, { data: versions }, { data: req }] = await Promise.all([
+		loadEditorData(supabase),
+		loadQuoteMessages(supabase, q.id),
+		listTemplates(supabase),
+		operatorName(supabase, user),
+		supabase.from('quotes').select('id, version, status, total_gross, created_at').eq('year', q.year).eq('seq', q.seq).order('version'),
+		q.request_id ? supabase.from('contact_requests').select('id, company, name, message').eq('id', q.request_id).maybeSingle() : Promise.resolve({ data: null })
+	]);
+	return { q, messages, templates: templates.filter((t) => t.kind === 'preventivo'), sender, versions: versions ?? [], req, created: url.searchParams.get('creato'), openSend: url.searchParams.get('invia') === '1', ...editor };
 };
 
 export const actions: Actions = {
@@ -20,12 +27,22 @@ export const actions: Actions = {
 		const r = await saveQuote(supabase, d, params.id);
 		return r.error ? fail(400, { error: r.error }) : { ok: true, saved: true, message: 'Preventivo salvato.' };
 	},
-	confirm: async ({ request, params, url, locals: { supabase } }) => {
+	/** Dal popup: salva la bozza corrente e manda l'email scritta dallo staff */
+	invia: async ({ request, params, url, locals }) => {
 		const f = await request.formData();
 		const d = parseDraft(f.get('payload'));
-		if (d) { const r = await saveQuote(supabase, d, params.id); if (r.error) return fail(400, { error: r.error }); }
-		const m = await sendQuote(supabase, params.id, url.origin, String(f.get('messaggio') ?? '') || null);
-		return m.ok ? { ok: true, saved: !!d, message: m.message } : fail(400, { error: m.message });
+		if (d) { const r = await saveQuote(locals.supabase, d, params.id); if (r.error) return fail(400, { error: r.error }); }
+		const sender = String(f.get('sender') ?? '').trim() || (await operatorName(locals.supabase, locals.user));
+		if (f.get('save_template') === 'on' && String(f.get('template_title') ?? '').trim()) {
+			await locals.supabase.from('reply_templates').insert({ kind: 'preventivo', title: String(f.get('template_title')).trim(), subject: String(f.get('subject') ?? ''), body: String(f.get('message') ?? '') });
+		}
+		const m = await sendQuote(locals.supabase, params.id, url.origin, { to: String(f.get('to') ?? ''), cc: String(f.get('cc') ?? ''), subject: String(f.get('subject') ?? ''), message: String(f.get('message') ?? ''), sender, autoRemind: f.get('auto_remind') === 'on' });
+		return m.ok ? { ok: true, sent: true, message: m.message } : fail(400, { error: m.message, sendError: true });
+	},
+	rispondi: async ({ request, params, url, locals }) => {
+		const op = await operatorName(locals.supabase, locals.user);
+		const e = await replyQuote(locals.supabase, params.id, String((await request.formData()).get('body') ?? ''), op, url.origin);
+		return e ? fail(400, { error: e }) : { ok: true, message: 'Risposta inviata.' };
 	},
 	contact: async ({ request, locals: { supabase } }) => {
 		const d = parseDraft((await request.formData()).get('payload'));
