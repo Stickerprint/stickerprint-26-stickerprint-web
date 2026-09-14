@@ -578,3 +578,45 @@ body { overflow-x: clip; }
 @media (max-width: 560px) { .howto { grid-template-columns: 1fr; } }
 .howto-wrap.is-dark h2 { color: #fff; }
 .howto-wrap .howto__step b { color: var(--blue); }
+
+/* ==== anteprima automatica in home: card unica, scelte a sinistra (1-2-3), file a destra (4) ==== */
+.up-card { margin-top: 28px; background: #fff; border: 2px solid var(--line); border-radius: 26px; padding: clamp(18px, 2.4vw, 30px); box-shadow: 0 24px 60px rgba(11,11,59,.08); }
+.up { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: clamp(20px, 3vw, 44px); align-items: start; }
+.up__choices { display: grid; gap: 22px; }
+.up__head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.up__head b { font-family: var(--font-display); font-weight: 800; font-size: 17px; letter-spacing: -0.01em; }
+.up__n { width: 30px; height: 30px; border-radius: 50%; background: var(--navy); color: #fff; font-family: var(--font-display); font-weight: 800; font-size: 15px; display: grid; place-items: center; flex: 0 0 auto; }
+.up__pick { margin-left: auto; font-size: 12.5px; font-weight: 800; color: var(--blue); background: var(--sky); padding: 4px 10px; border-radius: 999px; }
+.up__tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.up__tile { border: 2px solid var(--line); background: #fff; border-radius: 16px; padding: 8px 8px 10px; text-align: left; cursor: pointer; display: grid; gap: 4px; font: inherit; color: var(--ink); transition: border-color .15s, box-shadow .15s, transform .15s; }
+.up__tile img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 10px; }
+.up__tile b { font-family: var(--font-display); font-weight: 800; font-size: 13.5px; line-height: 1.15; margin-top: 4px; }
+.up__tile small { font-size: 11.5px; color: var(--muted); line-height: 1.25; }
+.up__tile:hover { border-color: var(--blue); transform: translateY(-2px); }
+.up__tile.is-on { border-color: var(--navy); box-shadow: 0 0 0 3px rgba(5,5,56,.12); }
+.up__shapes { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.up__shape { border: 2px solid var(--line); background: #fff; border-radius: 14px; padding: 8px 4px 7px; display: grid; justify-items: center; gap: 4px; cursor: pointer; font: inherit; color: var(--ink); transition: border-color .15s, box-shadow .15s; }
+.up__shape img { width: 100%; max-width: 62px; height: 46px; object-fit: contain; }
+.up__shape span { font-size: 11px; font-weight: 800; }
+.up__shape:hover { border-color: var(--blue); }
+.up__shape.is-on { border-color: var(--navy); box-shadow: 0 0 0 3px rgba(5,5,56,.12); }
+.up__mats { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+.up__mat { border: 0; background: none; padding: 0; display: grid; justify-items: center; gap: 6px; cursor: pointer; font: inherit; color: var(--ink); }
+.up__mat img { width: 52px; height: 52px; border-radius: 50%; object-fit: cover; border: 3px solid #fff; box-shadow: 0 0 0 2px var(--line); transition: box-shadow .15s, transform .15s; }
+.up__mat:hover img { transform: scale(1.06); }
+.up__mat.is-on img { box-shadow: 0 0 0 3px var(--navy); }
+.up__mat span { font-size: 11px; font-weight: 800; }
+.up__mat.is-on span { color: var(--navy); }
+.up__file { display: grid; gap: 12px; align-content: start; }
+.up__file .link-btn { margin-left: auto; }
+.up__dz.dropzone { min-height: 300px; background: var(--sky); border-color: var(--blue); }
+.up__dz-hint { margin-top: 12px; font-size: 12.5px; font-weight: 700; color: var(--blue); }
+.up__stage.stage { height: 340px; border-radius: 18px; background: var(--sky); overflow: hidden; }
+.up__cta { width: 100%; }
+.up__note { font-size: 12.5px; color: var(--muted); text-align: center; margin: 0; }
+.up-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 16px; }
+.up-strip div { display: grid; gap: 2px; padding: 12px 14px; border-radius: 14px; background: var(--sky); }
+.up-strip b { font-family: var(--font-display); font-weight: 800; font-size: 14px; }
+.up-strip span { font-size: 12.5px; color: var(--ink-soft); }
+@media (max-width: 900px) { .up { grid-template-columns: 1fr; } .up-strip { grid-template-columns: 1fr 1fr; } .up__mats { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 560px) { .up__tiles { grid-template-columns: 1fr; } .up__tile { grid-template-columns: 72px 1fr; align-items: center; column-gap: 10px; } .up__tile img { aspect-ratio: 1; grid-row: 1 / 3; } .up-strip { grid-template-columns: 1fr; } }

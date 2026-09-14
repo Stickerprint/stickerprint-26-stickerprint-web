@@ -108,22 +108,19 @@
 
 <!-- ANTEPRIMA AUTOMATICA -->
 <section class="section container" id="anteprima">
-	<div class="preview">
-		<div class="preview__panel">
-			<span class="tag tag--blue">Anteprima automatica</span>
-			<h2 style="margin-top:14px">Prima lo vedi.<br /><span class="hl hl--blue">Poi lo stampiamo.</span></h2>
-			<p class="lead" style="margin-top:18px;font-size:17px">
-				Carica il tuo file e scopri subito come prenderà forma il tuo adesivo. Niente attese, niente salti nel buio.
-			</p>
-			<ol class="steps">
-				<li><span class="n">1</span><div><b>Carica il file</b><span>PNG, PDF, JPG, AI, SVG</span></div></li>
-				<li><span class="n">2</span><div><b>Guarda il risultato</b><span>Sagoma e linea di taglio in pochi secondi</span></div></li>
-				<li><span class="n">3</span><div><b>Decidi tu</b><span>Conferma, oppure chiedici una modifica</span></div></li>
-				<li><span class="n">4</span><div><b>Controllo finale</b><span>Un umano controllerà manualmente che il tuo file rispetti i nostri standard prima di andare in stampa</span></div></li>
-			</ol>
-			<p class="note preview__beta">Il sistema è attualmente in fase beta per Adesivi personalizzati, Adesivi resinati ed Etichette in fogli.</p>
-		</div>
-		<div class="preview__right"><UploadPreview /></div>
+	<div class="center">
+		<span class="tag tag--blue">Anteprima automatica</span>
+		<h2 style="margin-top:14px">Prima lo vedi. <span class="hl hl--blue">Poi lo stampiamo.</span></h2>
+		<p class="lead" style="margin-top:14px;max-width:640px;margin-inline:auto">Scegli prodotto, sagoma e materiale, carica il file: in pochi secondi vedi il tuo adesivo com'è davvero, con la linea di taglio. Niente attese, niente salti nel buio.</p>
+	</div>
+	<div class="up-card">
+		<UploadPreview />
+	</div>
+	<div class="up-strip">
+		<div><b>1 · Carica il file</b><span>PNG, PDF, JPG, SVG</span></div>
+		<div><b>2 · Guarda il risultato</b><span>Sagoma e taglio in pochi secondi</span></div>
+		<div><b>3 · Decidi tu</b><span>Conferma o chiedici una modifica</span></div>
+		<div><b>4 · Controllo finale</b><span>Un umano verifica il file prima della stampa</span></div>
 	</div>
 </section>
 

@@ -11,11 +11,18 @@
 
 	type Product = 'personalizzati' | 'resinati' | 'fogli';
 
-	const PRODUCTS: { id: Product; label: string; href: string; hint: string }[] = [
-		{ id: 'personalizzati', label: 'Adesivi personalizzati', href: '/adesivi-personalizzati', hint: 'Sagoma e linea di taglio calcolate dal tuo file' },
-		{ id: 'resinati', label: 'Adesivi resinati', href: '/adesivi-resinati', hint: 'Cupola in resina lucida, effetto 3D' },
-		{ id: 'fogli', label: 'Etichette in fogli', href: '/etichette', hint: 'Foglio a resa massima, margine 1 cm, etichette a 2 mm' }
+	const PRODUCTS: { id: Product; label: string; href: string; hint: string; img: string }[] = [
+		{ id: 'personalizzati', label: 'Adesivi personalizzati', href: '/adesivi-personalizzati', hint: 'Sagoma libera, tagliati uno a uno', img: '/images/prodotti/adesivi-personalizzati/1.webp' },
+		{ id: 'resinati', label: 'Adesivi resinati', href: '/adesivi-resinati', hint: 'Cupola in resina, effetto 3D', img: '/images/prodotti/resinati/1.webp' },
+		{ id: 'fogli', label: 'Etichette in fogli', href: '/etichette', hint: 'Tante etichette su un foglio', img: '/images/prodotti/etichette/1.webp' }
 	];
+	/* icone delle sagome: cambiano con il prodotto (adesivi, resinati, etichette) */
+	const SHAPE_IMG: Record<Product, Record<string, string>> = {
+		personalizzati: { sagomato: '/images/estimator/custom_stickers.webp', tondo: '/images/estimator/round_stickers.webp', quadrato: '/images/estimator/square_stickers.webp', ovale: '/images/estimator/oval_stickers.webp', rettangolare: '/images/estimator/rect_stickers.webp' },
+		resinati: { sagomato: '/images/estimator/res/custom_res.webp', tondo: '/images/estimator/res/round_res.webp', quadrato: '/images/estimator/res/round_res.webp', ovale: '/images/estimator/res/oval_res.webp', rettangolare: '/images/estimator/res/rect_res.webp' },
+		fogli: { sagomato: '/images/estimator/label/custom_labels.webp', tondo: '/images/estimator/label/round_label.webp', quadrato: '/images/estimator/label/square_labels.webp', ovale: '/images/estimator/label/oval_labels.webp', rettangolare: '/images/estimator/label/rect_label.webp' }
+	};
+	const shapeImg = (id: string) => SHAPE_IMG[product][id] ?? SHAPE_IMG.personalizzati[id];
 
 	const FORME = [
 		{ id: 'sagomato', label: 'Sagomato' },
@@ -25,12 +32,12 @@
 		{ id: 'ovale', label: 'Ovale' }
 	];
 	const MATERIALI = [
-		{ id: 'bianco', label: 'Bianco', swatch: '#fff' },
-		{ id: 'olografico', label: 'Olografico', swatch: 'conic-gradient(from 210deg,#ff8ad6,#ffe37a,#8ef7c8,#8ad4ff,#c9a6ff,#ff8ad6)' },
-		{ id: 'glitterato', label: 'Glitterato', swatch: 'radial-gradient(circle at 30% 30%,#fff,#cfd6de)' },
-		{ id: 'trasparente', label: 'Trasparente', swatch: 'repeating-conic-gradient(#cfd6dd 0 25%,#fff 0 50%) 0 0/8px 8px' },
-		{ id: 'oro', label: 'Oro', swatch: 'linear-gradient(135deg,#f6df8c,#b9862a,#fff0b8,#8a5f16)' },
-		{ id: 'argento', label: 'Argento', swatch: 'linear-gradient(135deg,#eef2f6,#9aa3ad,#fff,#8d949d)' }
+		{ id: 'bianco', label: 'Bianco', img: '/images/estimator/white.webp' },
+		{ id: 'olografico', label: 'Olografico', img: '/images/estimator/olo.webp' },
+		{ id: 'glitterato', label: 'Glitterato', img: '/images/estimator/glitter.webp' },
+		{ id: 'trasparente', label: 'Trasparente', img: '/images/estimator/transparent.webp' },
+		{ id: 'oro', label: 'Oro', img: '/images/estimator/gold.webp' },
+		{ id: 'argento', label: 'Argento', img: '/images/estimator/silver.webp' }
 	];
 
 	let file = $state<File | null>(null);
@@ -166,67 +173,69 @@
 
 <svelte:window onmessage={onMessage} />
 
-<div class="cfg-col">
-	<!-- Palco compatto: dropzone oppure anteprima generata -->
-	{#if !file}
-		<label
-			class="dropzone dropzone--compact"
-			class:is-over={over}
-			ondragenter={(e) => { e.preventDefault(); over = true; }}
-			ondragover={(e) => { e.preventDefault(); over = true; }}
-			ondragleave={() => (over = false)}
-			ondrop={(e) => { e.preventDefault(); over = false; pick(e.dataTransfer?.files[0]); }}
-		>
-			<input type="file" accept={ACCEPT.join(',')} onchange={(e) => pick((e.currentTarget as HTMLInputElement).files?.[0])} />
-			<div>
-				<div class="dropzone__icon">
-					<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 16V4m0 0l-4 4m4-4l4 4" /><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" /></svg>
-				</div>
-				<div class="dropzone__title">Trascina qui il tuo file</div>
-				<div class="dropzone__sub">oppure clicca per sceglierlo · PNG, JPG, SVG, PDF</div>
-				{#if error}<p class="error" style="margin-top:14px">{error}</p>{/if}
+<div class="up">
+	<!-- sinistra: le scelte, in ordine -->
+	<div class="up__choices">
+		<div class="up__step">
+			<div class="up__head"><span class="up__n">1</span><b>Cosa vuoi stampare?</b></div>
+			<div class="up__tiles" role="radiogroup" aria-label="Prodotto">
+				{#each PRODUCTS as p (p.id)}
+					<button type="button" class="up__tile" class:is-on={product === p.id} role="radio" aria-checked={product === p.id} onclick={() => setProduct(p.id)}>
+						<img src={p.img} alt="" loading="lazy" /><b>{p.label}</b><small>{p.hint}</small>
+					</button>
+				{/each}
 			</div>
-		</label>
-	{:else}
-		<div class="stage">
-			<!-- canvas vivo del motore: bagliore e linea di taglio animati come nel motore; per le etichette il foglio intero -->
-			<iframe bind:this={frame} class="engine engine--live" class:is-ready={!!snapshot} src={engineSrc} title={product === 'fogli' ? 'Anteprima del tuo foglio di etichette' : 'Anteprima del tuo adesivo'} tabindex="-1" onload={() => sendFile()}></iframe>
-			{#if engineBusy}<div class="stage__busy"><span class="spinner spinner--dark"></span> Genero l’anteprima…</div>{/if}
 		</div>
-	{/if}
-
-	<div class="product-pills" role="radiogroup" aria-label="Prodotto">
-		{#each PRODUCTS as p (p.id)}
-			<button type="button" class="pill-btn" class:is-active={product === p.id} role="radio" aria-checked={product === p.id} onclick={() => setProduct(p.id)}>{p.label}</button>
-		{/each}
+		<div class="up__step">
+			<div class="up__head"><span class="up__n">2</span><b>Che sagoma?</b><span class="up__pick">{FORME.find((f) => f.id === forma)?.label}</span></div>
+			<div class="up__shapes" role="radiogroup" aria-label="Sagoma">
+				{#each FORME as f (f.id)}
+					<button type="button" class="up__shape" class:is-on={forma === f.id} role="radio" aria-checked={forma === f.id} title={f.label} onclick={() => setForma(f.id)}><img src={shapeImg(f.id)} alt="" loading="lazy" /><span>{f.label}</span></button>
+				{/each}
+			</div>
+		</div>
+		<div class="up__step">
+			<div class="up__head"><span class="up__n">3</span><b>Che materiale?</b><span class="up__pick">{MATERIALI.find((m) => m.id === materiale)?.label}</span></div>
+			<div class="up__mats" role="radiogroup" aria-label="Materiale">
+				{#each MATERIALI as m (m.id)}
+					<button type="button" class="up__mat" class:is-on={materiale === m.id} role="radio" aria-checked={materiale === m.id} title={m.label} onclick={() => setMateriale(m.id)}><img src={m.img} alt="" loading="lazy" /><span>{m.label}</span></button>
+				{/each}
+			</div>
+		</div>
 	</div>
 
-		<div class="cfg-selects">
-			<label class="cfg-select">
-				<span class="cfg-select__label">Sagoma</span>
-				<span class="cfg-select__box">
-					<select value={forma} onchange={(e) => setForma((e.currentTarget as HTMLSelectElement).value)}>
-						{#each FORME as f (f.id)}<option value={f.id}>{f.label}</option>{/each}
-					</select>
-				</span>
+	<!-- destra: il file e l'anteprima viva -->
+	<div class="up__file">
+		<div class="up__head"><span class="up__n">4</span><b>Il tuo file</b>{#if file}<button type="button" class="link-btn" onclick={reset}>Cambia file</button>{/if}</div>
+		{#if !file}
+			<label
+				class="dropzone up__dz"
+				class:is-over={over}
+				ondragenter={(e) => { e.preventDefault(); over = true; }}
+				ondragover={(e) => { e.preventDefault(); over = true; }}
+				ondragleave={() => (over = false)}
+				ondrop={(e) => { e.preventDefault(); over = false; pick(e.dataTransfer?.files[0]); }}
+			>
+				<input type="file" accept={ACCEPT.join(',')} onchange={(e) => pick((e.currentTarget as HTMLInputElement).files?.[0])} />
+				<div>
+					<div class="dropzone__icon">
+						<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 16V4m0 0l-4 4m4-4l4 4" /><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" /></svg>
+					</div>
+					<div class="dropzone__title">Trascina qui il tuo file</div>
+					<div class="dropzone__sub">oppure clicca per sceglierlo · PNG, JPG, SVG, PDF</div>
+					<div class="up__dz-hint">In pochi secondi vedi sagoma, linea di taglio e materiale scelti</div>
+					{#if error}<p class="error" style="margin-top:14px">{error}</p>{/if}
+				</div>
 			</label>
-			<label class="cfg-select">
-				<span class="cfg-select__label">Materiale</span>
-				<span class="cfg-select__box">
-					<select value={materiale} onchange={(e) => setMateriale((e.currentTarget as HTMLSelectElement).value)}>
-						{#each MATERIALI as m (m.id)}<option value={m.id}>{m.label}</option>{/each}
-					</select>
-				</span>
-			</label>
-		</div>
-
-	<div class="cta-split">
-		<button class="btn btn--blue btn--xl" type="button" disabled={!file || saving || (usesEngine && engineBusy)} onclick={continua}>
-			{saving ? 'Un attimo…' : 'Continua la configurazione'}
-		</button>
-		{#if file}
-			<button class="btn btn--yellow btn--xl" type="button" onclick={reset}>Cambia file</button>
+		{:else}
+			<div class="stage up__stage">
+				<iframe bind:this={frame} class="engine engine--live" class:is-ready={!!snapshot} src={engineSrc} title={product === 'fogli' ? 'Anteprima del tuo foglio di etichette' : 'Anteprima del tuo adesivo'} tabindex="-1" onload={() => sendFile()}></iframe>
+				{#if engineBusy}<div class="stage__busy"><span class="spinner spinner--dark"></span> Genero l’anteprima…</div>{/if}
+			</div>
 		{/if}
+		<button class="btn btn--blue btn--xl up__cta" type="button" disabled={!file || saving || (usesEngine && engineBusy)} onclick={continua}>
+			{saving ? 'Un attimo…' : file ? 'Continua la configurazione →' : 'Carica il file per continuare'}
+		</button>
+		<p class="up__note">Anteprima gratuita e senza impegno. Prima della stampa un umano controlla il file.</p>
 	</div>
 </div>
-
