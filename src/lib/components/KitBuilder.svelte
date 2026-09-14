@@ -104,7 +104,8 @@
 		const zoom = Math.round((ratio >= card ? ratio / card : card / ratio) * 100);
 		engRefs[pop.key]?.post('zoom', { value: Math.min(400, zoom) });   /* un A4 verticale su 80x40 vuole il 283% */
 	}
-	type R = { png: string | null; name?: string | null; w: number; h: number; srcMM?: { w: number; h: number } | null; view?: View | null; cut?: Cut | null };
+	type R = { png: string | null; name?: string | null; shape?: string | null; w: number; h: number; srcMM?: { w: number; h: number } | null; view?: View | null; cut?: Cut | null };
+	const ENGINE_SHAPE: Record<string, string> = { sagomato: 'diecut', tondo: 'circle', quadrato: 'square', ovale: 'ellipse', rettangolare: 'rect' };
 	function engRender(e: Eng, r: R) {
 		if (!r.png) return;
 		if (r.name && r.name !== baseName(e.file)) return;
@@ -118,6 +119,7 @@
 	}
 	function popRender(r: R) {
 		if (!pop || !r.png) return;
+		if (r.shape && ENGINE_SHAPE[pop.forma] && r.shape !== ENGINE_SHAPE[pop.forma]) return;   /* istantanea di un'altra sagoma, in ritardo */
 		/* al caricamento il motore propone una misura sua (dalle proporzioni del file): per il
 		   cavallotto e le forme geometriche la misura e' quella del kit, e si impone subito */
 		if ((pop.kind === 'cav' || !(pop.forma === 'sagomato')) && pop.forced < 3 && (Math.abs(r.w - pop.w) > 0.6 || Math.abs(r.h - pop.h) > 0.6)) {
@@ -143,7 +145,7 @@
 		if (!pop) return;
 		pop.w = clampMM(w); pop.h = clampMM(h); pop.misura = Math.max(pop.w, pop.h); pop.busy = true;
 	}
-	function setPopShape(forma: string) { if (!pop) return; pop.forma = forma; pop.ratio = 0; pop.forced = 0; setPopSize(pop.misura); }
+	function setPopShape(forma: string) { if (!pop) return; pop.forma = forma; pop.ratio = 0; pop.forced = 0; pop.last = null; setPopSize(pop.misura); }
 	function confirmPop() {
 		if (!pop?.last) return;
 		if (pop.kind === 'cav') {

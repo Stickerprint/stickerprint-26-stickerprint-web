@@ -5468,7 +5468,7 @@ function ppGeoUI(){
          il cavallotto a misura esatta e rimette zoom/spostamento quando rifa' l'anteprima */
       let cut=null,view=null; try{ const a=S._an; if(a&&!a.sheet&&a.ppm){const o=(a.pad+a.b)*a.ppm; cut={x:o,y:o,w:S.cutW*a.ppm,h:S.cutH*a.ppm};}
         view={zoom:+($('lvZoom').value)||100,dx:+($('gdx').value)||0,dy:+($('gdy').value)||0}; }catch(e){}
-      send('render',{name:S.name||null,w:+((S.cutW||0)).toFixed(1),h:+((S.cutH||0)).toFixed(1),srcMM:S.srcMM||null,cut,view,
+      send('render',{name:S.name||null,shape:CL.shape,w:+((S.cutW||0)).toFixed(1),h:+((S.cutH||0)).toFixed(1),srcMM:S.srcMM||null,cut,view,
         materiale:(typeof matKind==='function')?matKind():null,png,palette,palIdx:S.palIdx,rimuovi:!!S.rimuoviSfondo,
         foglio:(S.foglio&&S.cutW)?(()=>{try{const L=layoutFoglio();return L?{n:L.n,cols:L.cols,rows:L.rows,w:L.SW,h:L.SH}:null;}catch(e){return null;}})():null});
       try{console.debug('[motore] istantanea: attesa',Math.round(t0-(window.__busyOff||t0)),'ms · inquadratura',Math.round(t1-t0),'ms · png',Math.round(t2-t1),'ms ·',cv.width+'x'+cv.height);}catch(e){}

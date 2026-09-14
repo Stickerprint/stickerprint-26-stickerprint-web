@@ -59,10 +59,13 @@
 		const forma = promo.forma || 'sagomato';
 		pop = { file: f, forma, ...sizeFor(forma, 1), ratio: 0, last: null, busy: true, forced: 0 };
 	}
-	function setShape(forma: string) { if (!pop) return; pop.forma = forma; pop.forced = 0; pop.busy = true; Object.assign(pop, sizeFor(forma, pop.ratio)); }
-	function popRender(r: { png: string | null; name?: string | null; w: number; h: number }) {
+	function setShape(forma: string) { if (!pop) return; pop.forma = forma; pop.forced = 0; pop.busy = true; pop.last = null; Object.assign(pop, sizeFor(forma, pop.ratio)); }
+	/* sagoma del sito → sagoma del motore: un'istantanea di un'altra sagoma (arrivata in ritardo dopo un cambio) va ignorata */
+	const ENGINE_SHAPE: Record<string, string> = { sagomato: 'diecut', tondo: 'circle', quadrato: 'square', ovale: 'ellipse', rettangolare: 'rect' };
+	function popRender(r: { png: string | null; name?: string | null; shape?: string | null; w: number; h: number }) {
 		if (!pop || !r.png) return;
 		if (r.name && r.name !== pop.file.name.replace(/\.[^.]+$/, '')) return;
+		if (r.shape && ENGINE_SHAPE[pop.forma] && r.shape !== ENGINE_SHAPE[pop.forma]) return;
 		/* al primo rendering il motore propone la misura dalle proporzioni del file: qui la misura la decide l'offerta */
 		if (!pop.ratio && r.w > 0 && r.h > 0) { pop.ratio = r.w / r.h; Object.assign(pop, sizeFor(pop.forma, pop.ratio)); }
 		if (pop.forced < 3 && (Math.abs(r.w - pop.w) > 0.6 || Math.abs(r.h - pop.h) > 0.6)) {
