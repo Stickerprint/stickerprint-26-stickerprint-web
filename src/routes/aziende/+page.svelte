@@ -159,7 +159,7 @@
 				<li><span class="ck">✓</span>Dubbi tecnici? Li risolviamo prima di stampare</li>
 			</ul>
 			<p class="stat-big" style="margin-top:26px"><mark>+580</mark> <span>aziende servite</span></p>
-			<div class="hero__stars" style="margin-top:10px"><Stars value={data.stats?.average ?? 4.9} count={data.stats?.total ?? null} size={22} /> · recensioni verificate</div>
+			<div class="hero__stars" style="margin-top:10px"><Stars value={data.stats?.average ?? 4.9} count={data.stats?.total ?? null} size={22} countLabel="recensioni verificate" /></div>
 		</div>
 		<div class="card" style="padding:28px">
 			<h3 style="margin-bottom:14px">Iniziamo da qui.</h3>

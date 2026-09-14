@@ -59,7 +59,7 @@
 			<p class="lead" style="margin-top:34px">
 				Carica il tuo file e visualizza <strong>subito l’anteprima automatica</strong> dei tuoi adesivi. Ti piace? Conferma. Vuoi cambiare qualcosa? Ce ne occupiamo noi.
 			</p>
-			<div class="hero__stars"><Stars value={data.stats.average} count={data.stats.total} size={22} /> · recensioni verificate</div>
+			<div class="hero__stars"><Stars value={data.stats.average} count={data.stats.total} size={22} countLabel="recensioni verificate" /></div>
 			<div class="hero__ctas">
 				<a class="btn btn--blue btn--lg" href="/adesivi-personalizzati">Stampa ora</a>
 				<a class="btn btn--yellow btn--lg" href="/campioni">Campioni</a>
