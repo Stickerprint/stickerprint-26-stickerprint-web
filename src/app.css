@@ -669,9 +669,9 @@ body { overflow-x: clip; }
 .cred__path.is-in .cred__lv:nth-child(4) .cred__pct { animation-delay: 1.15s; }
 @keyframes cred-count { from { transform: translateY(8px); opacity: 0; } to { transform: none; opacity: 1; } }
 /* l'Ambassador continua a brillare: un riflesso che passa ogni pochi secondi e il badge che fluttua */
-.cred__lv.is-top { overflow: hidden; }
-.cred__lv.is-top::after { content: ""; position: absolute; top: 0; bottom: 0; left: -60%; width: 40%; background: linear-gradient(105deg, transparent, rgba(255,255,255,.22), transparent); transform: skewX(-18deg); animation: cred-shine 4.5s ease-in-out 1.6s infinite; }
+.cred__shine { position: absolute; inset: 0; border-radius: inherit; overflow: hidden; pointer-events: none; }
+.cred__shine::after { content: ""; position: absolute; top: 0; bottom: 0; left: -60%; width: 40%; background: linear-gradient(105deg, transparent, rgba(255,255,255,.22), transparent); transform: skewX(-18deg); animation: cred-shine 4.5s ease-in-out 1.6s infinite; }
 @keyframes cred-shine { 0% { left: -60%; } 30%, 100% { left: 130%; } }
 .cred__path.is-in .cred__lv.is-top img { animation: cred-pop .7s cubic-bezier(.34,1.56,.64,1) .95s forwards, cred-float 3.2s ease-in-out 2s infinite; }
 @keyframes cred-float { 0%, 100% { translate: 0 0; } 50% { translate: 0 -6px; } }
-@media (prefers-reduced-motion: reduce) { .cred__line, .cred__lv, .cred__lv img, .cred__pct { transition: none !important; animation: none !important; opacity: 1 !important; transform: none !important; } .cred__lv.is-top::after { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .cred__line, .cred__lv, .cred__lv img, .cred__pct { transition: none !important; animation: none !important; opacity: 1 !important; transform: none !important; } .cred__shine::after { animation: none; } }

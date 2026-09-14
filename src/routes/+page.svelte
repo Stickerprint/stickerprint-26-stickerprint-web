@@ -178,6 +178,7 @@
 				<b>Partner</b><span class="cred__pct">4%</span><small>da 500 punti</small>
 			</div>
 			<div class="cred__lv is-top">
+				<i class="cred__shine" aria-hidden="true"></i>
 				<img src="/images/loyalty/ambassador.png" alt="" loading="lazy" />
 				<b>Ambassador</b><span class="cred__pct">6%</span><small>da 1.500 punti</small>
 			</div>
