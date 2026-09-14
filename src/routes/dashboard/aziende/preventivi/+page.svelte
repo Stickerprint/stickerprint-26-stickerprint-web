@@ -10,10 +10,10 @@
 	const list = $derived(data.quotes.filter((q) => (filter === 'tutti' ? true : q.status === filter)));
 	/* paginazione (70 per pagina) e totali dell'elenco filtrato */
 	const PER_PAGE = 70;
-	let page = $state(1);
-	$effect(() => { void filter; page = 1; });
+	let pg = $state(1);
+	$effect(() => { void filter; pg = 1; });
 	const pages = $derived(Math.max(1, Math.ceil(list.length / PER_PAGE)));
-	const pageList = $derived(list.slice((page - 1) * PER_PAGE, page * PER_PAGE));
+	const pageList = $derived(list.slice((pg - 1) * PER_PAGE, pg * PER_PAGE));
 	const sums = $derived.by(() => { const net = list.reduce((a, q) => a + Number(q.total_net), 0), gross = list.reduce((a, q) => a + Number(q.total_gross), 0); return { net, vat: gross - net, gross, pageNet: pageList.reduce((a, q) => a + Number(q.total_net), 0), pageGross: pageList.reduce((a, q) => a + Number(q.total_gross), 0) }; });
 	const toRemind = (q: { status: string; sent_at: string | null; reminded_at: string | null; auto_remind?: boolean }) => q.status === 'inviato' && !q.reminded_at && !!q.sent_at && Date.now() - new Date(q.sent_at).getTime() > QUOTE_REMIND_DAYS * 864e5;
 	const totals = $derived({ inviati: data.quotes.filter((q) => q.status === 'inviato').reduce((a, q) => a + Number(q.total_gross), 0), vinti: data.quotes.filter((q) => q.status === 'accettato' || q.status === 'ordinato').reduce((a, q) => a + Number(q.total_gross), 0) });
@@ -22,7 +22,7 @@
 <svelte:head><title>Preventivi | Dashboard</title></svelte:head>
 
 <div class="toolbar" style="justify-content:space-between;align-items:flex-start">
-	<div><h1>Preventivi {data.year}</h1><p class="lead">{list.length} {list.length === 1 ? 'preventivo' : 'preventivi'}{#if pages > 1} · pagina {page} di {pages}{/if}. Numerazione SPP00001, riparte ogni 1° gennaio. L'email la scrivi tu prima di inviarla; il cliente apre la pagina, scarica il PDF da lì e conferma con un clic. Dopo {QUOTE_REMIND_DAYS} giorni senza risposta parte il sollecito da solo (se attivo).</p></div>
+	<div><h1>Preventivi {data.year}</h1><p class="lead">{list.length} {list.length === 1 ? 'preventivo' : 'preventivi'}{#if pages > 1} · pagina {pg} di {pages}{/if}. Numerazione SPP00001, riparte ogni 1° gennaio. L'email la scrivi tu prima di inviarla; il cliente apre la pagina, scarica il PDF da lì e conferma con un clic. Dopo {QUOTE_REMIND_DAYS} giorni senza risposta parte il sollecito da solo (se attivo).</p></div>
 	<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
 		<div class="year-bar">{#each years as y (y)}<a href="?anno={y}" class:is-active={y === data.year}>{y}</a>{/each}</div>
 		<a class="btn btn--xs" href="/dashboard/aziende/preventivi/nuovo">＋ Nuovo preventivo</a>
@@ -73,9 +73,9 @@
 	</div>
 	{#if pages > 1}
 		<div class="pager">
-			<button type="button" class="btn btn--ghost btn--xs" disabled={page === 1} onclick={() => (page = Math.max(1, page - 1))}>‹ Precedente</button>
-			{#each Array.from({ length: pages }, (_, i) => i + 1) as n (n)}<button type="button" class="pager__n" class:is-active={n === page} onclick={() => (page = n)}>{n}</button>{/each}
-			<button type="button" class="btn btn--ghost btn--xs" disabled={page === pages} onclick={() => (page = Math.min(pages, page + 1))}>Successiva ›</button>
+			<button type="button" class="btn btn--ghost btn--xs" disabled={pg === 1} onclick={() => (pg = Math.max(1, pg - 1))}>‹ Precedente</button>
+			{#each Array.from({ length: pages }, (_, i) => i + 1) as n (n)}<button type="button" class="pager__n" class:is-active={n === pg} onclick={() => (pg = n)}>{n}</button>{/each}
+			<button type="button" class="btn btn--ghost btn--xs" disabled={pg === pages} onclick={() => (pg = Math.min(pages, pg + 1))}>Successiva ›</button>
 			<span class="osub">{PER_PAGE} per pagina</span>
 		</div>
 	{/if}
