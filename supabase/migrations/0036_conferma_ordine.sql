@@ -5,8 +5,12 @@ alter table public.orders add constraint orders_status_check check (status in (
   'in_attesa', 'attesa_file', 'attesa_prova', 'modifiche_richieste', 'approvazione', 'attesa_pagamento',
   'in_produzione', 'pronto', 'in_spedizione', 'spedito', 'in_consegna', 'consegnato', 'annullato'));
 
-create table if not exists public.order_confirmations (
-  checkout_group uuid primary key,
+-- checkout_group e' text in orders (non uuid)
+drop table if exists public.order_messages;
+drop table if exists public.order_payments;
+drop table if exists public.order_confirmations;
+create table public.order_confirmations (
+  checkout_group text primary key,
   token uuid not null default gen_random_uuid(),
   sent_at timestamptz,
   sent_subject text,
@@ -21,9 +25,9 @@ create table if not exists public.order_confirmations (
 create index if not exists order_confirmations_token_idx on public.order_confirmations(token);
 
 -- una riga per scadenza: le anticipate si pagano online (o con bonifico) prima della produzione
-create table if not exists public.order_payments (
+create table public.order_payments (
   id uuid primary key default gen_random_uuid(),
-  checkout_group uuid not null,
+  checkout_group text not null,
   seq int not null,
   method text not null,
   due date not null,
@@ -39,9 +43,9 @@ create table if not exists public.order_payments (
 );
 create index if not exists order_payments_group_idx on public.order_payments(checkout_group);
 
-create table if not exists public.order_messages (
+create table public.order_messages (
   id bigserial primary key,
-  checkout_group uuid not null,
+  checkout_group text not null,
   direction text not null check (direction in ('in','out')),
   kind text not null default 'domanda' check (kind in ('domanda','errore','risposta')),
   author text,
