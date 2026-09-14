@@ -8,13 +8,14 @@ import { CATS } from '$lib/dashboard/orders';
 import type { Actions, PageServerLoad } from './$types';
 
 /** Pagina pubblica del preventivo: anteprima con i mockup, riepilogo, conferma con un clic, PDF, domande. Ogni apertura viene registrata. */
-export const load: PageServerLoad = async ({ params, url }) => {
+export const load: PageServerLoad = async ({ params, url, request }) => {
 	const db = adminClient();
 	if (!db) error(503, 'Servizio non disponibile');
 	const q = await getQuoteByToken(db, params.token);
 	if (!q) error(404, 'Preventivo non trovato');
 	// l'anteprima dello staff (?anteprima=1) non conta come apertura del cliente
-	if (url.searchParams.get('anteprima') !== '1' && (q.status === 'inviato' || q.status === 'accettato')) await trackQuoteOpen(db, q);
+	// (il ricaricamento dopo una domanda o una conferma e' una POST: non conta)
+	if (request.method === 'GET' && url.searchParams.get('anteprima') !== '1' && (q.status === 'inviato' || q.status === 'accettato')) await trackQuoteOpen(db, q);
 	const [{ data: codes }, { stats }, messages] = await Promise.all([
 		db.from('product_codes').select('*').eq('active', true),
 		loadReviews(db),

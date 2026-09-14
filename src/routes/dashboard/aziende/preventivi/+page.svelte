@@ -15,7 +15,7 @@
 <svelte:head><title>Preventivi | Dashboard</title></svelte:head>
 
 <div class="toolbar" style="justify-content:space-between;align-items:flex-start">
-	<div><h1>Preventivi {data.year}</h1><p class="lead">Numerazione SPP00001, riparte ogni 1° gennaio. Inviati con PDF e link di accettazione; dopo {QUOTE_REMIND_DAYS} giorni senza risposta compare il sollecito.</p></div>
+	<div><h1>Preventivi {data.year}</h1><p class="lead">Numerazione SPP00001, riparte ogni 1° gennaio. L'email la scrivi tu prima di inviarla; il cliente apre la pagina, scarica il PDF da lì e conferma con un clic. Dopo {QUOTE_REMIND_DAYS} giorni senza risposta parte il sollecito da solo (se attivo).</p></div>
 	<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
 		<div class="year-bar">{#each years as y (y)}<a href="?anno={y}" class:is-active={y === data.year}>{y}</a>{/each}</div>
 		<a class="btn btn--xs" href="/dashboard/aziende/preventivi/nuovo">＋ Nuovo preventivo</a>
