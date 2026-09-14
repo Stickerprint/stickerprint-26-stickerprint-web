@@ -10,6 +10,10 @@
 .promo-page .faq3 p { color: #d9dcf2; }
 .offer { background: var(--navy); color: #fff; padding: clamp(28px, 4vw, 48px) 0 clamp(28px, 4vw, 48px); position: relative; overflow: hidden; }
 .offer__inner { text-align: left; position: relative; }
+/* la parte alta (titolo, testo, stelle, chip) resta centrata come prima */
+.offer__head { text-align: center; max-width: 760px; margin: 0 auto; }
+.offer__head .offer__chips { justify-content: center; }
+.offer__head .offer__stars { display: flex; justify-content: center; }
 .offer h1 { font-size: clamp(36px, 5vw, 62px); line-height: 1.08; letter-spacing: -0.03em; }
 .offer h1 mark { background: var(--green); color: var(--navy); padding: 0 12px; border-radius: 6px; }
 .offer__sub { margin-top: 16px; font-size: 18px; line-height: 1.5; color: #d9dcf2; }
@@ -21,14 +25,14 @@
 .offer__chips span { background: var(--pink); color: #fff; font-family: var(--font-display); font-weight: 800; font-size: 13.5px; padding: 8px 16px; border-radius: 999px; }
 .offer__chips span:nth-child(2n) { background: #7c4dff; }
 /* sotto: box "cosa ricevi" allineato al titolo, a destra il caricamento (o l'anteprima), centrato in verticale */
-.offer__grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 28px; align-items: center; margin-top: 26px; }
-.offer__box { background: #1a1f6e; border-radius: 18px; padding: 18px 22px; }
+.offer__grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 28px; align-items: stretch; margin-top: 26px; }
+.offer__box { background: #1a1f6e; border-radius: 18px; padding: 18px 22px; display: flex; flex-direction: column; justify-content: center; }
 .offer__box h4 { font-family: var(--font-display); font-weight: 800; font-size: 11.5px; letter-spacing: .08em; text-transform: uppercase; color: #8fb8ff; margin: 0 0 8px; }
 .offer__box h4 + h4 { margin-top: 14px; }
 .offer__row { display: flex; justify-content: space-between; gap: 16px; font-size: 14.5px; padding: 5px 0; }
 .offer__row b { font-weight: 700; }
 .offer__row.is-save b { color: #ff8a80; } .offer__row.is-pay b { background: var(--green); color: var(--navy); padding: 2px 8px; border-radius: 6px; font-weight: 800; }
-.offer__right { display: grid; gap: 14px; }
+.offer__right { display: grid; gap: 14px; align-content: center; }
 .offer__dz.dropzone { border-color: rgba(255,255,255,.3); background: transparent; color: #fff; min-height: 220px; }
 .offer__dz .dropzone__title { color: #fff; } .offer__dz .dropzone__sub { color: #b8bce0; }
 .offer__dz.is-over { background: rgba(255,255,255,.08); }
@@ -53,6 +57,8 @@
 .offer__reviews h2 { font-size: clamp(28px, 3.6vw, 44px); }
 .offer__reviews .lead { margin-top: 12px; font-size: 16px; }
 .offer__reviews .stats { margin-top: 22px; }
+.offer__reviews .stat { background: var(--navy); }
+.promo-page .howto__step b { color: var(--blue); }
 @media (max-width: 900px) { .offer__grid { grid-template-columns: 1fr; } .offer__proof { grid-template-columns: 1fr; } }
 .howto { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin-top: 34px; }
 .howto__step { background: var(--sky); border-radius: 18px; padding: 22px; }

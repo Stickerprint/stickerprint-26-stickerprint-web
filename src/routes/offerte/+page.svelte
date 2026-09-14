@@ -6,7 +6,6 @@
 	import Stars from '$lib/components/Stars.svelte';
 	import FinalCta from '$lib/components/FinalCta.svelte';
 	import EnginePreview from '$lib/components/EnginePreview.svelte';
-	import { goto } from '$app/navigation';
 	import { addToCart } from '$lib/cart';
 	import { saveCartFile, saveCartPreview } from '$lib/utils/draftStore';
 	import { track } from '$lib/tracking';
@@ -45,6 +44,7 @@
 	/* risultato confermato: anteprima al posto del caricamento */
 	let done = $state<{ file: File; png: string; w: number; h: number; forma: string } | null>(null);
 	let adding = $state(false);
+	let added = $state(false);
 	const equal = (f: string) => f === 'tondo' || f === 'quadrato';
 	function sizeFor(forma: string, ratio: number) {
 		if (equal(forma)) return { w: lato, h: lato };
@@ -87,7 +87,7 @@
 			try { await saveCartFile(it.id, done.file); const blob = await (await fetch(done.png)).blob(); await saveCartPreview(it.id, blob); } catch { /* il file si ricarica al checkout */ }
 			track.addToCart({ product: promo.product_slug, productName: name, forma: done.forma, w: done.w, h: done.h, materiale: promo.materiale, finitura: promo.finitura, qty: promo.qty, gross });
 			klaviyo.addedToCart({ productId: `${promo.product_slug}_${done.forma}`, productName: `${name} ${done.forma}`, quantity: promo.qty, dimension: `${done.w} x ${done.h} mm`, material: promo.materiale, price: gross });
-			await goto('/checkout');
+			added = true;
 		} finally { adding = false; }
 	}
 </script>
@@ -102,6 +102,7 @@
 	<section class="offer">
 		<span class="offer__spark" style="left:6%;top:14%">✦</span><span class="offer__spark" style="right:8%;top:22%;font-size:26px">✦</span><span class="offer__spark" style="left:12%;bottom:18%;font-size:22px">✦</span><span class="offer__spark" style="right:5%;bottom:26%">✦</span>
 		<div class="container offer__inner">
+			<div class="offer__head">
 			<h1><mark>{promo.qty.toLocaleString('it-IT')}</mark> {promo.product_label}<br />{mm(promo.w)}×{mm(promo.h)} mm a <mark>{eur(price)}</mark></h1>
 			<p class="offer__sub"><b>Solo questa settimana:</b> {promo.qty.toLocaleString('it-IT')} {promo.product_label} {mm(promo.w)}×{mm(promo.h)} mm a {eur(price)}.<br />Anteprima immediata compresa.</p>
 			{#if giorni !== null}
@@ -109,6 +110,7 @@
 			{/if}
 			<div class="offer__stars"><Stars value={data.stats?.average ?? 4.9} count={data.stats?.total ?? null} size={22} countLabel="recensioni verificate" /></div>
 			{#if promo.chips.length}<div class="offer__chips">{#each promo.chips as c (c)}<span>{c}</span>{/each}</div>{/if}
+			</div>
 
 			<div class="offer__grid">
 				<div class="offer__box">
@@ -213,6 +215,21 @@
 <!-- CHIUSURA -->
 <FinalCta shipDate={data.shipDate} href={promo ? `${href}?forma=${promo.forma}&materiale=${promo.materiale}` : '/adesivi-personalizzati'} />
 </div>
+
+{#if added && promo && done}
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
+	<div class="added-bg" onclick={(e) => { if (e.target === e.currentTarget) added = false; }} onkeydown={(e) => { if (e.key === 'Escape') added = false; }}>
+		<div class="added" role="dialog" aria-modal="true" aria-label="Prodotto aggiunto al carrello">
+			<span class="added__ck">✓</span>
+			<h3>Prodotto aggiunto al carrello</h3>
+			<p>{promo.qty.toLocaleString('it-IT')} × {promo.product_label} · {mm(done.w)} × {mm(done.h)} mm · {eur(price)}</p>
+			<div class="added__cta">
+				<a class="btn btn--green btn--lg" href="/checkout">Vai al checkout →</a>
+				<a class="btn btn--ghost btn--lg" href="/prodotti">Continua gli acquisti</a>
+			</div>
+		</div>
+	</div>
+{/if}
 
 <!-- POPUP: solo la sagoma (e i comandi del motore: bordo, sfondo, zoom); la misura la decide l'offerta -->
 {#if pop && promo && engine}
