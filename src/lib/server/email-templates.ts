@@ -231,3 +231,18 @@ export function ticketReplyEmail(o: { name?: string | null; number: string; body
 	const n = esc(o.number);
 	return { subject: `Re: richiesta ${o.number}`, tag: 'ticket-reply', html: layoutHtml(`Novità sulla richiesta ${n} 💬`, `<p>Ciao ${esc(o.name || '')},</p><div style="white-space:pre-wrap;background:#f4f5fa;padding:14px 16px;border-radius:10px;">${esc(o.body)}</div>${o.author ? `<p style="margin-top:10px;color:#8e92b0;font-size:13px;">${esc(o.author)} · Stickerprint</p>` : ''}<p>Per rispondere usa il bottone: la conversazione resta tutta in un posto.</p>`, { label: 'Rispondi', href: o.href }) };
 }
+
+/* ---------- Conferma d'ordine (pagina del cliente) ---------- */
+/** email scritta dallo staff: testo e un bottone "Apri la conferma d'ordine"; il PDF si scarica dalla pagina */
+export function orderConfirmEmail(o: { subject: string; message: string; senderName: string | null; number: string; href: string; toPay: string | null }) {
+	const body = `<div style="white-space:pre-wrap;">${esc(o.message)}</div>${o.toPay ? `<p style="margin:16px 0 0;padding:12px 14px;background:#fef6db;border-radius:10px;"><b>Da pagare adesso: ${esc(o.toPay)}</b>. Trovi le istruzioni e i bottoni di pagamento nella pagina della conferma.</p>` : ''}${o.senderName ? `<p style="margin:18px 0 0;color:#8e92b0;font-size:13px;">${esc(o.senderName)} · Stickerprint · ti seguo io: rispondi pure a questa email.</p>` : ''}`;
+	return { subject: o.subject, tag: 'order-confirm', html: layoutHtml(`Conferma d'ordine ${esc(o.number)} ${hl('pronta')} 📦`, body, { label: "Apri la conferma d'ordine", href: o.href }) };
+}
+export function orderReplyEmail(o: { name?: string | null; number: string; body: string; author?: string | null; href: string }) {
+	const n = esc(o.number);
+	return { subject: `Re: ordine ${o.number}`, tag: 'order-reply', html: layoutHtml(`Novità sull'ordine ${n} 💬`, `<p>Ciao ${esc(o.name || '')},</p><div style="white-space:pre-wrap;background:#f4f5fa;padding:14px 16px;border-radius:10px;">${esc(o.body)}</div>${o.author ? `<p style="margin-top:10px;color:#8e92b0;font-size:13px;">${esc(o.author)} · Stickerprint</p>` : ''}`, { label: "Apri la conferma d'ordine", href: o.href }) };
+}
+export function orderPaymentReminderEmail(o: { name?: string | null; number: string; amount: string; href: string; senderName?: string | null }) {
+	const n = esc(o.number);
+	return { subject: `Ordine ${o.number}: manca il pagamento per partire`, tag: 'order-payment-reminder', html: layoutHtml(`L'ordine ${n} aspetta il ${hl('pagamento')} ⏳`, `<p>Ciao ${esc(o.name || '')},</p><p>la tua conferma d'ordine <b>${n}</b> è pronta, ma per mandarla in produzione ci manca il pagamento di <b>${esc(o.amount)}</b>. Trovi tutto nella pagina della conferma: appena arriva, partiamo.</p>${o.senderName ? `<p style="color:#8e92b0;font-size:13px;">${esc(o.senderName)} · Stickerprint</p>` : ''}`, { label: 'Vai al pagamento', href: o.href }) };
+}

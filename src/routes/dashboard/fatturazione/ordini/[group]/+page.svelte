@@ -15,13 +15,29 @@
 	const terms = $derived(first.payment_terms ?? []);
 	// dopo un salvataggio dall'editor si torna alla vista
 	$effect(() => { if (form?.saved) { editing = false; invalidateAll(); } });
+
+	/* conferma d'ordine: popup dell'email (si scrive prima di inviare), scadenze, conversazione */
+	import { PAYMENT_STATUS, defaultConfirmEmail, upfrontDue } from '$lib/dashboard/conferme';
+	import { fmtAgo, fmtWhen } from '$lib/dashboard/produzione';
+	let sendOpen = $state(false);
+	let to = $state(''); let cc = $state(''); let subject = $state(''); let message = $state(''); let sender = $state('');
+	let sending = $state(false);
+	const due = $derived(upfrontDue(data.payments));
+	function openSend() {
+		const def = defaultConfirmEmail(g, data.payments, data.sender);
+		to = g.email; subject = data.conf.sent_subject ?? def.subject; message = data.conf.sent_message ?? def.body; sender = data.conf.sender_name ?? data.sender ?? '';
+		sendOpen = true;
+	}
+	$effect(() => { if (data.openSend) openSend(); });
+	$effect(() => { if (form?.sent) sendOpen = false; });
+	const previewLines = $derived(message.split('\n'));
 </script>
 
 <svelte:head><title>Ordine {g.number} | Dashboard</title></svelte:head>
 
 <p class="lead" style="margin:0"><a class="link" href="/dashboard/fatturazione/ordini">← Torna agli ordini</a></p>
 {#if data.created}<p class="success">Ordine {data.created} creato.{#if data.mail} {data.mail}{/if}</p>{/if}
-{#if form?.error}<p class="error">{form.error}</p>{/if}
+{#if form?.error && !(form as { sendError?: boolean }).sendError}<p class="error">{form.error}</p>{/if}
 {#if form?.ok && form.message}<p class="success">{form.message}</p>{/if}
 
 {#if editing}
@@ -114,7 +130,11 @@
 		<div class="riepilogo">
 			<div>
 				<div class="h4" style="margin-top:0">Scadenze di pagamento</div>
-				{#if terms.length}
+				{#if data.payments.length}
+					<table class="dtable"><thead><tr><th>Metodo di pagamento</th><th>Scadenza</th><th style="text-align:right">Importo</th><th>Stato</th></tr></thead>
+						<tbody>{#each data.payments as p (p.id)}{@const ps = PAYMENT_STATUS[p.status]}<tr><td>{#if paymentIcon(p.method)}<img src={paymentIcon(p.method)} alt="" style="height:16px;vertical-align:middle;margin-right:6px" />{/if}{paymentLabel(p.method)}{#if p.upfront} <span class="pr-chip" title="Si incassa prima di produrre">anticipato</span>{/if}</td><td>{dmy(p.due)}</td><td style="text-align:right"><b>{money(Number(p.amount))}</b></td><td><span class="pill" style="background:{ps.soft};color:{ps.color}">{ps.label}</span>{#if p.status === 'pagato'}<div class="osub">{fmtWhen(p.paid_at)}{#if p.provider_ref} · {p.provider_ref}{/if}</div><form method="POST" action="?/pagamento" use:enhance style="margin-top:4px"><input type="hidden" name="seq" value={p.seq} /><input type="hidden" name="stato" value="da_pagare" /><button class="link-btn" type="submit" style="font-size:12px">annulla</button></form>{:else}<form method="POST" action="?/pagamento" use:enhance class="pr-block" style="margin-top:4px"><input type="hidden" name="seq" value={p.seq} /><input type="hidden" name="stato" value="pagato" /><input name="rif" placeholder="rif. bonifico (facoltativo)" style="min-width:150px;font-size:12px" /><button class="btn btn--green btn--xs" type="submit">✓ Segna pagato</button></form>{/if}</td></tr>{/each}</tbody></table>
+					{#if due > 0}<div class="osub" style="margin-top:8px">⏳ Anticipo da incassare: <b>{money(due)}</b>. La produzione parte quando è pagato.{#if data.conf.sent_at} <form method="POST" action="?/promemoria" use:enhance style="display:inline"><button class="link-btn" type="submit" style="font-size:12px">Manda un promemoria</button></form>{/if}</div>{/if}
+				{:else if terms.length}
 					<table class="dtable"><thead><tr><th>Metodo di pagamento</th><th>Scadenza</th><th style="text-align:right">Importo</th></tr></thead>
 						<tbody>{#each terms as t, i (i)}<tr><td>{#if paymentIcon(t.method)}<img src={paymentIcon(t.method)} alt="" style="height:16px;vertical-align:middle;margin-right:6px" />{/if}{paymentLabel(t.method)}</td><td>{dmy(t.due)}</td><td style="text-align:right"><b>{money(Number(t.amount))}</b></td></tr>{/each}</tbody></table>
 				{:else}
@@ -127,9 +147,60 @@
 				<div class="sumrow sumrow--tot"><span>Totale IVA inclusa</span><b>{money(g.gross)}</b></div>
 			</div>
 		</div>
-		<div class="editor-actions" style="margin-top:14px">
-			<form method="POST" action="?/confirm" use:enhance><button class="btn btn--blue" type="submit" disabled={!g.email} title={g.email ? '' : 'L’ordine non ha un’email'}>✉️ Invia conferma per email</button></form>
+		<div class="editor-actions" style="margin-top:14px;align-items:center;flex-wrap:wrap;gap:10px">
+			<button type="button" class="btn btn--blue" onclick={openSend} disabled={!g.email} title={g.email ? '' : 'L’ordine non ha un’email'}>✉️ {data.conf.sent_at ? 'Reinvia la conferma' : 'Invia conferma per email'}</button>
 			<button type="button" class="btn btn--green" onclick={() => (editing = true)}>✏️ Modifica ordine</button>
+			<a class="btn btn--ghost btn--xs" href="/conferma/{data.conf.token}?anteprima=1" target="_blank" rel="noopener">🔗 Pagina del cliente</a>
+			{#if data.conf.sent_at}<span class="osub">✉ inviata {fmtAgo(data.conf.sent_at)}{#if data.conf.sender_name} da {data.conf.sender_name}{/if} · 👁 {data.conf.opened_count ? `aperta ${data.conf.opened_count}×, ${fmtAgo(data.conf.opened_at)}` : 'mai aperta'}{#if data.conf.pdf_downloaded_at} · 📄 PDF scaricato{/if}</span>{/if}
 		</div>
 	</div>
+
+	{#if data.messages.length || data.conf.sent_at}
+		<div class="dcard">
+			<h3>💬 Dalla pagina della conferma <span class="note">domande e segnalazioni del cliente</span></h3>
+			{#if data.messages.length === 0}<p class="osub">Nessun messaggio finora.</p>{/if}
+			<div class="hd-thread" style="margin-bottom:12px">
+				{#each data.messages as m (m.id)}
+					<div class="hd-msg hd-msg--{m.direction}"><div class="hd-msg__head"><b>{m.direction === 'in' ? `${m.author ?? 'Cliente'}${m.kind === 'errore' ? ' · ⚠ segnala un errore' : ''}` : `${m.author ?? 'Stickerprint'} · risposta`}</b><span class="osub">{fmtWhen(m.created_at)} · {fmtAgo(m.created_at)}</span></div><div class="hd-msg__body">{m.body}</div></div>
+				{/each}
+			</div>
+			<form method="POST" action="?/rispondi" use:enhance class="pr-block"><input name="body" placeholder="Rispondi al cliente: riceve un'email con il link alla conferma…" required style="flex:1" /><button class="btn btn--blue btn--xs" type="submit">✉ Rispondi</button></form>
+		</div>
+	{/if}
+
+	{#if sendOpen}
+		<div class="dmodal-bg" role="presentation" onclick={(e) => { if (e.target === e.currentTarget) sendOpen = false; }}>
+			<form class="dmodal dmodal--lg qt-send" method="POST" action="?/invia" use:enhance={() => { sending = true; return async ({ update }) => { await update({ reset: false }); sending = false; }; }}>
+				<h3>✉ Invia la conferma d'ordine {g.number}</h3>
+				<p class="osub" style="margin:-6px 0 4px">Il cliente riceve solo questa email con il bottone "Apri la conferma d'ordine": dettagli, PDF, scadenze e pagamento sono sulla pagina.</p>
+				{#if (form as { sendError?: boolean } | null)?.sendError}<p class="error">{form?.error}</p>{/if}
+				<div class="qt-send__grid">
+					<div class="qt-send__form">
+						<label class="osub">A <input name="to" type="email" bind:value={to} required /></label>
+						<label class="osub">Copia a (facoltativo) <input name="cc" bind:value={cc} placeholder="altro@azienda.it" /></label>
+						<label class="osub">Oggetto <input name="subject" bind:value={subject} required /></label>
+						<label class="osub">Testo <textarea name="message" bind:value={message} rows="11" required></textarea></label>
+						<label class="osub">Firma <input name="sender" bind:value={sender} placeholder="Chi segue il cliente" /></label>
+					</div>
+					<div class="qt-send__preview">
+						<div class="qt-mail">
+							<div class="qt-mail__head">STICKERPRINT</div>
+							<div class="qt-mail__body">
+								<div class="qt-mail__subject">{subject || '…'}</div>
+								<h4>Conferma d'ordine {g.number} <u>pronta</u> 📦</h4>
+								{#each previewLines as l, i (i)}<p>{l || '\u00a0'}</p>{/each}
+								{#if due > 0}<p style="background:#fef6db;padding:10px 12px;border-radius:8px"><b>Da pagare adesso: {money(due)}</b>. Trovi le istruzioni e i bottoni di pagamento nella pagina della conferma.</p>{/if}
+								{#if sender}<p class="qt-mail__sig">{sender} · Stickerprint · ti seguo io: rispondi pure a questa email.</p>{/if}
+								<span class="qt-mail__btn">APRI LA CONFERMA D'ORDINE</span>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="toolbar" style="justify-content:flex-end;gap:8px">
+					<button class="btn btn--ghost btn--xs" type="button" onclick={() => (sendOpen = false)}>Annulla</button>
+					<button class="btn btn--blue" type="submit" disabled={sending || !to || !subject.trim() || !message.trim()}>{sending ? 'Invio…' : '✉ Invia adesso'}</button>
+				</div>
+			</form>
+		</div>
+	{/if}
 {/if}

@@ -170,7 +170,7 @@
 
 	<div class="editor-actions">
 		{#if saving}<span class="note">Salvataggio…</span>{/if}
-		{#if labels.send !== null}<button class="btn btn--blue" type="submit" formaction="?/confirm" disabled={saving || !d.customer.email} title={d.customer.email ? '' : 'Inserisci l’email del cliente'}>✉️ {labels.send ?? 'Invia conferma per email'}</button>{/if}
+		{#if labels.send !== null}<button class="btn btn--blue" type="submit" formaction="?/confirm" disabled={saving || !d.customer.email} title={d.customer.email ? '' : 'Inserisci l’email del cliente'}>✉️ {labels.send ?? 'Salva e prepara la conferma'}</button>{/if}
 		<button class="btn btn--green" type="submit" formaction="?/save" disabled={saving}>💾 {labels.save ?? 'Salva ordine'}</button>
 	</div>
 </form>

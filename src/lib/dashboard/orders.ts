@@ -5,6 +5,7 @@ export const ORDER_STATUS: Record<string, { label: string; color: string; soft: 
 	attesa_prova: { label: 'In attesa di prova', color: '#8b5cf6', soft: '#efe6ff' },
 	modifiche_richieste: { label: 'Modifiche richieste', color: '#c2410c', soft: '#ffe4d5' },
 	approvazione: { label: 'In approvazione', color: '#c48a00', soft: '#fef6db' },
+	attesa_pagamento: { label: 'In attesa di pagamento', color: '#b45309', soft: '#fef3c7' },
 	in_produzione: { label: 'In produzione', color: '#3b82f6', soft: '#e5f0ff' },
 	pronto: { label: 'Preparazione spedizione', color: '#15803d', soft: '#dcfce7' },
 	in_spedizione: { label: 'In spedizione', color: '#0d9488', soft: '#dcf9f4' },

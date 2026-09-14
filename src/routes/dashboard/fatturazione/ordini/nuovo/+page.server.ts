@@ -1,5 +1,5 @@
 import { fail, redirect } from '@sveltejs/kit';
-import { loadEditorData, parseDraft, saveOrderDraft, sendOrderConfirmation, upsertContact } from '$lib/server/orders';
+import { loadEditorData, parseDraft, saveOrderDraft, upsertContact } from '$lib/server/orders';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals: { supabase } }) => loadEditorData(supabase);
@@ -21,8 +21,7 @@ export const actions: Actions = {
 		const ed = await loadEditorData(supabase);
 		const r = await saveOrderDraft(supabase, d, null, ed);
 		if (r.error) return fail(400, { error: r.error });
-		const m = await sendOrderConfirmation(supabase, r.group);
-		redirect(303, `/dashboard/fatturazione/ordini/${r.group}?creato=${r.numbers[0]}&mail=${encodeURIComponent(m.message)}`);
+		redirect(303, `/dashboard/fatturazione/ordini/${r.group}?creato=${r.numbers[0]}&invia=1`);
 	},
 	contact: async ({ request, locals: { supabase } }) => {
 		const f = await request.formData();

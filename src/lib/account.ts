@@ -28,6 +28,7 @@ export const STATUS: Record<string, { label: string; cls: string }> = {
 	in_attesa: { label: 'Ricevuto', cls: 'st--wait' },
 	attesa_file: { label: 'In attesa del file', cls: 'st--wait' },
 	attesa_prova: { label: 'Prova di stampa in preparazione', cls: 'st--wait' },
+	attesa_pagamento: { label: 'In attesa del pagamento', cls: 'st--wait' },
 	modifiche_richieste: { label: 'Modifiche in corso', cls: 'st--wait' },
 	approvazione: { label: 'In attesa della tua approvazione', cls: 'st--wait' },
 	in_produzione: { label: 'In produzione', cls: 'st--prod' },
@@ -56,7 +57,7 @@ export function trackSteps(o: { status: string; prod_stage?: string | null; prod
 	else if (o.status === 'consegnato') cur = steps.length - 1;
 	return steps.map((s, i) => ({ label: labels[s] ?? s, state: i < cur ? 'done' : i === cur ? 'current' : 'todo' }));
 }
-export const OPEN_STATUSES: string[] = ['in_attesa', 'attesa_file', 'attesa_prova', 'modifiche_richieste', 'approvazione', 'in_produzione', 'pronto', 'in_spedizione', 'spedito', 'in_consegna'];
+export const OPEN_STATUSES: string[] = ['in_attesa', 'attesa_file', 'attesa_prova', 'modifiche_richieste', 'approvazione', 'attesa_pagamento', 'in_produzione', 'pronto', 'in_spedizione', 'spedito', 'in_consegna'];
 export const MATERIAL_LABEL: Record<string, string> = { bianco: 'Vinile bianco', super: 'Bianco super adesivo', olografico: 'Olografico', glitterato: 'Glitterato', trasparente: 'Trasparente', argento: 'Argento', oro: 'Oro' };
 export const productHref = (slug: string) => PRODUCT_ENGINES.find((p) => p.slug === slug)?.href ?? '/prodotti';
 export const eur = (v: number) => new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(v);

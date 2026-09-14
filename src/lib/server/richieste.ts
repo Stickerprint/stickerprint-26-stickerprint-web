@@ -8,7 +8,8 @@ import { draftTotals, emptyDraft, type OrderDraft } from '$lib/dashboard/orderDr
 import { buildOrderPdf } from './docs';
 import { sendEmail } from './email';
 import { OWNER_EMAIL, ownerNotifyEmail, quoteAcceptedEmail, quoteEmail, quoteReminderEmail, quoteReplyEmail } from './email-templates';
-import { loadEditorData, saveOrderDraft, sendOrderConfirmation, upsertContact } from './orders';
+import { loadEditorData, saveOrderDraft, upsertContact } from './orders';
+import { applyPaymentGate, defaultConfirmEmail, loadGroup, sendConfirmation, syncPayments } from './conferme';
 import { pushStaff } from './push';
 import { ensurePlan } from './produzione';
 import type { OrderRow } from '$lib/dashboard/orders';
@@ -244,7 +245,7 @@ export async function rejectQuoteByToken(db: DB, token: string, reason: string):
 	return { ok: true, message: 'Grazie, abbiamo registrato la tua risposta.' };
 }
 /** Da preventivo accettato a ordine manuale (entra in produzione a lavorazioni) */
-export async function orderFromQuote(db: DB, id: string, sendMail: boolean): Promise<{ group: string | null; number: string | null; message: string }> {
+export async function orderFromQuote(db: DB, id: string, sendMail: boolean, origin: string): Promise<{ group: string | null; number: string | null; message: string }> {
 	const q = await getQuote(db, id);
 	if (!q) return { group: null, number: null, message: 'Preventivo non trovato.' };
 	if (q.order_group) return { group: q.order_group, number: null, message: 'Ordine già creato.' };
@@ -257,7 +258,11 @@ export async function orderFromQuote(db: DB, id: string, sendMail: boolean): Pro
 	const { data: rows } = await db.from('orders').select('*').eq('checkout_group', r.group);
 	await ensurePlan(db, (rows ?? []) as OrderRow[]);
 	let message = 'Conferma non inviata (scelta dello staff).';
-	if (sendMail) { const m = await sendOrderConfirmation(db, r.group); message = m.message; }
+	if (sendMail) {
+		const g = await loadGroup(db, r.group);
+		const payments = await syncPayments(db, r.group);
+		if (g) { const def = defaultConfirmEmail(g, payments, q.sender_name ?? null); const m = await sendConfirmation(db, r.group, origin, { subject: def.subject, message: def.body, sender: q.sender_name ?? null }); message = m.message; }
+	} else await applyPaymentGate(db, r.group);
 	return { group: r.group, number: r.numbers[0], message };
 }
 

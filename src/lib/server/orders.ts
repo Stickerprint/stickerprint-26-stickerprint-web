@@ -50,7 +50,8 @@ export async function saveOrderDraft(supabase: SupabaseClient, d: OrderDraft, gr
 	if (Math.abs(sumTerms - totalGross) > 0.01) terms[terms.length - 1].amount = r2(terms[terms.length - 1].amount + totalGross - sumTerms);
 	const methodNames = [...new Set(terms.map((t) => t.method))];
 	const payment = methodNames.join(' + ');
-	const paidUpfront = terms.every((t) => opts.methods.find((m) => m.name === t.method)?.paid_upfront);
+	// almeno una scadenza anticipata: l'ordine nuovo aspetta l'incasso prima di entrare in produzione
+	const anyUpfront = terms.some((t) => opts.methods.find((m) => m.name === t.method)?.paid_upfront);
 	const createdAt = s(d.date) ? new Date(s(d.date) + 'T10:00:00').toISOString() : new Date().toISOString();
 	const common = {
 		customer_name: name, email: s(c.email).toLowerCase() || null, country: billing.country, shipping, billing, contact_id: d.contact_id || null,
@@ -70,14 +71,14 @@ export async function saveOrderDraft(supabase: SupabaseClient, d: OrderDraft, gr
 		const line = { product_slug: slug, product_name: CATS[slug]?.name ?? slug, product_code: s(it.code).toUpperCase().slice(0, 12) || null, description: s(it.description) || null, qty: Number(it.qty), unit_net: Math.round(unitNet * 10000) / 10000, total_net: net, total_gross: r2(net * VAT), lamination: it.lamination || null, mockup_url: it.mockup_url || null, ...common };
 		const prev = it.id ? existing.find((e) => e.id === it.id) : null;
 		if (prev) {
-			const { error } = await supabase.from('orders').update({ ...line, payment_status: prev.channel === 'manuale' ? (paidUpfront ? 'paid' : 'pending') : prev.payment_status }).eq('id', prev.id);
+			const { error } = await supabase.from('orders').update({ ...line, payment_status: prev.payment_status }).eq('id', prev.id);
 			if (error) return { group: key, numbers, error: `Ordine non salvato: ${error.message}` };
 			keep.add(prev.id); numbers.push(prev.number);
 		} else {
 			/* un solo numero per ordine: le righe nuove prendono quello del gruppo (o uno nuovo, una volta sola) */
 			let num = g?.number ?? numbers[0] ?? null;
 			if (!num) { const { data: n, error: ne } = await supabase.rpc('next_order_number'); if (ne || !n) return { group: key, numbers, error: 'Numero d’ordine non disponibile.' }; num = n as string; }
-			const row = { ...line, user_id: g?.items[0].user_id ?? null, number: num, checkout_group: key, channel: g?.channel ?? 'manuale', status: g?.status ?? 'in_produzione', prod_stage: g ? (g.items[0].prod_stage ?? 'stampa') : 'stampa', payment_status: paidUpfront ? 'paid' : 'pending', device: g?.device ?? null };
+			const row = { ...line, user_id: g?.items[0].user_id ?? null, number: num, checkout_group: key, channel: g?.channel ?? 'manuale', status: g?.status ?? (anyUpfront ? 'attesa_pagamento' : 'in_produzione'), prod_stage: g ? (g.items[0].prod_stage ?? 'stampa') : (anyUpfront ? null : 'stampa'), payment_status: 'pending', device: g?.device ?? null };
 			let { data: ins, error } = await supabase.from('orders').insert(row).select('id').single();
 			if (error && error.code === '23505') { const { data: n2 } = await supabase.rpc('next_order_number'); if (n2) { row.number = n2 as string; ({ data: ins, error } = await supabase.from('orders').insert(row).select('id').single()); } }
 			if (error) return { group: key, numbers, error: `Ordine non salvato: ${error.message}` };

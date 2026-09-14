@@ -1,10 +1,11 @@
 import { error, fail, redirect } from '@sveltejs/kit';
 import { groupOrders, ORDER_STATUS, type OrderRow } from '$lib/dashboard/orders';
-import { loadEditorData, parseDraft, saveOrderDraft, sendOrderConfirmation, upsertContact } from '$lib/server/orders';
+import { loadEditorData, parseDraft, saveOrderDraft, upsertContact } from '$lib/server/orders';
 import { ensurePlan, operatorName } from '$lib/server/produzione';
+import { getConfirmation, loadMessages, markConfirmationRead, remindPayment, replyCustomer, sendConfirmation, setPaymentStatus, syncPayments } from '$lib/server/conferme';
 import type { Actions, PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ params, url, locals: { supabase } }) => {
+export const load: PageServerLoad = async ({ params, url, locals: { supabase, user } }) => {
 	let { data } = await supabase.from('orders').select('*').eq('checkout_group', params.group);
 	if (!data?.length) ({ data } = await supabase.from('orders').select('*').eq('id', params.group));
 	if (!data?.length) error(404, 'Ordine non trovato');
@@ -35,7 +36,10 @@ export const load: PageServerLoad = async ({ params, url, locals: { supabase } }
 		supabase.from('ddts').select('id, number, issued_at').eq('checkout_group', group.key),
 		loadEditorData(supabase)
 	]);
-	return { group, files, fileLists, invoices: invoices ?? [], ddts: ddts ?? [], created: url.searchParams.get('creato'), mail: url.searchParams.get('mail'), ...editor };
+	// conferma d'ordine come pagina del cliente: scadenze, invio, domande
+	await markConfirmationRead(supabase, group.key);
+	const [conf, payments, messages, sender] = await Promise.all([getConfirmation(supabase, group.key), syncPayments(supabase, group.key), loadMessages(supabase, group.key), operatorName(supabase, user)]);
+	return { group, files, fileLists, invoices: invoices ?? [], ddts: ddts ?? [], created: url.searchParams.get('creato'), mail: url.searchParams.get('mail'), openSend: url.searchParams.get('invia') === '1', conf, payments, messages, sender, ...editor };
 };
 
 export const actions: Actions = {
@@ -56,9 +60,30 @@ export const actions: Actions = {
 			const r = await saveOrderDraft(supabase, d, params.group, ed);
 			if (r.error) return fail(400, { error: r.error });
 		}
-		const m = await sendOrderConfirmation(supabase, params.group);
-		if (!m.ok) return fail(400, { error: m.message });
-		return { ok: true, saved: !!d, message: m.message };
+		// dall'editor: si salva e si apre il popup dell'email (niente invio a freddo)
+		redirect(303, `/dashboard/fatturazione/ordini/${params.group}?invia=1`);
+	},
+	/** Dal popup: email scritta dallo staff con il bottone "Apri la conferma d'ordine" */
+	invia: async ({ request, params, url, locals }) => {
+		const f = await request.formData();
+		const sender = String(f.get('sender') ?? '').trim() || (await operatorName(locals.supabase, locals.user));
+		const m = await sendConfirmation(locals.supabase, params.group, url.origin, { to: String(f.get('to') ?? ''), cc: String(f.get('cc') ?? ''), subject: String(f.get('subject') ?? ''), message: String(f.get('message') ?? ''), sender });
+		return m.ok ? { ok: true, sent: true, message: m.message } : fail(400, { error: m.message, sendError: true });
+	},
+	pagamento: async ({ request, params, locals }) => {
+		const f = await request.formData();
+		const op = await operatorName(locals.supabase, locals.user);
+		const e = await setPaymentStatus(locals.supabase, params.group, Number(f.get('seq')), f.get('stato') === 'pagato' ? 'pagato' : 'da_pagare', op, String(f.get('rif') ?? ''));
+		return e ? fail(400, { error: e }) : { ok: true, message: 'Scadenza aggiornata.' };
+	},
+	rispondi: async ({ request, params, url, locals }) => {
+		const op = await operatorName(locals.supabase, locals.user);
+		const e = await replyCustomer(locals.supabase, params.group, String((await request.formData()).get('body') ?? ''), op, url.origin);
+		return e ? fail(400, { error: e }) : { ok: true, message: 'Risposta inviata.' };
+	},
+	promemoria: async ({ params, url, locals: { supabase } }) => {
+		const r = await remindPayment(supabase, params.group, url.origin);
+		return r.ok ? { ok: true, message: r.message } : fail(400, { error: r.message });
 	},
 	contact: async ({ request, locals: { supabase } }) => {
 		const f = await request.formData();

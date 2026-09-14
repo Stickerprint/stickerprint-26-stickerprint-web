@@ -68,9 +68,9 @@ export const actions: Actions = {
 		if (r.error || !r.id) return fail(400, { error: r.error ?? 'Versione non creata.' });
 		redirect(303, `/dashboard/aziende/preventivi/${r.id}`);
 	},
-	ordine: async ({ request, params, locals: { supabase } }) => {
+	ordine: async ({ request, params, url, locals: { supabase } }) => {
 		const f = await request.formData();
-		const r = await orderFromQuote(supabase, params.id, f.get('mail') === 'on');
+		const r = await orderFromQuote(supabase, params.id, f.get('mail') === 'on', url.origin);
 		if (!r.group) return fail(400, { error: r.message });
 		redirect(303, `/dashboard/fatturazione/ordini/${r.group}?creato=${r.number ?? ''}&mail=${encodeURIComponent(r.message)}`);
 	},
