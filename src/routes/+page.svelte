@@ -1,5 +1,13 @@
 <script lang="ts">
 	import UploadPreview from '$lib/components/UploadPreview.svelte';
+	/* i tre livelli del credito si animano quando entrano nello schermo (una volta sola) */
+	let credIn = $state(false);
+	function credObserve(el: HTMLElement) {
+		if (typeof IntersectionObserver === 'undefined') { credIn = true; return; }
+		const io = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) { credIn = true; io.disconnect(); } }, { threshold: 0.35 });
+		io.observe(el);
+		return { destroy: () => io.disconnect() };
+	}
 	import Stars from '$lib/components/Stars.svelte';
 	import ReviewsCarousel from '$lib/components/ReviewsCarousel.svelte';
 	import SamplesBlock from '$lib/components/SamplesBlock.svelte';
@@ -159,7 +167,7 @@
 			<p style="margin-top:22px"><a class="btn btn--green btn--lg" href={data.user ? '/account' : '/signup'}>{data.user ? 'Vai al tuo credito →' : 'Crea il tuo account →'}</a></p>
 			<p class="note" style="margin-top:10px">Credito calcolato sui prodotti IVA esclusa, valido 6 mesi. 1 punto per ogni euro speso.</p>
 		</div>
-		<div class="cred__path">
+		<div class="cred__path" class:is-in={credIn} use:credObserve>
 			<div class="cred__line" aria-hidden="true"></div>
 			<div class="cred__lv">
 				<img src="/images/loyalty/creator.png" alt="" loading="lazy" />
