@@ -5,7 +5,8 @@ import { loadReviews } from '$lib/server/reviews';
 import { COMPANY } from '$lib/server/company';
 import { PRODUCTS } from '$lib/products';
 import { CATS, itemMeta, thumbOf } from '$lib/dashboard/orders';
-import { env } from '$env/dynamic/private';
+import { onlinePaymentsOn, retrieveSession, stripeConfigured } from '$lib/server/stripe';
+import { setPaymentStatus } from '$lib/server/conferme';
 import type { Actions, PageServerLoad } from './$types';
 
 /** Pagina pubblica della conferma d'ordine: articoli, indirizzi, scadenze con pagamento, PDF, domande e segnalazioni. */
@@ -15,6 +16,15 @@ export const load: PageServerLoad = async ({ params, url, request }) => {
 	const c = await getByToken(db, params.token);
 	if (!c) error(404, 'Conferma non trovata');
 	if (request.method === 'GET' && url.searchParams.get('anteprima') !== '1' && c.conf.sent_at) await trackOpen(db, c.conf);
+	// ritorno da Stripe: se il webhook non e' ancora arrivato, si controlla la sessione e si segna il pagamento
+	const sid = url.searchParams.get('session_id');
+	if (sid && stripeConfigured()) {
+		try { const s = await retrieveSession(sid); if (s.paid && s.group === c.group.key && s.seq && c.payments.find((p) => p.seq === s.seq)?.status !== 'pagato') { await setPaymentStatus(db, s.group, s.seq, 'pagato', null, s.ref, 'stripe'); } } catch { /* il webhook fara' il resto */ }
+	}
+	const paid = url.searchParams.get('pagato') === '1';
+	const cancelled = url.searchParams.get('annullato') === '1';
+	const fresh = paid ? await getByToken(db, params.token) : null;
+	if (fresh) { c.payments = fresh.payments; c.group = fresh.group; }
 	const { stats } = await loadReviews(db);
 	const g = c.group;
 	const f = g.items[0];
@@ -25,7 +35,7 @@ export const load: PageServerLoad = async ({ params, url, request }) => {
 		billing: addr(f.billing), shipping: addr(f.shipping), vat: f.billing?.vat ?? null,
 		payments: c.payments.map((p) => ({ seq: p.seq, method: p.method, due: p.due, amount: Number(p.amount), upfront: p.upfront, status: p.status, paid_at: p.paid_at })),
 		sender: c.conf.sender_name, messages: c.messages.map((m) => ({ id: m.id, direction: m.direction, kind: m.kind, author: m.author, body: m.body, created_at: m.created_at })),
-		bank: { iban: COMPANY.iban || null, name: COMPANY.name }, online: !!env.STRIPE_SECRET_KEY, stats
+		bank: { iban: COMPANY.iban || null, name: COMPANY.name }, online: onlinePaymentsOn(), simulation: !stripeConfigured() && onlinePaymentsOn(), paid, cancelled, stats
 	};
 };
 

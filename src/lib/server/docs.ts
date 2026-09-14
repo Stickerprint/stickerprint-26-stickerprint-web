@@ -66,6 +66,77 @@ function docHeader(page: PDFPage, font: PDFFont, bold: PDFFont, logo: Awaited<Re
 const addrLines = (a: Record<string, string>) => [a.company, [a.first_name, a.last_name].filter(Boolean).join(' '), [a.street, a.street2].filter(Boolean).join(', '), [a.zip, a.city, a.province ? `(${a.province})` : ''].filter(Boolean).join(' '), a.country && a.country !== 'IT' ? a.country : 'Italia', a.vat ? `P.IVA ${a.vat}` : '', a.fiscal_code ? `C.F. ${a.fiscal_code}` : ''].filter(Boolean);
 const eur = (v: number) => `${v.toFixed(2).replace('.', ',')} €`;
 
+/* ---------- tabella condivisa: colonne fisse, testo a capo, righe centrate in verticale ---------- */
+export interface TableCol { label: string; width: number; align?: 'left' | 'right' | 'center'; bold?: boolean; maxLines?: number }
+export interface TableOpts { page: PDFPage; x: number; y: number; cols: TableCol[]; rows: string[][]; font: PDFFont; bold: PDFFont; size?: number; headSize?: number; minRowH?: number }
+export const PAD = 6;
+/** spezza il testo in righe che stanno nella larghezza (le parole troppo lunghe vengono tagliate con …) */
+export function wrapText(font: PDFFont, text: string, size: number, maxWidth: number, maxLines = 2): string[] {
+	const words = (text ?? '').replace(/\s+/g, ' ').trim().split(' ');
+	const lines: string[] = [];
+	let cur = '';
+	const fits = (t: string) => font.widthOfTextAtSize(t, size) <= maxWidth;
+	for (const w of words) {
+		const next = cur ? `${cur} ${w}` : w;
+		if (fits(next)) { cur = next; continue; }
+		if (cur) lines.push(cur);
+		cur = w;
+		while (!fits(cur) && cur.length > 1) cur = cur.slice(0, -1);
+		if (lines.length === maxLines - 1) break;
+	}
+	if (cur) lines.push(cur);
+	if (lines.length > maxLines) lines.length = maxLines;
+	// se il testo e' stato tagliato, l'ultima riga finisce con …
+	const joined = lines.join(' ');
+	if (joined.length < (text ?? '').replace(/\s+/g, ' ').trim().length) {
+		let last = lines[lines.length - 1];
+		while (last.length > 1 && !fits(last + '…')) last = last.slice(0, -1);
+		lines[lines.length - 1] = last + '…';
+	}
+	return lines.length ? lines : [''];
+}
+/** Disegna intestazione e righe; ritorna la y sotto la tabella. Le celle si allineano alla colonna e stanno centrate in altezza. */
+export function drawTable(o: TableOpts): number {
+	const { page, cols, font, bold } = o;
+	const size = o.size ?? 10, hs = o.headSize ?? 9, lineH = size * 1.3, headH = 22, minRowH = o.minRowH ?? 22;
+	let y = o.y;
+	const total = cols.reduce((a, c) => a + c.width, 0);
+	const xs: number[] = []; let acc = o.x; for (const c of cols) { xs.push(acc); acc += c.width; }
+	const put = (txt: string, ci: number, baseline: number, f: PDFFont, sz: number, color = navy) => {
+		const c = cols[ci]; const w = f.widthOfTextAtSize(txt, sz);
+		const x = c.align === 'right' ? xs[ci] + c.width - PAD - w : c.align === 'center' ? xs[ci] + (c.width - w) / 2 : xs[ci] + PAD;
+		page.drawText(txt, { x, y: baseline, size: sz, font: f, color });
+	};
+	// intestazione: banda chiara, testo centrato in altezza
+	page.drawRectangle({ x: o.x, y: y - headH, width: total, height: headH, color: rgb(0.96, 0.97, 0.99) });
+	cols.forEach((c, i) => put(c.label, i, y - headH + (headH - hs * 0.72) / 2, bold, hs, gray));
+	y -= headH;
+	for (const row of o.rows) {
+		const cells = row.map((txt, i) => wrapText(cols[i].bold ? bold : font, txt ?? '', size, cols[i].width - PAD * 2, cols[i].maxLines ?? 2));
+		const lines = Math.max(1, ...cells.map((c) => c.length));
+		const rowH = Math.max(minRowH, lines * lineH + 8);
+		cells.forEach((cl, i) => {
+			const block = cl.length * lineH;
+			const top = y - (rowH - block) / 2; // il blocco di testo sta al centro della riga
+			cl.forEach((line, k) => put(line, i, top - lineH * (k + 1) + (lineH - size * 0.72) / 2, cols[i].bold ? bold : font, size));
+		});
+		y -= rowH;
+		page.drawLine({ start: { x: o.x, y }, end: { x: o.x + total, y }, thickness: 0.5, color: rgb(0.9, 0.91, 0.94) });
+	}
+	return y;
+}
+/** Blocco totali allineato a destra (etichette e valori sulla stessa colonna) */
+export function drawTotals(page: PDFPage, font: PDFFont, bold: PDFFont, y: number, rows: [string, string, boolean?][], xLabel = 460, xValue = 547): number {
+	for (const [label, value, strong] of rows) {
+		const f = strong ? bold : font; const sz = strong ? 12 : 10;
+		page.drawText(label, { x: xLabel - f.widthOfTextAtSize(label, 10), y, size: 10, font: f, color: strong ? navy : gray });
+		page.drawText(value, { x: xValue - f.widthOfTextAtSize(value, sz), y, size: sz, font: f, color: navy });
+		y -= strong ? 18 : 16;
+	}
+	return y;
+}
+export const DOC_COLS = (font?: PDFFont): TableCol[] => [{ label: 'Descrizione', width: 302, maxLines: 3 }, { label: 'Q.tà', width: 50, align: 'right' }, { label: 'Prezzo unit.', width: 70, align: 'right' }, { label: 'Imponibile', width: 77, align: 'right', bold: true }];
+
 /** Documento di trasporto A4 */
 export async function buildDdtPdf(d: DdtData): Promise<Uint8Array> {
 	const pdf = await PDFDocument.create();
@@ -80,16 +151,9 @@ export async function buildDdtPdf(d: DdtData): Promise<Uint8Array> {
 	for (let i = 0; i < Math.max(L.length, R.length); i++) { if (L[i]) t(L[i], M, y, i === 0 ? 11 : 10, i === 0 ? bold : font); if (R[i]) t(R[i], 320, y, i === 0 ? 11 : 10, i === 0 ? bold : font); y -= 13; }
 	y -= 10;
 	t(`Ordine ${d.order_number} · Causale: ${d.causale} · Trasporto: ${d.trasporto} · Colli: ${d.parcels}${d.weight_kg ? ` · Peso: ${d.weight_kg} kg` : ''}`, M, y, 9, font, gray); y -= 22;
-	page.drawRectangle({ x: M, y: y - 6, width: 499, height: 20, color: rgb(0.96, 0.97, 0.99) });
-	t('Descrizione', M + 6, y, 9, bold, gray); t('Q.tà', 380 - bold.widthOfTextAtSize('Q.tà', 9), y, 9, bold, gray); t('Prezzo unit.', 460 - bold.widthOfTextAtSize('Prezzo unit.', 9), y, 9, bold, gray); t('Imponibile', 547 - bold.widthOfTextAtSize('Imponibile', 9), y, 9, bold, gray); y -= 24;
-	for (const l of d.lines) {
-		t(l.description.length > 72 ? l.description.slice(0, 69) + '…' : l.description, M + 6, y, 10);
-		t(String(l.qty), 380 - font.widthOfTextAtSize(String(l.qty), 10), y, 10); t(eur(l.unit_net), 460 - font.widthOfTextAtSize(eur(l.unit_net), 10), y, 10); t(eur(l.total_net), 547 - bold.widthOfTextAtSize(eur(l.total_net), 10), y, 10, bold);
-		y -= 18; page.drawLine({ start: { x: M, y: y + 6 }, end: { x: 547, y: y + 6 }, thickness: 0.5, color: rgb(0.9, 0.91, 0.94) });
-	}
-	y -= 8;
-	const tot = (label: string, value: string, strong = false) => { t(label, 460 - (strong ? bold : font).widthOfTextAtSize(label, 10), y, 10, strong ? bold : font, strong ? navy : gray); t(value, 547 - (strong ? bold : font).widthOfTextAtSize(value, strong ? 12 : 10), y, strong ? 12 : 10, strong ? bold : font); y -= 16; };
-	tot('Imponibile', eur(d.subtotal_net)); tot('IVA 22%', eur(d.vat_amount)); tot('Totale', eur(d.total_gross), true);
+	y = drawTable({ page, x: M, y: y + 6, cols: DOC_COLS(), rows: d.lines.map((l) => [l.description, String(l.qty), eur(l.unit_net), eur(l.total_net)]), font, bold });
+	y -= 18;
+	y = drawTotals(page, font, bold, y, [['Imponibile', eur(d.subtotal_net)], ['IVA 22%', eur(d.vat_amount)], ['Totale', eur(d.total_gross), true]]);
 	if (d.notes) { y -= 8; t(`Note: ${d.notes}`.slice(0, 120), M, y, 9, font, gray); }
 	t('Firma del vettore ______________________      Firma del destinatario ______________________', M, 70, 9, font, gray);
 	t('Documento generato da stickerprint.it', M, 40, 8, font, gray);
@@ -108,30 +172,22 @@ export async function buildOrderPdf(d: OrderDocData): Promise<Uint8Array> {
 	docHeader(page, font, bold, logo, quote ? 'PREVENTIVO' : "CONFERMA D'ORDINE", d.number, new Date(d.issued_at).toLocaleDateString('it-IT'));
 	const M = 48; let y = 700;
 	const t = (txt: string, x: number, yy: number, size = 10, f: PDFFont = font, color = navy) => page.drawText(txt, { x, y: yy, size, font: f, color });
-	const rt = (txt: string, xr: number, yy: number, size = 10, f: PDFFont = font, color = navy) => page.drawText(txt, { x: xr - f.widthOfTextAtSize(txt, size), y: yy, size, font: f, color });
 	t('Cliente', M, y, 8.5, bold, gray); t('Spedizione', 320, y, 8.5, bold, gray); y -= 14;
 	const L = addrLines(d.customer), R = addrLines(d.shipping);
 	if (d.email) L.push(d.email);
 	for (let i = 0; i < Math.max(L.length, R.length); i++) { if (L[i]) t(L[i], M, y, i === 0 ? 11 : 10, i === 0 ? bold : font); if (R[i]) t(R[i], 320, y, i === 0 ? 11 : 10, i === 0 ? bold : font); y -= 13; }
 	y -= 8;
 	t(`Spedizione: ${d.shipping_method}${d.delivery_date ? ` · prevista il ${new Date(d.delivery_date).toLocaleDateString('it-IT')}` : ''}`, M, y, 9, font, gray); y -= 22;
-	page.drawRectangle({ x: M, y: y - 6, width: 499, height: 20, color: rgb(0.96, 0.97, 0.99) });
-	t('Descrizione', M + 6, y, 9, bold, gray); rt('Q.tà', 380, y, 9, bold, gray); rt('Prezzo unit.', 460, y, 9, bold, gray); rt('Imponibile', 547, y, 9, bold, gray); y -= 24;
-	for (const l of d.lines) {
-		t(l.description.length > 72 ? l.description.slice(0, 69) + '…' : l.description, M + 6, y, 10);
-		rt(l.qty.toLocaleString('it-IT'), 380, y, 10); rt(eur(l.unit_net), 460, y, 10); rt(eur(l.total_net), 547, y, 10, bold);
-		y -= 18; page.drawLine({ start: { x: M, y: y + 6 }, end: { x: 547, y: y + 6 }, thickness: 0.5, color: rgb(0.9, 0.91, 0.94) });
-	}
-	y -= 10;
-	// riepilogo: scadenze a sinistra, totali a destra
+	y = drawTable({ page, x: M, y: y + 6, cols: DOC_COLS(), rows: d.lines.map((l) => [l.description, l.qty.toLocaleString('it-IT'), eur(l.unit_net), eur(l.total_net)]), font, bold });
+	y -= 18;
+	// riepilogo: scadenze a sinistra (tabellina), totali a destra
 	const top = y;
-	t(quote ? 'Condizioni di pagamento' : 'Scadenze di pagamento', M, y, 9, bold, gray); y -= 14;
-	for (const p of d.payment_terms) { t(`${new Date(p.due).toLocaleDateString('it-IT')}   ${eur(p.amount)}   ${p.method}`, M, y, 10); y -= 13; }
-	if (!d.payment_terms.length) { t(d.payment_method || '—', M, y, 10); y -= 13; }
+	t(quote ? 'Condizioni di pagamento' : 'Scadenze di pagamento', M, y, 9, bold, gray); y -= 8;
+	const terms = d.payment_terms.length ? d.payment_terms.map((p) => [new Date(p.due).toLocaleDateString('it-IT'), eur(p.amount), p.method]) : [['—', '—', d.payment_method || '—']];
+	y = drawTable({ page, x: M, y, cols: [{ label: 'Scadenza', width: 70 }, { label: 'Importo', width: 70, align: 'right' }, { label: 'Metodo', width: 160 }], rows: terms, font, bold, size: 9, headSize: 8, minRowH: 18 });
+	y -= 12;
 	if (COMPANY.iban) { t(`IBAN ${COMPANY.iban} · ${COMPANY.name}`, M, y, 9, font, gray); y -= 13; }
-	let yy = top;
-	const tot = (label: string, value: string, strong = false) => { rt(label, 460, yy, 10, strong ? bold : font, strong ? navy : gray); rt(value, 547, yy, strong ? 12 : 10, strong ? bold : font); yy -= 16; };
-	tot('Imponibile', eur(d.subtotal_net)); tot('IVA 22%', eur(d.vat_amount)); tot('Totale IVA inclusa', eur(d.total_gross), true);
+	const yy = drawTotals(page, font, bold, top - 4, [['Imponibile', eur(d.subtotal_net)], ['IVA 22%', eur(d.vat_amount)], ['Totale IVA inclusa', eur(d.total_gross), true]]);
 	y = Math.min(y, yy) - 10;
 	if (d.notes) { t(`Note: ${d.notes}`.slice(0, 140), M, y, 9, font, gray); y -= 13; }
 	if (quote) {
@@ -154,18 +210,13 @@ export async function buildManifestPdf(m: ManifestData): Promise<Uint8Array> {
 		const page = pdf.addPage([595.28, 841.89]);
 		docHeader(page, font, bold, logo, `MANIFEST SPEDIZIONI ${m.courier.toUpperCase()}`, m.number, new Date(m.day).toLocaleDateString('it-IT'));
 		const t = (txt: string, x: number, yy: number, size = 9, f: PDFFont = font, color = navy) => page.drawText(txt, { x, y: yy, size, font: f, color });
-		const rt = (txt: string, xr: number, yy: number, size = 9, f: PDFFont = font, color = navy) => page.drawText(txt, { x: xr - f.widthOfTextAtSize(txt, size), y: yy, size, font: f, color });
 		let y = 700;
 		t(`Mittente: ${COMPANY.name} · ${COMPANY.address} · Ritiro del ${new Date(m.day).toLocaleDateString('it-IT')}`, M, y, 9, font, gray); y -= 22;
-		page.drawRectangle({ x: M, y: y - 6, width: 499, height: 20, color: rgb(0.96, 0.97, 0.99) });
-		t('#', M + 4, y, 8.5, bold, gray); t('Ordine', M + 24, y, 8.5, bold, gray); t('Destinatario', M + 80, y, 8.5, bold, gray); t('Città', 300, y, 8.5, bold, gray); rt('Colli', 420, y, 8.5, bold, gray); rt('Peso', 460, y, 8.5, bold, gray); t('Tracking', 470, y, 8.5, bold, gray); y -= 20;
 		const slice = m.shipments.slice(p * perPage, (p + 1) * perPage);
-		slice.forEach((s, i) => {
-			t(String(p * perPage + i + 1), M + 4, y, 9); t(s.order_number, M + 24, y, 9, bold); t(s.customer.slice(0, 36), M + 80, y, 9); t(`${s.zip ? s.zip + ' ' : ''}${s.city}`.slice(0, 22), 300, y, 9); rt(String(s.parcels), 420, y, 9); rt(s.weight_kg ? `${s.weight_kg} kg` : '—', 460, y, 9); t((s.tracking ?? '—').slice(0, 18), 470, y, 8.5);
-			y -= 16; page.drawLine({ start: { x: M, y: y + 5 }, end: { x: 547, y: y + 5 }, thickness: 0.4, color: rgb(0.9, 0.91, 0.94) });
-		});
+		y = drawTable({ page, x: M, y: y + 6, cols: [{ label: '#', width: 24, align: 'center' }, { label: 'Ordine', width: 60, bold: true }, { label: 'Destinatario', width: 150 }, { label: 'Città', width: 95 }, { label: 'Colli', width: 36, align: 'right' }, { label: 'Peso', width: 44, align: 'right' }, { label: 'Tracking', width: 90 }],
+			rows: slice.map((s, i) => [String(p * perPage + i + 1), s.order_number, s.customer, `${s.zip ? s.zip + ' ' : ''}${s.city}`, String(s.parcels), s.weight_kg ? `${s.weight_kg} kg` : '—', s.tracking ?? '—']), font, bold, size: 9, headSize: 8.5, minRowH: 18 });
 		if (p === Math.ceil(m.shipments.length / perPage) - 1 || !m.shipments.length) {
-			y -= 10;
+			y -= 22;
 			const tot = m.shipments.reduce((a, s) => a + s.parcels, 0); const kg = m.shipments.reduce((a, s) => a + Number(s.weight_kg ?? 0), 0);
 			t(`Totale: ${m.shipments.length} spedizioni · ${tot} colli${kg ? ` · ${kg.toFixed(1)} kg` : ''}`, M, y, 10, bold); y -= 40;
 			t('Firma del mittente ______________________________', M, Math.max(y, 90), 9, font, gray);

@@ -32,6 +32,8 @@
 				{:else}Controlla i dettagli qui sotto: se è tutto giusto non devi fare niente. Prima di stampare ricevi l'anteprima da approvare; poi partiamo.{/if}
 				<b class="qp__valid">Stato: {STEP[o.status] ?? o.status}</b>
 			</p>
+			{#if data.paid}<p class="ok">✅ Pagamento ricevuto, grazie! {due > 0 ? 'Resta una scadenza anticipata da saldare.' : 'La commessa entra in lavorazione: a breve ricevi l\'anteprima di stampa.'}</p>{/if}
+			{#if data.cancelled}<p class="error">Pagamento annullato: puoi riprovare quando vuoi dal bottone qui sotto.</p>{/if}
 			{#if form?.error}<p class="error">{form.error}</p>{/if}
 			{#if form?.message}<p class="ok">{form.message}</p>{/if}
 		</header>
@@ -47,7 +49,7 @@
 								<span class="qp__paid">✓ Pagato {p.paid_at ? it(p.paid_at) : ''}</span>
 							{:else if p.upfront}
 								{#if data.online}
-									<a class="btn btn--green" href="/conferma/{token()}/paga/{p.seq}">Paga ora {money(p.amount)}</a>
+									<div style="display:grid;gap:4px;justify-items:end"><a class="btn btn--green" href="/conferma/{token()}/paga/{p.seq}" data-sveltekit-reload>💳 Paga ora {money(p.amount)}</a><small class="note">carta, Apple Pay, Google Pay, PayPal{#if data.simulation} · simulazione{/if}</small></div>
 								{:else}
 									<div class="qp__bank">
 										<b>Bonifico anticipato</b>

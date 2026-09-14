@@ -1,6 +1,7 @@
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import { COMPANY } from './company';
 import { LOGO_PNG_B64 } from './logo-b64';
+import { DOC_COLS, drawTable, drawTotals } from './docs';
 
 export interface InvoiceLine { description: string; qty: number; unit_net: number; total_net: number; ddt?: string | null; ddt_date?: string | null }
 export interface InvoiceData {
@@ -79,37 +80,18 @@ export async function buildInvoicePdf(inv: InvoiceData): Promise<Uint8Array> {
 	if (fisc) { text(fisc, M, y, 9, font, gray); y -= 13; }
 	y -= 12;
 
-	// tabella righe
-	const colQty = 380, colUnit = 460, colTot = 547;
-	page.drawRectangle({ x: M, y: y - 6, width: 547 - M, height: 20, color: rgb(0.96, 0.97, 0.99) });
-	text('Descrizione', M + 6, y, 9, bold, gray);
-	right('Q.tà', colQty, y, 9, bold, gray);
-	right('Prezzo unit.', colUnit, y, 9, bold, gray);
-	right('Imponibile', colTot, y, 9, bold, gray);
-	y -= 24;
+	// tabella righe (colonne fisse, testo a capo, righe centrate)
+	const colTot = 547;
 	const rows: [string, string, string, string, string | null][] = inv.lines.map((l) => [l.description, l.qty.toLocaleString('it-IT'), eur(l.unit_net), eur(l.total_net), l.ddt ? `DDT ${l.ddt}${l.ddt_date ? ' del ' + new Date(l.ddt_date).toLocaleDateString('it-IT') : ''}` : null]);
 	if (inv.express_net > 0) rows.push(['Produzione express (+30%)', '1', eur(inv.express_net), eur(inv.express_net), null]);
 	const multiDdt = new Set(rows.map((r) => r[4]).filter(Boolean)).size > 1;
-	let lastDdt: string | null = null;
-	for (const [d, q, u, t, ddt] of rows) {
-		if (multiDdt && ddt && ddt !== lastDdt) { text(ddt, M + 6, y, 8.5, bold, gray); y -= 14; lastDdt = ddt; }
-		const desc = d.length > 70 ? d.slice(0, 67) + '…' : d;
-		text(desc, M + 6, y, 10);
-		right(q, colQty, y, 10);
-		right(u, colUnit, y, 10);
-		right(t, colTot, y, 10, bold);
-		y -= 18;
-		page.drawLine({ start: { x: M, y: y + 6 }, end: { x: 547, y: y + 6 }, thickness: 0.5, color: rgb(0.9, 0.91, 0.94) });
-	}
-	y -= 10;
-
+	y = drawTable({ page, x: M, y: y + 6, cols: DOC_COLS(), rows: rows.map(([d, q, u, t, ddt]) => [multiDdt && ddt ? `${d} (${ddt})` : d, q, u, t]), font, bold });
+	y -= 18;
 	// totali
-	const tot = (label: string, value: string, strong = false) => { right(label, colUnit, y, 10, strong ? bold : font, strong ? navy : gray); right(value, colTot, y, strong ? 12 : 10, strong ? bold : font); y -= 16; };
 	const taxable = inv.lines.reduce((s, l) => s + l.total_net, 0) + inv.express_net;
 	const vat = Math.round(taxable * COMPANY.vatRate * 100) / 100;
-	tot('Imponibile', eur(taxable));
-	tot(`IVA ${Math.round(COMPANY.vatRate * 100)}%`, eur(vat));
-	tot('Totale', eur(Math.round((taxable + vat) * 100) / 100), true);
+	y = drawTotals(page, font, bold, y, [['Imponibile', eur(taxable)], [`IVA ${Math.round(COMPANY.vatRate * 100)}%`, eur(vat)], ['Totale', eur(Math.round((taxable + vat) * 100) / 100), true]]);
+	void colTot;
 	y -= 10;
 	// pagamento e scadenze
 	const pm = PAYMENT_TEXT[inv.payment_method] ?? inv.payment_method;
@@ -117,8 +99,9 @@ export async function buildInvoicePdf(inv: InvoiceData): Promise<Uint8Array> {
 	y -= 14;
 	if (inv.ddt_numbers?.length) { text(`DDT collegati: ${inv.ddt_numbers.join(', ')}`, M, y, 9, bold); y -= 14; }
 	if (inv.payment_terms?.length) {
-		text('Scadenze', M, y, 9, bold, gray); y -= 13;
-		for (const t of inv.payment_terms) { text(`${new Date(t.due).toLocaleDateString('it-IT')}  ${eur(t.amount)}  ${t.method}`, M, y, 9); y -= 12; }
+		text('Scadenze', M, y, 9, bold, gray); y -= 8;
+		y = drawTable({ page, x: M, y, cols: [{ label: 'Scadenza', width: 70 }, { label: 'Importo', width: 70, align: 'right' }, { label: 'Metodo', width: 200 }], rows: inv.payment_terms.map((t) => [new Date(t.due).toLocaleDateString('it-IT'), eur(t.amount), t.method]), font, bold, size: 9, headSize: 8, minRowH: 18 });
+		y -= 12;
 		if (COMPANY.iban) { text(`IBAN ${COMPANY.iban} · ${COMPANY.name}`, M, y, 9, font, gray); y -= 12; }
 	}
 	if (inv.notes) { text(`Note: ${inv.notes}`.slice(0, 140), M, y, 9, font, gray); y -= 13; }
