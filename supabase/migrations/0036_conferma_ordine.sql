@@ -61,4 +61,4 @@ drop policy if exists "order_messages: staff all" on public.order_messages;
 create policy "order_messages: staff all" on public.order_messages for all using (public.is_staff()) with check (public.is_staff());
 -- il cliente registrato vede le proprie scadenze
 drop policy if exists "order_payments: own read" on public.order_payments;
-create policy "order_payments: own read" on public.order_payments for select using (exists (select 1 from public.orders o where o.checkout_group = checkout_group and o.user_id = auth.uid()));
+create policy "order_payments: own read" on public.order_payments for select using (exists (select 1 from public.orders o where o.checkout_group = order_payments.checkout_group and o.user_id = auth.uid()));
