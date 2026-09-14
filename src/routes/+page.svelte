@@ -118,8 +118,8 @@
 	</div>
 	<div class="up-strip">
 		<div><b>1 · Carica il file</b><span>PNG, PDF, JPG, SVG</span></div>
-		<div><b>2 · Guarda il risultato</b><span>Sagoma e taglio in pochi secondi</span></div>
-		<div><b>3 · Decidi tu</b><span>Conferma o chiedici una modifica</span></div>
+		<div><b>2 · Guarda l'anteprima</b><span>Sagoma e linea di taglio in pochi secondi</span></div>
+		<div><b>3 · Completa la configurazione</b><span>Bordo, misura, quantità e lamina: il prezzo si aggiorna subito</span></div>
 		<div><b>4 · Controllo finale</b><span>Un umano verifica il file prima della stampa</span></div>
 	</div>
 </section>
