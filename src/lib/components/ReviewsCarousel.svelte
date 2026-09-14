@@ -4,8 +4,28 @@
 	let { reviews }: { reviews: HomeReview[] } = $props();
 	let open: HomeReview | null = $state(null);
 
-	// Duplichiamo la lista per far scorrere il nastro senza interruzioni
-	const track = $derived([...reviews, ...reviews]);
+	import { onMount } from 'svelte';
+	let vp = $state<HTMLDivElement | undefined>();
+	let hover = $state(false);
+	let page = $state(0);
+	let pages = $state(1);
+	/* quante schede stanno nel riquadro: si legge dalla larghezza vera della prima scheda */
+	const perView = () => { if (!vp) return 1; const c = vp.querySelector<HTMLElement>('.rv__card'); return c ? Math.max(1, Math.round(vp.clientWidth / (c.offsetWidth + 16))) : 1; };
+	const step = () => { const c = vp?.querySelector<HTMLElement>('.rv__card'); return c ? c.offsetWidth + 16 : 320; };
+	function onScroll() { if (!vp) return; page = Math.round(vp.scrollLeft / (step() * perView())); }
+	function goPage(i: number) { if (!vp) return; const n = perView(); vp.scrollTo({ left: i * step() * n, behavior: 'smooth' }); }
+	function go(d: number) {
+		if (!vp) return;
+		const n = perView(); const max = Math.max(0, Math.ceil(reviews.length / n) - 1);
+		let next = page + d; if (next > max) next = 0; if (next < 0) next = max;
+		goPage(next);
+	}
+	onMount(() => {
+		const calc = () => { pages = Math.max(1, Math.ceil(reviews.length / perView())); };
+		calc(); const ro = new ResizeObserver(calc); if (vp) ro.observe(vp);
+		const t = setInterval(() => { if (!hover && !open && document.visibilityState === 'visible') go(1); }, 5000);
+		return () => { clearInterval(t); ro.disconnect(); };
+	});
 
 	function stars(n: number) {
 		return '★'.repeat(n) + '☆'.repeat(5 - n);
@@ -25,18 +45,13 @@
 
 <svelte:window onkeydown={onKey} />
 
-<div class="rv-marquee">
-	<div class="rv-track" style="animation-duration: {Math.max(24, reviews.length * 6)}s">
-		{#each track as r, i (i)}
-			<div
-				class="review"
-				role="button"
-				tabindex={i < reviews.length ? 0 : -1}
-				aria-hidden={i >= reviews.length}
-				aria-label="Leggi tutta la recensione di {r.author}: {r.title}"
-				onclick={() => (open = r)}
-				onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), (open = r))}
-			>
+<!-- carosello a scatti: le schede si fermano allineate dentro il riquadro (3 su desktop, 2 su tablet, 1 su telefono),
+     niente sfumature ai lati; frecce, puntini e scorrimento automatico che si ferma al passaggio del mouse o al tocco -->
+<div class="rv" role="region" aria-label="Recensioni dei clienti" onmouseenter={() => (hover = true)} onmouseleave={() => (hover = false)}>
+	<button type="button" class="rv__arrow rv__arrow--prev" aria-label="Recensioni precedenti" onclick={() => go(-1)}>‹</button>
+	<div class="rv__viewport" bind:this={vp} onscroll={onScroll} ontouchstart={() => (hover = true)} ontouchend={() => setTimeout(() => (hover = false), 4000)}>
+		{#each reviews as r, i (i)}
+			<div class="review rv__card" role="button" tabindex="0" aria-label="Leggi tutta la recensione di {r.author}: {r.title}" onclick={() => (open = r)} onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), (open = r))}>
 				<div class="review__stars" aria-label="{r.rating} stelle su 5">{stars(r.rating)}</div>
 				<div class="review__title">{r.title}</div>
 				<p class="review__text">{r.comment}</p>
@@ -44,6 +59,8 @@
 			</div>
 		{/each}
 	</div>
+	<button type="button" class="rv__arrow rv__arrow--next" aria-label="Recensioni successive" onclick={() => go(1)}>›</button>
+	{#if pages > 1}<div class="rv__dots">{#each Array(pages) as _, i (i)}<button type="button" class:is-on={i === page} aria-label="Vai alla pagina {i + 1}" onclick={() => goPage(i)}></button>{/each}</div>{/if}
 </div>
 
 {#if open}
