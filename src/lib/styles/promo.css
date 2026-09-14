@@ -2,53 +2,58 @@
    Offerte (/offerte): testata scura con l'offerta, riquadro "cosa ricevi",
    misure, caricamento file. Sotto: recensioni, passi, domande, chiusura.
    ========================================================================== */
-.offer { background: var(--navy); color: #fff; padding: clamp(36px, 5vw, 64px) 0 clamp(40px, 5vw, 64px); position: relative; overflow: hidden; }
-.offer__inner { max-width: 760px; margin: 0 auto; text-align: center; position: relative; }
-/* col file caricato la testata si allarga: a sinistra "cosa ricevi", a destra l'anteprima */
-.offer__grid { display: grid; grid-template-columns: 1fr; gap: 24px; }
-.offer__grid.has-file { grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); align-items: start; text-align: left; }
-.offer__inner:has(.offer__grid.has-file) { max-width: 1240px; }
-.offer__grid.has-file .offer__box, .offer__grid.has-file .offer__sizes, .offer__grid.has-file .offer__drop, .offer__grid.has-file .offer__cta { margin-left: 0; margin-right: 0; max-width: none; }
-.offer__cfg { background: #fff; color: var(--ink); border-radius: 22px; padding: 6px; box-shadow: 0 24px 60px rgba(0,0,0,.35); scroll-margin-top: 80px; overflow-anchor: none; }
-.offer__cfg .cfg { grid-template-columns: 1fr; margin-top: 0; border: 0; }
-.offer__cfg .cfg__preview { border-right: 0; border-bottom: 2px solid var(--line); }
-.offer__cfg .cfg__summary { grid-template-columns: 1fr 1fr; position: static; }
-.offer__cfg .sum--total, .offer__cfg .btn--cart { grid-column: 1 / -1; }
-.offer__cfg .special { display: none; }
-@media (max-width: 900px) { .offer__grid.has-file { grid-template-columns: 1fr; } }
-.offer h1 { font-size: clamp(38px, 5.4vw, 68px); line-height: 1.05; letter-spacing: -0.03em; }
+/* tutta la pagina e' un blocco blu unico con header e footer */
+.promo-page { background: var(--navy); color: #fff; }
+.promo-page h2, .promo-page .lead { color: #fff; }
+.promo-page .lead { color: #d9dcf2; }
+.promo-page .faq3 details { background: #1a1f6e; border-color: transparent; color: #fff; }
+.promo-page .faq3 p { color: #d9dcf2; }
+.offer { background: var(--navy); color: #fff; padding: clamp(28px, 4vw, 48px) 0 clamp(28px, 4vw, 48px); position: relative; overflow: hidden; }
+.offer__inner { text-align: left; position: relative; }
+.offer h1 { font-size: clamp(36px, 5vw, 62px); line-height: 1.08; letter-spacing: -0.03em; }
 .offer h1 mark { background: var(--green); color: var(--navy); padding: 0 12px; border-radius: 6px; }
-.offer__ends { margin-top: 18px; font-weight: 700; font-size: 16px; color: #d9dcf2; }
+.offer__sub { margin-top: 16px; font-size: 18px; line-height: 1.5; color: #d9dcf2; }
+.offer__sub b { color: var(--yellow); }
+.offer__ends { margin-top: 10px; font-weight: 700; font-size: 15px; color: #d9dcf2; }
 .offer__ends b { color: var(--yellow); }
-.offer__sub { margin-top: 12px; font-size: 17px; color: #d9dcf2; }
-.offer__stars { margin-top: 14px; font-weight: 800; }
-.offer__stars .stars { color: #f5b301; letter-spacing: 1px; font-size: 20px; }
-.offer__chips { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+.offer__stars { margin-top: 12px; font-weight: 800; }
+.offer__chips { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
 .offer__chips span { background: var(--pink); color: #fff; font-family: var(--font-display); font-weight: 800; font-size: 13.5px; padding: 8px 16px; border-radius: 999px; }
 .offer__chips span:nth-child(2n) { background: #7c4dff; }
-.offer__box { margin: 26px auto 0; background: #1a1f6e; border-radius: 18px; padding: 18px 22px; text-align: left; max-width: 560px; }
+/* sotto: box "cosa ricevi" allineato al titolo, a destra il caricamento (o l'anteprima), centrato in verticale */
+.offer__grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 28px; align-items: center; margin-top: 26px; }
+.offer__box { background: #1a1f6e; border-radius: 18px; padding: 18px 22px; }
 .offer__box h4 { font-family: var(--font-display); font-weight: 800; font-size: 11.5px; letter-spacing: .08em; text-transform: uppercase; color: #8fb8ff; margin: 0 0 8px; }
 .offer__box h4 + h4 { margin-top: 14px; }
 .offer__row { display: flex; justify-content: space-between; gap: 16px; font-size: 14.5px; padding: 5px 0; }
 .offer__row b { font-weight: 700; }
 .offer__row.is-save b { color: #ff8a80; } .offer__row.is-pay b { background: var(--green); color: var(--navy); padding: 2px 8px; border-radius: 6px; font-weight: 800; }
-.offer__sizes { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 8px; max-width: 560px; margin: 14px auto 0; background: #12164f; border-radius: 16px; padding: 6px; }
-.offer__size { border: 0; background: transparent; color: #8a8fb5; font-family: var(--font-display); font-weight: 800; font-size: 15px; padding: 12px 8px; border-radius: 12px; cursor: pointer; }
-.offer__size span { color: #6b70a0; font-weight: 700; margin-left: 8px; }
-.offer__size.is-on { background: #2a3ab8; color: #fff; } .offer__size.is-on span { color: #d9dcf2; }
-.offer__drop { max-width: 560px; margin: 16px auto 0; }
-.offer__drop .dropzone { border-color: rgba(255,255,255,.3); background: transparent; color: #fff; min-height: 180px; }
-.offer__drop .dropzone__title { color: #fff; } .offer__drop .dropzone__sub { color: #b8bce0; }
-.offer__drop .dropzone.is-over { background: rgba(255,255,255,.08); }
-.offer__cta { max-width: 560px; margin: 14px auto 0; display: grid; }
-.offer__cta .btn { width: 100%; }
-.offer__more { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; max-width: 760px; margin: 30px auto 0; }
+.offer__right { display: grid; gap: 14px; }
+.offer__dz.dropzone { border-color: rgba(255,255,255,.3); background: transparent; color: #fff; min-height: 220px; }
+.offer__dz .dropzone__title { color: #fff; } .offer__dz .dropzone__sub { color: #b8bce0; }
+.offer__dz.is-over { background: rgba(255,255,255,.08); }
+.offer__add { width: 100%; }
+/* anteprima confermata: sul blu della pagina, senza cornice bianca */
+.offer__proof { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 18px; align-items: center; background: #1a1f6e; border-radius: 18px; padding: 16px; }
+.offer__proof img { width: 100%; max-height: 300px; object-fit: contain; display: block; }
+.offer__proof-meta { display: grid; gap: 6px; font-size: 14px; color: #d9dcf2; max-width: 220px; }
+.offer__proof-meta b { color: #fff; font-family: var(--font-display); font-size: 15px; }
+.offer__proof-meta .link-btn { color: #8fb8ff; justify-self: start; }
+.offer__promo-size { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; align-items: center; background: var(--sky); border-radius: 12px; padding: 10px 14px; color: var(--navy); font-weight: 700; font-size: 14px; }
+.offer__promo-size b { font-family: var(--font-display); font-size: 18px; }
+.offer__promo-size small { grid-column: 1 / -1; font-weight: 500; color: #5b6478; }
+.offer__more { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin: 28px 0 0; }
 .offer__card { background: #1a1f6e; border-radius: 16px; padding: 16px; text-align: left; border: 2px solid transparent; cursor: pointer; color: #fff; font: inherit; }
 .offer__card.is-on { border-color: var(--green); }
 .offer__card b { font-family: var(--font-display); font-size: 22px; display: block; }
 .offer__card small { color: #b8bce0; }
 .offer__spark { position: absolute; color: #f5b301; font-size: 34px; opacity: .8; pointer-events: none; }
-
+/* recensioni: piu' compatte, stesso blu del box "cosa ricevi" */
+.offer__reviews { background: #1a1f6e; color: #fff; border-radius: 22px; padding: clamp(26px, 3.5vw, 40px) clamp(18px, 3vw, 40px); max-width: 1000px; margin: 0 auto; }
+.offer__reviews h2 { font-size: clamp(28px, 3.6vw, 44px); }
+.offer__reviews .lead { margin-top: 12px; font-size: 16px; }
+.offer__reviews .stats { margin-top: 22px; }
+@media (max-width: 900px) { .offer__grid { grid-template-columns: 1fr; } .offer__proof { grid-template-columns: 1fr; } }
 .howto { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin-top: 34px; }
 .howto__step { background: var(--sky); border-radius: 18px; padding: 22px; }
 .howto__n { width: 40px; height: 40px; border-radius: 50%; background: var(--navy); color: #fff; display: grid; place-items: center; font-family: var(--font-display); font-weight: 800; font-size: 18px; margin-bottom: 12px; }
