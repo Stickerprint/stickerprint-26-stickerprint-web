@@ -3227,7 +3227,11 @@ function resinDome(core,ppm){
        const bw=x1-x0+1,bh=y1-y0+1,ratio=Math.max(bw,bh)/Math.max(1,Math.min(bw,bh));
        const quadrato=Math.abs(bw-bh)<=0.08*Math.max(bw,bh);
        if(!quadrato&&(ratio<1.28||ratio>2.15))ds=null;}
-     if(ds){const r=resinDomeMockup(core,ppm,ds);if(r)return r;}
+     if(ds){const r=resinDomeMockup(core,ppm,ds);if(r)return r;
+       /* i livelli della cupola stanno ancora arrivando: niente cupola procedurale nel frattempo
+          (era il "vecchio effetto" che lampeggiava per un istante). Il pezzo resta piatto e il
+          disegno si rifa' da solo appena i livelli sono pronti (vedi domeAssets). */
+       if(DOME_IMG[ds==='rect'?'rect':ds]&&!DOME_IMG[ds==='rect'?'rect':ds].ok)return core;}
    }catch(e){console.error('[cupola]',e);}}
    try{return resinDomeProc(core,ppm);}catch(e){console.error('[cupola proc]',e);}}
   const W=core.width,H=core.height,N=W*H;
@@ -4572,6 +4576,9 @@ function bgFixBar(){
 /* ---- due sezioni: adesivi personalizzati / adesivi resinati ---- */
 function setProd(p){
   S.prod=p;S.Rsafe=null;
+  /* resinati: i livelli della cupola (12 PNG, 3,5 MB) si caricano subito in sottofondo, cosi' la prima
+     anteprima esce gia' con l'effetto giusto invece di passare per quello procedurale */
+  if(p==='resin'){try{for(const sh of ['circle','square','ellipse','rect'])domeAssets(sh);}catch(e){}}
   $('tabSticker').classList.toggle('on',p==='sticker');
   $('tabResin').classList.toggle('on',p==='resin');
   const lg=document.querySelector('.logo'); if(lg)lg.style.background='';
