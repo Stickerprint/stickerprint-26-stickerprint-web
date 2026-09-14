@@ -21,7 +21,7 @@ export function itemsBlock(items: (string | EmailItem)[]): string {
 		const i: EmailItem = typeof raw === 'string' ? { name: raw } : raw;
 		const img = i.preview ? `<img src="${i.preview}" width="96" height="96" alt="" style="display:block;width:96px;height:96px;object-fit:contain;border-radius:12px;background:#f4f5fa;">` : `<div style="width:96px;height:96px;border-radius:12px;background:#f4f5fa;"></div>`;
 		const qty = i.qty ? `<span style="color:#8e92b0;">${Number(i.qty).toLocaleString('it-IT')} pz</span>` : '';
-		const cta = i.cta ? `<td align="right" valign="middle" style="padding-left:12px;white-space:nowrap;"><a href="${i.cta.href}" style="display:inline-block;background:#fbe36b;color:#0b0b3b;text-decoration:none;font-weight:800;font-size:13px;padding:11px 16px;border-radius:6px;">${esc(i.cta.label)}</a></td>` : '';
+		const cta = i.cta ? `<td align="right" valign="middle" style="padding-left:12px;white-space:nowrap;"><a href="${i.cta.href}" style="display:inline-block;background:#f4b400;color:#0b0b3b;text-decoration:none;font-family:Rubik,Montserrat,Helvetica,Arial,sans-serif;font-weight:800;font-size:13px;text-transform:uppercase;letter-spacing:.02em;padding:11px 16px;border-radius:8px;">${esc(i.cta.label)}</a></td>` : '';
 		return `<tr><td style="padding:10px 0;border-top:1px solid #eceef5;"><table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr><td width="96" valign="middle">${img}</td><td valign="middle" style="padding-left:14px;font-size:15px;line-height:1.4;color:#0b0b3b;"><b>${esc(i.name)}</b>${i.meta ? `<br><span style="color:#8e92b0;font-size:13px;">${esc(i.meta)}</span>` : ''}${qty ? `<br>${qty}` : ''}</td>${cta}</tr></table></td></tr>`;
 	}).join('');
 	return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:16px 0 4px;border-bottom:1px solid #eceef5;">${rows}</table>`;
@@ -29,7 +29,7 @@ export function itemsBlock(items: (string | EmailItem)[]): string {
 
 function layout(title: string, body: string, cta?: { label: string; href: string }): string {
 	return `<!doctype html>
-<html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${esc(title)}</title></head>
+<html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${esc(title)}</title><link href="https://fonts.googleapis.com/css2?family=Rubik:wght@800&family=Montserrat:wght@400;600;800&display=swap" rel="stylesheet"></head>
 <body style="margin:0;background:#f4f5fa;font-family:Montserrat,Helvetica,Arial,sans-serif;color:#0b0b3b;">
 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f4f5fa;padding:32px 12px;">
 <tr><td align="center">
@@ -38,9 +38,9 @@ function layout(title: string, body: string, cta?: { label: string; href: string
     <img src="${SITE}/images/splogo-400.png" width="120" alt="Stickerprint" style="display:inline-block;transform:rotate(-5deg);">
   </td></tr>
   <tr><td style="padding:34px 32px 10px;">
-    <h1 style="margin:0 0 14px;font-size:26px;line-height:1.15;letter-spacing:-0.02em;">${esc(title)}</h1>
+    <h1 style="margin:0 0 14px;font-family:Rubik,Montserrat,Helvetica,Arial,sans-serif;font-weight:800;font-size:28px;line-height:1.2;letter-spacing:-0.02em;color:#0b0b3b;">${esc(title)}</h1>
     <div style="font-size:15px;line-height:1.6;color:#3d3f63;">${body}</div>
-    ${cta ? `<p style="margin:28px 0 8px;"><a href="${cta.href}" style="display:inline-block;background:#0e8bff;color:#fff;text-decoration:none;font-weight:800;text-transform:uppercase;font-size:14px;padding:14px 26px;border-radius:6px;">${esc(cta.label)}</a></p>` : ''}
+    ${cta ? `<p style="margin:28px 0 8px;text-align:center;"><a href="${cta.href}" style="display:inline-block;background:#0e8bff;color:#fff;text-decoration:none;font-family:Rubik,Montserrat,Helvetica,Arial,sans-serif;font-weight:800;text-transform:uppercase;font-size:14px;letter-spacing:.02em;padding:14px 28px;border-radius:8px;">${esc(cta.label)}</a></p>` : ''}
   </td></tr>
   <tr><td style="padding:18px 32px 30px;font-size:12px;color:#8e92b0;line-height:1.5;">
     Stickerprint Srl · Adesivi personalizzati stampati in Italia<br>
@@ -173,7 +173,7 @@ export function shippingUpdateEmail(o: { kind: ShippingMailKind; name?: string |
 		ritardo_nostro: { subject: `Il tuo ordine ${o.number} parte con qualche giorno di ritardo, scusaci 🙏`, title: `Il tuo ordine ${n} è ${hl('in ritardo')}, ed è colpa nostra 🙏`, body: `${hi}<p>ti dobbiamo delle scuse: il tuo ordine parte più tardi di quanto ti avevamo detto. ${o.reason ? esc(o.reason) : 'Durante il controllo qualità sulla tua tiratura abbiamo trovato un dettaglio di stampa che non ci convinceva, e abbiamo preferito rifarla piuttosto che spedirti qualcosa di imperfetto.'}</p>${o.newDate ? `<p style="padding:12px 14px;background:#fef6db;border-radius:10px;"><b>Nuova data di spedizione: ${esc(o.newDate)}.</b> Appena parte ricevi l'email con il tracking.</p>` : `<p>Appena parte ricevi l'email con il tracking.</p>`}<p>Il ritardo è tutto nostro e ci dispiace davvero. Se ti crea un problema di date, rispondi a questa email: troviamo insieme la soluzione.</p>${list}`, cta: o.accountUrl ? 'Vedi il tuo ordine' : 'Vai su Stickerprint', gif: false }
 	}[o.kind];
 	const href = (o.kind === 'consegnato' || o.kind === 'affidato' || o.kind === 'ritardo_nostro') && o.accountUrl ? o.accountUrl : o.trackingUrl;
-	const gif = T.gif ? `<p style="margin:18px 0 0;"><img src="${SITE}/images/email/partito.gif" width="496" alt="" style="width:100%;max-width:496px;height:auto;display:block;border-radius:12px;"></p>` : '';
+	const gif = T.gif ? `<p style="margin:18px 0 0;"><img src="${SITE}/images/email/partito.gif" width="496" height="200" alt="" style="width:100%;max-width:496px;height:auto;display:block;border-radius:12px;"></p>` : '';
 	return { subject: T.subject, tag: `shipping-${o.kind}`, html: layoutHtml(T.title, T.body + gif, { label: T.cta, href }) };
 }
 
@@ -188,7 +188,7 @@ export function reviewRequestEmail(o: { name?: string | null; number: string; it
 /** stesso layout delle altre email, ma il titolo puo' contenere HTML (la parola sottolineata) */
 function layoutHtml(titleHtml: string, body: string, cta?: { label: string; href: string } | null): string {
 	const plain = titleHtml.replace(/<[^>]+>/g, '');
-	return layout('§TITLE§', body, cta ?? undefined).replace('<h1 style="margin:0 0 14px;font-size:26px;line-height:1.15;letter-spacing:-0.02em;">§TITLE§</h1>', `<h1 style="margin:0 0 14px;font-size:26px;line-height:1.25;letter-spacing:-0.02em;">${titleHtml}</h1>`).replace('<title>§TITLE§</title>', `<title>${esc(plain)}</title>`);
+	return layout('§TITLE§', body, cta ?? undefined).replace('<h1 style="margin:0 0 14px;font-family:Rubik,Montserrat,Helvetica,Arial,sans-serif;font-weight:800;font-size:28px;line-height:1.2;letter-spacing:-0.02em;color:#0b0b3b;">§TITLE§</h1>', `<h1 style="margin:0 0 14px;font-family:Rubik,Montserrat,Helvetica,Arial,sans-serif;font-weight:800;font-size:28px;line-height:1.3;letter-spacing:-0.02em;color:#0b0b3b;">${titleHtml}</h1>`).replace('<title>§TITLE§</title>', `<title>${esc(plain)}</title>`);
 }
 
 /** sollecito di approvazione dell'anteprima (o del file mancante), con la data entro cui rispondere per mantenere la spedizione */
