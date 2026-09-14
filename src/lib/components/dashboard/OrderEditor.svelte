@@ -101,6 +101,7 @@
 			<h3>📅 Ordine e spedizione</h3>
 			<div class="dform dform--1">
 				<div class="row2"><label>Data ordine<input type="date" bind:value={d.date} /></label><label>Spedizione prevista<input type="date" bind:value={d.ship_date} /></label></div>
+			<label>Tempi di lavorazione <small class="note">(compaiono nella conferma, nel preventivo e nel PDF; vuoto = nessuna promessa)</small><input bind:value={d.lead_time} placeholder="es. 7-10 giorni lavorativi dall'ok sul file" /></label>
 				<label>Metodo di spedizione<select bind:value={d.ship_method}>{#each SHIPPING_METHODS as m (m)}<option>{m}</option>{/each}</select></label>
 				<label style="display:flex;gap:8px;align-items:center;flex-direction:row"><input type="checkbox" bind:checked={d.ship_same} /> Spedizione uguale all’indirizzo di fatturazione</label>
 				{#if !d.ship_same}

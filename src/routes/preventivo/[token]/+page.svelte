@@ -27,7 +27,7 @@
 			<p class="qp__kicker">Preventivo {q.number}{#if q.version > 1} · rev. {q.version}{/if} · {it(q.created_at.slice(0, 10))}</p>
 			{#if done}
 				<h1>Grazie {first}, è tutto <span class="hl">confermato</span> ✅</h1>
-				<p class="qp__lead">La commessa è in lavorazione. I prossimi passi: ti mandiamo la conferma d'ordine, poi l'anteprima di stampa da approvare, e si parte. Per qualsiasi cosa scrivici qui sotto o rispondi all'email.</p>
+				<p class="qp__lead">La commessa è in lavorazione. Il prossimo passo: ti mandiamo la conferma d'ordine con i dettagli, e si parte. Per qualsiasi cosa scrivici qui sotto o rispondi all'email.</p>
 			{:else if dead}
 				<h1>{q.status === 'rifiutato' || form?.rejected ? 'Preventivo chiuso' : 'Preventivo scaduto'}</h1>
 				<p class="qp__lead">Questa proposta non è più attiva. Se ti serve ancora, chiedici un aggiornamento: te lo rifacciamo con prezzi e tempi di oggi.</p>
@@ -61,10 +61,9 @@
 				<div class="qp__row"><span>IVA 22%</span><b>{money(q.total_gross - q.total_net)}</b></div>
 				<div class="qp__row qp__row--tot"><span>Totale</span><b>{money(q.total_gross)}</b></div>
 				<ul class="qp__terms">
-					<li>⏱ Produzione in 3–5 giorni lavorativi dall'approvazione dell'anteprima di stampa{#if data.shipDate}, spedizione prevista {it(data.shipDate)}{/if}.</li>
+					{#if data.leadTime}<li>⏱ {data.leadTime}{#if data.shipDate} · spedizione prevista {it(data.shipDate)}{/if}.</li>{:else if data.shipDate}<li>⏱ Spedizione prevista {it(data.shipDate)}.</li>{/if}
 					<li>🚚 {data.shipMethod === 'Consegna diretta Stickerprint' ? 'Consegna diretta' : data.shipMethod?.includes('destinatario') ? 'Ritiro con il tuo corriere' : 'Spedizione con corriere espresso, tracking via email'}.</li>
 					{#if data.terms.length}<li>💳 Pagamento: {data.terms.join(' + ')}.</li>{/if}
-					<li>🔍 Prima di stampare ricevi l'anteprima: si va in macchina solo con il tuo ok.</li>
 				</ul>
 			</div>
 			<aside class="qp__why">

@@ -55,7 +55,7 @@ export async function saveOrderDraft(supabase: SupabaseClient, d: OrderDraft, gr
 	const createdAt = s(d.date) ? new Date(s(d.date) + 'T10:00:00').toISOString() : new Date().toISOString();
 	const common = {
 		customer_name: name, email: s(c.email).toLowerCase() || null, country: billing.country, shipping, billing, contact_id: d.contact_id || null,
-		payment_method: payment, payment_terms: terms, shipping_method: s(d.ship_method) || SHIPPING_METHODS[0], delivery_date: s(d.ship_date) || null,
+		payment_method: payment, payment_terms: terms, shipping_method: s(d.ship_method) || SHIPPING_METHODS[0], delivery_date: s(d.ship_date) || null, lead_time: s(d.lead_time) || null,
 		internal_notes: s(d.notes) || null, created_at: createdAt, price_type: lordi ? 'lordi' : 'netti'
 	};
 	const key = group ?? crypto.randomUUID();
@@ -96,7 +96,7 @@ export async function orderPdfForGroup(supabase: SupabaseClient, group: string):
 	if (!data?.length) return null;
 	const g = groupOrders(data as OrderRow[])[0];
 	const f = g.items[0];
-	const pdf = await buildOrderPdf({ number: g.number, numbers: g.numbers, issued_at: g.created_at, customer: f.billing ?? {}, shipping: f.shipping ?? {}, email: g.email, lines: g.items.map((i) => ({ description: `${i.product_name}${i.description ? ' · ' + i.description : ''}`, qty: i.qty, unit_net: Number(i.unit_net ?? Number(i.total_net) / i.qty), total_net: Number(i.total_net) })), subtotal_net: g.net, vat_amount: r2(g.gross - g.net), total_gross: g.gross, payment_method: g.payment_method ?? '', payment_terms: f.payment_terms ?? [], shipping_method: g.shipping_method ?? '', delivery_date: g.delivery_date, notes: f.notes });
+	const pdf = await buildOrderPdf({ number: g.number, numbers: g.numbers, issued_at: g.created_at, customer: f.billing ?? {}, shipping: f.shipping ?? {}, email: g.email, lines: g.items.map((i) => ({ description: `${i.product_name}${i.description ? ' · ' + i.description : ''}`, qty: i.qty, unit_net: Number(i.unit_net ?? Number(i.total_net) / i.qty), total_net: Number(i.total_net) })), subtotal_net: g.net, vat_amount: r2(g.gross - g.net), total_gross: g.gross, payment_method: g.payment_method ?? '', payment_terms: f.payment_terms ?? [], shipping_method: g.shipping_method ?? '', delivery_date: g.delivery_date, lead_time: f.lead_time ?? null, notes: f.notes });
 	return { pdf, number: g.number, email: g.email, customer: g.customer };
 }
 

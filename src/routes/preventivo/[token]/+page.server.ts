@@ -30,7 +30,7 @@ export const load: PageServerLoad = async ({ params, url, request }) => {
 	return {
 		q: { number: q.number, version: q.version, status: q.status, total_net: Number(q.total_net), total_gross: Number(q.total_gross), valid_until: q.valid_until, sent_at: q.sent_at, accepted_at: q.accepted_at, sender_name: q.sender_name, created_at: q.created_at },
 		customer: { name: d.customer.name, first_name: d.customer.first_name, city: d.customer.city },
-		items, lordi: d.price_type === 'lordi', terms: [...new Set((d.terms ?? []).map((t) => t.method))], shipMethod: d.ship_method, shipDate: d.ship_date || null,
+		items, lordi: d.price_type === 'lordi', terms: [...new Set((d.terms ?? []).map((t) => t.method))], shipMethod: d.ship_method, shipDate: d.ship_date || null, leadTime: d.lead_time?.trim() || null,
 		stats, messages: messages.map((m) => ({ id: m.id, direction: m.direction, author: m.author, body: m.body, created_at: m.created_at }))
 	};
 };

@@ -24,7 +24,7 @@ export function defaultConfirmEmail(g: Pick<OrderGroup, 'number' | 'customer' | 
 	const subject = `La tua conferma d'ordine ${g.number}: ${g.items[0].description || g.items[0].product_name}`.slice(0, 120);
 	const pay = due > 0
 		? `\n\nPer far partire la produzione ci serve il pagamento anticipato di ${eur(due)}: dalla pagina trovi come farlo, e appena arriva si parte.`
-		: '\n\nL\'ordine è già in lavorazione: ti mandiamo l\'anteprima di stampa da approvare prima di andare in macchina.';
+		: '\n\nL\'ordine è già in lavorazione.';
 	const body = `Ciao ${first},\n\nti confermo l'ordine ${g.number} per ${what}, totale ${eur(g.gross)} IVA inclusa${g.delivery_date ? `, spedizione prevista ${itLong(g.delivery_date)}` : ''}. Dal bottone qui sotto puoi controllare tutti i dettagli (articoli, indirizzi, scadenze) e scaricare il PDF.${pay}\n\nSe qualcosa non torna, segnalamelo direttamente dalla pagina: lo sistemiamo prima di stampare.\n\nA presto,\n${sender ?? 'Stickerprint'}`;
 	return { subject, body };
 }

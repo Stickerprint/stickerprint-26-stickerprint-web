@@ -219,7 +219,7 @@ export function quoteReplyEmail(o: { name?: string | null; number: string; body:
 }
 export function quoteAcceptedEmail(o: { name?: string | null; number: string; orderNumber: string | null }) {
 	const n = esc(o.number);
-	return { subject: `Preventivo ${o.number} confermato ✅`, tag: 'quote-accepted', html: layoutHtml(`Preventivo ${n} ${hl('confermato')} ✅`, `<p>Ciao ${esc(o.name || '')},</p><p>grazie, abbiamo registrato la tua conferma.${o.orderNumber ? ` L'ordine <b>${esc(o.orderNumber)}</b> è in lavorazione: ricevi la conferma d'ordine con il riepilogo a parte.` : ' Prossimi passi: ti mandiamo la conferma d\'ordine, poi l\'anteprima di stampa da approvare, e si parte.'}</p>`) };
+	return { subject: `Preventivo ${o.number} confermato ✅`, tag: 'quote-accepted', html: layoutHtml(`Preventivo ${n} ${hl('confermato')} ✅`, `<p>Ciao ${esc(o.name || '')},</p><p>grazie, abbiamo registrato la tua conferma.${o.orderNumber ? ` L'ordine <b>${esc(o.orderNumber)}</b> è in lavorazione: ricevi la conferma d'ordine con il riepilogo a parte.` : ' Prossimo passo: ti mandiamo la conferma d\'ordine con i dettagli, e si parte.'}</p>`) };
 }
 
 /* ---------- Helpdesk ---------- */

@@ -28,11 +28,11 @@
 			<p class="qp__kicker">Conferma d'ordine {o.number} · {it(o.created_at)}</p>
 			<h1>Ciao {first}, il tuo ordine è <span class="hl">registrato</span> 📦</h1>
 			<p class="qp__lead">
-				{#if waiting}Controlla i dettagli qui sotto: appena arriva il pagamento anticipato di <b>{money(due)}</b> la commessa entra in lavorazione, e ricevi l'anteprima di stampa da approvare prima di andare in macchina.
-				{:else}Controlla i dettagli qui sotto: se è tutto giusto non devi fare niente. Prima di stampare ricevi l'anteprima da approvare; poi partiamo.{/if}
+				{#if waiting}Controlla i dettagli qui sotto: appena arriva il pagamento anticipato di <b>{money(due)}</b> la commessa entra in lavorazione.
+				{:else}Controlla i dettagli qui sotto: se è tutto giusto non devi fare niente: la commessa è in lavorazione.{/if}
 				<b class="qp__valid">Stato: {STEP[o.status] ?? o.status}</b>
 			</p>
-			{#if data.paid}<p class="ok">✅ Pagamento ricevuto, grazie! {due > 0 ? 'Resta una scadenza anticipata da saldare.' : 'La commessa entra in lavorazione: a breve ricevi l\'anteprima di stampa.'}</p>{/if}
+			{#if data.paid}<p class="ok">✅ Pagamento ricevuto, grazie! {due > 0 ? 'Resta una scadenza anticipata da saldare.' : 'La commessa entra in lavorazione.'}</p>{/if}
 			{#if data.cancelled}<p class="error">Pagamento annullato: puoi riprovare quando vuoi dal bottone qui sotto.</p>{/if}
 			{#if form?.error}<p class="error">{form.error}</p>{/if}
 			{#if form?.message}<p class="ok">{form.message}</p>{/if}
@@ -88,9 +88,8 @@
 				<div class="qp__row"><span>IVA 22%</span><b>{money(o.gross - o.net)}</b></div>
 				<div class="qp__row qp__row--tot"><span>Totale</span><b>{money(o.gross)}</b></div>
 				<ul class="qp__terms">
-					<li>⏱ Produzione in 3–5 giorni lavorativi dall'approvazione dell'anteprima{#if o.delivery_date}, spedizione prevista {it(o.delivery_date)}{/if}.</li>
+					{#if o.lead_time}<li>⏱ {o.lead_time}{#if o.delivery_date} · spedizione prevista {it(o.delivery_date)}{/if}.</li>{:else if o.delivery_date}<li>⏱ Spedizione prevista {it(o.delivery_date)}.</li>{/if}
 					<li>🚚 {o.shipping_method === 'Consegna diretta Stickerprint' ? 'Consegna diretta' : o.shipping_method?.includes('destinatario') ? 'Ritiro con il tuo corriere' : 'Spedizione con corriere espresso, tracking via email'}.</li>
-					<li>🔍 Prima di stampare ricevi l'anteprima: si va in macchina solo con il tuo ok.</li>
 				</ul>
 			</div>
 			<aside class="qp__why">

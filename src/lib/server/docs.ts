@@ -160,7 +160,7 @@ export async function buildDdtPdf(d: DdtData): Promise<Uint8Array> {
 	return pdf.save();
 }
 
-export interface OrderDocData { kind?: 'ordine' | 'preventivo'; valid_until?: string | null; number: string; numbers: string[]; issued_at: string; customer: Record<string, string>; shipping: Record<string, string>; email: string | null; lines: { description: string; qty: number; unit_net: number; total_net: number }[]; subtotal_net: number; vat_amount: number; total_gross: number; payment_method: string; payment_terms: { due: string; amount: number; method: string }[]; shipping_method: string; delivery_date: string | null; notes?: string | null }
+export interface OrderDocData { kind?: 'ordine' | 'preventivo'; valid_until?: string | null; lead_time?: string | null; number: string; numbers: string[]; issued_at: string; customer: Record<string, string>; shipping: Record<string, string>; email: string | null; lines: { description: string; qty: number; unit_net: number; total_net: number }[]; subtotal_net: number; vat_amount: number; total_gross: number; payment_method: string; payment_terms: { due: string; amount: number; method: string }[]; shipping_method: string; delivery_date: string | null; notes?: string | null }
 
 /** Conferma d'ordine A4: articoli, riepilogo con totali e scadenze di pagamento */
 export async function buildOrderPdf(d: OrderDocData): Promise<Uint8Array> {
@@ -177,24 +177,22 @@ export async function buildOrderPdf(d: OrderDocData): Promise<Uint8Array> {
 	if (d.email) L.push(d.email);
 	for (let i = 0; i < Math.max(L.length, R.length); i++) { if (L[i]) t(L[i], M, y, i === 0 ? 11 : 10, i === 0 ? bold : font); if (R[i]) t(R[i], 320, y, i === 0 ? 11 : 10, i === 0 ? bold : font); y -= 13; }
 	y -= 8;
-	t(`Spedizione: ${d.shipping_method}${d.delivery_date ? ` · prevista il ${new Date(d.delivery_date).toLocaleDateString('it-IT')}` : ''}`, M, y, 9, font, gray); y -= 22;
+	t(`Spedizione: ${d.shipping_method}${d.delivery_date ? ` · prevista il ${new Date(d.delivery_date).toLocaleDateString('it-IT')}` : ''}${d.lead_time ? ` · Tempi: ${d.lead_time}` : ''}`.slice(0, 150), M, y, 9, font, gray); y -= 22;
 	y = drawTable({ page, x: M, y: y + 6, cols: DOC_COLS(), rows: d.lines.map((l) => [l.description, l.qty.toLocaleString('it-IT'), eur(l.unit_net), eur(l.total_net)]), font, bold });
-	y -= 18;
-	// riepilogo: scadenze a sinistra (tabellina), totali a destra
-	const top = y;
-	t(quote ? 'Condizioni di pagamento' : 'Scadenze di pagamento', M, y, 9, bold, gray); y -= 8;
-	const terms = d.payment_terms.length ? d.payment_terms.map((p) => [new Date(p.due).toLocaleDateString('it-IT'), eur(p.amount), p.method]) : [['—', '—', d.payment_method || '—']];
-	y = drawTable({ page, x: M, y, cols: [{ label: 'Scadenza', width: 70 }, { label: 'Importo', width: 70, align: 'right' }, { label: 'Metodo', width: 160 }], rows: terms, font, bold, size: 9, headSize: 8, minRowH: 18 });
-	y -= 12;
-	if (COMPANY.iban) { t(`IBAN ${COMPANY.iban} · ${COMPANY.name}`, M, y, 9, font, gray); y -= 13; }
-	const yy = drawTotals(page, font, bold, top - 4, [['Imponibile', eur(d.subtotal_net)], ['IVA 22%', eur(d.vat_amount)], ['Totale IVA inclusa', eur(d.total_gross), true]]);
-	y = Math.min(y, yy) - 10;
+	y -= 14;
 	if (d.notes) { t(`Note: ${d.notes}`.slice(0, 140), M, y, 9, font, gray); y -= 13; }
 	if (quote) {
-		y -= 6;
-		t(`Preventivo valido fino al ${d.valid_until ? new Date(d.valid_until).toLocaleDateString('it-IT') : '30 giorni dalla data'}. Prezzi IVA esclusa salvo diversa indicazione; i tempi di produzione partono dall'approvazione dell'anteprima.`.slice(0, 150), M, y, 9, font, gray); y -= 13;
+		t(`Preventivo valido fino al ${d.valid_until ? new Date(d.valid_until).toLocaleDateString('it-IT') : '30 giorni dalla data'}. Prezzi IVA esclusa salvo diversa indicazione.${d.lead_time ? ` Tempi: ${d.lead_time}.` : ''}`.slice(0, 160), M, y, 9, font, gray); y -= 13;
 		t('Per accettare basta un clic sul link ricevuto via email, oppure rispondere "confermo il preventivo".', M, y, 9, font, gray); y -= 13;
 	}
+	// in fondo alla pagina: metodo di pagamento e scadenze a sinistra, imponibile / IVA / totale a destra
+	const base = Math.min(y - 10, 200);
+	t(quote ? 'Condizioni di pagamento' : 'Scadenze di pagamento', M, base, 9, bold, gray);
+	const terms = d.payment_terms.length ? d.payment_terms.map((p) => [new Date(p.due).toLocaleDateString('it-IT'), eur(p.amount), p.method]) : [['—', '—', d.payment_method || '—']];
+	let yl = drawTable({ page, x: M, y: base - 8, cols: [{ label: 'Scadenza', width: 70 }, { label: 'Importo', width: 70, align: 'right' }, { label: 'Metodo', width: 160 }], rows: terms, font, bold, size: 9, headSize: 8, minRowH: 18 });
+	yl -= 12;
+	if (COMPANY.iban) t(`IBAN ${COMPANY.iban} · ${COMPANY.name}`, M, yl, 9, font, gray);
+	drawTotals(page, font, bold, base - 4, [['Imponibile', eur(d.subtotal_net)], ['IVA 22%', eur(d.vat_amount)], ['Totale IVA inclusa', eur(d.total_gross), true]]);
 	t('Documento generato da stickerprint.it', M, 40, 8, font, gray);
 	return pdf.save();
 }

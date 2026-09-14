@@ -8,7 +8,7 @@ export interface DraftCustomer { name: string; first_name: string; last_name: st
 export interface DraftShipping { name: string; address: string; city: string; cap: string; province: string; country: string }
 export interface OrderDraft {
 	customer: DraftCustomer; ship_same: boolean; shipping: DraftShipping; contact_id: string | null;
-	date: string; ship_date: string; ship_method: string; notes: string; price_type: 'netti' | 'lordi';
+	date: string; ship_date: string; lead_time?: string; ship_method: string; notes: string; price_type: 'netti' | 'lordi';
 	items: DraftItem[]; terms: DraftTerm[];
 }
 export interface ProductCode { id: string; code: string; name: string; category: string; description: string | null; unit_net: number | null; active: boolean; sort: number }
@@ -20,7 +20,7 @@ export const today = () => new Date().toISOString().slice(0, 10);
 export const emptyCustomer = (): DraftCustomer => ({ name: '', first_name: '', last_name: '', address: '', city: '', cap: '', province: '', country: 'IT', piva: '', cf: '', sdi: '', pec: '', email: '', phone: '' });
 export const emptyItem = (): DraftItem => ({ id: null, number: null, code: '', description: '', qty: 100, price: 0.35, lamination: 'nessuna', mockup_url: null });
 export function emptyDraft(): OrderDraft {
-	return { customer: emptyCustomer(), ship_same: true, shipping: { name: '', address: '', city: '', cap: '', province: '', country: 'IT' }, contact_id: null, date: today(), ship_date: '', ship_method: SHIPPING_METHODS[0], notes: '', price_type: 'netti', items: [emptyItem()], terms: [] };
+	return { customer: emptyCustomer(), ship_same: true, shipping: { name: '', address: '', city: '', cap: '', province: '', country: 'IT' }, contact_id: null, date: today(), ship_date: '', lead_time: '', ship_method: SHIPPING_METHODS[0], notes: '', price_type: 'netti', items: [emptyItem()], terms: [] };
 }
 
 /** Bozza a partire da un ordine esistente (e-commerce o manuale) */
@@ -34,7 +34,7 @@ export function draftFromGroup(g: OrderGroup, methods: PaymentMethod[]): OrderDr
 	return {
 		customer: { name: f.customer_name || b.company || [b.first_name, b.last_name].filter(Boolean).join(' ') || g.customer, first_name: b.first_name ?? '', last_name: b.last_name ?? '', address: [b.street, b.street2].filter(Boolean).join(', '), city: b.city ?? '', cap: b.zip ?? '', province: b.province ?? '', country: b.country ?? f.country ?? 'IT', piva: b.vat ?? '', cf: b.fiscal_code ?? '', sdi: b.sdi ?? '', pec: b.pec ?? '', email: f.email ?? '', phone: b.phone ?? s.phone ?? '' },
 		ship_same: sameShip, shipping: { name: s.company || [s.first_name, s.last_name].filter(Boolean).join(' '), address: [s.street, s.street2].filter(Boolean).join(', '), city: s.city ?? '', cap: s.zip ?? '', province: s.province ?? '', country: s.country ?? 'IT' },
-		contact_id: f.contact_id ?? null, date: f.created_at.slice(0, 10), ship_date: f.delivery_date ?? '', ship_method: f.shipping_method ?? SHIPPING_METHODS[0], notes: f.internal_notes ?? '', price_type: lordi ? 'lordi' : 'netti',
+		contact_id: f.contact_id ?? null, date: f.created_at.slice(0, 10), ship_date: f.delivery_date ?? '', lead_time: f.lead_time ?? '', ship_method: f.shipping_method ?? SHIPPING_METHODS[0], notes: f.internal_notes ?? '', price_type: lordi ? 'lordi' : 'netti',
 		items: g.items.map((i) => { const unitNet = Number(i.unit_net ?? Number(i.total_net) / i.qty); return { id: i.id, number: i.number, code: i.product_code ?? (CATS[i.product_slug]?.code ?? ''), description: i.description || itemMeta(i) || i.product_name, qty: i.qty, price: Math.round((lordi ? unitNet * VAT : unitNet) * 10000) / 10000, lamination: i.lamination ?? (i.finitura && i.finitura !== 'nessuna' ? i.finitura : 'nessuna'), mockup_url: i.mockup_url, preview_url: i.proof_url ?? i.preview_url }; }),
 		terms
 	};

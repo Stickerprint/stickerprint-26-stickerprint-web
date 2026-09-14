@@ -30,7 +30,7 @@ export const load: PageServerLoad = async ({ params, url, request }) => {
 	const f = g.items[0];
 	const addr = (a: Record<string, string> | null) => (a ? [a.company, [a.first_name, a.last_name].filter(Boolean).join(' '), [a.street, a.street2].filter(Boolean).join(', '), [a.zip, a.city, a.province ? `(${a.province})` : ''].filter(Boolean).join(' ')].filter(Boolean) : []);
 	return {
-		order: { number: g.number, status: g.status, created_at: g.created_at, delivery_date: g.delivery_date, shipping_method: g.shipping_method, net: g.net, gross: g.gross, customer: g.customer, first_name: f.billing?.first_name || f.shipping?.first_name || '' },
+		order: { number: g.number, status: g.status, created_at: g.created_at, delivery_date: g.delivery_date, lead_time: f.lead_time ?? null, shipping_method: g.shipping_method, net: g.net, gross: g.gross, customer: g.customer, first_name: f.billing?.first_name || f.shipping?.first_name || '' },
 		items: g.items.map((i) => ({ id: i.id, name: i.product_name, description: i.description || itemMeta(i), qty: i.qty, unit: Number(i.unit_net ?? Number(i.total_net) / i.qty), total: Number(i.total_net), image: thumbOf(i) ?? PRODUCTS[i.product_slug]?.gallery?.[0] ?? null, isMockup: !!thumbOf(i), category: CATS[i.product_slug]?.name ?? i.product_name })),
 		billing: addr(f.billing), shipping: addr(f.shipping), vat: f.billing?.vat ?? null,
 		payments: c.payments.map((p) => ({ seq: p.seq, method: p.method, due: p.due, amount: Number(p.amount), upfront: p.upfront, status: p.status, paid_at: p.paid_at })),

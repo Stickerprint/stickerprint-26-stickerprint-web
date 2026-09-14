@@ -86,26 +86,23 @@ export async function buildInvoicePdf(inv: InvoiceData): Promise<Uint8Array> {
 	if (inv.express_net > 0) rows.push(['Produzione express (+30%)', '1', eur(inv.express_net), eur(inv.express_net), null]);
 	const multiDdt = new Set(rows.map((r) => r[4]).filter(Boolean)).size > 1;
 	y = drawTable({ page, x: M, y: y + 6, cols: DOC_COLS(), rows: rows.map(([d, q, u, t, ddt]) => [multiDdt && ddt ? `${d} (${ddt})` : d, q, u, t]), font, bold });
-	y -= 18;
-	// totali
+	y -= 14;
+	if (inv.notes) { text(`Note: ${inv.notes}`.slice(0, 140), M, y, 9, font, gray); y -= 13; }
+	// in fondo alla pagina: pagamento e scadenze a sinistra, totali a destra
 	const taxable = inv.lines.reduce((s, l) => s + l.total_net, 0) + inv.express_net;
 	const vat = Math.round(taxable * COMPANY.vatRate * 100) / 100;
-	y = drawTotals(page, font, bold, y, [['Imponibile', eur(taxable)], [`IVA ${Math.round(COMPANY.vatRate * 100)}%`, eur(vat)], ['Totale', eur(Math.round((taxable + vat) * 100) / 100), true]]);
-	void colTot;
-	y -= 10;
-	// pagamento e scadenze
+	const base = Math.min(y - 10, 200);
 	const pm = PAYMENT_TEXT[inv.payment_method] ?? inv.payment_method;
-	text(`Pagamento: ${pm}${inv.payment_method === 'paypal' || inv.payment_method === 'stripe' ? ' · pagato' : ''}${inv.orders.length ? ` · Ordini: ${inv.orders.join(', ')}` : ''}`, M, y, 9, bold);
-	y -= 14;
-	if (inv.ddt_numbers?.length) { text(`DDT collegati: ${inv.ddt_numbers.join(', ')}`, M, y, 9, bold); y -= 14; }
+	let yl = base;
+	text(`Pagamento: ${pm}${inv.payment_method === 'paypal' || inv.payment_method === 'stripe' ? ' · pagato' : ''}${inv.orders.length ? ` · Ordini: ${inv.orders.join(', ')}` : ''}`, M, yl, 9, bold); yl -= 14;
+	if (inv.ddt_numbers?.length) { text(`DDT collegati: ${inv.ddt_numbers.join(', ')}`, M, yl, 9, bold); yl -= 14; }
 	if (inv.payment_terms?.length) {
-		text('Scadenze', M, y, 9, bold, gray); y -= 8;
-		y = drawTable({ page, x: M, y, cols: [{ label: 'Scadenza', width: 70 }, { label: 'Importo', width: 70, align: 'right' }, { label: 'Metodo', width: 200 }], rows: inv.payment_terms.map((t) => [new Date(t.due).toLocaleDateString('it-IT'), eur(t.amount), t.method]), font, bold, size: 9, headSize: 8, minRowH: 18 });
-		y -= 12;
-		if (COMPANY.iban) { text(`IBAN ${COMPANY.iban} · ${COMPANY.name}`, M, y, 9, font, gray); y -= 12; }
+		yl = drawTable({ page, x: M, y: yl - 2, cols: [{ label: 'Scadenza', width: 70 }, { label: 'Importo', width: 70, align: 'right' }, { label: 'Metodo', width: 200 }], rows: inv.payment_terms.map((t) => [new Date(t.due).toLocaleDateString('it-IT'), eur(t.amount), t.method]), font, bold, size: 9, headSize: 8, minRowH: 18 });
+		yl -= 12;
+		if (COMPANY.iban) { text(`IBAN ${COMPANY.iban} · ${COMPANY.name}`, M, yl, 9, font, gray); yl -= 12; }
 	}
-	if (inv.notes) { text(`Note: ${inv.notes}`.slice(0, 140), M, y, 9, font, gray); y -= 13; }
-	text('Prova automatica immediata inviata via email. Spedizione con corriere espresso tracciato.', M, y, 9, font, gray);
+	if (['paypal', 'stripe', 'test'].includes(inv.payment_method)) text('Prova automatica immediata inviata via email. Spedizione con corriere espresso tracciato.', M, 56, 8.5, font, gray);
+	drawTotals(page, font, bold, base - 4, [['Imponibile', eur(taxable)], [`IVA ${Math.round(COMPANY.vatRate * 100)}%`, eur(vat)], ['Totale', eur(Math.round((taxable + vat) * 100) / 100), true]]);
 	text('Documento generato automaticamente da stickerprint.it', M, 40, 8, font, gray);
 	return pdf.save();
 }
