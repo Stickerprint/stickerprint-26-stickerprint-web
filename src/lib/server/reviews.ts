@@ -67,8 +67,17 @@ async function loadReviewsFresh(supabase: SupabaseClient, productType?: string):
 	let stats = productType ? { total: 15, average: 4.9 } : { total: 225, average: 4.9 };
 
 	try {
-		/* schema del nuovo sito: reviews → orders (prodotto, nome di spedizione) e profiles (nome dell'utente);
-		   le recensioni degli ospiti hanno il nome nella colonna author */
+		/* MEDIA E CONTEGGIO: su TUTTE le recensioni pubbliche, di qualunque voto. Per un prodotto solo le sue;
+		   per la home tutte, di tutti i prodotti. Le cifre di partenza restano finche' non ci sono almeno 3 recensioni vere. */
+		let qs = supabase.from('reviews').select('rating, order:orders!inner(product_slug)').eq('is_public', true);
+		if (productType) qs = qs.eq('order.product_slug', productType);
+		const { data: all } = await qs;
+		if (all && all.length >= 3) {
+			const avg = all.reduce((s, r) => s + (r.rating ?? 0), 0) / all.length;
+			stats = { total: all.length, average: Math.round(avg * 10) / 10 };
+		}
+		/* ELENCO MOSTRATO: le migliori con un commento vero. Schema del nuovo sito: reviews → orders (prodotto,
+		   nome di spedizione) e profiles (nome dell'utente); le recensioni degli ospiti hanno il nome nella colonna author */
 		let q = supabase
 			.from('reviews')
 			.select('title, comment, rating, created_at, author, order:orders!inner(product_slug, shipping), profile:profiles(full_name)')
@@ -100,11 +109,7 @@ async function loadReviewsFresh(supabase: SupabaseClient, productType?: string):
 						date: r.created_at ? new Intl.DateTimeFormat('it-IT', { month: 'long', year: 'numeric' }).format(new Date(r.created_at)) : undefined
 					};
 				});
-			if (mapped.length >= 4) {
-				reviews = mapped;
-				const avg = rows.reduce((s, r) => s + (r.rating ?? 0), 0) / rows.length;
-				stats = { total: rows.length, average: Math.round(avg * 10) / 10 };
-			}
+			if (mapped.length >= 4) reviews = mapped;
 		}
 	} catch (e) {
 		console.warn('[reviews] uso fallback', e);

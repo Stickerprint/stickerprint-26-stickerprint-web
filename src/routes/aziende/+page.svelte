@@ -1,5 +1,6 @@
 <script lang="ts">
 	import '$lib/styles/pages.css';
+	import Stars from '$lib/components/Stars.svelte';
 	import { track } from '$lib/tracking';
 	import { enhance } from '$app/forms';
 	import { onMount } from 'svelte';
@@ -35,7 +36,6 @@
 	});
 	let sending = $state(false);
 	const gallery = ['1.jpg', '2.webp', '3.jpg', '4.jpg', '5.jpg', '6.jpg', '7.jpg', '8.jpg', '9.jpg'].map((g) => `/images/aziende/gallery/${g}`);
-	const avg = $derived((data.stats?.average ?? 4.9).toLocaleString('it-IT', { minimumFractionDigits: 1, maximumFractionDigits: 1 }));
 </script>
 
 <svelte:head>
@@ -159,7 +159,7 @@
 				<li><span class="ck">✓</span>Dubbi tecnici? Li risolviamo prima di stampare</li>
 			</ul>
 			<p class="stat-big" style="margin-top:26px"><mark>+580</mark> <span>aziende servite</span></p>
-			<div class="hero__stars" style="margin-top:10px"><span class="stars">★★★★★</span> {avg} su 5 · recensioni verificate</div>
+			<div class="hero__stars" style="margin-top:10px"><Stars value={data.stats?.average ?? 4.9} count={data.stats?.total ?? null} size={22} /> · recensioni verificate</div>
 		</div>
 		<div class="card" style="padding:28px">
 			<h3 style="margin-bottom:14px">Iniziamo da qui.</h3>

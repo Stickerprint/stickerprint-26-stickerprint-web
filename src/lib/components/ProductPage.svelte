@@ -10,6 +10,7 @@
 	import CompareBlock from '$lib/components/CompareBlock.svelte';
 	import type { EngineConfig } from '$lib/pricing/engine';
 	import type { HomeReview } from '$lib/server/reviews';
+	import Stars from './Stars.svelte';
 
 	let { p, engine, reviews, stats, shipDate, shipShort, faq = [] }: {
 		p: ProductContent; engine: EngineConfig; reviews: HomeReview[]; stats: { total: number; average: number }; shipDate: string; shipShort: string; faq?: { q: string; a: string }[];
@@ -28,7 +29,7 @@
 	<div>
 		<h1><span class="hl hl--yellow">{p.title}</span></h1>
 		<p class="ph__sub">{p.sub}</p>
-		<div class="ph__stars"><span class="stars">★★★★★</span> {avg} su 5</div>
+		<div class="ph__stars"><Stars value={stats.average} count={stats.total} size={22} /></div>
 		<p class="ph__desc">{p.desc}</p>
 		<p class="ph__label">Su ogni ordine:</p>
 		<ul class="ph__list">
