@@ -145,22 +145,34 @@
 <HowTo shipDate={data.shipDate} />
 
 <section class="section container">
-	<div class="credit">
-		<div class="credit__visual"><img src="/images/credit-card.png" alt="Portafoglio Credito Stickerprint" width="492" height="423" loading="lazy" /></div>
-		<div>
-			<span class="tag tag--green">Il tuo prossimo ordine inizia da questo</span>
+	<div class="cred">
+		<div class="cred__text">
+			<span class="tag tag--green">Credito Stickerprint</span>
 			<h2 style="margin-top:14px">Ogni ordine ti lascia <span class="hl hl--green">qualcosa.</span></h2>
-			<p class="lead" style="margin-top:16px">Con ogni acquisto accumuli Credito Stickerprint. Lo trovi automaticamente nel tuo account e lo usi sul prossimo ordine.</p>
-			<p style="margin-top:18px;font-weight:800">Più ordini fai, più guadagni.</p>
-			<div class="credit__levels">
-				<div class="credit__lv credit__lv--creator"><img src="/images/loyalty/creator.png" alt="" /><b>Creator</b><span class="credit__pct">2%</span><small>di credito</small></div>
-				<div class="credit__lv credit__lv--partner"><img src="/images/loyalty/partner.png" alt="" /><b>Partner</b><span class="credit__pct">4%</span><small>di credito</small></div>
-				<div class="credit__lv credit__lv--ambassador"><img src="/images/loyalty/ambassador.png" alt="" /><b>Ambassador</b><span class="credit__pct">6%</span><small>di credito</small></div>
+			<p class="lead" style="margin-top:14px">Una parte di ogni acquisto torna nel tuo account come credito, pronto per il prossimo ordine. Più ordini, più sale la percentuale.</p>
+			<div class="cred__calc" aria-label="Esempio">
+				<div><small>Ordini per</small><b>100 €</b></div>
+				<span class="cred__arrow" aria-hidden="true">→</span>
+				<div><small>ti tornano fino a</small><b class="is-green">6 €</b></div>
+				<img src="/images/coin-sp.png" alt="" width="64" height="60" loading="lazy" />
 			</div>
-			<p class="note" style="margin-top:10px">Il tuo livello cresce insieme ai tuoi ordini.</p>
-			<div class="credit__example"><span><b>100€</b> di prodotti</span><span class="arrow">→</span><span>fino a <b class="blue">6€</b> di credito</span></div>
-			<p style="margin-top:20px"><a class="btn btn--green btn--lg" style="width:100%;text-align:center" href={data.user ? '/account' : '/signup'}>{data.user ? 'Vai al tuo account' : 'Crea il tuo account'}</a></p>
-			<p class="note" style="margin-top:10px;text-align:center">Credito calcolato sul valore dei prodotti IVA esclusa. Validità 6 mesi.</p>
+			<p style="margin-top:22px"><a class="btn btn--green btn--lg" href={data.user ? '/account' : '/signup'}>{data.user ? 'Vai al tuo credito →' : 'Crea il tuo account →'}</a></p>
+			<p class="note" style="margin-top:10px">Credito calcolato sui prodotti IVA esclusa, valido 6 mesi. 1 punto per ogni euro speso.</p>
+		</div>
+		<div class="cred__path">
+			<div class="cred__line" aria-hidden="true"></div>
+			<div class="cred__lv">
+				<img src="/images/loyalty/creator.png" alt="" loading="lazy" />
+				<b>Creator</b><span class="cred__pct">2%</span><small>dal primo ordine</small>
+			</div>
+			<div class="cred__lv is-mid">
+				<img src="/images/loyalty/partner.png" alt="" loading="lazy" />
+				<b>Partner</b><span class="cred__pct">4%</span><small>da 500 punti</small>
+			</div>
+			<div class="cred__lv is-top">
+				<img src="/images/loyalty/ambassador.png" alt="" loading="lazy" />
+				<b>Ambassador</b><span class="cred__pct">6%</span><small>da 1.500 punti</small>
+			</div>
 		</div>
 	</div>
 </section>

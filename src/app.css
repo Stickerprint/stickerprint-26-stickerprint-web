@@ -620,3 +620,30 @@ body { overflow-x: clip; }
 .up-strip span { font-size: 12.5px; color: var(--ink-soft); }
 @media (max-width: 900px) { .up { grid-template-columns: 1fr; } .up-strip { grid-template-columns: 1fr 1fr; } .up__mats { grid-template-columns: repeat(3, 1fr); } }
 @media (max-width: 560px) { .up__tiles { grid-template-columns: 1fr; } .up__tile { grid-template-columns: 72px 1fr; align-items: center; column-gap: 10px; } .up__tile img { aspect-ratio: 1; grid-row: 1 / 3; } .up-strip { grid-template-columns: 1fr; } }
+
+/* ==== Credito Stickerprint: pannello blu, esempio a sinistra, i tre livelli come un percorso a destra ==== */
+.cred { position: relative; overflow: hidden; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: clamp(24px, 4vw, 56px); align-items: center; background: var(--navy); color: #fff; border-radius: 26px; padding: clamp(28px, 4vw, 56px); }
+.cred::before { content: ""; position: absolute; right: -120px; top: -120px; width: 380px; height: 380px; border-radius: 50%; background: radial-gradient(circle, rgba(139,227,58,.28), transparent 65%); pointer-events: none; }
+.cred > * { position: relative; }
+.cred__text h2 { color: #fff; }
+.cred__text .lead { color: #d9dcf2; max-width: 460px; }
+.cred__text .note { color: #9a9fc7; }
+.cred__calc { display: flex; align-items: center; gap: 18px; margin-top: 22px; background: #1a1f6e; border-radius: 18px; padding: 16px 22px; width: fit-content; max-width: 100%; }
+.cred__calc div { display: grid; }
+.cred__calc small { font-size: 12px; font-weight: 700; color: #9a9fc7; text-transform: uppercase; letter-spacing: .04em; }
+.cred__calc b { font-family: var(--font-display); font-weight: 800; font-size: 30px; letter-spacing: -0.03em; line-height: 1.05; }
+.cred__calc b.is-green { color: var(--green); }
+.cred__arrow { color: var(--green); font-size: 28px; font-weight: 800; }
+.cred__calc img { width: 56px; height: auto; margin-left: 6px; filter: drop-shadow(0 8px 14px rgba(0,0,0,.35)); }
+.cred__path { position: relative; display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; align-items: end; }
+.cred__line { position: absolute; left: 16%; right: 16%; top: 56px; height: 4px; border-radius: 4px; background: linear-gradient(90deg, #8fb8ff, var(--pink), var(--yellow)); opacity: .9; }
+.cred__lv { position: relative; display: grid; justify-items: center; gap: 2px; text-align: center; background: #1a1f6e; border-radius: 20px; padding: 18px 12px 16px; border: 2px solid transparent; }
+.cred__lv img { width: 78px; height: 78px; object-fit: contain; margin: -50px 0 6px; filter: drop-shadow(0 12px 18px rgba(0,0,0,.4)); }
+.cred__lv b { font-family: var(--font-display); font-weight: 800; font-size: 14px; letter-spacing: .06em; text-transform: uppercase; color: #d9dcf2; }
+.cred__pct { font-family: var(--font-display); font-weight: 800; font-size: 40px; line-height: 1; letter-spacing: -0.04em; color: #8fb8ff; }
+.cred__lv small { font-size: 12px; font-weight: 700; color: #9a9fc7; }
+.cred__lv.is-mid { padding-bottom: 28px; } .cred__lv.is-mid .cred__pct { color: var(--pink); }
+.cred__lv.is-top { padding-bottom: 40px; border-color: var(--yellow); } .cred__lv.is-top .cred__pct { color: var(--yellow); }
+.cred__path { padding-top: 50px; }
+@media (max-width: 900px) { .cred { grid-template-columns: 1fr; } .cred__path { padding-top: 60px; } .cred__lv.is-mid, .cred__lv.is-top { padding-bottom: 16px; } .cred__line { display: none; } }
+@media (max-width: 560px) { .cred__path { grid-template-columns: 1fr; gap: 56px; } .cred__calc { flex-wrap: wrap; } }
