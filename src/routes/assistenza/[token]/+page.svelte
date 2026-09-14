@@ -14,7 +14,7 @@
 	<div class="container" style="max-width:760px">
 		<p class="kicker">Richiesta {t.number} · {st?.label}</p>
 		<h1 style="margin-bottom:8px">Ciao {t.name?.split(' ')[0] || ''}, qui c'è tutta la conversazione</h1>
-		<p class="lead">Ogni risposta ti arriva anche via email. Se vuoi aggiungere dettagli o una foto, scrivi qui sotto.{#if t.order_number} Ordine collegato: <b>{t.order_number}</b>.{/if}</p>
+		<p class="lead">Ogni risposta ti arriva anche via email. Se vuoi aggiungere dettagli o una foto, scrivi qui sotto.{#if t.order_number}&nbsp;Ordine collegato: <b>{t.order_number}</b>.{/if}</p>
 		{#if form?.error}<p class="error">{form.error}</p>{/if}
 		{#if form?.ok}<p class="ok">Messaggio inviato: ti rispondiamo il prima possibile.</p>{/if}
 

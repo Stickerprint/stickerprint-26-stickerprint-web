@@ -202,8 +202,8 @@ export async function orderFromQuote(db: DB, id: string, sendMail: boolean): Pro
 	if (q.request_id) await db.from('contact_requests').update({ status: 'won' }).eq('id', q.request_id);
 	const { data: rows } = await db.from('orders').select('*').eq('checkout_group', r.group);
 	await ensurePlan(db, (rows ?? []) as OrderRow[]);
-	let message = `Ordine ${r.numbers[0]} creato.`;
-	if (sendMail) { const m = await sendOrderConfirmation(db, r.group); message += ' ' + m.message; }
+	let message = 'Conferma non inviata (scelta dello staff).';
+	if (sendMail) { const m = await sendOrderConfirmation(db, r.group); message = m.message; }
 	return { group: r.group, number: r.numbers[0], message };
 }
 
