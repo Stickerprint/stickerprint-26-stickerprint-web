@@ -13,11 +13,18 @@ export const load: LayoutServerLoad = async ({ locals: { supabase, session, user
 		await supabase.auth.signOut();
 		redirect(303, '/dashboard/login');
 	}
-	// contatori del menù: articoli per fase di produzione e ordini pronti per la spedizione
-	const { data: rows } = await supabase.from('orders').select('prod_stage, status').in('status', ['in_produzione', 'pronto', 'in_spedizione', 'attesa_prova', 'in_attesa']);
+	// contatori del menù: lavorazioni aperte per reparto, problemi (bloccate o in ritardo), ordini in spedizione e in attesa di prova
+	const [{ data: rows }, { data: tasks }] = await Promise.all([
+		supabase.from('orders').select('prod_stage, status').in('status', ['pronto', 'in_spedizione', 'attesa_prova', 'in_attesa']),
+		supabase.from('production_tasks').select('stage, status, due_at, order:orders!inner(status)').in('status', ['pronto', 'in_corso', 'bloccato']).eq('order.status', 'in_produzione')
+	]);
 	const counts: Record<string, number> = {};
+	const now = Date.now();
+	for (const t of tasks ?? []) {
+		counts[t.stage] = (counts[t.stage] ?? 0) + 1;
+		if (t.status === 'bloccato' || (t.due_at && new Date(t.due_at).getTime() < now)) counts.problemi = (counts.problemi ?? 0) + 1;
+	}
 	for (const r of rows ?? []) {
-		if (r.status === 'in_produzione' && r.prod_stage) counts[r.prod_stage] = (counts[r.prod_stage] ?? 0) + 1;
 		if (r.status === 'pronto' || r.status === 'in_spedizione') counts.spedizione = (counts.spedizione ?? 0) + 1;
 		if (r.status === 'attesa_prova' || r.status === 'in_attesa') counts.prove = (counts.prove ?? 0) + 1;
 	}

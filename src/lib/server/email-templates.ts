@@ -185,3 +185,20 @@ function layoutHtml(titleHtml: string, body: string, cta?: { label: string; href
 	const plain = titleHtml.replace(/<[^>]+>/g, '');
 	return layout('§TITLE§', body, cta ?? undefined).replace('<h1 style="margin:0 0 14px;font-size:26px;line-height:1.15;letter-spacing:-0.02em;">§TITLE§</h1>', `<h1 style="margin:0 0 14px;font-size:26px;line-height:1.25;letter-spacing:-0.02em;">${titleHtml}</h1>`).replace('<title>§TITLE§</title>', `<title>${esc(plain)}</title>`);
 }
+
+/** sollecito di approvazione dell'anteprima (o del file mancante), con la data entro cui rispondere per mantenere la spedizione */
+export function proofReminderEmail(o: { name?: string | null; number: string; missingFile: boolean; approveBy: Date | null; shipBy: string | null; href: string }) {
+	const n = esc(o.number);
+	const it = new Intl.DateTimeFormat('it-IT', { timeZone: 'Europe/Rome', weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
+	const day = new Intl.DateTimeFormat('it-IT', { timeZone: 'Europe/Rome', weekday: 'long', day: 'numeric', month: 'long' });
+	const shipTxt = o.shipBy ? day.format(new Date(o.shipBy + 'T12:00:00')) : null;
+	const byTxt = o.approveBy ? it.format(o.approveBy) : null;
+	const what = o.missingFile ? 'il file di stampa' : "l'anteprima";
+	const body = o.missingFile
+		? `<p>Ciao ${esc(o.name || '')},</p><p>per l'ordine <b>${n}</b> ci manca ancora il file da stampare. Caricalo dalla tua area personale: appena arriva, la commessa entra in produzione.</p>`
+		: `<p>Ciao ${esc(o.name || '')},</p><p>l'anteprima dell'ordine <b>${n}</b> aspetta il tuo ok. Basta un clic dalla tua area personale: senza approvazione non possiamo mandare in stampa.</p>`;
+	const when = byTxt && shipTxt
+		? `<p style="margin-top:14px;padding:12px 14px;background:#fef6db;border-radius:10px;"><b>Per mantenere la spedizione di ${esc(shipTxt)}</b> ci serve ${what} entro <b>${esc(byTxt)}</b>. Dopo, la data di spedizione si sposta al primo giorno utile e te la comunichiamo noi.</p>`
+		: '';
+	return { subject: `Ordine ${o.number}: ${o.missingFile ? 'manca il file di stampa' : "l'anteprima aspetta il tuo ok"} ⏳`, tag: 'proof-reminder', html: layoutHtml(`Il tuo ordine ${n} è ${hl('in attesa')} ⏳`, body + when, { label: o.missingFile ? 'Carica il file' : "Approva l'anteprima", href: o.href }) };
+}

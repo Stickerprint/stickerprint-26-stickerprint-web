@@ -12,13 +12,15 @@
 	// Menù dal documento del gestionale: PRODUZIONE e DOCUMENTI (qui "Fatturazione"), più le altre sezioni
 	const menu = $derived([
 		{ id: 'produzione', title: 'Produzione', items: [
-			{ label: 'Piano di lavoro', href: '/dashboard/produzione/piano' },
-			{ label: 'In stampa', href: '/dashboard/produzione/stampa', count: data.counts?.stampa },
-			{ label: 'In plastifica', href: '/dashboard/produzione/plastifica', count: data.counts?.plastifica },
-			{ label: 'In taglio', href: '/dashboard/produzione/taglio', count: data.counts?.taglio },
-			{ label: 'In resinatura', href: '/dashboard/produzione/resinatura', count: data.counts?.resinatura },
-			{ label: 'In confezionamento', href: '/dashboard/produzione/confezionamento', count: data.counts?.confezionamento },
-			{ label: 'In spedizione', href: '/dashboard/produzione/spedizioni', count: data.counts?.spedizione }
+			{ label: 'Produzione di oggi', href: '/dashboard/produzione/piano' },
+			{ label: 'Stampa', href: '/dashboard/produzione/stampa', count: data.counts?.stampa },
+			{ label: 'Plastifica', href: '/dashboard/produzione/plastifica', count: data.counts?.plastifica },
+			{ label: 'Taglio', href: '/dashboard/produzione/taglio', count: data.counts?.taglio },
+			{ label: 'Resinatura', href: '/dashboard/produzione/resinatura', count: data.counts?.resinatura },
+			{ label: 'Controllo', href: '/dashboard/produzione/controllo', count: data.counts?.controllo },
+			{ label: 'Confezionamento', href: '/dashboard/produzione/confezionamento', count: data.counts?.confezionamento },
+			{ label: 'Centro problemi', href: '/dashboard/produzione/problemi', count: data.counts?.problemi },
+			{ label: 'Spedizioni', href: '/dashboard/produzione/spedizioni', count: data.counts?.spedizione }
 		] },
 		{ id: 'fatturazione', title: 'Fatturazione', items: [
 			{ label: 'Ordini', href: '/dashboard/fatturazione/ordini', count: data.counts?.prove },

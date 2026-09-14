@@ -1,6 +1,7 @@
 import { error, fail, redirect } from '@sveltejs/kit';
 import { groupOrders, ORDER_STATUS, type OrderRow } from '$lib/dashboard/orders';
 import { loadEditorData, parseDraft, saveOrderDraft, sendOrderConfirmation, upsertContact } from '$lib/server/orders';
+import { ensurePlan, operatorName } from '$lib/server/produzione';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ params, url, locals: { supabase } }) => {
@@ -67,14 +68,20 @@ export const actions: Actions = {
 		if (r.error) return fail(400, { error: r.error });
 		return { ok: true, contactId: r.id, contactMsg: 'Cliente salvato in anagrafica.' };
 	},
-	status: async ({ request, params, locals: { supabase } }) => {
+	status: async ({ request, params, locals }) => {
+		const { supabase } = locals;
 		const f = await request.formData();
 		const status = String(f.get('status'));
 		if (!ORDER_STATUS[status]) return fail(400, { error: 'Stato non valido.' });
 		const stage = String(f.get('prod_stage') ?? '') || null;
-		const q = f.get('item') ? supabase.from('orders').update({ status, prod_stage: stage }).eq('id', String(f.get('item'))) : supabase.from('orders').update({ status, prod_stage: stage }).eq('checkout_group', params.group);
+		const patch: Record<string, unknown> = { status, prod_stage: stage };
+		if (status === 'approvazione') patch.proof_sent_at = new Date().toISOString(); // da qui partono i tempi di attesa del cliente
+		const q = f.get('item') ? supabase.from('orders').update(patch).eq('id', String(f.get('item'))) : supabase.from('orders').update(patch).eq('checkout_group', params.group);
 		const { error: e } = await q;
 		if (e) return fail(400, { error: e.message });
+		// la produzione a lavorazioni si allinea al nuovo stato (commessa pianificata o attivata)
+		const { data: rows } = await supabase.from('orders').select('*').eq('checkout_group', params.group);
+		await ensurePlan(supabase, (rows ?? []) as OrderRow[], await operatorName(supabase, locals.user));
 		return { ok: true, message: 'Stato aggiornato.' };
 	},
 	tracking: async ({ request, params, locals: { supabase } }) => {

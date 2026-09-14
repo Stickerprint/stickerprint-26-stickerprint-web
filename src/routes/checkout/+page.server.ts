@@ -13,6 +13,8 @@ import { sendEmail } from '$lib/server/email';
 import { pushStaff } from '$lib/server/push';
 import { orderConfirmationEmail } from '$lib/server/email-templates';
 import { estimatedShipDate, formatItDate } from '$lib/utils/shipping';
+import { ensurePlan } from '$lib/server/produzione';
+import type { OrderRow } from '$lib/dashboard/orders';
 import { MATERIAL_LABEL } from '$lib/account';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -94,7 +96,7 @@ export const actions: Actions = {
 
 		// prezzi ricalcolati dal listino (mai fidarsi del browser); l'express (+30%) entra nel prezzo del prodotto
 		const engines: Record<string, Awaited<ReturnType<typeof loadEngine>>['config']> = {};
-		const priced = [];
+		const priced: ((typeof lines)[number] & { baseNet: number; net: number; gross: number; expressNet: number })[] = [];
 		for (const l of lines) {
 			if (l.product === 'campioni') {
 				// kit campioni: prezzo fisso 10 € IVA inclusa, niente file, niente express
@@ -213,6 +215,8 @@ export const actions: Actions = {
 		} catch (e) {
 			console.error('[invoice] pdf', e);
 		}
+		// pianificazione della produzione: lavorazioni per commessa con scadenze a ritroso dalla data promessa (chiave di servizio: le tabelle sono dello staff)
+		try { const pdb = admin ?? db; const { data: prows } = await pdb.from('orders').select('*').eq('checkout_group', group); await ensurePlan(pdb, (prows ?? []) as OrderRow[]); } catch (e) { console.error('pianificazione produzione', e); }
 		const { data: firstOrder } = await db.from('orders').select('id').eq('checkout_group', group).order('created_at').limit(1).maybeSingle();
 		await db.from('invoices').insert({ user_id: user?.id ?? null, order_id: firstOrder?.id ?? null, number: invoice.number, issued_at: invoice.issued_at, amount_gross: toPay, pdf_path: pdfPath, email, billing: bill, lines: invoiceLines, payment_terms: payTerms, order_numbers: numbers, subtotal_net: productsNet, discount_net: discount, express_net: expressNet, credit_used: creditUsed, vat_amount: vatAmount, payment_method: payment, paid_at: new Date().toISOString(), checkout_group: group, sent_at: null });
 

@@ -13,7 +13,7 @@ export const ORDER_STATUS: Record<string, { label: string; color: string; soft: 
 	consegnato: { label: 'Consegnato', color: '#15803d', soft: '#dcfce7' },
 	annullato: { label: 'Annullato', color: '#b3261e', soft: '#fbe3e1' }
 };
-export const PROD_STAGES: Record<string, string> = { stampa: 'In stampa', plastifica: 'In plastifica', taglio: 'In taglio', resinatura: 'In resinatura', confezionamento: 'In confezionamento' };
+export const PROD_STAGES: Record<string, string> = { stampa: 'In stampa', plastifica: 'In plastifica', taglio: 'In taglio', resinatura: 'In resinatura', controllo: 'In controllo', confezionamento: 'In confezionamento' };
 export const PRODUCTION_STATUSES = ['in_produzione'];
 export const SHIPPING_STATUSES = ['pronto', 'in_spedizione', 'spedito', 'in_consegna'];
 
@@ -66,6 +66,7 @@ export interface OrderRow {
 	courier: string | null; shipped_at: string | null; delivered_at: string | null; parcels: number | null; weight_kg: number | null; ddt_id: string | null;
 	contact_id?: string | null; transmitted_at?: string | null; labels_generated_at?: string | null; tracking_number?: string | null; courier_label_path?: string | null; manifest_id?: string | null;
 	shipping_status?: string | null; shipping_status_id?: number | null; shipping_detail?: string | null; shipping_place?: string | null; shipping_updated_at?: string | null; shipping_notified?: string[] | null;
+	ship_by?: string | null; proof_sent_at?: string | null; proof_reminded_at?: string | null; reprints?: number | null;
 }
 /** Un "ordine" in dashboard = tutte le righe con lo stesso checkout_group */
 export interface OrderGroup {
@@ -127,4 +128,4 @@ export function nextStage(item: OrderRow): string | null {
 	const i = flow.indexOf(item.prod_stage ?? '');
 	return i < 0 ? flow[0] : (flow[i + 1] ?? null);
 }
-export const STAGE_ICON: Record<string, string> = { stampa: '🖨️', plastifica: '🧴', taglio: '✂️', resinatura: '💧', confezionamento: '📦', spedizione: '🚀' };
+export const STAGE_ICON: Record<string, string> = { stampa: '🖨️', plastifica: '🧴', taglio: '✂️', resinatura: '💧', controllo: '🔍', confezionamento: '📦', spedizione: '🚀' };

@@ -38,7 +38,7 @@ export const STATUS: Record<string, { label: string; cls: string }> = {
 	consegnato: { label: 'Consegnato', cls: 'st--done' },
 	annullato: { label: 'Annullato', cls: 'st--off' }
 };
-export const STAGE_LABEL: Record<string, string> = { stampa: 'In stampa', plastifica: 'In plastifica', taglio: 'In taglio', resinatura: 'In resinatura', confezionamento: 'In confezionamento' };
+export const STAGE_LABEL: Record<string, string> = { stampa: 'In stampa', plastifica: 'In plastifica', taglio: 'In taglio', resinatura: 'In resinatura', controllo: 'In controllo qualità', confezionamento: 'In confezionamento' };
 /** Etichetta vista dal cliente: durante la produzione mostra la fase del reparto */
 export function customerStatus(o: { status: string; prod_stage?: string | null }): { label: string; cls: string } {
 	if (o.status === 'in_produzione' && o.prod_stage && STAGE_LABEL[o.prod_stage]) return { label: STAGE_LABEL[o.prod_stage], cls: 'st--prod' };
@@ -51,7 +51,7 @@ export function trackSteps(o: { status: string; prod_stage?: string | null; prod
 	const steps = ['ricevuto', ...prod, 'spedito', 'consegnato'];
 	const labels: Record<string, string> = { ricevuto: 'Ricevuto', ...STAGE_LABEL, spedito: 'Spedito', consegnato: 'Consegnato' };
 	let cur = 0;
-	if (o.status === 'in_produzione') cur = Math.max(1, steps.indexOf(o.prod_stage ?? prod[0]));
+	if (o.status === 'in_produzione') { const st = o.prod_stage === 'controllo' ? 'confezionamento' : (o.prod_stage ?? prod[0]); cur = Math.max(1, steps.indexOf(st)); }
 	else if (['pronto', 'in_spedizione', 'spedito', 'in_consegna'].includes(o.status)) cur = steps.indexOf('spedito');
 	else if (o.status === 'consegnato') cur = steps.length - 1;
 	return steps.map((s, i) => ({ label: labels[s] ?? s, state: i < cur ? 'done' : i === cur ? 'current' : 'todo' }));
