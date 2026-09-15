@@ -22,6 +22,7 @@
 <svelte:head><title>Preventivo {q.number} | Stickerprint</title><meta name="robots" content="noindex" /></svelte:head>
 
 <section class="qp">
+	{#if data.staffPreview}<p style="max-width:820px;margin:0 auto 12px;padding:10px 14px;border-radius:10px;background:#fef6db;color:#8a5a00;font-size:13px">Anteprima: così la vedrà il cliente dopo "Invia preventivo". Qui bottoni e PDF non sono attivi.</p>{/if}
 	<div class="qp__wrap">
 		<header class="qp__head">
 			<p class="qp__kicker">Preventivo {q.number}{#if q.version > 1} · rev. {q.version}{/if} · {it(q.created_at.slice(0, 10))}</p>

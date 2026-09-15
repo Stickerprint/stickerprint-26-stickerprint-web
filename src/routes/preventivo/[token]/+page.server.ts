@@ -8,11 +8,16 @@ import { CATS } from '$lib/dashboard/orders';
 import type { Actions, PageServerLoad } from './$types';
 
 /** Pagina pubblica del preventivo: anteprima con i mockup, riepilogo, conferma con un clic, PDF, domande. Ogni apertura viene registrata. */
-export const load: PageServerLoad = async ({ params, url, request }) => {
+export const load: PageServerLoad = async ({ params, url, request, locals }) => {
 	const db = adminClient();
 	if (!db) error(503, 'Servizio non disponibile');
 	const q = await getQuoteByToken(db, params.token);
 	if (!q) error(404, 'Preventivo non trovato');
+	/* anteprima dello staff su una bozza: la pagina si mostra come la vedra' il cliente dopo l'invio
+	   (bottoni di conferma, PDF, domanda) con il nome di chi la sta guardando come mittente */
+	const staffPreview = url.searchParams.get('anteprima') === '1' && q.status === 'bozza' && !!locals.user;
+	let previewSender: string | null = null;
+	if (staffPreview) { const { data: prof } = await locals.supabase.from('profiles').select('full_name').eq('id', locals.user!.id).maybeSingle(); previewSender = prof?.full_name ?? null; }
 	// l'anteprima dello staff (?anteprima=1) non conta come apertura del cliente
 	// (il ricaricamento dopo una domanda o una conferma e' una POST: non conta)
 	if (request.method === 'GET' && url.searchParams.get('anteprima') !== '1' && (q.status === 'inviato' || q.status === 'accettato')) await trackQuoteOpen(db, q);
@@ -28,9 +33,10 @@ export const load: PageServerLoad = async ({ params, url, request }) => {
 	});
 	const d = q.draft;
 	return {
-		q: { number: q.number, version: q.version, status: q.status, total_net: Number(q.total_net), total_gross: Number(q.total_gross), valid_until: q.valid_until, sent_at: q.sent_at, accepted_at: q.accepted_at, sender_name: q.sender_name, created_at: q.created_at },
+		q: { number: q.number, version: q.version, status: staffPreview ? 'inviato' : q.status, total_net: Number(q.total_net), total_gross: Number(q.total_gross), valid_until: q.valid_until, sent_at: q.sent_at, accepted_at: q.accepted_at, sender_name: q.sender_name ?? previewSender, created_at: q.created_at },
 		customer: { name: d.customer.name, first_name: d.customer.first_name, city: d.customer.city },
 		items, lordi: d.price_type === 'lordi', terms: [...new Set((d.terms ?? []).map((t) => t.method))], shipMethod: d.ship_method, shipDate: d.ship_date || null, leadTime: d.lead_time?.trim() || null,
+		staffPreview,
 		stats, messages: messages.map((m) => ({ id: m.id, direction: m.direction, author: m.author, body: m.body, created_at: m.created_at }))
 	};
 };
