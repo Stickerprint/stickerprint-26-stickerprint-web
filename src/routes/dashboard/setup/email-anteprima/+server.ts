@@ -1,5 +1,7 @@
 import { reviewRequestEmail, shippingUpdateEmail, type ShippingMailKind } from '$lib/server/email-templates';
 import { sendEmail } from '$lib/server/email';
+import { adminClient } from '$lib/server/admin';
+import { createReviewRequest } from '$lib/server/recensioni';
 import type { RequestHandler } from './$types';
 
 /** Anteprima delle email di stato: /dashboard/setup/email-anteprima?kind=affidato|spedito|in_consegna|consegnato|problema|punto_ritiro|recensione */
@@ -9,7 +11,14 @@ export const GET: RequestHandler = async ({ url, locals: { user } }) => {
 	const mail = kind === 'recensione' ? reviewRequestEmail({ name: 'Mattia', number: 'SP00027', items: base.items, href: `${url.origin}/account/recensioni` }) : shippingUpdateEmail({ ...base, kind: kind as ShippingMailKind, detail: kind === 'ritardo_corriere' ? 'In ritardo' : undefined, place: kind === 'ritardo_corriere' ? 'Hub di Bologna' : undefined, shippedAt: kind === 'ritardo_corriere' ? '12/09/2026' : undefined, newDate: kind === 'ritardo_nostro' ? 'mercoledì 17 settembre' : undefined, accountUrl: `${url.origin}/account/ordini` });
 	// ?invia=1: manda l'anteprima all'indirizzo dello staff che e' loggato (per vedere le email nella casella vera)
 	if (url.searchParams.get('invia') === '1' && user?.email) {
-		const r = await sendEmail({ to: user.email, ...mail, metadata: { anteprima: kind } });
+		/* la prova della richiesta di recensione viene tracciata come una vera (compare in Recensioni › Inviate come "PROVA") */
+		let html = mail.html;
+		const a = adminClient();
+		if (kind === 'recensione' && a) {
+			const reqId = await createReviewRequest(a, { orderId: null, checkoutGroup: null, number: 'PROVA', email: user.email, name: 'Mattia' });
+			if (reqId) html = reviewRequestEmail({ name: 'Mattia', number: 'PROVA', items: base.items, href: `${url.origin}/account/recensioni?r=${reqId}` }).html.replace('</body>', `<img src="${url.origin}/api/track/open/${reqId}" width="1" height="1" alt="" style="display:block;width:1px;height:1px;border:0;"></body>`);
+		}
+		const r = await sendEmail({ to: user.email, ...mail, html, metadata: { anteprima: kind } });
 		return new Response(r.ok ? `Inviata "${mail.subject}" a ${user.email}` : `Errore: ${r.error}`, { headers: { 'content-type': 'text/plain; charset=utf-8' } });
 	}
 	return new Response(mail.html, { headers: { 'content-type': 'text/html; charset=utf-8' } });

@@ -75,7 +75,7 @@ export async function listReviewRequests(db: DB): Promise<ReviewRequestRow[]> {
 	return (data ?? []) as ReviewRequestRow[];
 }
 /** Registra l'invio (prima di mandare la mail, cosi' il pixel e i link hanno gia' l'id) */
-export async function createReviewRequest(db: DB, o: { orderId: string; checkoutGroup: string | null; number: string; email: string; name: string | null }): Promise<string | null> {
+export async function createReviewRequest(db: DB, o: { orderId: string | null; checkoutGroup: string | null; number: string; email: string; name: string | null }): Promise<string | null> {
 	const { data } = await db.from('review_requests').insert({ order_id: o.orderId, checkout_group: o.checkoutGroup, number: o.number, email: o.email, name: o.name }).select('id').single();
 	return data?.id ?? null;
 }

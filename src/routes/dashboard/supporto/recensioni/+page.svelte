@@ -34,7 +34,8 @@
 
 <div class="toolbar" style="justify-content:space-between">
 	<div class="tabs">
-		{#each Object.entries(STATUS) as [k, v] (k)}<a class="tab-link" class:is-active={filter === k} href="?stato={k}">{v.label} ({count(k)})</a>{/each}
+		{#each TABS as k (k)}<a class="tab-link" class:is-active={filter === k} href="?stato={k}">{STATUS[k].label} ({count(k)})</a>{/each}
+		<a class="tab-link" class:is-active={filter === 'inviate'} href="?stato=inviate">Inviate ({reqs.length})</a>
 		<a class="tab-link" class:is-active={filter === 'tutte'} href="?stato=tutte">Tutte</a>
 	</div>
 	<button class="btn btn--xs" type="button" onclick={() => (adding = !adding)}>＋ Inserisci una recensione</button>
