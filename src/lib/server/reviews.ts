@@ -52,7 +52,7 @@ export interface ReviewsResult {
  */
 /* cache in memoria (5 minuti, rinnovo in sottofondo): le recensioni non cambiano ogni secondo
    e la home non deve aspettare il database a ogni visita */
-const REV_MS = 5 * 60 * 1000;
+const REV_MS = 60 * 1000;
 const revCache = new Map<string, { at: number; value: ReviewsResult }>();
 export function invalidateReviews() { revCache.clear(); }
 export async function loadReviews(supabase: SupabaseClient, productType?: string): Promise<ReviewsResult> {
@@ -91,9 +91,9 @@ async function loadReviewsFresh(supabase: SupabaseClient, productType?: string):
 		if (productType) q = q.eq('product_slug', productType);
 		const { data: rows } = await q;
 
-		if (rows && rows.length >= 4) {
+		if (rows && rows.length) {
 			const mapped = rows
-				.filter((r) => (r.comment ?? '').length >= 30)
+				.filter((r) => (r.comment ?? '').length >= 20)
 				.slice(0, 12)
 				.map((r) => {
 					const order = (Array.isArray(r.order) ? r.order[0] : r.order) as { product_slug?: string; shipping?: { first_name?: string; last_name?: string } } | null;
@@ -113,7 +113,8 @@ async function loadReviewsFresh(supabase: SupabaseClient, productType?: string):
 						date: r.created_at ? new Intl.DateTimeFormat('it-IT', { month: 'long', year: 'numeric' }).format(new Date(r.created_at)) : undefined
 					};
 				});
-			if (mapped.length >= 4) reviews = mapped;
+			/* le recensioni vere vanno sempre davanti; finche' sono poche, dietro restano quelle di partenza a riempire il carosello */
+			if (mapped.length) reviews = [...mapped, ...reviews.filter((f) => !mapped.some((m) => m.comment === f.comment))].slice(0, 12);
 		}
 	} catch (e) {
 		console.warn('[reviews] uso fallback', e);
