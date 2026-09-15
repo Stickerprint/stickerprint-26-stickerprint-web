@@ -145,12 +145,16 @@ const MIN_RESIN: Record<string, number> = { sagomato: 50, tondo: 10, quadrato: 1
 /* Resinati: misura di partenza proposta (il cliente puo' scendere fino al minimo) */
 const START_RESIN: Record<string, [number, number]> = { tondo: [25, 25], quadrato: [25, 25], ovale: [40, 20], rettangolare: [40, 20] };
 const MIN_LABEL: Record<string, number> = { sagomato: 20, tondo: 10, quadrato: 10, ovale: 10, rettangolare: 10 };
+/* rettangolo e ovale partono da una misura davvero rettangolare/ovale (come i resinati): il cliente poi scrive la sua, lati liberi */
+const START_STICKER: Record<string, [number, number]> = { ovale: [40, 25], rettangolare: [50, 25] };
+const START_VETR: Record<string, [number, number]> = { tondo: [50, 50], quadrato: [50, 50], ovale: [60, 40], rettangolare: [60, 30] };
+const MIN_VETR: Record<string, number> = { sagomato: 30, tondo: 30, quadrato: 30, ovale: 30, rettangolare: 30 };
 
 /** Listini iniziali, uno per prodotto e indipendenti tra loro (poi ognuno si modifica dalla dashboard) */
 export const DEFAULT_ENGINES: Record<string, EngineConfig> = {
-	adesivi_personalizzati: base({ materials: withMaterials(MAT_STICKER), quantities: QTY_STD, size: { minMm: 10, maxMm: 500, minByShape: MIN_STICKER } }),
+	adesivi_personalizzati: base({ materials: withMaterials(MAT_STICKER), quantities: QTY_STD, size: { minMm: 10, maxMm: 500, minByShape: MIN_STICKER, startByShape: START_STICKER } }),
 	adesivi_rilievo: base({
-		materials: withMaterials(MAT_STICKER), shapes: stdShapes(STICKER_IMGS, [50, 80, 100, 125]), quantities: QTY_SMALL, size: { minMm: 20, maxMm: 500, minByShape: MIN_STICKER },
+		materials: withMaterials(MAT_STICKER), shapes: stdShapes(STICKER_IMGS, [50, 80, 100, 125]), quantities: QTY_SMALL, size: { minMm: 20, maxMm: 500, minByShape: MIN_STICKER, startByShape: START_STICKER },
 		// niente lamina sul rilievo: la finitura e' una vernice UV, il rilievo resta sempre lucido
 		finishTitle: 'Finitura', finishNote: "L'effetto rilievo è sempre lucido.",
 		finishes: [
@@ -158,7 +162,7 @@ export const DEFAULT_ENGINES: Record<string, EngineConfig> = {
 			{ id: 'uv-lucida', label: 'UV lucida', description: 'Brillante, riflette la luce', img: `${IMG}/lamina_lucida.webp`, laminate: true, visible: true }
 		]
 	}),
-	etichette: base({ materials: withMaterials(MAT_STICKER), shapes: stdShapes(LABEL_IMGS, [50, 80, 100, 125]), quantities: QTY_SMALL, size: { minMm: 10, maxMm: 300, minByShape: MIN_LABEL } }),
+	etichette: base({ materials: withMaterials(MAT_STICKER), shapes: stdShapes(LABEL_IMGS, [50, 80, 100, 125]), quantities: QTY_SMALL, size: { minMm: 10, maxMm: 300, minByShape: MIN_LABEL, startByShape: START_STICKER } }),
 	fogli_adesivi: base({ materials: withMaterials(MAT_STICKER), shapes: clone(SHEET_SHAPES), quantities: QTY_SMALL, recommendedQty: 100, size: { minMm: 50, maxMm: 300 } }),
 	adesivi_resinati: base({
 		kind: 'resina',
@@ -173,7 +177,8 @@ export const DEFAULT_ENGINES: Record<string, EngineConfig> = {
 		finishes: withFinishes(['nessuna']),
 		shapes: stdShapes(VETR_IMGS, [80, 100, 180, 250]),
 		quantities: QTY_STD,
-		size: { minMm: 30, maxMm: 500 }
+		/* vetrofanie: si parte da 50 mm (sagomato: 50 sul lato lungo, l'altro in proporzione al file) */
+		size: { minMm: 30, maxMm: 500, defaultMm: 50, minByShape: MIN_VETR, startByShape: START_VETR }
 	})
 };
 
@@ -316,6 +321,13 @@ export function startSize(cfg: EngineConfig, forma: string, ratio: number): [num
 	if (st && st[0] > 0 && st[1] > 0) return [half(Math.min(cfg.size.maxMm, st[0])), half(Math.min(cfg.size.maxMm, st[1]))];
 	const m = minForShape(cfg, forma);
 	const r = ratio > 0 ? ratio : 1;
+	/* misura di partenza dichiarata (es. vetrofanie 50 mm): vale sul lato lungo, l'altro segue la proporzione del file,
+	   senza mai scendere sotto il minimo del lato corto */
+	const dm = cfg.size.defaultMm ?? 0;
+	if (forma === 'sagomato' && dm > m) {
+		const long = Math.min(cfg.size.maxMm, dm), short = Math.max(m, long / Math.max(r, 1 / r));
+		return r >= 1 ? [half(Math.max(long, short * r)), half(short)] : [half(short), half(Math.max(long, short / r))];
+	}
 	if (r >= 1) return [half(Math.min(cfg.size.maxMm, m * r)), m];
 	return [m, half(Math.min(cfg.size.maxMm, m / r))];
 }

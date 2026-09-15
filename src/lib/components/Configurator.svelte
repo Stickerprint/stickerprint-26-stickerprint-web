@@ -110,7 +110,7 @@
 	const fin = $derived(promoOnly ? finitura : showFinish ? finitura : 'nessuna');
 	const ratio = $derived(shape?.equal ? 1 : (shape?.ratio ?? cutRatio ?? fileRatio ?? 1));
 	// rettangolo e ovale: le misure sono solo proposte, il cliente puo' scrivere la sua (lati indipendenti)
-	const freeSize = $derived(forma === 'rettangolo' || forma === 'ovale');
+	const freeSize = $derived(forma === 'rettangolare' || forma === 'ovale');
 	const qListino = $derived(quoteWith(cfg, { w, h, forma, materiale, finitura: fin, qty, vatIncluded }));
 	/* offerta: il prezzo promo vale finché quantità e misura restano quelle dell'offerta;
 	   cambiandole si torna al listino (e il checkout ricontrolla comunque sul server) */
