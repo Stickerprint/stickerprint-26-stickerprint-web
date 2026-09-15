@@ -1,4 +1,4 @@
-import { reviewRequestEmail, shippingUpdateEmail, type ShippingMailKind } from '$lib/server/email-templates';
+import { orderConfirmationEmail, reviewRequestEmail, shippingUpdateEmail, type ShippingMailKind } from '$lib/server/email-templates';
 import { sendEmail } from '$lib/server/email';
 import { adminClient } from '$lib/server/admin';
 import { createReviewRequest } from '$lib/server/recensioni';
@@ -8,7 +8,7 @@ import type { RequestHandler } from './$types';
 export const GET: RequestHandler = async ({ url, locals: { user } }) => {
 	const kind = url.searchParams.get('kind') ?? 'affidato';
 	const base = { name: 'Mattia', number: 'SP00027', trackingUrl: 'https://tracking.qapla.it/51df4308/SP00027', courier: 'GLS-ITA', items: [{ name: 'Adesivi personalizzati sagomato', meta: 'bianco · 40×40 mm', qty: 15, preview: `${url.origin}/images/prodotti/rilievo/1.webp` }, { name: 'Kit di adesivi (4 adesivi)', qty: 10, preview: `${url.origin}/images/prodotti/rilievo/2.webp` }], accountUrl: `${url.origin}/account/ordini`, place: 'Milano', detail: 'GIACENZA' };
-	const mail = kind === 'recensione' ? reviewRequestEmail({ name: 'Mattia', number: 'SP00027', items: base.items, href: `${url.origin}/account/recensioni` }) : shippingUpdateEmail({ ...base, kind: kind as ShippingMailKind, detail: kind === 'ritardo_corriere' ? 'In ritardo' : undefined, place: kind === 'ritardo_corriere' ? 'Hub di Bologna' : undefined, shippedAt: kind === 'ritardo_corriere' ? '12/09/2026' : undefined, newDate: kind === 'ritardo_nostro' ? 'mercoledì 17 settembre' : undefined, accountUrl: `${url.origin}/account/ordini` });
+	const mail = kind === 'conferma' ? orderConfirmationEmail({ name: 'Mattia', numbers: ['SP00037'], invoiceNumber: 'SPF00015', total: '67,25 €', lines: base.items, shipDate: 'martedì 22 settembre', accountUrl: null }) : kind === 'conferma_account' ? orderConfirmationEmail({ name: 'Mattia', numbers: ['SP00037'], invoiceNumber: 'SPF00015', total: '67,25 €', lines: base.items, shipDate: 'martedì 22 settembre', accountUrl: `${url.origin}/account/ordini` }) : kind === 'recensione' ? reviewRequestEmail({ name: 'Mattia', number: 'SP00027', items: base.items, href: `${url.origin}/account/recensioni` }) : shippingUpdateEmail({ ...base, kind: kind as ShippingMailKind, detail: kind === 'ritardo_corriere' ? 'In ritardo' : undefined, place: kind === 'ritardo_corriere' ? 'Hub di Bologna' : undefined, shippedAt: kind === 'ritardo_corriere' ? '12/09/2026' : undefined, newDate: kind === 'ritardo_nostro' ? 'mercoledì 17 settembre' : undefined, accountUrl: `${url.origin}/account/ordini` });
 	// ?invia=1: manda l'anteprima all'indirizzo dello staff che e' loggato (per vedere le email nella casella vera)
 	if (url.searchParams.get('invia') === '1' && user?.email) {
 		/* la prova della richiesta di recensione viene tracciata come una vera (compare in Recensioni › Inviate come "PROVA") */

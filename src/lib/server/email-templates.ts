@@ -118,16 +118,19 @@ export function ownerNotifyEmail(opts: { title: string; lines: string[]; href?: 
 export const OWNER_EMAIL = env.OWNER_NOTIFY_EMAIL || 'info@stickerprint.it';
 
 export function orderConfirmationEmail(opts: { name?: string | null; numbers: string[]; invoiceNumber: string; total: string; lines: (string | EmailItem)[]; shipDate: string; accountUrl?: string | null }) {
+	/* stesso stile delle email di spedizione: titolo Rubik con la parola sottolineata, anteprime dei prodotti, bottone centrato */
+	const n = esc(opts.numbers.join(', '));
 	const items = itemsBlock(opts.lines);
-	return {
-		subject: `Ordine ${opts.numbers.join(', ')} confermato – Stickerprint`,
-		tag: 'order-confirmation',
-		html: `<p>Ciao ${opts.name || ''},</p>
-<p>grazie per il tuo ordine! Abbiamo ricevuto il pagamento e stiamo già preparando la <strong>prova di stampa</strong>, che ti invieremo a breve via email.</p>
-<p><strong>Ordine:</strong> ${opts.numbers.join(', ')}<br><strong>Fattura:</strong> ${opts.invoiceNumber} (in allegato)<br><strong>Totale pagato:</strong> ${opts.total}<br><strong>Pronti per la spedizione entro:</strong> ${opts.shipDate}</p>
+	const body = `<p>Ciao ${esc(opts.name || '')},</p>
+<p>grazie per il tuo ordine! Abbiamo ricevuto il pagamento e siamo già al lavoro: ecco cosa stiamo preparando per te.</p>
 ${items}
-${opts.accountUrl ? `<p>Trovi ordine e fattura anche nella tua <a href="${opts.accountUrl}">area personale</a>.</p>` : '<p>Vuoi seguire l’ordine e guadagnare credito sul prossimo? <a href="https://stickerprint.it/signup">Crea il tuo account</a> con questa stessa email: ordine e fattura saranno già lì.</p>'}
-<p>A presto,<br>Il team Stickerprint</p>`
+<p style="margin:16px 0 0;padding:12px 14px;background:#f4f5fa;border-radius:10px;"><b>Totale pagato:</b> ${esc(opts.total)}<br><b>Pronti per la spedizione entro:</b> ${esc(opts.shipDate)}</p>
+${opts.accountUrl ? `<p>Dalla tua area personale segui l'ordine passo passo, dalla stampa alla consegna.</p>` : `<p>Vuoi seguire l'ordine e guadagnare credito sul prossimo? <a href="${SITE}/signup" style="color:#0e8bff;">Crea il tuo account</a> con questa stessa email: ordine e fattura saranno già lì.</p>`}
+<p>Qui sotto trovi anche la <b>fattura ${esc(opts.invoiceNumber)}</b> del tuo ordine, in allegato.</p>`;
+	return {
+		subject: `Ordine ${opts.numbers.join(', ')} confermato 🥳`,
+		tag: 'order-confirmation',
+		html: layoutHtml(`Ordine ${n} ${hl('confermato')} 🥳`, body, { label: opts.accountUrl ? 'Vedi il tuo ordine' : 'Crea il tuo account', href: opts.accountUrl ?? `${SITE}/signup` })
 	};
 }
 
