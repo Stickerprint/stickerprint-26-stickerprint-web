@@ -98,5 +98,5 @@ Non presenti: TikTok, Pinterest, LinkedIn, Hotjar, Bing UET (le stringhe nel con
 
 1. Stesso snippet GTM (GTM-PXKJS5J6) nell'`app.html` e script Klaviyo X7Mrme: il contenitore resta quello, non va ricostruito.
 2. Emettere gli stessi eventi del dataLayer con le stesse strutture (sezione 3), aggiungendo quelli che oggi mancano: `generate_lead` con `form_name` sul modulo di /aziende, `file_uploads_ok`, `view_item_list`.
-3. iubenda: stesso site id 3794551 (cookie policy e consenso li carica GTM).
+3. iubenda: stesso site id 3794551, cookiePolicyId **42500812** (i documenti pubblici sono su www.iubenda.com/privacy-policy/42500812, /cookie-policy e terms-and-conditions/42500812; il banner e il consent mode li carica GTM). Nel nuovo sito: pagine /privacy, /cookie-policy, /termini con il testo incorporato, link 'Preferenze cookie' nel footer (classe iubenda-cs-preferences-link).
 4. Quando il dominio passa a stickerprint.it non cambia nulla: GTM, GA4, Ads, Meta, Clarity e Klaviyo sono legati agli account, non al dominio. Da aggiornare solo l'URL del sito nelle impostazioni di GA4 (stream), Search Console e Klaviyo.
