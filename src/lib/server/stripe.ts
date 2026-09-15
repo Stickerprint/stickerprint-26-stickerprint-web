@@ -20,8 +20,10 @@ async function call(path: string, body?: Record<string, string | number | undefi
 }
 
 /** Sessione Checkout per una scadenza: importo in centesimi, ritorno alla pagina della conferma */
-export async function createCheckoutSession(o: { amountCents: number; description: string; email: string | null; orderNumber: string; group: string; seq: number; successUrl: string; cancelUrl: string; invoice?: string | null }): Promise<{ id: string; url: string }> {
+export async function createCheckoutSession(o: { amountCents: number; description: string; email: string | null; orderNumber: string; group: string; seq: number; successUrl: string; cancelUrl: string; invoice?: string | null; checkout?: boolean; methods?: string[] }): Promise<{ id: string; url: string }> {
+	const only = Object.fromEntries((o.methods ?? []).map((m, i) => [`payment_method_types[${i}]`, m]));
 	const s = await call('/checkout/sessions', {
+		...only,
 		mode: 'payment',
 		'line_items[0][quantity]': 1,
 		'line_items[0][price_data][currency]': 'eur',
@@ -29,16 +31,17 @@ export async function createCheckoutSession(o: { amountCents: number; descriptio
 		'line_items[0][price_data][product_data][name]': o.description,
 		customer_email: o.email ?? undefined,
 		client_reference_id: `${o.group}:${o.seq}`,
-		'metadata[group]': o.group, 'metadata[seq]': o.seq, 'metadata[order]': o.orderNumber, 'metadata[invoice]': o.invoice ?? undefined,
-		'payment_intent_data[description]': `Ordine ${o.orderNumber} · scadenza ${o.seq}`,
+		'metadata[group]': o.group, 'metadata[seq]': o.seq, 'metadata[order]': o.orderNumber, 'metadata[invoice]': o.invoice ?? undefined, 'metadata[checkout]': o.checkout ? '1' : undefined,
+		'payment_intent_data[description]': o.checkout ? `Ordine ${o.orderNumber} (sito)` : `Ordine ${o.orderNumber} · scadenza ${o.seq}`,
+		'payment_intent_data[metadata][order]': o.orderNumber,
 		success_url: o.successUrl, cancel_url: o.cancelUrl, locale: 'it'
 	});
 	return { id: String(s.id), url: String(s.url) };
 }
-export async function retrieveSession(id: string): Promise<{ paid: boolean; group: string | null; seq: number | null; ref: string | null; invoice: string | null }> {
+export async function retrieveSession(id: string): Promise<{ paid: boolean; group: string | null; seq: number | null; ref: string | null; invoice: string | null; checkout: boolean; order: string | null }> {
 	const s = await call(`/checkout/sessions/${encodeURIComponent(id)}`);
 	const md = (s.metadata ?? {}) as Record<string, string>;
-	return { paid: s.payment_status === 'paid', group: md.group ?? null, seq: md.seq ? Number(md.seq) : null, ref: typeof s.payment_intent === 'string' ? s.payment_intent : null, invoice: md.invoice ?? null };
+	return { paid: s.payment_status === 'paid', group: md.group ?? null, seq: md.seq ? Number(md.seq) : null, ref: typeof s.payment_intent === 'string' ? s.payment_intent : null, invoice: md.invoice ?? null, checkout: md.checkout === '1', order: md.order ?? null };
 }
 /** Firma del webhook (Stripe-Signature: t=…,v1=…), HMAC SHA-256 con WebCrypto */
 export async function verifyWebhook(payload: string, header: string | null): Promise<boolean> {

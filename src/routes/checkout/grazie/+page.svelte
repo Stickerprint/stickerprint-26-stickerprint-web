@@ -1,8 +1,27 @@
 <script lang="ts">
 	import '$lib/styles/thanks.css';
 	import { page } from '$app/state';
+	import { onMount } from 'svelte';
+	import { readCart, clearCart } from '$lib/cart';
+	import { deleteCartFile } from '$lib/utils/draftStore';
+	import { track, cartItems } from '$lib/tracking';
 	let { data } = $props();
-	const numbers = $derived((page.url.searchParams.get('n') ?? '').split(',').filter(Boolean));
+	const numbers = $derived(data.paid?.numbers ?? (page.url.searchParams.get('n') ?? '').split(',').filter(Boolean));
+	/* ritorno da Stripe: il carrello si svuota qui e l'acquisto viene tracciato una volta sola */
+	onMount(() => {
+		const paid = data.paid;
+		if (!paid) return;
+		try {
+			const key = `sp-purchase-${paid.group}`;
+			if (!sessionStorage.getItem(key)) {
+				sessionStorage.setItem(key, '1');
+				const p = paid.payload;
+				track.purchase({ orderNumber: p.numbers[0], items: cartItems(p.items), value: p.toPay, tax: p.vatAmount, paymentType: p.payment === 'paypal' ? 'PayPal' : 'Carta di credito', express: p.express, coupon: p.discountCode, discount: Math.round(p.discount * 1.22 * 100) / 100, returning: false, userId: p.userId, user: { email: p.email, phone: p.ship.phone ?? '', first_name: p.ship.first_name ?? '', last_name: p.ship.last_name ?? '', street: p.ship.street ?? '', city: p.ship.city ?? '', province: p.ship.province ?? '', zip: p.ship.zip ?? '' } });
+			}
+			for (const it of readCart()) deleteCartFile(it.id);
+			clearCart();
+		} catch { /* niente da fare */ }
+	});
 	// stelle e scie sparse a caso (una volta sola)
 	const stars = Array.from({ length: 26 }, (_, i) => ({ x: (i * 37) % 100, y: (i * 53) % 100, d: (i % 7) * 0.3 }));
 	const streaks = Array.from({ length: 9 }, (_, i) => ({ x: 10 + ((i * 29) % 80), y: 8 + ((i * 41) % 84), d: 0.3 + i * 0.08 }));
@@ -24,7 +43,8 @@
 	<div class="container thanks__inner">
 		<h1 class="launch-title thanks__ottimo">Ottimo!</h1>
 		<div class="launch-rest">
-			<p class="thanks__sub">Il tuo ordine è andato correttamente in produzione</p>
+			{#if data.pending}<p class="thanks__sub">Stiamo aspettando la conferma del pagamento: appena arriva ricevi l'email con la fattura.</p>
+			{:else}<p class="thanks__sub">Il tuo ordine è andato correttamente in produzione</p>{/if}
 			<p class="thanks__line">e dovrebbe essere pronto per la spedizione <mark>{data.shipDate}</mark></p>
 			{#if numbers.length}<p class="thanks__line">Numero d'ordine <mark>{numbers.join(', ')}</mark></p>{/if}
 			<p class="thanks__meanwhile">Nel frattempo puoi controllare lo stato della produzione dalla tua<a href={areaHref}>area personale</a></p>

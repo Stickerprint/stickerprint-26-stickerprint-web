@@ -1,6 +1,5 @@
 import { fail } from '@sveltejs/kit';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { klaviyoPlacedOrder } from '$lib/server/klaviyo';
 import { shippingGrossFor, isRemote } from '$lib/shipping-rules';
 import { env } from '$env/dynamic/private';
 import { PUBLIC_SUPABASE_URL, PUBLIC_SITE_URL } from '$env/static/public';
@@ -8,14 +7,11 @@ import { loadEngine } from '$lib/server/pricing';
 import { quoteWith, PRODUCT_ENGINES } from '$lib/pricing/engine';
 import { kitQuote, kitN } from '$lib/pricing/kit';
 import { checkDiscount } from '$lib/server/discount';
-import { buildInvoicePdf, normalizeLines, type InvoiceLine } from '$lib/server/invoice';
-import { sendEmail } from '$lib/server/email';
-import { pushStaff } from '$lib/server/push';
-import { orderConfirmationEmail } from '$lib/server/email-templates';
+import { normalizeLines, type InvoiceLine } from '$lib/server/invoice';
 import { estimatedShipDate, formatItDate } from '$lib/utils/shipping';
-import { ensurePlan } from '$lib/server/produzione';
-import type { OrderRow } from '$lib/dashboard/orders';
 import { MATERIAL_LABEL } from '$lib/account';
+import { createCheckoutSession, stripeConfigured } from '$lib/server/stripe';
+import { cancelPendingCheckout, finalizeCheckout, savePendingCheckout, setCheckoutSession, type CheckoutItem, type CheckoutPayload } from '$lib/server/checkout';
 import type { Actions, PageServerLoad } from './$types';
 
 /** Produzione express: +30% sui prodotti (concorre al credito) */
@@ -30,9 +26,12 @@ function adminClient(): SupabaseClient | null {
 	return key ? createClient(PUBLIC_SUPABASE_URL, key, { auth: { persistSession: false } }) : null;
 }
 
-export const load: PageServerLoad = async ({ locals: { supabase, user } }) => {
+export const load: PageServerLoad = async ({ url, locals: { supabase, user } }) => {
 	const ship = estimatedShipDate(5);
-	const base = { shipDate: formatItDate(ship), expressDate: formatItDate(estimatedShipDate(3)), expressRate: EXPRESS_RATE, guestAllowed: !!env.SUPABASE_SERVICE_ROLE_KEY };
+	/* ritorno da Stripe senza pagare: gli ordini in attesa vengono tolti, il carrello e' ancora nel browser */
+	const cancelledGroup = url.searchParams.get('annullato') === '1' ? url.searchParams.get('g') : null;
+	if (cancelledGroup && /^[0-9a-f-]{36}$/.test(cancelledGroup)) { const a = adminClient(); if (a) await cancelPendingCheckout(a, cancelledGroup); }
+	const base = { shipDate: formatItDate(ship), expressDate: formatItDate(estimatedShipDate(3)), expressRate: EXPRESS_RATE, guestAllowed: !!env.SUPABASE_SERVICE_ROLE_KEY, online: stripeConfigured(), cancelled: !!cancelledGroup };
 	if (!user) return { ...base, profile: null, addresses: [], credit: 0, loyalty: null, orderCount: 0, lifetimeValue: 0 };
 	const [{ data: profile }, { data: addresses }, { data: credit }, { data: loyalty }] = await Promise.all([
 		supabase.from('profiles').select('full_name, email, phone, company_name, vat_number, fiscal_code, sdi_code').eq('id', user.id).maybeSingle(),
@@ -56,14 +55,9 @@ function deviceFrom(ua: string): 'mobile' | 'tablet' | 'desktop' {
 	return 'desktop';
 }
 const r2 = (v: number) => Math.round(v * 100) / 100;
-function toBase64(bytes: Uint8Array): string {
-	let bin = '';
-	for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
-	return btoa(bin);
-}
 
 export const actions: Actions = {
-	order: async ({ request, locals: { supabase, user } }) => {
+	order: async ({ request, url, locals: { supabase, user } }) => {
 		const ua = request.headers.get('user-agent') ?? '';
 		const device = deviceFrom(ua);
 		const admin = adminClient();
@@ -89,8 +83,12 @@ export const actions: Actions = {
 		const sameBilling = f.get('same_billing') !== 'off';
 		const bill = sameBilling ? { ...ship, ...fiscal } : { first_name: s('b_first_name'), last_name: s('b_last_name'), street: s('b_street'), street2: s('b_street2'), city: s('b_city'), zip: s('b_zip'), province: s('b_province'), country: 'IT', phone: ship.phone, ...fiscal };
 		if (!sameBilling && (!bill.street || !bill.city || !bill.zip || !bill.province)) return fail(400, { error: 'Compila l’indirizzo di fatturazione.' });
-		const payment = s('payment') || 'test';
-		if (payment !== 'test') return fail(400, { error: 'Questo metodo di pagamento sarà disponibile a breve. Per ora usa "Test".' });
+		const payment = s('payment') || (stripeConfigured() ? 'stripe' : 'test');
+		const online = payment === 'stripe' || payment === 'paypal';
+		if (online && !stripeConfigured()) return fail(400, { error: 'Il pagamento online non è ancora attivo. Per ora usa "Test".' });
+		if (!online && payment !== 'test') return fail(400, { error: 'Metodo di pagamento non valido.' });
+		if (payment === 'test' && stripeConfigured()) return fail(400, { error: 'L’ordine di prova non è più disponibile: scegli un metodo di pagamento.' });
+		if (online && !admin) return fail(400, { error: 'Pagamento online non disponibile in questo momento.' });
 		const express = f.get('express') === 'on';
 		const useCredit = !!user && f.get('use_credit') === 'on';
 
@@ -151,31 +149,35 @@ export const actions: Actions = {
 		}
 		const toPay = r2(totalGross - creditUsed);
 
-		// ordini: UN numero per tutto il carrello, una riga per prodotto (stesso numero, stesso gruppo)
+		// ordini: UN numero per tutto il carrello, una riga per prodotto (stesso numero, stesso gruppo).
+		// Con pagamento online le righe nascono "in attesa di pagamento" e si chiudono all'incasso (finalizeCheckout).
 		const group = crypto.randomUUID();
 		const numbers: string[] = [];
 		const invLines: InvoiceLine[] = [];
+		const items: CheckoutItem[] = [];
+		const autoProof: boolean[] = [];
 		const { data: num0, error: ne0 } = await db.rpc('next_order_number');
 		if (ne0 || !num0) return fail(400, { error: 'Numero d’ordine non disponibile, riprova.' });
 		let num = num0 as string;
 		for (const l of priced) {
 			const share = productsNet > 0 ? l.baseNet / productsNet : 1 / priced.length;
 			const name = l.product === 'campioni' ? 'Kit campioni' : l.product === 'kit_adesivi' ? 'Kit di adesivi' : (PRODUCT_ENGINES.find((p) => p.slug === l.product)?.name ?? l.product);
+			const auto = AUTO_PROOF.has(l.product);
 			const row = {
 				user_id: user?.id ?? null, number: num,
 				product_slug: l.product, product_name: name,
 				forma: l.forma, materiale: l.materiale, finitura: l.finitura ?? null,
 				width_mm: l.w, height_mm: l.h, qty: l.qty,
 				total_net: l.net, total_gross: l.gross,
-				status: AUTO_PROOF.has(l.product) ? 'in_produzione' : 'attesa_prova',
-				prod_stage: AUTO_PROOF.has(l.product) && l.product !== 'campioni' ? 'stampa' : null,
-				auto_proof: AUTO_PROOF.has(l.product),
+				status: online ? 'attesa_pagamento' : auto ? 'in_produzione' : 'attesa_prova',
+				prod_stage: !online && auto && l.product !== 'campioni' ? 'stampa' : null,
+				auto_proof: auto,
 				preview_url: l.previewUrl ?? null, proof_url: l.previewUrl ?? null,
 				device, user_agent: ua.slice(0, 500),
 				file_path: l.filePath?.startsWith('riordino:') || l.filePath === 'campioni' ? null : l.filePath,
 				notes: [l.reorderOf ? `Riordino di ${l.reorderOf}` : '', l.note ?? ''].filter(Boolean).join(' · ') || null,
 				email, shipping: ship, billing: bill,
-				payment_method: payment, payment_status: payment === 'test' ? 'test' : 'paid',
+				payment_method: payment, payment_status: online ? 'pending' : 'test',
 				discount_code: discountCode, discount_amount: r2(discount * share),
 				credit_used: r2(creditUsed * share), express, checkout_group: group,
 				total_paid: r2(toPay * share)
@@ -190,35 +192,17 @@ export const actions: Actions = {
 			if (error) return fail(400, { error: `Ordine non registrato: ${error.message}` });
 			if (!numbers.includes(row.number)) numbers.push(row.number);
 			invLines.push({ description: l.product === 'campioni' ? `Kit campioni` : l.product === 'kit_adesivi' ? `Kit di adesivi (${kitN(l.forma)} adesivi da ${l.w} mm, ${MATERIAL_LABEL[l.materiale] ?? l.materiale}${l.finitura && l.finitura !== 'nessuna' ? ', lamina ' + l.finitura : ''})` : `${name} ${l.forma} ${MATERIAL_LABEL[l.materiale] ?? l.materiale}${l.finitura && l.finitura !== 'nessuna' ? ' lamina ' + l.finitura : ''} ${l.w}×${l.h} mm`, qty: l.qty, unit_net: r2(l.baseNet / l.qty), total_net: l.baseNet });
+			items.push({ product: l.product, productName: name, forma: l.forma, materiale: l.materiale, finitura: l.finitura ?? null, w: l.w, h: l.h, qty: Number(l.qty), gross: l.gross, previewUrl: l.previewUrl ?? null });
+			autoProof.push(auto);
 		}
-		if (creditUsed > 0) await supabase.from('credit_transactions').insert({ user_id: user!.id, amount: -creditUsed, kind: 'spend', order_ref: numbers[0], note: `Credito usato sull'ordine ${numbers.join(', ')}` });
-		if (discountCode) await db.rpc('discount_code_used', { p_code: discountCode });
-
-		// Klaviyo "Placed Order" (solo con KLAVIYO_PRIVATE_KEY impostata)
-		klaviyoPlacedOrder({ email, firstName: ship.first_name, lastName: ship.last_name, orderNumber: numbers[0], total: toPay, items: priced.map((l) => ({ productId: `${l.product}_${l.forma}`, productName: l.product === 'campioni' ? 'Kit campioni' : l.product === 'kit_adesivi' ? 'Kit di adesivi' : `${PRODUCT_ENGINES.find((p) => p.slug === l.product)?.name ?? l.product} ${l.forma}`, price: l.gross, quantity: Number(l.qty) })), discountCode, discountAmount: r2(discount * VAT) }).catch(() => {});
-
-		// fattura: registrata, PDF generato e inviato via email (con la conferma d'ordine)
-		const { data: invNum } = await db.rpc('next_invoice_number');
 		const invoiceLines = normalizeLines(invLines, discount, creditUsed);
 		if (shippingNet > 0) invoiceLines.push({ description: isRemote(ship.province) ? 'Spedizione (isole e zone remote)' : 'Spedizione', qty: 1, unit_net: shippingNet, total_net: shippingNet });
-		const payTerms = [{ due: new Date().toISOString().slice(0, 10), amount: toPay, method: ({ paypal: 'PayPal', stripe: 'Carta di credito (Stripe)' } as Record<string, string>)[payment] ?? 'Test', xml_code: 'MP08' }];
-		const invoice = { number: (invNum as string) ?? `FT-${Date.now()}`, issued_at: new Date().toISOString().slice(0, 10), email, billing: bill, lines: invoiceLines, payment_terms: payTerms, subtotal_net: productsNet, discount_net: discount, discount_code: discountCode, express_net: expressNet, credit_used: creditUsed, vat_amount: vatAmount, total_gross: totalGross, to_pay: toPay, payment_method: payment, orders: numbers };
-		let pdfPath: string | null = null;
-		let pdfB64: string | null = null;
-		try {
-			const bytes = await buildInvoicePdf(invoice);
-			pdfB64 = toBase64(bytes);
-			const folder = user?.id ?? 'guest';
-			const path = `${folder}/${invoice.number}.pdf`;
-			const { error } = await db.storage.from('invoices').upload(path, bytes, { contentType: 'application/pdf', upsert: true });
-			if (!error) pdfPath = path;
-		} catch (e) {
-			console.error('[invoice] pdf', e);
-		}
-		// pianificazione della produzione: lavorazioni per commessa con scadenze a ritroso dalla data promessa (chiave di servizio: le tabelle sono dello staff)
-		try { const pdb = admin ?? db; const { data: prows } = await pdb.from('orders').select('*').eq('checkout_group', group); await ensurePlan(pdb, (prows ?? []) as OrderRow[]); } catch (e) { console.error('pianificazione produzione', e); }
-		const { data: firstOrder } = await db.from('orders').select('id').eq('checkout_group', group).order('created_at').limit(1).maybeSingle();
-		await db.from('invoices').insert({ user_id: user?.id ?? null, order_id: firstOrder?.id ?? null, number: invoice.number, issued_at: invoice.issued_at, amount_gross: toPay, pdf_path: pdfPath, email, billing: bill, lines: invoiceLines, payment_terms: payTerms, order_numbers: numbers, subtotal_net: productsNet, discount_net: discount, express_net: expressNet, credit_used: creditUsed, vat_amount: vatAmount, payment_method: payment, paid_at: new Date().toISOString(), checkout_group: group, sent_at: null });
+		const payload: CheckoutPayload = { userId: user?.id ?? null, email, firstName: ship.first_name, lastName: ship.last_name, payment, ship, bill, numbers, invoiceLines, emailLines: invLines, items, productsNet, expressNet, discount, discountCode, creditUsed, vatAmount, totalGross, toPay, express, autoProof };
+		const fdb = admin ?? db;
+		const se = await savePendingCheckout(fdb, group, payload, online ? 'stripe' : 'test');
+		if (se) return fail(400, { error: `Ordine non registrato: ${se}` });
+		// scadenza unica, anticipata: pagata online (o subito, con l'ordine di prova)
+		await fdb.from('order_payments').insert({ checkout_group: group, seq: 1, method: ({ paypal: 'PayPal', stripe: 'Carta di credito (Stripe)' } as Record<string, string>)[payment] ?? 'Test', due: new Date().toISOString().slice(0, 10), amount: toPay, upfront: true, status: 'da_pagare' });
 
 		// dati salvati per la prossima volta
 		if (user) {
@@ -228,13 +212,20 @@ export const actions: Actions = {
 				await supabase.from('addresses').insert({ user_id: user.id, kind: 'shipping', first_name: ship.first_name, last_name: ship.last_name, company: fiscal.company || null, street: [ship.street, ship.street2].filter(Boolean).join(', '), city: ship.city, zip: ship.zip, province: ship.province, country: 'IT', phone: ship.phone, is_default: true });
 			}
 		}
-		// email di conferma con fattura allegata (se Postmark è configurato)
-		const origin = PUBLIC_SITE_URL || 'https://stickerprint.it';
-		const mail = orderConfirmationEmail({ name: ship.first_name, numbers, invoiceNumber: invoice.number, total: `${toPay.toFixed(2).replace('.', ',')} €`, lines: invLines.map((l, i) => ({ name: l.description, qty: l.qty, preview: priced[i]?.previewUrl ?? null })), shipDate: formatItDate(estimatedShipDate(express ? 3 : 5)), accountUrl: user ? `${origin}/account/ordini` : null });
-		sendEmail({ to: email, ...mail, attachments: pdfB64 ? [{ name: `${invoice.number}.pdf`, content: pdfB64, contentType: 'application/pdf' }] : undefined })
-			.then((r) => { if (r.ok && !r.skipped) db.from('invoices').update({ sent_at: new Date().toISOString() }).eq('number', invoice.number).then(() => {}); })
-			.catch((e) => console.error('[checkout] email', e));
-		pushStaff({ title: `Nuovo ordine ${numbers[0]}`, body: `${ship.first_name} ${ship.last_name} · ${invLines.length} ${invLines.length === 1 ? 'articolo' : 'articoli'} · ${toPay.toFixed(2)} €`, url: `/dashboard/fatturazione/ordini/${group}`, tag: numbers[0] }).catch((e) => console.error('[push]', e));
-		return { ok: true, numbers, toPay, invoice: invoice.number };
+
+		if (online) {
+			// cassa Stripe: carta, Apple Pay, Google Pay, Link (e PayPal se scelto); al ritorno la pagina Grazie chiude l'ordine
+			const origin = PUBLIC_SITE_URL || url.origin;
+			try {
+				const sess = await createCheckoutSession({ amountCents: Math.round(toPay * 100), description: `Ordine ${numbers.join(', ')} · Stickerprint`, email, orderNumber: numbers[0], group, seq: 1, checkout: true, methods: payment === 'paypal' ? ['paypal'] : undefined, successUrl: `${origin}/checkout/grazie?session_id={CHECKOUT_SESSION_ID}${express ? '&e=1' : ''}`, cancelUrl: `${origin}/checkout?annullato=1&g=${group}` });
+				await setCheckoutSession(fdb, group, sess.id);
+				return { ok: true, redirect: sess.url, numbers, toPay };
+			} catch (e) {
+				await cancelPendingCheckout(fdb, group);
+				return fail(400, { error: `Pagamento non avviato: ${e instanceof Error ? e.message : 'errore Stripe'}` });
+			}
+		}
+		const fin = await finalizeCheckout(fdb, group, { provider: 'test', ref: null });
+		return { ok: true, numbers, toPay, invoice: fin.invoice ?? '' };
 	}
 };

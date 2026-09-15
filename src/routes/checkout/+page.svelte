@@ -29,7 +29,10 @@
 	let saveAddress = $state(!addr);
 	let express = $state(false);
 	let useCredit = $state(false);
-	let payment = $state('test');
+	// svelte-ignore state_referenced_locally
+	let payment = $state(data.online ? 'stripe' : 'test');
+	// svelte-ignore state_referenced_locally
+	const PAY_ERR = data.cancelled ? 'Pagamento annullato: il tuo carrello è ancora qui, puoi riprovare quando vuoi.' : '';
 	let code = $state('');
 	let discount = $state<{ code: string; amount: number; description: string | null } | null>(null);
 	let codeMsg = $state('');
@@ -158,6 +161,11 @@
 			fd.set('items', JSON.stringify(lines));
 			const res = await fetch('?/order', { method: 'POST', body: fd, headers: { 'x-sveltekit-action': 'true' } });
 			const result = deserialize(await res.text());
+			if (result.type === 'success' && result.data?.redirect) {
+				/* cassa Stripe: il carrello resta finche' il pagamento non va a buon fine (si svuota nella pagina Grazie) */
+				location.href = String(result.data.redirect);
+				return;
+			}
 			if (result.type === 'success' && result.data?.numbers) {
 				const numbers = result.data.numbers as string[];
 				const g = (k: string) => String(fd.get(k) ?? '');
@@ -238,14 +246,19 @@
 
 				<h2 style="margin-top:28px">Metodo di pagamento</h2>
 				<div class="co-pay">
-					<label class="co-pay__opt is-soon"><input type="radio" name="payment" value="stripe" disabled /><span><b>Carta di credito</b><small>Pagamento sicuro con Stripe · disponibile a breve</small></span><img src="/icons/pay-stripe.svg" alt="Stripe" /></label>
-					<label class="co-pay__opt is-soon"><input type="radio" name="payment" value="paypal" disabled /><span><b>PayPal</b><small>Disponibile a breve</small></span><img src="/icons/footer/paypal.webp" alt="" /></label>
-					<label class="co-pay__opt"><input type="radio" name="payment" value="test" bind:group={payment} /><span><b>Test (gratuito)</b><small>Crea l’ordine senza pagamento reale</small></span></label>
+					{#if data.online}
+						<label class="co-pay__opt"><input type="radio" name="payment" value="stripe" bind:group={payment} /><span><b>Carta di credito</b><small>Visa, Mastercard, Amex · anche Apple Pay, Google Pay e Link · pagamento sicuro con Stripe</small></span><img src="/icons/pay-stripe.svg" alt="Stripe" /></label>
+						<label class="co-pay__opt"><input type="radio" name="payment" value="paypal" bind:group={payment} /><span><b>PayPal</b><small>Paghi con il tuo conto PayPal</small></span><img src="/icons/footer/paypal.webp" alt="" /></label>
+					{:else}
+						<label class="co-pay__opt is-soon"><input type="radio" name="payment" value="stripe" disabled /><span><b>Carta di credito</b><small>Pagamento sicuro con Stripe · disponibile a breve</small></span><img src="/icons/pay-stripe.svg" alt="Stripe" /></label>
+						<label class="co-pay__opt is-soon"><input type="radio" name="payment" value="paypal" disabled /><span><b>PayPal</b><small>Disponibile a breve</small></span><img src="/icons/footer/paypal.webp" alt="" /></label>
+						<label class="co-pay__opt"><input type="radio" name="payment" value="test" bind:group={payment} /><span><b>Test (gratuito)</b><small>Crea l’ordine senza pagamento reale</small></span></label>
+					{/if}
 				</div>
 				<p class="co-secure"><b>🔒 Pagamento sicuro.</b> Il pagamento viene effettuato subito alla conferma dell’ordine. Ricevi conferma e fattura via email; la prova di stampa arriva a seguire e andiamo in produzione solo dopo il tuo ok.</p>
 
-				{#if err}<p class="error" style="margin-top:14px">{err}</p>{/if}
-				<button class="btn btn--green btn--lg co-submit" type="submit" disabled={submitting || !canOrder || !allFiles || items.length === 0}>{submitting ? 'Invio in corso…' : 'Invia il tuo ordine e paga'}</button>
+				{#if err || PAY_ERR}<p class="error" style="margin-top:14px">{err || PAY_ERR}</p>{/if}
+				<button class="btn btn--green btn--lg co-submit" type="submit" disabled={submitting || !canOrder || !allFiles || items.length === 0}>{submitting ? (data.online && payment !== 'test' ? 'Ti portiamo alla cassa…' : 'Invio in corso…') : 'Invia il tuo ordine e paga'}</button>
 				<p class="note" style="margin-top:8px">Cliccando su Invia il tuo ordine, accetti la <a class="link" href="/privacy">privacy policy</a> e i <a class="link" href="/termini">termini e condizioni</a> di Stickerprint.</p>
 			</div>
 

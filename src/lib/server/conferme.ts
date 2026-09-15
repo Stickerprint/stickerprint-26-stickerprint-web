@@ -10,6 +10,7 @@ import { sendEmail } from './email';
 import { OWNER_EMAIL, orderConfirmEmail, orderPaymentReminderEmail, orderReplyEmail, ownerNotifyEmail } from './email-templates';
 import { pushStaff } from './push';
 import { ensurePlan } from './produzione';
+import { finalizeCheckout } from './checkout';
 export * from '$lib/dashboard/conferme';
 
 type DB = SupabaseClient;
@@ -94,6 +95,8 @@ export async function setPaymentStatus(db: DB, group: string, seq: number, statu
 	const patch = status === 'pagato' ? { status, paid_at: new Date().toISOString(), provider, provider_ref: ref || null, note: operator ? `segnato da ${operator}` : provider === 'stripe' ? 'incassato online' : provider === 'simulazione' ? 'pagamento simulato (prova)' : null } : { status, paid_at: null, provider: null, provider_ref: null, note: null };
 	const { error } = await db.from('order_payments').update(patch).eq('checkout_group', group).eq('seq', seq);
 	if (error) return error.message;
+	/* ordine del sito ancora in attesa dell'incasso online: segnarlo pagato lo chiude come farebbe Stripe (fattura, email, produzione) */
+	if (status === 'pagato') { const fin = await finalizeCheckout(db, group, { provider, ref: ref || null }); if (fin.done) return null; }
 	const payments = await loadPayments(db, group);
 	const allPaid = payments.length > 0 && payments.every((p) => p.status === 'pagato');
 	await db.from('orders').update({ payment_status: allPaid ? 'paid' : 'pending' }).eq('checkout_group', group);
