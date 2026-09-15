@@ -27,6 +27,7 @@
 		</div>
 	{:else}
 		<form method="POST" use:enhance={() => { sending = true; return async ({ update }) => { sending = false; await update(); }; }} class="card" style="padding:26px;display:grid;gap:14px">
+			<input type="hidden" name="r" value={data.requestId} />
 			<div class="stars-in" style="display:flex;gap:6px;font-size:36px;cursor:pointer">{#each [1, 2, 3, 4, 5] as n (n)}<label style="color:{n <= stars ? '#f5b301' : '#d6d9e2'}"><input type="radio" name="rating" value={n} checked={n === stars} onchange={() => (stars = n)} hidden />★</label>{/each}</div>
 			<label>Titolo<input class="input" name="title" maxlength="120" placeholder="es. Adesivi perfetti" /></label>
 			<label>La tua esperienza<textarea class="input" name="comment" rows="5" maxlength="2000" placeholder="Qualità, tempi, assistenza: racconta quello che vuoi."></textarea></label>

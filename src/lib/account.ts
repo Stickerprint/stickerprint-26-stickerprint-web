@@ -3,6 +3,7 @@ import { PRODUCT_ENGINES } from '$lib/pricing/engine';
 export interface Order {
 	id: string;
 	number: string;
+	checkout_group?: string | null;
 	product_name: string;
 	forma: string | null;
 	materiale: string | null;

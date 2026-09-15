@@ -28,12 +28,14 @@ export async function issueReviewCoupon(db: DB, reviewId: string, email: string 
 	return null;
 }
 /** Salva la recensione (in attesa di approvazione), genera il codice e manda l'email di ringraziamento */
-export async function submitReview(db: DB, o: { orderId: string; userId: string | null; email: string | null; author: string | null; productSlug: string | null; rating: number; title: string | null; comment: string | null; number: string; origin: string }): Promise<{ ok: true; code: string | null } | { ok: false; error: string }> {
+export async function submitReview(db: DB, o: { orderId: string; userId: string | null; email: string | null; author: string | null; productSlug: string | null; rating: number; title: string | null; comment: string | null; number: string; origin: string; groupOrderIds?: string[]; checkoutGroup?: string | null; requestId?: string | null }): Promise<{ ok: true; code: string | null } | { ok: false; error: string }> {
 	const rating = Math.max(1, Math.min(5, Math.round(o.rating)));
+	/* una recensione per ordine (numero), anche se l'ordine ha piu' articoli */
+	if (o.groupOrderIds?.length) { const { data: prev } = await db.from('reviews').select('id').in('order_id', o.groupOrderIds).limit(1); if (prev?.length) return { ok: false, error: 'Hai già lasciato una recensione per questo ordine, grazie!' }; }
 	const { data, error } = await db.from('reviews').insert({ user_id: o.userId, order_id: o.orderId, rating, title: o.title?.slice(0, 120) || null, comment: o.comment?.slice(0, 2000) || null, author: o.author, email: o.email?.toLowerCase() || null, product_slug: o.productSlug, status: 'pending', source: 'cliente' }).select('id').single();
 	if (error || !data) return { ok: false, error: /duplicate|unique/i.test(error?.message ?? '') ? 'Hai già lasciato una recensione per questo ordine, grazie!' : (error?.message ?? 'Errore') };
 	const code = await issueReviewCoupon(db, data.id, o.email);
-	await linkReviewToRequest(db, o.orderId, data.id).catch(() => {});
+	await linkReviewToRequest(db, { orderId: o.orderId, groupOrderIds: o.groupOrderIds ?? null, checkoutGroup: o.checkoutGroup ?? null, requestId: o.requestId ?? null }, data.id).catch(() => {});
 	if (o.email && code) {
 		const validTo = new Date(); validTo.setMonth(validTo.getMonth() + REVIEW_COUPON.months);
 		await sendEmail({ to: o.email, ...reviewThanksEmail({ name: o.author?.split(' ')[0] ?? null, number: o.number, code, validUntil: validTo.toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' }), href: `${o.origin}/` }), metadata: { order: o.number } });
@@ -84,7 +86,11 @@ export async function markReviewRequestClicked(db: DB, id: string | null): Promi
 	if (!id || !/^[0-9a-f-]{36}$/.test(id)) return;
 	await db.from('review_requests').update({ clicked_at: new Date().toISOString() }).eq('id', id).is('clicked_at', null);
 }
-/** Collega la recensione ricevuta alla richiesta inviata per quell'ordine */
-export async function linkReviewToRequest(db: DB, orderId: string, reviewId: string): Promise<void> {
-	await db.from('review_requests').update({ review_id: reviewId }).eq('order_id', orderId).is('review_id', null);
+/** Collega la recensione ricevuta alla richiesta inviata: per id della richiesta (link dell'email), per ordine o per gruppo */
+export async function linkReviewToRequest(db: DB, o: { orderId: string; groupOrderIds: string[] | null; checkoutGroup: string | null; requestId: string | null }, reviewId: string): Promise<void> {
+	const ors = [`order_id.eq.${o.orderId}`];
+	if (o.groupOrderIds?.length) ors.push(`order_id.in.(${o.groupOrderIds.join(',')})`);
+	if (o.checkoutGroup) ors.push(`checkout_group.eq.${o.checkoutGroup}`);
+	if (o.requestId && /^[0-9a-f-]{36}$/.test(o.requestId)) ors.push(`id.eq.${o.requestId}`);
+	await db.from('review_requests').update({ review_id: reviewId }).or(ors.join(',')).is('review_id', null);
 }
