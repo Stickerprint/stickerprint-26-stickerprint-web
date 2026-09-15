@@ -11,6 +11,7 @@ import { normalizeLines, type InvoiceLine } from '$lib/server/invoice';
 import { estimatedShipDate, formatItDate } from '$lib/utils/shipping';
 import { MATERIAL_LABEL } from '$lib/account';
 import { createCheckoutSession, stripeConfigured } from '$lib/server/stripe';
+import { createPayPalOrder, paypalConfigured } from '$lib/server/paypal';
 import { cancelPendingCheckout, finalizeCheckout, savePendingCheckout, setCheckoutSession, type CheckoutItem, type CheckoutPayload } from '$lib/server/checkout';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -31,7 +32,7 @@ export const load: PageServerLoad = async ({ url, locals: { supabase, user } }) 
 	/* ritorno da Stripe senza pagare: gli ordini in attesa vengono tolti, il carrello e' ancora nel browser */
 	const cancelledGroup = url.searchParams.get('annullato') === '1' ? url.searchParams.get('g') : null;
 	if (cancelledGroup && /^[0-9a-f-]{36}$/.test(cancelledGroup)) { const a = adminClient(); if (a) await cancelPendingCheckout(a, cancelledGroup); }
-	const base = { shipDate: formatItDate(ship), expressDate: formatItDate(estimatedShipDate(3)), expressRate: EXPRESS_RATE, guestAllowed: !!env.SUPABASE_SERVICE_ROLE_KEY, online: stripeConfigured(), cancelled: !!cancelledGroup };
+	const base = { shipDate: formatItDate(ship), expressDate: formatItDate(estimatedShipDate(3)), expressRate: EXPRESS_RATE, guestAllowed: !!env.SUPABASE_SERVICE_ROLE_KEY, online: stripeConfigured(), paypal: paypalConfigured(), cancelled: !!cancelledGroup };
 	if (!user) return { ...base, profile: null, addresses: [], credit: 0, loyalty: null, orderCount: 0, lifetimeValue: 0 };
 	const [{ data: profile }, { data: addresses }, { data: credit }, { data: loyalty }] = await Promise.all([
 		supabase.from('profiles').select('full_name, email, phone, company_name, vat_number, fiscal_code, sdi_code').eq('id', user.id).maybeSingle(),
@@ -85,9 +86,10 @@ export const actions: Actions = {
 		if (!sameBilling && (!bill.street || !bill.city || !bill.zip || !bill.province)) return fail(400, { error: 'Compila l’indirizzo di fatturazione.' });
 		const payment = s('payment') || (stripeConfigured() ? 'stripe' : 'test');
 		const online = payment === 'stripe' || payment === 'paypal';
-		if (online && !stripeConfigured()) return fail(400, { error: 'Il pagamento online non è ancora attivo. Per ora usa "Test".' });
+		const viaPayPal = payment === 'paypal' && paypalConfigured();
+		if (online && !stripeConfigured() && !viaPayPal) return fail(400, { error: 'Il pagamento online non è ancora attivo. Per ora usa "Test".' });
 		if (!online && payment !== 'test') return fail(400, { error: 'Metodo di pagamento non valido.' });
-		if (payment === 'test' && stripeConfigured()) return fail(400, { error: 'L’ordine di prova non è più disponibile: scegli un metodo di pagamento.' });
+		if (payment === 'test' && (stripeConfigured() || paypalConfigured())) return fail(400, { error: 'L’ordine di prova non è più disponibile: scegli un metodo di pagamento.' });
 		if (online && !admin) return fail(400, { error: 'Pagamento online non disponibile in questo momento.' });
 		const express = f.get('express') === 'on';
 		const useCredit = !!user && f.get('use_credit') === 'on';
@@ -199,7 +201,7 @@ export const actions: Actions = {
 		if (shippingNet > 0) invoiceLines.push({ description: isRemote(ship.province) ? 'Spedizione (isole e zone remote)' : 'Spedizione', qty: 1, unit_net: shippingNet, total_net: shippingNet });
 		const payload: CheckoutPayload = { userId: user?.id ?? null, email, firstName: ship.first_name, lastName: ship.last_name, payment, ship, bill, numbers, invoiceLines, emailLines: invLines, items, productsNet, expressNet, discount, discountCode, creditUsed, vatAmount, totalGross, toPay, express, autoProof };
 		const fdb = admin ?? db;
-		const se = await savePendingCheckout(fdb, group, payload, online ? 'stripe' : 'test');
+		const se = await savePendingCheckout(fdb, group, payload, viaPayPal ? 'paypal' : online ? 'stripe' : 'test');
 		if (se) return fail(400, { error: `Ordine non registrato: ${se}` });
 		// scadenza unica, anticipata: pagata online (o subito, con l'ordine di prova)
 		await fdb.from('order_payments').insert({ checkout_group: group, seq: 1, method: ({ paypal: 'PayPal', stripe: 'Carta di credito (Stripe)' } as Record<string, string>)[payment] ?? 'Test', due: new Date().toISOString().slice(0, 10), amount: toPay, upfront: true, status: 'da_pagare' });
@@ -213,6 +215,18 @@ export const actions: Actions = {
 			}
 		}
 
+		if (viaPayPal) {
+			// PayPal diretto: il cliente paga sul sito PayPal e torna sulla pagina Grazie, che cattura l'incasso e chiude l'ordine
+			const origin = PUBLIC_SITE_URL || url.origin;
+			try {
+				const o = await createPayPalOrder({ amount: toPay, description: `Ordine ${numbers.join(', ')} · Stickerprint`, reference: numbers[0], customId: `checkout:${group}`, returnUrl: `${origin}/checkout/grazie?pp=1${express ? '&e=1' : ''}`, cancelUrl: `${origin}/checkout?annullato=1&g=${group}` });
+				await setCheckoutSession(fdb, group, o.id);
+				return { ok: true, redirect: o.approveUrl, numbers, toPay };
+			} catch (e) {
+				await cancelPendingCheckout(fdb, group);
+				return fail(400, { error: `Pagamento PayPal non avviato: ${e instanceof Error ? e.message : 'errore'}` });
+			}
+		}
 		if (online) {
 			// cassa Stripe: carta, Apple Pay, Google Pay, Link (e PayPal se scelto); al ritorno la pagina Grazie chiude l'ordine
 			const origin = PUBLIC_SITE_URL || url.origin;

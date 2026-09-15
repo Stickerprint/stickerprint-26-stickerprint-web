@@ -1,4 +1,4 @@
-import { error, fail } from '@sveltejs/kit';
+import { error, fail, redirect } from '@sveltejs/kit';
 import { adminClient } from '$lib/server/admin';
 import { customerMessage, getByToken, trackOpen } from '$lib/server/conferme';
 import { loadReviews } from '$lib/server/reviews';
@@ -7,6 +7,7 @@ import { PRODUCTS } from '$lib/products';
 import { CATS, itemMeta, thumbOf } from '$lib/dashboard/orders';
 import { onlinePaymentsOn, retrieveSession, stripeConfigured } from '$lib/server/stripe';
 import { setPaymentStatus } from '$lib/server/conferme';
+import { paypalConfigured, settlePayPalReturn } from '$lib/server/paypal';
 import type { Actions, PageServerLoad } from './$types';
 
 /** Pagina pubblica della conferma d'ordine: articoli, indirizzi, scadenze con pagamento, PDF, domande e segnalazioni. */
@@ -21,6 +22,10 @@ export const load: PageServerLoad = async ({ params, url, request }) => {
 	if (sid && stripeConfigured()) {
 		try { const s = await retrieveSession(sid); if (s.paid && s.group === c.group.key && s.seq && c.payments.find((p) => p.seq === s.seq)?.status !== 'pagato') { await setPaymentStatus(db, s.group, s.seq, 'pagato', null, s.ref, 'stripe'); } } catch { /* il webhook fara' il resto */ }
 	}
+	// ritorno da PayPal (?pp=1&token=ID): l'incasso viene catturato qui e la scadenza segnata pagata
+	const ppToken = url.searchParams.get('pp') === '1' ? url.searchParams.get('token') : null;
+	let ppError: string | null = null;
+	if (ppToken && paypalConfigured()) { const r = await settlePayPalReturn(db, ppToken, `order:${c.group.key}:`); if (r.ok) redirect(303, `/conferma/${params.token}?pagato=1`); ppError = r.error ?? null; }
 	const paid = url.searchParams.get('pagato') === '1';
 	const cancelled = url.searchParams.get('annullato') === '1';
 	const fresh = paid ? await getByToken(db, params.token) : null;
@@ -35,7 +40,7 @@ export const load: PageServerLoad = async ({ params, url, request }) => {
 		billing: addr(f.billing), shipping: addr(f.shipping), vat: f.billing?.vat ?? null,
 		payments: c.payments.map((p) => ({ seq: p.seq, method: p.method, due: p.due, amount: Number(p.amount), upfront: p.upfront, status: p.status, paid_at: p.paid_at })),
 		sender: c.conf.sender_name, messages: c.messages.map((m) => ({ id: m.id, direction: m.direction, kind: m.kind, author: m.author, body: m.body, created_at: m.created_at })),
-		bank: { iban: COMPANY.iban || null, name: COMPANY.name }, online: onlinePaymentsOn(), simulation: !stripeConfigured() && onlinePaymentsOn(), paid, cancelled, stats
+		bank: { iban: COMPANY.iban || null, name: COMPANY.name }, online: onlinePaymentsOn(), paypal: paypalConfigured(), simulation: !stripeConfigured() && onlinePaymentsOn(), paid, cancelled, ppError, stats
 	};
 };
 

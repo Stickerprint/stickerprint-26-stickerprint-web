@@ -56,7 +56,7 @@ export async function sendInvoice(db: DB, id: string, origin: string, o: { to?: 
 	return { ok: true, message: r.skipped ? 'Postmark non configurato: email simulata.' : `Fattura inviata a ${email}${cc.length ? ` (copia a ${cc.join(', ')})` : ''}.` };
 }
 export async function setInvoicePaymentStatus(db: DB, id: string, seq: number, status: 'pagato' | 'da_pagare', operator: string | null, ref?: string | null, provider = 'manuale'): Promise<string | null> {
-	const patch = status === 'pagato' ? { status, paid_at: new Date().toISOString(), provider, provider_ref: ref || null, note: operator ? `segnato da ${operator}` : provider === 'stripe' ? 'incassato online' : provider === 'simulazione' ? 'pagamento simulato (prova)' : null } : { status, paid_at: null, provider: null, provider_ref: null, note: null };
+	const patch = status === 'pagato' ? { status, paid_at: new Date().toISOString(), provider, provider_ref: ref || null, note: operator ? `segnato da ${operator}` : provider === 'stripe' || provider === 'paypal' ? 'incassato online' : provider === 'simulazione' ? 'pagamento simulato (prova)' : null } : { status, paid_at: null, provider: null, provider_ref: null, note: null };
 	const { error } = await db.from('invoice_payments').update(patch).eq('invoice_id', id).eq('seq', seq);
 	if (error) return error.message;
 	const payments = await loadInvoicePayments(db, id);

@@ -70,7 +70,7 @@ export async function finalizeCheckout(db: DB, group: string, o: { provider: str
 		await db.from('orders').update({ status: auto ? 'in_produzione' : 'attesa_prova', prod_stage: auto && row.product_slug !== 'campioni' ? 'stampa' : null, payment_status: 'paid' }).eq('id', row.id);
 	}
 	await db.from('orders').update({ payment_status: 'paid' }).eq('checkout_group', group);
-	if (o.provider === 'stripe' || o.provider === 'test') await db.from('order_payments').update({ status: 'pagato', paid_at: paidAt, provider: o.provider, provider_ref: o.ref, note: o.provider === 'test' ? 'ordine di prova' : 'incassato online' }).eq('checkout_group', group).eq('seq', 1);
+	if (o.provider === 'stripe' || o.provider === 'paypal' || o.provider === 'test') await db.from('order_payments').update({ status: 'pagato', paid_at: paidAt, provider: o.provider, provider_ref: o.ref, note: o.provider === 'test' ? 'ordine di prova' : 'incassato online' }).eq('checkout_group', group).eq('seq', 1);
 	if (p.creditUsed > 0 && p.userId) await db.from('credit_transactions').insert({ user_id: p.userId, amount: -p.creditUsed, kind: 'spend', order_ref: p.numbers[0], note: `Credito usato sull'ordine ${p.numbers.join(', ')}` });
 	if (p.discountCode) await db.rpc('discount_code_used', { p_code: p.discountCode });
 
@@ -102,6 +102,6 @@ export async function finalizeCheckout(db: DB, group: string, o: { provider: str
 	sendEmail({ to: p.email, ...mail, attachments: pdfB64 ? [{ name: `${invoice.number}.pdf`, content: pdfB64, contentType: 'application/pdf' }] : undefined })
 		.then((r) => { if (r.ok && !r.skipped) db.from('invoices').update({ sent_at: new Date().toISOString() }).eq('number', invoice.number).then(() => {}); })
 		.catch((e) => console.error('[checkout] email', e));
-	pushStaff({ title: `Nuovo ordine ${p.numbers[0]}`, body: `${p.firstName} ${p.lastName} · ${p.emailLines.length} ${p.emailLines.length === 1 ? 'articolo' : 'articoli'} · ${p.toPay.toFixed(2)} €${o.provider === 'stripe' ? ' · pagato con Stripe' : ''}`, url: `/dashboard/fatturazione/ordini/${group}`, tag: p.numbers[0] }).catch((e) => console.error('[push]', e));
+	pushStaff({ title: `Nuovo ordine ${p.numbers[0]}`, body: `${p.firstName} ${p.lastName} · ${p.emailLines.length} ${p.emailLines.length === 1 ? 'articolo' : 'articoli'} · ${p.toPay.toFixed(2)} €${o.provider === 'stripe' ? ' · pagato con carta' : o.provider === 'paypal' ? ' · pagato con PayPal' : ''}`, url: `/dashboard/fatturazione/ordini/${group}`, tag: p.numbers[0] }).catch((e) => console.error('[push]', e));
 	return { done: true, payload: p, invoice: invoice.number };
 }

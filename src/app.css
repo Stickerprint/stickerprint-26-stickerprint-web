@@ -126,6 +126,9 @@ body { overflow-x: clip; }
 .btn:disabled { opacity: .4; cursor: not-allowed; transform: none; filter: none; }
 .btn--blue { background: var(--blue); color: #fff; }
 .btn--yellow { background: var(--yellow); color: var(--ink); }
+.btn--paypal { background: #ffc439; color: #003087; display: inline-flex; align-items: center; gap: 8px; }
+.btn--paypal:hover { background: #f2b700; }
+.btn--paypal img { height: 18px; width: auto; }
 .btn--green { background: var(--green); color: var(--ink); }
 .btn--periwinkle { background: var(--periwinkle); color: var(--ink); }
 .btn--pink { background: var(--pink); color: #fff; }

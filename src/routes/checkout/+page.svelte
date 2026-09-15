@@ -246,9 +246,9 @@
 
 				<h2 style="margin-top:28px">Metodo di pagamento</h2>
 				<div class="co-pay">
-					{#if data.online}
+					{#if data.online || data.paypal}
 						<label class="co-pay__opt"><input type="radio" name="payment" value="stripe" bind:group={payment} /><span><b>Carta di credito</b><small>Visa, Mastercard, Amex · anche Apple Pay, Google Pay e Link · pagamento sicuro con Stripe</small></span><img src="/icons/pay-stripe.svg" alt="Stripe" /></label>
-						<label class="co-pay__opt"><input type="radio" name="payment" value="paypal" bind:group={payment} /><span><b>PayPal</b><small>Paghi con il tuo conto PayPal</small></span><img src="/icons/footer/paypal.webp" alt="" /></label>
+						<label class="co-pay__opt"><input type="radio" name="payment" value="paypal" bind:group={payment} /><span><b>PayPal</b><small>{data.paypal ? 'Vai su PayPal e paghi con il tuo conto, senza inserire la carta' : 'Paghi con il tuo conto PayPal'}</small></span><img src="/icons/footer/paypal.webp" alt="" /></label>
 					{:else}
 						<label class="co-pay__opt is-soon"><input type="radio" name="payment" value="stripe" disabled /><span><b>Carta di credito</b><small>Pagamento sicuro con Stripe · disponibile a breve</small></span><img src="/icons/pay-stripe.svg" alt="Stripe" /></label>
 						<label class="co-pay__opt is-soon"><input type="radio" name="payment" value="paypal" disabled /><span><b>PayPal</b><small>Disponibile a breve</small></span><img src="/icons/footer/paypal.webp" alt="" /></label>
@@ -258,7 +258,11 @@
 				<p class="co-secure"><b>🔒 Pagamento sicuro.</b> Il pagamento viene effettuato subito alla conferma dell’ordine. Ricevi conferma e fattura via email; la prova di stampa arriva a seguire e andiamo in produzione solo dopo il tuo ok.</p>
 
 				{#if err || PAY_ERR}<p class="error" style="margin-top:14px">{err || PAY_ERR}</p>{/if}
-				<button class="btn btn--green btn--lg co-submit" type="submit" disabled={submitting || !canOrder || !allFiles || items.length === 0}>{submitting ? (data.online && payment !== 'test' ? 'Ti portiamo alla cassa…' : 'Invio in corso…') : 'Invia il tuo ordine e paga'}</button>
+				{#if payment === 'paypal' && (data.paypal || data.online)}
+					<button class="btn btn--paypal btn--lg co-submit" type="submit" disabled={submitting || !canOrder || !allFiles || items.length === 0}><img src="/icons/footer/paypal.webp" alt="" />{submitting ? 'Ti portiamo su PayPal…' : 'Invia l’ordine e paga con PayPal'}</button>
+				{:else}
+					<button class="btn btn--green btn--lg co-submit" type="submit" disabled={submitting || !canOrder || !allFiles || items.length === 0}>{submitting ? (data.online && payment !== 'test' ? 'Ti portiamo alla cassa…' : 'Invio in corso…') : 'Invia il tuo ordine e paga'}</button>
+				{/if}
 				<p class="note" style="margin-top:8px">Cliccando su Invia il tuo ordine, accetti la <a class="link" href="/privacy">privacy policy</a> e i <a class="link" href="/termini">termini e condizioni</a> di Stickerprint.</p>
 			</div>
 

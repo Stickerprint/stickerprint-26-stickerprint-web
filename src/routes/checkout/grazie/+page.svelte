@@ -43,7 +43,8 @@
 	<div class="container thanks__inner">
 		<h1 class="launch-title thanks__ottimo">Ottimo!</h1>
 		<div class="launch-rest">
-			{#if data.pending}<p class="thanks__sub">Stiamo aspettando la conferma del pagamento: appena arriva ricevi l'email con la fattura.</p>
+			{#if data.ppError && !data.pending}<p class="thanks__sub">Il pagamento PayPal non è andato a buon fine ({data.ppError}). Torna al <a href="/checkout">checkout</a> e riprova.</p>
+			{:else if data.pending}<p class="thanks__sub">Stiamo aspettando la conferma del pagamento: appena arriva ricevi l'email con la fattura.</p>
 			{:else}<p class="thanks__sub">Il tuo ordine è andato correttamente in produzione</p>{/if}
 			<p class="thanks__line">e dovrebbe essere pronto per la spedizione <mark>{data.shipDate}</mark></p>
 			{#if numbers.length}<p class="thanks__line">Numero d'ordine <mark>{numbers.join(', ')}</mark></p>{/if}

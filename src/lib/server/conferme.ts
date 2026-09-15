@@ -92,7 +92,7 @@ export async function sendConfirmation(db: DB, group: string, origin: string, o:
 }
 
 export async function setPaymentStatus(db: DB, group: string, seq: number, status: 'pagato' | 'da_pagare', operator: string | null, ref?: string | null, provider = 'manuale'): Promise<string | null> {
-	const patch = status === 'pagato' ? { status, paid_at: new Date().toISOString(), provider, provider_ref: ref || null, note: operator ? `segnato da ${operator}` : provider === 'stripe' ? 'incassato online' : provider === 'simulazione' ? 'pagamento simulato (prova)' : null } : { status, paid_at: null, provider: null, provider_ref: null, note: null };
+	const patch = status === 'pagato' ? { status, paid_at: new Date().toISOString(), provider, provider_ref: ref || null, note: operator ? `segnato da ${operator}` : provider === 'stripe' || provider === 'paypal' ? 'incassato online' : provider === 'simulazione' ? 'pagamento simulato (prova)' : null } : { status, paid_at: null, provider: null, provider_ref: null, note: null };
 	const { error } = await db.from('order_payments').update(patch).eq('checkout_group', group).eq('seq', seq);
 	if (error) return error.message;
 	/* ordine del sito ancora in attesa dell'incasso online: segnarlo pagato lo chiude come farebbe Stripe (fattura, email, produzione) */
