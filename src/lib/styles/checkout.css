@@ -19,7 +19,7 @@
 .co-pay__opt span { display: grid; flex: 1; } .co-pay__opt small { color: var(--muted); font-size: 12.5px; }
 .co-pay__opt img { height: 22px; width: auto; }
 .co-pay__opt.is-soon { opacity: .55; cursor: not-allowed; }
-.co-pay__logos { display: flex; gap: 6px; align-items: center; flex: 0 0 auto; }
+.co-pay__opt span.co-pay__logos { display: flex; gap: 6px; align-items: center; flex: 0 0 auto; }
 .co-pay__logos img { height: 20px; width: auto; border-radius: 3px; }
 .co-pay__opt img.co-pay__paypal { height: 22px; }
 .co-pay__opt--card.is-open { border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom-color: transparent; }

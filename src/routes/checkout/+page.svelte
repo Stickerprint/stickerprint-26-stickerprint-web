@@ -129,12 +129,13 @@
 		if (!data.stripeKey || typeof window === 'undefined') return;
 		const w = window as unknown as { Stripe?: (k: string, o?: Record<string, unknown>) => StripeJs };
 		if (!w.Stripe) await new Promise<void>((res, rej) => { const sc = document.createElement('script'); sc.src = 'https://js.stripe.com/v3/'; sc.onload = () => res(); sc.onerror = () => rej(new Error('Stripe.js non caricato')); document.head.appendChild(sc); });
-		stripe = w.Stripe!(data.stripeKey, { locale: 'it' });
-		cardEl = stripe.elements({ locale: 'it' }).create('card', { hidePostalCode: true, style: { base: { fontFamily: 'Montserrat, Helvetica, Arial, sans-serif', fontSize: '15px', color: '#0b0b3b', '::placeholder': { color: '#9aa0b8' } }, invalid: { color: '#d0342c' } } });
+		const st = w.Stripe!(data.stripeKey, { locale: 'it' });
+		cardEl = st.elements({ locale: 'it' }).create('card', { hidePostalCode: true, style: { base: { fontFamily: 'Montserrat, Helvetica, Arial, sans-serif', fontSize: '15px', color: '#0b0b3b', '::placeholder': { color: '#9aa0b8' } }, invalid: { color: '#d0342c' } } });
 		cardEl.on('change', (ev: { error?: { message?: string }; complete?: boolean }) => { cardErr = ev.error?.message ?? ''; cardReady = !!ev.complete; });
+		stripe = st; // dopo aver creato il Card Element: l'effetto che lo monta dipende da questo stato
 	}
 	/* Card Element montato quando la scelta "Carta di credito" e' aperta */
-	$effect(() => { const host = cardHost; if (host && cardEl) { cardEl.mount(host); return () => cardEl?.unmount(); } });
+	$effect(() => { const host = cardHost; const st = stripe; if (host && st && cardEl) { cardEl.mount(host); return () => cardEl?.unmount(); } });
 	/* Apple Pay / Google Pay: Express Checkout Element (compare solo dove il wallet e' disponibile) */
 	$effect(() => {
 		const host = exHost; const st = stripe;
