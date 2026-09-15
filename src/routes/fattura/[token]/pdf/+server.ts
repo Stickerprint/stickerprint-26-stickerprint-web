@@ -11,9 +11,9 @@ export const GET: RequestHandler = async ({ params }) => {
 	const c = await getInvoiceByToken(db, params.token);
 	if (!c) error(404, 'Fattura non trovata');
 	const inv = c.inv;
-	let bytes: Uint8Array | null = null;
-	if (inv.pdf_path) { const { data } = await db.storage.from('invoices').download(inv.pdf_path); if (data) bytes = new Uint8Array(await data.arrayBuffer()); }
-	if (!bytes) bytes = await buildInvoicePdf({ number: inv.number, issued_at: inv.issued_at, email: inv.email ?? '', billing: inv.billing ?? {}, lines: inv.lines ?? [], subtotal_net: Number(inv.subtotal_net), discount_net: Number(inv.discount_net), express_net: Number(inv.express_net), credit_used: 0, vat_amount: Number(inv.vat_amount), total_gross: Number(inv.amount_gross), to_pay: Number(inv.amount_gross), payment_method: inv.payment_method, orders: inv.order_numbers ?? [], payment_terms: inv.payment_terms ?? [], notes: inv.notes });
+	// sempre rigenerato dai dati (il file salvato puo' essere di una versione precedente del layout); il salvato viene aggiornato
+	const bytes = await buildInvoicePdf({ number: inv.number, issued_at: inv.issued_at, email: inv.email ?? '', billing: inv.billing ?? {}, lines: inv.lines ?? [], subtotal_net: Number(inv.subtotal_net), discount_net: Number(inv.discount_net), express_net: Number(inv.express_net), credit_used: 0, vat_amount: Number(inv.vat_amount), total_gross: Number(inv.amount_gross), to_pay: Number(inv.amount_gross), payment_method: inv.payment_method, orders: inv.order_numbers ?? [], payment_terms: inv.payment_terms ?? [], notes: inv.notes });
+	if (inv.pdf_path) await db.storage.from('invoices').upload(inv.pdf_path, bytes, { contentType: 'application/pdf', upsert: true }).catch(() => {});
 	await trackInvoicePdf(db, inv.id);
 	return new Response(bytes as unknown as BodyInit, { headers: { 'content-type': 'application/pdf', 'content-disposition': `attachment; filename="Fattura-${inv.number}.pdf"`, 'cache-control': 'no-store' } });
 };
