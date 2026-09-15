@@ -8,6 +8,7 @@ import { dueNow, isRiba, type InvoiceMessage, type InvoicePayment } from '$lib/d
 import { sendEmail } from './email';
 import { invoiceEmail, invoiceReplyEmail, OWNER_EMAIL, ownerNotifyEmail } from './email-templates';
 import { pushStaff } from './push';
+import { buildInvoicePdf } from './invoice';
 export * from '$lib/dashboard/fatture';
 
 type DB = SupabaseClient;
@@ -50,7 +51,15 @@ export async function sendInvoice(db: DB, id: string, origin: string, o: { to?: 
 	const due = dueNow(payments);
 	const mail = invoiceEmail({ subject: o.subject.trim(), message: o.message.trim(), senderName: o.sender, number: inv.number, href: `${origin}/fattura/${inv.token}`, toPay: due > 0 ? money(due) : null });
 	const cc = (o.cc || '').split(/[,;\s]+/).map((x) => x.trim().toLowerCase()).filter((x) => /^[^@]+@[^@]+\.[^@]+$/.test(x));
-	const r = await sendEmail({ to: [email, ...cc], ...mail, metadata: { invoice: inv.number } });
+	/* il PDF della fattura viaggia sempre in allegato (rigenerato dai dati, cosi' e' sempre l'ultima versione) */
+	let attachments: { name: string; content: string; contentType: string }[] | undefined;
+	try {
+		const bytes = await buildInvoicePdf({ number: inv.number, issued_at: inv.issued_at, email: inv.email ?? '', billing: inv.billing ?? {}, lines: inv.lines ?? [], subtotal_net: Number(inv.subtotal_net), discount_net: Number(inv.discount_net), express_net: Number(inv.express_net), credit_used: 0, vat_amount: Number(inv.vat_amount), total_gross: Number(inv.amount_gross), to_pay: Number(inv.amount_gross), payment_method: inv.payment_method, orders: inv.order_numbers ?? [], payment_terms: inv.payment_terms ?? [], notes: inv.notes });
+		let b = ''; for (let i = 0; i < bytes.length; i += 0x8000) b += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+		attachments = [{ name: `Fattura-${inv.number}.pdf`, content: btoa(b), contentType: 'application/pdf' }];
+		if (inv.pdf_path) await db.storage.from('invoices').upload(inv.pdf_path, bytes, { contentType: 'application/pdf', upsert: true }).catch(() => {});
+	} catch (e) { console.error('[fattura] pdf allegato', e); }
+	const r = await sendEmail({ to: [email, ...cc], ...mail, attachments, metadata: { invoice: inv.number } });
 	if (!r.ok) return { ok: false, message: r.error ?? 'Email non inviata.' };
 	await db.from('invoices').update({ sent_at: new Date().toISOString(), sent_subject: o.subject.trim(), sent_message: o.message.trim(), sender_name: o.sender, email: inv.email || email }).eq('id', id);
 	return { ok: true, message: r.skipped ? 'Postmark non configurato: email simulata.' : `Fattura inviata a ${email}${cc.length ? ` (copia a ${cc.join(', ')})` : ''}.` };

@@ -51,7 +51,7 @@
 
 <svelte:head>
 	<title>Stickerprint | Adesivi personalizzati con anteprima automatica</title>
-	<meta name="description" content="Adesivi perfetti, zero sorprese. Carica il file, guarda subito l’anteprima automatica e conferma. Prova automatica immediata, pronti per la spedizione in pochi giorni, fino al 6% in credito su ogni ordine." />
+	<meta name="description" content="Adesivi perfetti, zero sorprese. Carica il file, guarda subito l’anteprima automatica e conferma. Prova automatica immediata, spedizione stimata in pochi giorni, fino al 6% in credito su ogni ordine." />
 	<link rel="canonical" href="https://stickerprint.it/" />
 	<meta property="og:title" content="Stickerprint — Adesivi perfetti. Zero sorprese." />
 	<meta property="og:description" content="Carica il file e guarda subito l’anteprima automatica dei tuoi adesivi." />
@@ -77,7 +77,7 @@
 		</div>
 		<div class="hero__visual">
 			<img src="/images/ig-3.jpg" alt="Adesivi fustellati Bubu's Smashburger stampati da Stickerprint" width="600" height="600" />
-			<div class="hero__sticker" style="left:18px;bottom:18px">✅ Prova approvata in 2 min</div>
+			<div class="hero__sticker" style="left:18px;bottom:18px">✅ Anteprima pronta in 2 secondi</div>
 			<div class="hero__sticker" style="right:18px;top:18px">📦 Spedizione stimata {data.shipDate}</div>
 		</div>
 	</div>

@@ -43,7 +43,7 @@ export const PRODUCTS: Record<string, ProductContent> = {
 			closing: 'Un adesivo economico costa meno una volta. Un adesivo fatto bene vale di più ogni giorno.',
 			cta: 'Crea i tuoi adesivi →', href: '#preventivatore'
 		},
-		care: { title: 'Zero ansia.', hl: 'Ci pensiamo noi.', intro: 'È il tuo primo ordine? Non ti preoccupare. Ecco la checklist che eseguiamo su ogni ordine:', checks: ['Controllo manuale di ogni file', 'Se serve, sistemiamo il file prima di stampare', 'Ti mandiamo una prova da approvare', 'Vedrai esattamente come realizzeremo il tuo prodotto', 'Solo dopo il tuo ok andiamo in stampa'], closing: '' },
+		care: { title: 'Zero ansia.', hl: 'Ci pensiamo noi.', intro: 'È il tuo primo ordine? Non ti preoccupare. Ecco la checklist che eseguiamo su ogni ordine:', checks: ['Controllo manuale di ogni file', 'Se serve, sistemiamo il file prima di stampare', 'Anteprima automatica del risultato prima di pagare', 'Vedi esattamente come realizzeremo il tuo prodotto', 'Stampiamo quello che hai visto, senza sorprese'], closing: '' },
 		reviewsTitle: 'Cosa dicono di', reviewsHl: 'questi adesivi.', reviewsSub: 'Ordini reali. Risultati concreti.'
 	},
 	adesivi_resinati: {
@@ -63,7 +63,7 @@ export const PRODUCTS: Record<string, ProductContent> = {
 		],
 		faqTitle: 'Domande frequenti sugli Adesivi resinati',
 		engineProduct: 'resinati', cta: 'i tuoi Adesivi resinati',
-		care: { title: 'Prima volta con', hl: 'Adesivi Resinati?', intro: 'La resina valorizza il design, ma va gestita con precisione. Per questo controlliamo tutto, prima di stampare.', checks: ['Controllo del file e delle aree di colata', 'Verifica e sistemazione sagoma e angoli', 'Prova visiva dell’effetto bombato prima della produzione', 'Ti mostriamo esattamente il risultato finale', 'Andiamo in stampa solo dopo il tuo ok'], closing: 'Nessuna sorpresa. Solo adesivi fatti come si deve.' },
+		care: { title: 'Prima volta con', hl: 'Adesivi Resinati?', intro: 'La resina valorizza il design, ma va gestita con precisione. Per questo controlliamo tutto, prima di stampare.', checks: ['Controllo del file e delle aree di colata', 'Verifica e sistemazione sagoma e angoli', 'Anteprima dell’effetto bombato prima di ordinare', 'Vedi esattamente il risultato finale', 'Stampiamo quello che hai visto, senza sorprese'], closing: 'Nessuna sorpresa. Solo adesivi fatti come si deve.' },
 		reviewsTitle: 'Spoiler:', reviewsHl: 'l’effetto 3D convince davvero', reviewsSub: 'Ordini reali. Risultati concreti.'
 	},
 	adesivi_rilievo: {
@@ -83,7 +83,7 @@ export const PRODUCTS: Record<string, ProductContent> = {
 		],
 		faqTitle: 'Domande frequenti sugli Adesivi in rilievo',
 		engineProduct: 'sticker', cta: 'i tuoi Adesivi in rilievo',
-		care: { title: 'Rilievo preciso.', hl: 'Nessuna sorpresa.', intro: 'Il rilievo è applicato solo dove conta. Così il risultato è esattamente quello che ti aspetti.', checks: ['Controlliamo il file e le aree indicate per il rilievo', 'Sistemiamo eventuali dettagli tecnici', 'Applichiamo lo spot solo dove richiesto', 'Ti mostriamo il risultato finale prima della stampa', 'Andiamo in stampa solo dopo il tuo ok'], closing: 'Risultato: un effetto rilievo preciso, coerente con il design. Niente esperimenti. Niente sorprese.' },
+		care: { title: 'Rilievo preciso.', hl: 'Nessuna sorpresa.', intro: 'Il rilievo è applicato solo dove conta. Così il risultato è esattamente quello che ti aspetti.', checks: ['Controlliamo il file e le aree indicate per il rilievo', 'Sistemiamo eventuali dettagli tecnici', 'Applichiamo lo spot solo dove richiesto', 'Anteprima del risultato finale prima di ordinare', 'In stampa appena confermi l’ordine'], closing: 'Risultato: un effetto rilievo preciso, coerente con il design. Niente esperimenti. Niente sorprese.' },
 		reviewsTitle: 'Spoiler:', reviewsHl: 'il rilievo fa la differenza.', reviewsSub: 'Ordini reali. Risultati concreti.'
 	},
 	etichette: {
@@ -103,7 +103,7 @@ export const PRODUCTS: Record<string, ProductContent> = {
 		],
 		faqTitle: 'Domande frequenti sulle Etichette in fogli',
 		engineProduct: 'sticker', cta: 'le tue Etichette in fogli',
-		care: { title: 'Zero stress.', hl: 'Anche quando etichetti tanto.', intro: 'Tu pensi al prodotto. Noi alle etichette. Che siano per vendita, spedizione o magazzino, le etichette devono funzionare subito. Per questo controlliamo tutto prima di andare in stampa.', checks: ['Controllo file e dimensioni', 'Verifica del taglio e della disposizione sul foglio', 'Prova di stampa da approvare', 'Nessuna produzione senza conferma', 'Nessuna sorpresa in applicazione'], closing: '' },
+		care: { title: 'Zero stress.', hl: 'Anche quando etichetti tanto.', intro: 'Tu pensi al prodotto. Noi alle etichette. Che siano per vendita, spedizione o magazzino, le etichette devono funzionare subito. Per questo controlliamo tutto prima di andare in stampa.', checks: ['Controllo file e dimensioni', 'Verifica del taglio e della disposizione sul foglio', 'Anteprima automatica prima di pagare', 'In produzione appena confermi l’ordine', 'Nessuna sorpresa in applicazione'], closing: '' },
 		reviewsTitle: 'Spoiler:', reviewsHl: 'fanno risparmiare tempo.', reviewsSub: 'E quando etichetti tanto, fa la differenza.'
 	},
 	fogli_adesivi: {
@@ -123,7 +123,7 @@ export const PRODUCTS: Record<string, ProductContent> = {
 		],
 		faqTitle: 'Domande frequenti sui Fogli di adesivi',
 		engineProduct: 'sticker', cta: 'i tuoi Fogli di adesivi',
-		care: { title: 'Ogni adesivo', hl: 'al posto giusto.', intro: 'Tu pensi al design. Al resto ci pensiamo noi, per davvero.', checks: ['Controllo file e margini di taglio', 'Verifica del mezzo taglio su ogni adesivo', 'Sistemiamo l’impaginazione se serve', 'Ti mandiamo una prova da approvare', 'Si stampa solo dopo il tuo ok'], closing: 'Nessuna sorpresa. Nessun foglio sprecato.' },
+		care: { title: 'Ogni adesivo', hl: 'al posto giusto.', intro: 'Tu pensi al design. Al resto ci pensiamo noi, per davvero.', checks: ['Controllo file e margini di taglio', 'Verifica del mezzo taglio su ogni adesivo', 'Sistemiamo l’impaginazione se serve', 'Anteprima automatica prima di pagare', 'In stampa appena confermi l’ordine'], closing: 'Nessuna sorpresa. Nessun foglio sprecato.' },
 		reviewsTitle: 'Spoiler:', reviewsHl: 'ordini reali, utilizzo reale.', reviewsSub: 'Opinioni vere.'
 	},
 	vetrofanie: {
@@ -143,7 +143,7 @@ export const PRODUCTS: Record<string, ProductContent> = {
 		],
 		faqTitle: 'Domande frequenti sulle Vetrofanie',
 		engineProduct: 'sticker', cta: 'le tue Vetrofanie',
-		care: { title: 'Zero stress.', hl: 'Anche su vetro.', intro: 'Tu carichi il file. Noi pensiamo al resto. Le vetrofanie sembrano semplici, ma richiedono attenzione su orientamento, bordi e resa finale. Per questo controlliamo tutto prima di stampare.', checks: ['Controllo orientamento e specularità', 'Verifica bordi e taglio per applicazione su vetro', 'Prova di stampa da approvare', 'Nessuna stampa senza il tuo ok', 'Nessuna sorpresa sul risultato'], closing: '' },
+		care: { title: 'Zero stress.', hl: 'Anche su vetro.', intro: 'Tu carichi il file. Noi pensiamo al resto. Le vetrofanie sembrano semplici, ma richiedono attenzione su orientamento, bordi e resa finale. Per questo controlliamo tutto prima di stampare.', checks: ['Controllo orientamento e specularità', 'Verifica bordi e taglio per applicazione su vetro', 'Anteprima automatica prima di pagare', 'Stampiamo quello che hai visto', 'Nessuna sorpresa sul risultato'], closing: '' },
 		reviewsTitle: 'Spoiler:', reviewsHl: 'si notano. Eccome.', reviewsSub: 'Vetrine reali. Feedback reali.'
 	},
 };

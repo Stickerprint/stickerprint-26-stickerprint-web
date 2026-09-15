@@ -124,7 +124,7 @@ export function orderConfirmationEmail(opts: { name?: string | null; numbers: st
 	const body = `<p>Ciao ${esc(opts.name || '')},</p>
 <p>grazie per il tuo ordine! Abbiamo ricevuto il pagamento e siamo già al lavoro: ecco cosa stiamo preparando per te.</p>
 ${items}
-<p style="margin:16px 0 0;padding:12px 14px;background:#f4f5fa;border-radius:10px;"><b>Totale pagato:</b> ${esc(opts.total)}<br><b>Pronti per la spedizione entro:</b> ${esc(opts.shipDate)}</p>
+<p style="margin:16px 0 0;padding:12px 14px;background:#f4f5fa;border-radius:10px;"><b>Totale pagato:</b> ${esc(opts.total)}<br><b>Spedizione stimata:</b> ${esc(opts.shipDate)}</p>
 ${opts.accountUrl ? `<p>Dalla tua area personale segui l'ordine passo passo, dalla stampa alla consegna.</p>` : `<p>Vuoi seguire l'ordine e guadagnare credito sul prossimo? <a href="${SITE}/signup" style="color:#0e8bff;">Crea il tuo account</a> con questa stessa email: ordine e fattura saranno già lì.</p>`}
 <p>Qui sotto trovi anche la <b>fattura ${esc(opts.invoiceNumber)}</b> del tuo ordine, in allegato.</p>`;
 	return {
@@ -142,7 +142,7 @@ export function manualOrderEmail(opts: { name?: string | null; number: string; t
 		html: `<p>Ciao ${opts.name || ''},</p>
 <p>ti confermiamo l'ordine <strong>${opts.number}</strong>. In allegato trovi il riepilogo in PDF.</p>
 ${itemsBlock(opts.lines)}
-<p><strong>Totale IVA inclusa:</strong> ${opts.total}<br><strong>Pronti per la spedizione entro:</strong> ${opts.shipDate}</p>
+<p><strong>Totale IVA inclusa:</strong> ${opts.total}<br><strong>Spedizione stimata:</strong> ${opts.shipDate}</p>
 ${opts.terms.length ? `<p><strong>Scadenze di pagamento</strong><br>${opts.terms.join('<br>')}</p>` : ''}
 <p>Per qualsiasi modifica rispondi a questa email.</p>
 <p>A presto,<br>Il team Stickerprint</p>`

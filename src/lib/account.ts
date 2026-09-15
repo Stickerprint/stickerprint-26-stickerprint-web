@@ -4,6 +4,7 @@ export interface Order {
 	id: string;
 	number: string;
 	checkout_group?: string | null;
+	invoice_id?: string | null;
 	product_name: string;
 	forma: string | null;
 	materiale: string | null;
@@ -28,7 +29,7 @@ export interface CreditTx { id: string; amount: number; kind: 'earn' | 'spend' |
 export const STATUS: Record<string, { label: string; cls: string }> = {
 	in_attesa: { label: 'Ricevuto', cls: 'st--wait' },
 	attesa_file: { label: 'In attesa del file', cls: 'st--wait' },
-	attesa_prova: { label: 'Prova di stampa in preparazione', cls: 'st--wait' },
+	attesa_prova: { label: 'Controllo del file in corso', cls: 'st--wait' },
 	attesa_pagamento: { label: 'In attesa del pagamento', cls: 'st--wait' },
 	modifiche_richieste: { label: 'Modifiche in corso', cls: 'st--wait' },
 	approvazione: { label: 'In attesa della tua approvazione', cls: 'st--wait' },

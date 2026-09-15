@@ -105,7 +105,7 @@ export const SUPPORT_TOPICS: SupportTopic[] = [
    },
    {
     "q": "Quanto tempo serve per la produzione di adesivi resinati?",
-    "a": "Gli adesivi resinati richiedono tempi di produzione leggermente più lunghi rispetto agli adesivi standard, a causa del processo di resinatura e dei tempi di indurimento della resina. In media i tempi di produzione sono di 5-7 giorni lavorativi dall'approvazione della prova di stampa."
+    "a": "Gli adesivi resinati richiedono tempi di produzione leggermente più lunghi rispetto agli adesivi standard, a causa del processo di resinatura e dei tempi di indurimento della resina. In media i tempi di produzione sono di 5-7 giorni lavorativi dalla conferma dell'ordine."
    },
    {
     "q": "La resina ingiallisce nel tempo?",
@@ -238,7 +238,7 @@ export const SUPPORT_TOPICS: SupportTopic[] = [
    },
    {
     "q": "Quali sono i tempi di produzione e consegna?",
-    "a": "I tempi di produzione standard sono di 3-5 giorni lavorativi dalla approvazione della prova di stampa. La spedizione standard impiega ulteriori 2-4 giorni lavorativi. È disponibile anche la spedizione express per consegne più rapide con un supplemento del 30%."
+    "a": "I tempi di produzione standard sono di 3-5 giorni lavorativi dalla conferma dell'ordine. La spedizione standard impiega ulteriori 2-4 giorni lavorativi. È disponibile anche la spedizione express per consegne più rapide con un supplemento del 30%."
    },
    {
     "q": "Come posso tracciare il mio ordine?",
@@ -246,11 +246,11 @@ export const SUPPORT_TOPICS: SupportTopic[] = [
    },
    {
     "q": "Cosa succede dopo che effettuo un ordine?",
-    "a": "Dopo l'ordine riceverai un'email di conferma. Il nostro team preparerà una prova di stampa digitale che ti verrà inviata via email per approvazione. Una volta approvata la prova e confermato il pagamento, l'ordine entra in produzione."
+    "a": "Dopo l'ordine ricevi subito l'email di conferma con la fattura in allegato e l'ordine entra in produzione con l'anteprima che hai visto nel configuratore. Dalla tua area personale lo segui passo passo, dalla stampa alla consegna."
    },
    {
-    "q": "Cos'è la prova di stampa e come funziona?",
-    "a": "La prova di stampa è un'anteprima digitale del tuo adesivo nelle dimensioni reali. Ti verrà inviata via email con un link per approvarla o richiedere modifiche. Il pagamento viene elaborato automaticamente al momento dell'approvazione. Se richiedi modifiche, riceverai una nuova prova aggiornata."
+    "q": "Cos'è l'anteprima automatica e come funziona?",
+    "a": "Appena carichi il file, il configuratore ti mostra l'anteprima del tuo adesivo con sagoma e linea di taglio, prima di pagare. Quello che vedi è quello che stampiamo: non serve aspettare una prova via email. Se il file ha un problema, ti scriviamo noi prima di andare in stampa."
    },
    {
     "q": "Con quali corrieri spedite?",
@@ -278,12 +278,8 @@ export const SUPPORT_TOPICS: SupportTopic[] = [
     "a": "Se il prodotto arriva danneggiato durante il trasporto, contattaci entro 48 ore dalla consegna inviando foto del pacco e del prodotto danneggiato. Provvederemo alla rispedizione gratuita o al rimborso completo a seconda della tua preferenza."
    },
    {
-    "q": "Se la prova di stampa non mi piace, posso annullare l'ordine?",
-    "a": "Sì, finché non approvi la prova di stampa puoi richiedere modifiche senza costi aggiuntivi. Se dopo le revisioni non sei soddisfatto, contatta il servizio clienti per discutere le opzioni disponibili. Il pagamento viene elaborato solo al momento dell'approvazione della prova."
-   },
-   {
-    "q": "Quante revisioni della prova di stampa posso richiedere?",
-    "a": "Non c'è un limite fisso al numero di revisioni. Puoi richiedere le modifiche necessarie finché la prova non ti soddisfa pienamente. Il nostro obiettivo è che tu sia completamente soddisfatto del risultato prima di procedere con la stampa."
+    "q": "Posso modificare o annullare l'ordine dopo averlo confermato?",
+    "a": "Scrivici subito rispondendo all'email di conferma o dal supporto: finché l'ordine non è in stampa possiamo fermarlo, cambiare il file o annullarlo senza costi. Una volta stampato, non è più possibile."
    },
    {
     "q": "Posso richiedere la fattura per il mio ordine?",
@@ -304,7 +300,7 @@ export const SUPPORT_TOPICS: SupportTopic[] = [
    },
    {
     "q": "Quali metodi di pagamento accettate?",
-    "a": "Accettiamo pagamenti con carta di credito/debito (Visa, Mastercard, American Express) tramite Stripe e PayPal. Il pagamento con carta viene elaborato in modo sicuro al momento dell'approvazione della prova di stampa."
+    "a": "Accettiamo pagamenti con carta di credito/debito (Visa, Mastercard, American Express) tramite Stripe e PayPal. Il pagamento avviene in modo sicuro al momento dell'ordine, direttamente nella pagina di checkout."
    },
    {
     "q": "Posso riordinare lo stesso prodotto senza riconfigurarlo?",

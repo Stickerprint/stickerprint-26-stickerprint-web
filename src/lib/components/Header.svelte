@@ -112,7 +112,6 @@
 						<a class="dropdown__link" href="/account">Panoramica</a>
 						<a class="dropdown__link" href="/account/ordini">I miei ordini</a>
 						<a class="dropdown__link" href="/account/credito">Credito Stickerprint</a>
-						<a class="dropdown__link" href="/account/fatture">Fatture</a>
 						<a class="dropdown__link" href="/account/dati">Dati e indirizzi</a>
 						<a class="dropdown__link" href="/account/pagamenti">Pagamenti</a>
 						<a class="dropdown__link" href="/account/recensioni">Recensioni</a>

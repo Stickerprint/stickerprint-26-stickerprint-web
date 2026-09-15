@@ -8,7 +8,7 @@
 	<div class="howto" style="text-align:left">
 		<div class="howto__step"><div class="howto__n">1</div><b>Carica il tuo file</b><p>PNG, PDF, JPG, SVG. Va bene anche se non è pronto per la stampa: lo sistemiamo noi.</p></div>
 		<div class="howto__step"><div class="howto__n">2</div><b>Anteprima immediata</b><p>Vedi subito sagoma e linea di taglio, prima di pagare. Nessun salto nel buio.</p></div>
-		<div class="howto__step"><div class="howto__n">3</div><b>Approvi, stampiamo</b><p>Un controllo umano sul file, poi in produzione. Pronti per la spedizione entro <b>{shipDate}</b>.</p></div>
+		<div class="howto__step"><div class="howto__n">3</div><b>Confermi, stampiamo</b><p>Ti piace l’anteprima? Confermi e l’ordine entra subito in produzione. Spedizione stimata <b>{shipDate}</b>.</p></div>
 		<div class="howto__step"><div class="howto__n">4</div><b>Ricevi gli adesivi</b><p>Corriere espresso tracciato. E quando arrivano, ci lasci una recensione come gli altri.</p></div>
 	</div>
 </section>

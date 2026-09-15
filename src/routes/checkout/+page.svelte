@@ -364,7 +364,7 @@
 						<label class="co-pay__opt"><input type="radio" name="payment" value="test" bind:group={payment} /><span><b>Test (gratuito)</b><small>Crea l’ordine senza pagamento reale</small></span></label>
 					{/if}
 				</div>
-				<p class="co-secure"><b>🔒 Pagamento sicuro.</b> Il pagamento viene effettuato subito alla conferma dell’ordine. Ricevi conferma e fattura via email; la prova di stampa arriva a seguire e andiamo in produzione solo dopo il tuo ok.</p>
+				<p class="co-secure"><b>🔒 Pagamento sicuro.</b> Il pagamento viene effettuato subito alla conferma dell’ordine. Ricevi conferma e fattura via email e l’ordine entra in produzione con l’anteprima che hai già visto: nessun passaggio in più.</p>
 
 				{#if err || PAY_ERR}<p class="error" style="margin-top:14px">{err || PAY_ERR}</p>{/if}
 				{#if payment === 'paypal' && (data.paypal || data.online)}
@@ -396,7 +396,7 @@
 					{/each}
 					{#if !items.every((i) => i.product === 'campioni')}<FreeShippingBar gross={productsGrossForShip} />{/if}
 					<div class="co-row"><span>Prova automatica immediata</span><b>Inclusa</b></div>
-					<div class="co-ship">🚀 Pronti per la spedizione entro <b>{express ? data.expressDate : data.shipDate}</b>.</div>
+					<div class="co-ship">🚀 Spedizione stimata <b>{express ? data.expressDate : data.shipDate}</b>.</div>
 
 					<label class="co-code__label" for="code">Hai un codice sconto o un codice referral da utilizzare?</label>
 					<div class="co-code"><input id="code" placeholder="Inserisci codice" bind:value={code} /><button type="button" class="btn btn--blue btn--xs" onclick={applyCode} disabled={!code}>Applica</button></div>

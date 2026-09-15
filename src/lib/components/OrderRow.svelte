@@ -22,5 +22,6 @@
 	<div class="orow__right">
 		<span class="orow__price">{eur(o.total_gross)}</span>
 		<button type="button" class="btn btn--yellow btn--xs" onclick={() => onreorder(o)}>⟳ Riordina</button>
+		{#if o.invoice_id}<a class="btn btn--blue btn--xs" href="/account/fatture/{o.invoice_id}">⬇ Scarica fattura</a>{/if}
 	</div>
 </div>
