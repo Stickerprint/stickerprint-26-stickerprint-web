@@ -133,7 +133,7 @@ export const actions: Actions = {
 		let discount = 0;
 		let discountCode: string | null = null;
 		if (s('discount_code')) {
-			const d = await checkDiscount(supabase, s('discount_code'), productsNet);
+			const d = await checkDiscount(supabase, s('discount_code'), productsNet, email);
 			if (!d.ok) return fail(400, { error: d.error });
 			discount = d.amount;
 			discountCode = d.code;

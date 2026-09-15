@@ -28,7 +28,8 @@
 		] },
 		{ id: 'supporto', title: 'Supporto', items: [
 			{ label: 'Richieste di aiuto', href: '/dashboard/supporto/ticket', count: data.counts?.supporto },
-			{ label: 'Risposte pronte', href: '/dashboard/supporto/risposte' }
+			{ label: 'Risposte pronte', href: '/dashboard/supporto/risposte' },
+			{ label: 'Recensioni', href: '/dashboard/supporto/recensioni', count: data.counts?.recensioni }
 		] },
 		{ id: 'fatturazione', title: 'Fatturazione', items: [
 			{ label: 'Ordini', href: '/dashboard/fatturazione/ordini', count: data.counts?.prove },

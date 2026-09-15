@@ -11,7 +11,7 @@
 <div class="acc__head"><div><p class="eyebrow">Area personale</p><h1>Recensioni</h1><p class="lead">Dicci com’è andata: aiuta noi e chi deve ancora ordinare.</p></div></div>
 
 {#if form?.error}<p class="error">{form.error}</p>{/if}
-{#if form?.ok}<p class="success">Grazie! Recensione ricevuta.</p>{/if}
+{#if form?.ok}<p class="success">Grazie! Recensione ricevuta.{#if form?.code} Il tuo codice sconto del 10% sul prossimo ordine: <b style="font-size:18px;letter-spacing:.06em">{form.code}</b> (valido 6 mesi, ordini da 50 €, te l'abbiamo mandato anche via email).{/if}</p>{/if}
 
 <div class="acard">
 	<h3>Da recensire</h3>

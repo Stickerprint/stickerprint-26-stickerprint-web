@@ -93,7 +93,7 @@
 	$effect(() => { const p = payment; if (loaded && items.length && p && !paymentSent) { paymentSent = true; track.addPaymentInfo(cartItems(items), PAY_LABEL[p] ?? p, discount?.code ?? null); } });
 	async function applyCode() {
 		codeMsg = '';
-		const r = await fetch('/api/discount', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code, subtotalNet }) }).then((r) => r.json());
+		const r = await fetch('/api/discount', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code, subtotalNet, email: data.user?.email ?? guestEmail }) }).then((r) => r.json());
 		if (r.ok) { discount = r; codeMsg = `Codice ${r.code} applicato: −${eur(r.amount)}${r.description ? ' · ' + r.description : ''}`; }
 		else { discount = null; codeMsg = r.error; }
 	}

@@ -10,10 +10,21 @@
 <section class="section container" style="max-width:640px">
 	<p class="eyebrow">Ordine {data.number}</p>
 	<h1 style="font-size:clamp(28px,4vw,42px)">Com'è andata{data.name ? `, ${data.name}` : ''}?</h1>
-	<p class="lead">Due righe e una stella da 1 a 5: aiutano noi a migliorare e chi deve ancora scegliere.</p>
+	<p class="lead">Due righe e una stella da 1 a 5: servono a noi per crescere e a chi deve ancora ordinare per sentirsi tranquillo. Appena la invii ricevi un <b>codice sconto del 10%</b> sul prossimo ordine, qualunque voto tu dia.</p>
 	{#if data.items.length}<ul style="margin:14px 0 22px;padding-left:18px;color:#3d3f63">{#each data.items as i (i)}<li>{i}</li>{/each}</ul>{/if}
 	{#if data.done || form?.ok}
-		<div class="card" style="padding:26px;text-align:center"><p style="font-size:22px;margin:0 0 6px">Grazie! 🙌</p><p style="margin:0;color:#3d3f63">La tua recensione è stata registrata.</p><a class="btn btn--green" style="margin-top:18px" href="/">Torna su Stickerprint</a></div>
+		<div class="card" style="padding:26px;text-align:center">
+			<p style="font-size:22px;margin:0 0 6px">Grazie! 🙌</p>
+			<p style="margin:0;color:#3d3f63">La tua recensione è arrivata: la leggiamo e la pubblichiamo a breve.</p>
+			{#if form?.code ?? data.code}
+				<div style="margin:18px auto 0;max-width:420px;background:#fef6db;border-radius:14px;padding:16px">
+					<div style="font-size:12px;letter-spacing:.08em;color:#8a5a00;font-weight:800">IL TUO CODICE SCONTO</div>
+					<div style="font-family:var(--font-display);font-size:30px;letter-spacing:.06em;margin:4px 0">{form?.code ?? data.code}</div>
+					<div style="font-size:13px;color:#8a5a00">10% sul prossimo ordine · valido 6 mesi · ordini da 50 € · te l'abbiamo mandato anche via email</div>
+				</div>
+			{/if}
+			<a class="btn btn--green" style="margin-top:18px" href="/">Torna su Stickerprint</a>
+		</div>
 	{:else}
 		<form method="POST" use:enhance={() => { sending = true; return async ({ update }) => { sending = false; await update(); }; }} class="card" style="padding:26px;display:grid;gap:14px">
 			<div class="stars-in" style="display:flex;gap:6px;font-size:36px;cursor:pointer">{#each [1, 2, 3, 4, 5] as n (n)}<label style="color:{n <= stars ? '#f5b301' : '#d6d9e2'}"><input type="radio" name="rating" value={n} checked={n === stars} onchange={() => (stars = n)} hidden />★</label>{/each}</div>

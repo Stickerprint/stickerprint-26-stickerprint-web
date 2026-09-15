@@ -182,7 +182,7 @@ export function reviewRequestEmail(o: { name?: string | null; number: string; it
 	const n = esc(o.number);
 	/* ogni prodotto ha il suo bottone giallo "Scrivi recensione" (se non ne ha uno suo, usa il link generale) */
 	const list = itemsBlock(o.items.map((i) => (typeof i === 'string' ? { name: i, cta: { label: 'Scrivi recensione', href: o.href } } : { ...i, cta: i.cta ?? { label: 'Scrivi recensione', href: o.href } })));
-	return { subject: `Com'è andata con l'ordine ${o.number}? ⭐`, tag: 'review-request', html: layoutHtml(`Il tuo ordine ${n} è ${hl('arrivato')} ⭐`, `<p>Ciao ${esc(o.name || '')},</p><p>ieri il corriere ti ha consegnato i tuoi adesivi. Ci racconti com'è andata? Bastano due righe e una stella da 1 a 5: aiutano noi a migliorare e chi deve ancora scegliere.</p>${list}`) };
+	return { subject: `Com'è andata con l'ordine ${o.number}? ⭐ (c'è un 10% per te)`, tag: 'review-request', html: layoutHtml(`Il tuo ordine ${n} è ${hl('arrivato')} ⭐`, `<p>Ciao ${esc(o.name || '')},</p><p>ieri il corriere ti ha consegnato i tuoi adesivi. Ci racconti com'è andata? Bastano due righe e una stella da 1 a 5.</p><p>Una recensione sincera serve a noi per crescere e a chi deve ancora ordinare per sentirsi tranquillo prima di scegliere. Per ringraziarti, <b>appena la invii ricevi un codice sconto del 10% sul prossimo ordine</b> (valido 6 mesi, ordini da 50 €), qualunque voto tu dia.</p>${list}`) };
 }
 
 /** stesso layout delle altre email, ma il titolo puo' contenere HTML (la parola sottolineata) */
@@ -260,4 +260,9 @@ export function invoiceEmail(o: { subject: string; message: string; senderName: 
 export function invoiceReplyEmail(o: { name?: string | null; number: string; body: string; author?: string | null; href: string }) {
 	const n = esc(o.number);
 	return { subject: `Re: fattura ${o.number}`, tag: 'invoice-reply', html: layoutHtml(`Novità sulla fattura ${n} 💬`, `<p>Ciao ${esc(o.name || '')},</p><div style="white-space:pre-wrap;background:#f4f5fa;padding:14px 16px;border-radius:10px;">${esc(o.body)}</div>${o.author ? `<p style="margin-top:10px;color:#8e92b0;font-size:13px;">${esc(o.author)} · Stickerprint</p>` : ''}`, { label: 'Apri la fattura', href: o.href }) };
+}
+
+/** grazie per la recensione: codice sconto personale */
+export function reviewThanksEmail(o: { name?: string | null; number: string; code: string; validUntil: string; href: string }) {
+	return { subject: `Grazie per la recensione: ecco il tuo 10% 🎁`, tag: 'review-thanks', html: layoutHtml(`Grazie ${esc(o.name || '')}, ecco il tuo ${hl('10%')} 🎁`, `<p>La tua recensione sull'ordine <b>${esc(o.number)}</b> è arrivata: la leggiamo e la pubblichiamo a breve. Aiuta davvero, noi e chi deve ancora scegliere.</p><p style="margin:18px 0;padding:16px;background:#fef6db;border-radius:12px;text-align:center;"><span style="font-size:13px;color:#8a5a00;">IL TUO CODICE</span><br><b style="font-family:Rubik,Montserrat,Helvetica,Arial,sans-serif;font-size:28px;letter-spacing:.06em;">${esc(o.code)}</b><br><span style="font-size:13px;color:#8a5a00;">10% sul prossimo ordine · valido fino al ${esc(o.validUntil)} · ordini da 50 €</span></p><p>Lo inserisci nel carrello, nel campo "Codice sconto". È personale: vale una volta sola e con la tua email.</p>`, { label: 'Usa il codice', href: o.href }) };
 }

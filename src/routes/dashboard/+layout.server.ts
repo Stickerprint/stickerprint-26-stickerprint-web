@@ -6,6 +6,7 @@ import { aziendeCounts } from '$lib/server/richieste';
 import { supportoCounts } from '$lib/server/helpdesk';
 import { confirmCounts } from '$lib/server/conferme';
 import { invoiceCounts } from '$lib/server/fatture';
+import { pendingReviews } from '$lib/server/recensioni';
 
 /** Tutta l'area /dashboard richiede un profilo staff o admin. */
 export const load: LayoutServerLoad = async ({ locals: { supabase, session, user }, url }) => {
@@ -33,7 +34,8 @@ export const load: LayoutServerLoad = async ({ locals: { supabase, session, user
 		if (r.status === 'attesa_prova' || r.status === 'in_attesa') counts.prove = (counts.prove ?? 0) + 1;
 	}
 	// richieste aziendali nuove + preventivi da sollecitare; ticket nuovi o con risposta del cliente da leggere
-	const [az, sup, conf, invq] = await Promise.all([aziendeCounts(supabase), supportoCounts(supabase), confirmCounts(supabase), invoiceCounts(supabase)]);
+	const [az, sup, conf, invq, rev] = await Promise.all([aziendeCounts(supabase), supportoCounts(supabase), confirmCounts(supabase), invoiceCounts(supabase), pendingReviews(supabase)]);
+	if (rev) counts.recensioni = rev;
 	if (invq) counts.fatture = invq;
 	if (conf) counts.prove = (counts.prove ?? 0) + conf;
 	if (az.nuove) counts.aziende = az.nuove;
