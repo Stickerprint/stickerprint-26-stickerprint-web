@@ -60,8 +60,8 @@
 		</div>
 
 		<h2 class="qp__h2">Dettaglio</h2>
-		<div class="panel" style="overflow:auto;background:#fff;border:1px solid var(--line);padding:6px 16px 14px">
-			<table class="dtable">
+		<div class="qp__table">
+			<table>
 				<thead><tr><th>Descrizione</th><th style="text-align:right">Quantità</th><th style="text-align:right">Prezzo unitario</th><th style="text-align:right">Imponibile</th></tr></thead>
 				<tbody>{#each data.lines as l, k (k)}<tr><td>{l.description}</td><td style="text-align:right">{Number(l.qty).toLocaleString('it-IT')}</td><td style="text-align:right">{money(Number(l.unit_net))}</td><td style="text-align:right"><b>{money(Number(l.total_net))}</b></td></tr>{/each}</tbody>
 			</table>
