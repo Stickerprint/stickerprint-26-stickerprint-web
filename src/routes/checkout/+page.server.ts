@@ -50,8 +50,8 @@ export const load: PageServerLoad = async ({ url, locals: { supabase, user } }) 
 };
 
 interface Line { id: string; product: string; forma: string; materiale: string; finitura?: string; w: number; h: number; qty: number; filePath: string | null; fileName: string | null; previewUrl?: string | null; note?: string; reorderOf?: string | null }
-/** Prodotti con prova di stampa automatica (il file generato dal sistema è quello confermato dal cliente) */
-const AUTO_PROOF = new Set(['adesivi_personalizzati', 'adesivi_resinati', 'etichette', 'campioni']);
+/** Tutti i prodotti hanno l'anteprima automatica: il file generato dal configuratore e' quello confermato dal cliente, si va dritti in produzione */
+const AUTO_PROOF = new Set(['adesivi_personalizzati', 'adesivi_resinati', 'etichette', 'campioni', 'adesivi_rilievo', 'fogli', 'vetrofanie', 'kit_adesivi']);
 function deviceFrom(ua: string): 'mobile' | 'tablet' | 'desktop' {
 	if (/iPad|Tablet|PlayBook|Silk/i.test(ua) || (/Android/i.test(ua) && !/Mobile/i.test(ua))) return 'tablet';
 	if (/Mobi|iPhone|Android|Windows Phone/i.test(ua)) return 'mobile';
