@@ -524,7 +524,8 @@
 {#if !test}
 	<details class="special special--below">
 		<summary><span class="special__ico">💬</span> Hai una richiesta particolare? <em>Scrivicela qui: la leggiamo davvero, promesso.</em></summary>
-		<textarea rows="3" placeholder="Es. colore Pantone da rispettare, consegna entro una data, file da sistemare…" bind:value={note}></textarea>
+		<p class="special__beta">La prova automatica è nuova (è in beta) e qualche volta può sbagliare. Se l'anteprima non ti convince o vuoi delle modifiche, scrivici qui cosa cambiare: la prova corretta te la mandiamo su WhatsApp o via email entro 24-48 ore, e in stampa si va solo con il tuo ok.</p>
+		<textarea rows="3" placeholder="Es. colore Pantone da rispettare, consegna entro una data, file da sistemare, modifiche all'anteprima…" bind:value={note}></textarea>
 	</details>
 {/if}
 

@@ -5008,13 +5008,27 @@ function ridipingi(){
   g.setLineDash([dash,dash*0.75]);g.lineDashOffset=-anT;g.lineCap='butt';
   g.stroke(p);g.setLineDash([]);g.lineDashOffset=0;
 }
+/* Il tratteggio del taglio si anima solo per qualche secondo dopo un disegno o un'interazione, a 30 fps,
+   e mai con la scheda nascosta: prima girava a 60 fps per sempre (un ridisegno intero della tela a ogni
+   fotogramma, per ogni motore aperto) e dopo qualche minuto la pagina rispondeva a fatica. */
+let anUntil=0, anLast=0;
+function anWake(ms){ anUntil=performance.now()+(ms||8000); if(!anRAF)anLoop(); }
 function anLoop(){
+  anRAF=0;
+  if(!S._an||S.wand||!S.showCut)return;
+  if(document.hidden){ setTimeout(()=>{ if(!anRAF)anLoop(); },800); return; }
+  const now=performance.now();
+  if(now>anUntil)return;               /* fermo: l'ultimo fotogramma resta disegnato */
   anRAF=requestAnimationFrame(anLoop);
-  if(!S._an||S.wand)return;
-  anT=(anT+S._an.dash*0.055)%(S._an.dash*1.75);
+  if(now-anLast<33)return; anLast=now;
+  anT=(anT+S._an.dash*0.11)%(S._an.dash*1.75);
   ridipingi();
 }
-S.showCut=true; anLoop();
+window.__anWake=anWake;
+S.showCut=true; anWake(8000);
+let _anPoke=0; const anPoke=()=>{ const t=performance.now(); if(t-_anPoke>250){_anPoke=t;anWake(4000);} };
+['pointerdown','pointermove','wheel','keydown','touchstart'].forEach(ev=>addEventListener(ev,anPoke,{passive:true}));
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden)anWake(3000); });
 
 (function coloreLibero(){
   const inp=$('ppCol'); if(!inp)return;
@@ -5402,7 +5416,7 @@ function ppGeoUI(){
       if(a.cv.style.transform!==tr)a.cv.style.transform=tr;
     }catch(e){}
   };
-  setInterval(fitEmbed,300); addEventListener('resize',fitEmbed);
+  setInterval(()=>{ if(!document.hidden)fitEmbed(); },300); addEventListener('resize',fitEmbed);
   /* [sito] ETICHETTE: la lente di fianco al foglio. Un clic mostra l'etichetta da vicino
      (stessa vista degli adesivi: si lavora su zoom, colori, bordo), un altro torna al foglio. */
   const LENTE_SVG='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/><path d="M8 10.5h5M10.5 8v5"/></svg>';
@@ -5453,10 +5467,10 @@ function ppGeoUI(){
   window.__ppAggiorna=aggiornaLente;
   /* dopo ogni disegno la tela va inquadrata SUBITO: prima passavano fino a
      300 ms con l'anteprima piccola, che poi tornava normale */
-  try{ const _draw=draw; draw=function(){const r=_draw.apply(this,arguments); try{fitEmbed();aggiornaLente();}catch(e){} return r;}; }catch(e){}
+  try{ const _draw=draw; draw=function(){const r=_draw.apply(this,arguments); try{fitEmbed();aggiornaLente();if(window.__anWake)window.__anWake(8000);}catch(e){} return r;}; }catch(e){}
   /* altezza reale del contenuto, così il sito dimensiona l'iframe */
   let lastH=0; const sendSize=()=>{const app=document.querySelector('.pp-app'); const h=Math.ceil(app?app.getBoundingClientRect().height+8:document.documentElement.scrollHeight); if(h!==lastH){lastH=h;send('size',{h});}};
-  setInterval(sendSize,400); addEventListener('load',sendSize);
+  setInterval(()=>{ if(!document.hidden)sendSize(); },400); addEventListener('load',sendSize);
   const snapshot=()=>{
     if(S.rilDettagli)return;
     const t0=performance.now();
@@ -5502,7 +5516,7 @@ function ppGeoUI(){
     if(d.type==='rimuovi'){ const b=$('ppRimuovi'); if(b)b.click(); }
     if(d.type==='bgcol'&&S.src&&d.hex){ try{ if(window.__ppColore)window.__ppColore(String(d.hex)); }catch(e){}
       busy(true,'Aggiorno…'); setTimeout(()=>{try{buildCut();draw();}catch(e){} window.__busyOff=performance.now(); snapshot(); busy(false);},0); }
-    if(d.type==='cut'){S.showCut=!!d.on;try{ridipingi();}catch(e){}}
+    if(d.type==='cut'){S.showCut=!!d.on;try{ridipingi();if(window.__anWake)window.__anWake(6000);}catch(e){}}
     /* [sito] zoom del disegno dentro la sagoma (il kit: il cavallotto va riempito tutto) */
     if(d.type==='zoom'&&S.src){ const z=$('lvZoom'); if(z){ z.value=String(Math.max(+z.min,Math.min(+z.max,Math.round(+d.value||100)))); z.dispatchEvent(new Event('input')); } }
     /* cambio di sagoma, materiale, lamina o misura SENZA ricaricare il motore:
