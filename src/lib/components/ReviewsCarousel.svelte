@@ -38,7 +38,7 @@
 {#snippet meta(r: HomeReview)}
 	<div class="review__meta">
 		<span class="review__author">{r.author}</span>
-		<span><span class="verified" aria-hidden="true">✓</span> Ordine verificato</span>
+		{#if !r.source || r.source === 'ordine'}<span><span class="verified" aria-hidden="true">✓</span> Ordine verificato</span>{:else}<span title="Recensione ricevuta fuori dal sito e riportata da noi">{r.source}</span>{/if}
 		<span><a class="review__product" href={r.href} onclick={(e) => e.stopPropagation()}>{r.product}</a></span>
 	</div>
 {/snippet}
@@ -60,6 +60,7 @@
 		{/each}
 	</div>
 	<button type="button" class="rv__arrow rv__arrow--next" aria-label="Recensioni successive" onclick={() => go(1)}>›</button>
+	<p class="rv__note note">Recensioni di clienti che hanno acquistato davvero; se raccolta su un altro canale, è indicato. <a class="link" href="/recensioni">Come le gestiamo</a>.</p>
 	{#if pages > 1}<div class="rv__dots">{#each Array(pages) as _, i (i)}<button type="button" class:is-on={i === page} aria-label="Vai alla pagina {i + 1}" onclick={() => goPage(i)}></button>{/each}</div>{/if}
 </div>
 

@@ -85,6 +85,7 @@
 				<a href="/blog">Blog</a>
 				<a href="/support">Supporto</a>
 				<a href="/resi">Resi</a>
+				<a href="/recensioni">Recensioni</a>
 			</nav>
 			<p class="footer__copy">© {new Date().getFullYear()} Stickerprint Srl</p>
 			<div class="footer__meta">

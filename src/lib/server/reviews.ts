@@ -10,6 +10,8 @@ export interface HomeReview {
 	href: string;
 	productType?: string;
 	date?: string;
+	/** 'ordine' = cliente che ha acquistato sul sito; altrimenti il canale dove l'abbiamo ricevuta (es. Google) */
+	source?: string;
 }
 
 export const PRODUCTS: Record<string, { label: string; href: string }> = {
@@ -81,7 +83,7 @@ async function loadReviewsFresh(supabase: SupabaseClient, productType?: string):
 		   nome di spedizione) e profiles (nome dell'utente); le recensioni degli ospiti hanno il nome nella colonna author */
 		let q = supabase
 			.from('reviews')
-			.select('title, comment, rating, created_at, author, product_slug, order:orders(product_slug, shipping), profile:profiles(full_name)')
+			.select('title, comment, rating, created_at, author, product_slug, source, source_note, order:orders(product_slug, shipping), profile:profiles(full_name)')
 			.eq('is_public', true).eq('status', 'approved')
 			.gte('rating', 4)
 			.order('created_at', { ascending: false })
@@ -107,6 +109,7 @@ async function loadReviewsFresh(supabase: SupabaseClient, productType?: string):
 						product: p.label,
 						href: p.href,
 						productType: type,
+						source: r.source === 'staff' ? (r.source_note ? `Ricevuta ${r.source_note}` : 'Ricevuta su altro canale') : 'ordine',
 						date: r.created_at ? new Intl.DateTimeFormat('it-IT', { month: 'long', year: 'numeric' }).format(new Date(r.created_at)) : undefined
 					};
 				});
