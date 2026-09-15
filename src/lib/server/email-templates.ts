@@ -28,7 +28,7 @@ export function itemsBlock(items: (string | EmailItem)[]): string {
 }
 
 /** l'emoji finale resta attaccata all'ultima parola: se il titolo va a capo, non va a capo da sola */
-const keepEmoji = (t: string) => t.replace(/ (\p{Extended_Pictographic}\uFE0F?)\s*$/u, '&nbsp;$1');
+const keepEmoji = (t: string) => t.replace(/((?:<span[^>]*>[^<]*<\/span>|\S+)) (\p{Extended_Pictographic}\uFE0F?)\s*$/u, '<span style="white-space:nowrap;">$1&nbsp;$2</span>');
 function layout(title: string, body: string, cta?: { label: string; href: string }): string {
 	return `<!doctype html>
 <html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${esc(title)}</title><link href="https://fonts.googleapis.com/css2?family=Rubik:wght@800&family=Montserrat:wght@400;600;800&display=swap" rel="stylesheet"></head>
@@ -40,7 +40,7 @@ function layout(title: string, body: string, cta?: { label: string; href: string
     <img src="${SITE}/images/splogo-400.png" width="120" alt="Stickerprint" style="display:inline-block;transform:rotate(-5deg);">
   </td></tr>
   <tr><td style="padding:34px 32px 10px;">
-    <h1 style="margin:0 0 14px;font-family:Rubik,Montserrat,Helvetica,Arial,sans-serif;font-weight:800;font-size:28px;line-height:1.2;letter-spacing:-0.02em;color:#0b0b3b;">${keepEmoji(esc(title))}</h1>
+    <h1 style="margin:0 0 14px;font-family:Rubik,Montserrat,Helvetica,Arial,sans-serif;font-weight:800;font-size:25px;line-height:1.2;letter-spacing:-0.02em;color:#0b0b3b;">${keepEmoji(esc(title))}</h1>
     <div style="font-size:15px;line-height:1.6;color:#3d3f63;">${body}</div>
     ${cta ? `<p style="margin:28px 0 8px;text-align:center;"><a href="${cta.href}" style="display:inline-block;background:#0e8bff;color:#fff;text-decoration:none;font-family:Rubik,Montserrat,Helvetica,Arial,sans-serif;font-weight:800;text-transform:uppercase;font-size:14px;letter-spacing:.02em;padding:14px 28px;border-radius:8px;">${esc(cta.label)}</a></p>` : ''}
   </td></tr>
@@ -193,7 +193,7 @@ export function reviewRequestEmail(o: { name?: string | null; number: string; it
 /** stesso layout delle altre email, ma il titolo puo' contenere HTML (la parola sottolineata) */
 function layoutHtml(titleHtml: string, body: string, cta?: { label: string; href: string } | null): string {
 	const plain = titleHtml.replace(/<[^>]+>/g, '');
-	return layout('§TITLE§', body, cta ?? undefined).replace('<h1 style="margin:0 0 14px;font-family:Rubik,Montserrat,Helvetica,Arial,sans-serif;font-weight:800;font-size:28px;line-height:1.2;letter-spacing:-0.02em;color:#0b0b3b;">§TITLE§</h1>', `<h1 style="margin:0 0 14px;font-family:Rubik,Montserrat,Helvetica,Arial,sans-serif;font-weight:800;font-size:28px;line-height:1.3;letter-spacing:-0.02em;color:#0b0b3b;">${keepEmoji(titleHtml)}</h1>`).replace('<title>§TITLE§</title>', `<title>${esc(plain)}</title>`);
+	return layout('§TITLE§', body, cta ?? undefined).replace('<h1 style="margin:0 0 14px;font-family:Rubik,Montserrat,Helvetica,Arial,sans-serif;font-weight:800;font-size:25px;line-height:1.2;letter-spacing:-0.02em;color:#0b0b3b;">§TITLE§</h1>', `<h1 style="margin:0 0 14px;font-family:Rubik,Montserrat,Helvetica,Arial,sans-serif;font-weight:800;font-size:25px;line-height:1.3;letter-spacing:-0.02em;color:#0b0b3b;">${keepEmoji(titleHtml)}</h1>`).replace('<title>§TITLE§</title>', `<title>${esc(plain)}</title>`);
 }
 
 /** sollecito di approvazione dell'anteprima (o del file mancante), con la data entro cui rispondere per mantenere la spedizione */
