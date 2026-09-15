@@ -93,7 +93,7 @@ async function loadReviewsFresh(supabase: SupabaseClient, productType?: string):
 
 		if (rows && rows.length) {
 			const mapped = rows
-				.filter((r) => (r.comment ?? '').length >= 20)
+				.filter((r) => (r.comment ?? '').trim().length > 0)
 				.slice(0, 12)
 				.map((r) => {
 					const order = (Array.isArray(r.order) ? r.order[0] : r.order) as { product_slug?: string; shipping?: { first_name?: string; last_name?: string } } | null;
