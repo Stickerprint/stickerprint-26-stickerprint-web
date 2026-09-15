@@ -13,7 +13,7 @@ export const load: PageServerLoad = async ({ params, url }) => {
 	const p = c.payments.find((x) => x.seq === Number(params.seq));
 	if (!p) error(404, 'Scadenza non trovata');
 	if (p.status === 'pagato') redirect(303, `/conferma/${params.token}?pagato=1`);
-	if (!p.upfront) error(400, 'Questa scadenza non si paga online.');
+	if (!p.upfront && /ricevuta|riba|rid\b|sdd/i.test(p.method)) error(400, 'Questa scadenza viene addebitata con ricevuta bancaria.');
 	const base = `${url.origin}/conferma/${params.token}`;
 	if (stripeConfigured()) {
 		const s = await createCheckoutSession({ amountCents: Math.round(Number(p.amount) * 100), description: `Ordine ${c.group.number} · ${c.payments.length > 1 ? `scadenza ${p.seq} di ${c.payments.length}` : 'pagamento anticipato'}`, email: c.group.email || null, orderNumber: c.group.number, group: c.group.key, seq: p.seq, successUrl: `${base}?pagato=1&session_id={CHECKOUT_SESSION_ID}`, cancelUrl: `${base}?annullato=1` });

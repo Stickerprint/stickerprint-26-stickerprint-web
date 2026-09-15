@@ -28,7 +28,11 @@
 			<p class="qp__kicker">Preventivo {q.number}{#if q.version > 1} · rev. {q.version}{/if} · {it(q.created_at.slice(0, 10))}</p>
 			{#if done}
 				<h1>Grazie {first}, è tutto <span class="hl">confermato</span> ✅</h1>
-				<p class="qp__lead">La commessa è in lavorazione. Il prossimo passo: ti mandiamo la conferma d'ordine con i dettagli, e si parte. Per qualsiasi cosa scrivici qui sotto o rispondi all'email.</p>
+				{#if form?.due}
+					<p class="qp__lead">Abbiamo registrato l'ordine{#if form?.orderNumber} <b>{form.orderNumber}</b>{/if} e ti abbiamo appena mandato la conferma via email. <b>Per far partire la produzione manca il primo pagamento di {money(form.due)}</b>: lo trovi nell'email, con carta, PayPal o bonifico. Appena arriva, si parte.</p>
+				{:else}
+					<p class="qp__lead">L'ordine{#if form?.orderNumber} <b>{form.orderNumber}</b>{/if} è registrato e già in lavorazione: la conferma d'ordine con tutti i dettagli è nella tua email. Per qualsiasi cosa scrivici qui sotto o rispondi all'email.</p>
+				{/if}
 			{:else if dead}
 				<h1>{q.status === 'rifiutato' || form?.rejected ? 'Preventivo chiuso' : 'Preventivo scaduto'}</h1>
 				<p class="qp__lead">Questa proposta non è più attiva. Se ti serve ancora, chiedici un aggiornamento: te lo rifacciamo con prezzi e tempi di oggi.</p>

@@ -242,6 +242,35 @@ export function ticketReplyEmail(o: { name?: string | null; number: string; body
 	return { subject: `Re: richiesta ${o.number}`, tag: 'ticket-reply', html: layoutHtml(`Novità sulla richiesta ${n} 💬`, `<p>Ciao ${esc(o.name || '')},</p><div style="white-space:pre-wrap;background:#f4f5fa;padding:14px 16px;border-radius:10px;">${esc(o.body)}</div>${o.author ? `<p style="margin-top:10px;color:#8e92b0;font-size:13px;">${esc(o.author)} · Stickerprint</p>` : ''}<p>Per rispondere usa il bottone: la conversazione resta tutta in un posto.</p>`, { label: 'Rispondi', href: o.href }) };
 }
 
+/* ---------- Ordine nato da un preventivo confermato dal cliente (email automatica) ---------- */
+export interface OrderPayLine { label: string; amount: string; due: string | null; upfront: boolean; paid: boolean }
+/**
+ * Due varianti: senza anticipo l'ordine e' gia' in lavorazione; con anticipo da pagare l'ordine aspetta
+ * il primo pagamento e il bottone porta a pagarlo (carta, PayPal o bonifico dalla pagina).
+ */
+export function quoteOrderEmail(o: { name?: string | null; quoteNumber: string; number: string; items: (string | EmailItem)[]; total: string; shipDate: string | null; leadTime: string | null; payments: OrderPayLine[]; dueNow: string | null; senderName?: string | null; href: string }) {
+	const n = esc(o.number);
+	const items = itemsBlock(o.items);
+	const dueLines = o.payments.filter((p) => p.upfront && !p.paid);
+	const laterLines = o.payments.filter((p) => !p.upfront && !p.paid);
+	const box = `<p style="margin:16px 0 0;padding:12px 14px;background:#f4f5fa;border-radius:10px;"><b>Totale IVA inclusa:</b> ${esc(o.total)}${o.shipDate ? `<br><b>Spedizione stimata:</b> ${esc(o.shipDate)}` : ''}${o.leadTime ? `<br><b>Tempi di lavorazione:</b> ${esc(o.leadTime)}` : ''}${o.payments.length ? `<br><b>Pagamento:</b><br>${o.payments.map((p) => esc(`${p.amount} · ${p.label}${p.upfront ? ' · anticipato' : p.due ? ` · scadenza ${p.due}` : ''}${p.paid ? ' · pagato' : ''}`)).join('<br>')}` : ''}</p>`;
+	const firma = o.senderName ? `<p style="margin:18px 0 0;color:#8e92b0;font-size:13px;">${esc(o.senderName)} · Stickerprint · ti seguo io: rispondi pure a questa email.</p>` : '';
+	if (o.dueNow && dueLines.length) {
+		const body = `<p>Ciao ${esc(o.name || '')},</p>
+<p>grazie per aver confermato il preventivo <b>${esc(o.quoteNumber)}</b>! Abbiamo registrato l'ordine <b>${n}</b>: per farlo partire manca solo il primo pagamento.</p>
+<p style="margin:16px 0 0;padding:14px 16px;background:#fef6db;border-radius:12px;"><b style="font-size:16px;">Da pagare adesso: ${esc(o.dueNow)}</b><br>${dueLines.map((p) => esc(`${p.amount} · ${p.label}`)).join('<br>')}${laterLines.length ? `<br><span style="color:#8a5a00;">Poi: ${laterLines.map((p) => esc(`${p.amount} · ${p.label}${p.due ? ` · ${p.due}` : ''}`)).join(' · ')}</span>` : ''}</p>
+<p>Puoi pagare con carta o PayPal dal bottone qui sotto, oppure con bonifico: nella pagina trovi IBAN e causale. Appena riceviamo il pagamento la produzione parte e ti scriviamo.</p>
+${items}${box}
+<p>Nella pagina della conferma trovi tutti i dettagli e il PDF da scaricare.</p>${firma}`;
+		return { subject: `Ordine ${o.number} registrato: manca il primo pagamento per partire 💳`, tag: 'quote-order', html: layoutHtml(`Ordine ${n} ${hl('quasi pronto')} a partire 💳`, body, { label: 'Paga ora e fai partire l’ordine', href: o.href }) };
+	}
+	const body = `<p>Ciao ${esc(o.name || '')},</p>
+<p>grazie per aver confermato il preventivo <b>${esc(o.quoteNumber)}</b>! Abbiamo registrato l'ordine <b>${n}</b> ed è già in lavorazione: ecco cosa stiamo preparando per te.</p>
+${items}${box}
+<p>Nella pagina della conferma trovi tutti i dettagli, le scadenze e il PDF da scaricare. Se qualcosa non torna, segnalacelo da lì: lo sistemiamo prima di stampare.</p>${firma}`;
+	return { subject: `Ordine ${o.number} confermato 🥳`, tag: 'quote-order', html: layoutHtml(`Ordine ${n} ${hl('confermato')} 🥳`, body, { label: "Apri la conferma d'ordine", href: o.href }) };
+}
+
 /* ---------- Conferma d'ordine (pagina del cliente) ---------- */
 /** email scritta dallo staff: testo e un bottone "Apri la conferma d'ordine"; il PDF si scarica dalla pagina */
 export function orderConfirmEmail(o: { subject: string; message: string; senderName: string | null; number: string; href: string; toPay: string | null }) {

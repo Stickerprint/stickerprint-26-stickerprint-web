@@ -46,7 +46,7 @@ export const actions: Actions = {
 	accetta: async ({ params, request, url }) => withDb(async (db) => {
 		const f = await request.formData();
 		const r = await acceptQuoteByToken(db, params.token, String(f.get('nome') ?? '').trim(), url.origin);
-		return r.ok ? { ok: true, accepted: true, message: r.message } : fail(400, { error: r.message });
+		return r.ok ? { ok: true, accepted: true, message: r.message, orderNumber: r.orderNumber ?? null, due: r.due ?? 0 } : fail(400, { error: r.message });
 	}),
 	rifiuta: async ({ params, request }) => withDb(async (db) => {
 		const f = await request.formData();

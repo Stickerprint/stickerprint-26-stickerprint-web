@@ -3,11 +3,11 @@
  * domande e segnalazioni dalla pagina, aperture. Le scadenze anticipate si incassano prima di produrre.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { groupOrders, money, type OrderGroup, type OrderRow } from '$lib/dashboard/orders';
+import { groupOrders, itemMeta, money, thumbOf, type OrderGroup, type OrderRow } from '$lib/dashboard/orders';
 import type { PaymentMethod } from '$lib/dashboard/payments';
 import { upfrontDue, type OrderConfirmation, type OrderMessage, type OrderPayment } from '$lib/dashboard/conferme';
 import { sendEmail } from './email';
-import { OWNER_EMAIL, orderConfirmEmail, orderPaymentReminderEmail, orderReplyEmail, ownerNotifyEmail } from './email-templates';
+import { OWNER_EMAIL, orderConfirmEmail, orderPaymentReminderEmail, orderReplyEmail, ownerNotifyEmail, quoteOrderEmail } from './email-templates';
 import { pushStaff } from './push';
 import { ensurePlan } from './produzione';
 import { finalizeCheckout } from './checkout';
@@ -70,6 +70,28 @@ export async function applyPaymentGate(db: DB, group: string, operator: string |
 		return 'in_produzione';
 	}
 	return null;
+}
+
+/** Conferma d'ordine automatica quando il cliente conferma un preventivo dalla sua pagina: parte subito, senza passare dallo staff */
+export async function sendAutoConfirmation(db: DB, group: string, origin: string, o: { quoteNumber: string; senderName: string | null }): Promise<{ ok: boolean; due: number; number: string | null }> {
+	const g = await loadGroup(db, group);
+	if (!g?.email) return { ok: false, due: 0, number: g?.number ?? null };
+	const payments = await syncPayments(db, group);
+	const conf = await getConfirmation(db, group);
+	const due = upfrontDue(payments);
+	const f = g.items[0];
+	const it = (d: string | null) => (d ? new Date(d + 'T12:00:00').toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' }) : null);
+	const mail = quoteOrderEmail({
+		name: f.billing?.first_name || f.shipping?.first_name || g.customer, quoteNumber: o.quoteNumber, number: g.number,
+		items: g.items.map((i) => ({ name: i.description || i.product_name, meta: i.description ? null : itemMeta(i), qty: i.qty, preview: thumbOf(i) })),
+		total: money(g.gross), shipDate: it(g.delivery_date), leadTime: f.lead_time ?? null,
+		payments: payments.map((p) => ({ label: p.method, amount: money(Number(p.amount)), due: it(p.due), upfront: p.upfront, paid: p.status === 'pagato' })),
+		dueNow: due > 0 ? money(due) : null, senderName: o.senderName, href: `${origin}/conferma/${conf.token}`
+	});
+	const r = await sendEmail({ to: g.email, ...mail, metadata: { order: g.number } });
+	if (r.ok) await db.from('order_confirmations').update({ sent_at: new Date().toISOString(), sent_subject: mail.subject, sent_message: `(automatica) Ordine nato dal preventivo ${o.quoteNumber} confermato dal cliente.`, sender_name: o.senderName }).eq('checkout_group', group);
+	await applyPaymentGate(db, group, null);
+	return { ok: r.ok, due, number: g.number };
 }
 
 /** Invio della conferma: email scritta dallo staff con il bottone; niente allegato */

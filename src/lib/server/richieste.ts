@@ -9,7 +9,7 @@ import { buildOrderPdf } from './docs';
 import { sendEmail } from './email';
 import { OWNER_EMAIL, ownerNotifyEmail, quoteEmail, quoteReminderEmail, quoteReplyEmail } from './email-templates';
 import { loadEditorData, saveOrderDraft, upsertContact } from './orders';
-import { applyPaymentGate, defaultConfirmEmail, loadGroup, sendConfirmation, syncPayments } from './conferme';
+import { applyPaymentGate, defaultConfirmEmail, loadGroup, sendAutoConfirmation, sendConfirmation, syncPayments } from './conferme';
 import { pushStaff } from './push';
 import { ensurePlan } from './produzione';
 import type { OrderRow } from '$lib/dashboard/orders';
@@ -221,19 +221,24 @@ export async function setQuoteStatus(db: DB, id: string, status: QuoteStatus, re
 	return error?.message ?? null;
 }
 /** Accettazione dal link pubblico (client di servizio): stato, avviso allo staff, conferma al cliente */
-export async function acceptQuoteByToken(db: DB, token: string, who: string, origin: string): Promise<{ ok: boolean; message: string }> {
+export async function acceptQuoteByToken(db: DB, token: string, who: string, origin: string): Promise<{ ok: boolean; message: string; orderNumber?: string | null; due?: number }> {
 	const q = await getQuoteByToken(db, token);
 	if (!q) return { ok: false, message: 'Preventivo non trovato.' };
 	if (q.status === 'accettato' || q.status === 'ordinato') return { ok: true, message: 'Preventivo già confermato.' };
 	if (q.status !== 'inviato') return { ok: false, message: 'Questo preventivo non è più valido: scrivici e te ne mandiamo uno aggiornato.' };
 	await db.from('quotes').update({ status: 'accettato', accepted_at: new Date().toISOString(), accepted_by: who || q.draft.customer.email, updated_at: new Date().toISOString() }).eq('id', q.id);
-	const owner = ownerNotifyEmail({ title: `Preventivo ${q.number} accettato da ${q.draft.customer.name}`, lines: [`Totale ${money(Number(q.total_gross))} IVA inclusa`, `Cliente: ${q.draft.customer.name} · ${q.draft.customer.email}`, 'Crea l’ordine dalla dashboard: Aziende › Preventivi.'], href: `${origin}/dashboard/aziende/preventivi/${q.id}` });
-	/* al cliente non si manda l'email di conferma: la pagina gli ha gia' detto tutto, e la conferma d'ordine arriva dopo */
+	const owner = ownerNotifyEmail({ title: `Preventivo ${q.number} accettato da ${q.draft.customer.name}`, lines: [`Totale ${money(Number(q.total_gross))} IVA inclusa`, `Cliente: ${q.draft.customer.name} · ${q.draft.customer.email}`, 'L’ordine è stato creato in automatico e il cliente ha ricevuto la conferma d’ordine.'], href: `${origin}/dashboard/aziende/preventivi/${q.id}` });
+	/* l'ordine nasce subito e il cliente riceve la conferma d'ordine automatica (con l'anticipo da pagare, se c'e') */
+	let orderNumber: string | null = null, due = 0;
+	try {
+		const made = await orderFromQuote(db, q.id, false, origin);
+		if (made.group) { const r = await sendAutoConfirmation(db, made.group, origin, { quoteNumber: q.number, senderName: q.sender_name ?? null }); orderNumber = r.number ?? made.number; due = r.due; }
+	} catch (e) { console.error('[preventivo] ordine automatico', e); }
 	await Promise.all([
 		sendEmail({ to: OWNER_EMAIL, ...owner }),
-		pushStaff({ title: `Preventivo ${q.number} accettato`, body: `${q.draft.customer.name} · ${money(Number(q.total_gross))}`, url: `/dashboard/aziende/preventivi/${q.id}`, tag: `quote-${q.id}` })
+		pushStaff({ title: `Preventivo ${q.number} accettato`, body: `${q.draft.customer.name} · ${money(Number(q.total_gross))}${orderNumber ? ` · ordine ${orderNumber}` : ''}`, url: orderNumber ? `/dashboard/fatturazione/ordini` : `/dashboard/aziende/preventivi/${q.id}`, tag: `quote-${q.id}` })
 	]);
-	return { ok: true, message: 'Preventivo confermato.' };
+	return { ok: true, message: 'Preventivo confermato.', orderNumber, due };
 }
 export async function rejectQuoteByToken(db: DB, token: string, reason: string): Promise<{ ok: boolean; message: string }> {
 	const q = await getQuoteByToken(db, token);

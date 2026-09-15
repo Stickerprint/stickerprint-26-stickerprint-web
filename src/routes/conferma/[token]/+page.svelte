@@ -45,10 +45,10 @@
 				<div class="qp__pay">
 					{#each data.payments as p (p.seq)}
 						<div class="qp__pay-row" class:is-paid={p.status === 'pagato'} class:is-due={p.upfront && p.status === 'da_pagare'}>
-							<div><b>{money(p.amount)}</b><span>{paymentLabel(p.method)} · {p.upfront ? 'anticipato' : `scadenza ${it(p.due)}`}</span></div>
+							<div><b>{money(p.amount)}</b><span>{paymentLabel(p.method)} · {p.upfront ? 'anticipato' : `scadenza ${it(p.due)}`}{#if !p.upfront && p.status !== 'pagato' && data.online && !/ricevuta|riba|rid\b|sdd/i.test(p.method)} · puoi saldarla anche subito{/if}</span></div>
 							{#if p.status === 'pagato'}
 								<span class="qp__paid">✓ Pagato {p.paid_at ? it(p.paid_at) : ''}</span>
-							{:else if p.upfront}
+							{:else if p.upfront || (!/ricevuta|riba|rid\b|sdd/i.test(p.method) && data.online)}
 								{#if data.online}
 									<div class="qp__paybtns"><a class="btn btn--green" href="/conferma/{token()}/paga/{p.seq}" data-sveltekit-reload>💳 Paga con carta {money(p.amount)}</a>{#if data.paypal}<a class="btn btn--paypal" href="/conferma/{token()}/paypal/{p.seq}" data-sveltekit-reload><img src="/icons/footer/paypal.webp" alt="" /> Paga con PayPal</a>{/if}<small class="note">carta, Apple Pay, Google Pay{#if !data.paypal}, PayPal{/if}{#if data.simulation} · simulazione{/if}</small></div>
 								{:else}
