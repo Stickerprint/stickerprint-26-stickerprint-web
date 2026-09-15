@@ -219,7 +219,7 @@ html,body{height:100%;overflow:hidden}
   </div>
 
   <div class="pp-right">
-    <div class="pp-sec">
+    <div class="pp-sec" id="ppBordoSec">
       <div class="pp-h">Larghezza del bordo</div>
       <div id="ppBordHost"></div>
     </div>
@@ -3376,7 +3376,7 @@ function resinDome(core,ppm){
    ========================================================================== */
 S.rilievo=false; S.rilGen=0; S.ril=null;
 S.vetro=false; /* [sito] vetrofanie: scena con finestra, vetro e riflessi */
-function vetroUI(){ const sec=document.getElementById('ppSfondoSec'); if(sec)sec.style.display=S.vetro?'none':''; }
+function vetroUI(){ for(const id of ['ppSfondoSec','ppBordoSec']){ const sec=document.getElementById(id); if(sec)sec.style.display=S.vetro?'none':''; } }
 /* [sito] 'Dettagli rilievo': solo sagoma e zone in rilievo in tinta piatta RDG_GLOSS (#86a7b3) */
 S.rilDettagli=false; const RDG_GLOSS='#86a7b3';
 function rilievoMask(){
@@ -3984,7 +3984,7 @@ function renderTile(ppm,withMat,bleedMM){
     d[p]  = a>0 ? d[p]  *a+br *(1-a) : br;
     d[p+1]= a>0 ? d[p+1]*a+bg2*(1-a) : bg2;
     d[p+2]= a>0 ? d[p+2]*a+bb2*(1-a) : bb2;
-    d[p+3]=clear?209:255;}
+    d[p+3]=S.vetro?58:(clear?209:255);}
   go.putImageData(id,0,0);return out;}
 function paintAlts(){
   const box=$('alts');box.innerHTML='';
@@ -4017,7 +4017,9 @@ function draw(){
      si mostra il pezzo come sarà una volta tagliato. Nei file scaricabili
      — file singolo e foglio di stampa — resta al suo posto. */
   const cv=$('preview'),b=0,pad=(S.prod==='resin'&&!S.senzaResina)?Math.max(6,S.bleed+3,0.16*Math.max(S.cutW,S.cutH)):Math.max(5,S.bleed+3);
-  const totW=S.cutW+2*b+pad*2,totH=S.cutH+2*b+pad*2;
+  let totW=S.cutW+2*b+pad*2,totH=S.cutH+2*b+pad*2;
+  /* [sito] vetrofanie: la vetrina si allarga ai lati, la vetrofania resta al centro con aria intorno */
+  if(S.vetro&&!S.foglio){ totW=Math.max(totW*1.45,totH*1.75); totH=totH*1.18; }
   let cap=(S.prod==='resin'&&!S.senzaResina)?12:16;
   /* dentro il sito l'anteprima e' alta 300-400 px: si disegna a risoluzione
      retina di quello spazio, non a 16 px/mm — un quarto dei pixel, un quarto del tempo */
@@ -5044,7 +5046,7 @@ function ridipingi(){
       /* vetrina vista da fuori: infisso, interno sfocato, la vetrofania dietro il vetro (un po' piu' piccola
          e verso il centro, lontana dall'angolo) e i riflessi sopra */
       const x0=disegnaVetro(gb,cv.width,cv.height,pad*ppm);
-      const k=0.82, ox=x0+(cv.width-x0-tile.width*k)*0.58, oy=x0+(cv.height-x0-tile.height*k)*0.55;
+      const k=0.92, ox=x0+(cv.width-x0-tile.width*k)*0.55, oy=x0+(cv.height-x0-tile.height*k)*0.56;
       a.vk=k; a.vox=ox; a.voy=oy;
       gb.save();gb.shadowColor='rgba(0,0,0,0.35)';gb.shadowBlur=1.4*ppm;gb.shadowOffsetY=0.6*ppm;
       gb.drawImage(tile,ox,oy,tile.width*k,tile.height*k);gb.restore();

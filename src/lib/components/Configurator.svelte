@@ -273,6 +273,7 @@
 				<EnginePreview bind:this={engine} {file} {forma} {materiale} finitura={showFinish ? finitura : 'lucida'} prodotto={engineProduct} {foglio} {rilievo} {vetro} {w} {h} {showCut} panel stage={foglio ? 440 : 370} onrender={onRender} />
 				{#if fileUrl}<img src={fileUrl} alt="" hidden onload={onImgLoad} />{/if}
 				<div class="cfg__bar">
+					{#if !vetro}
 					<div class="cfg__bar-group">
 						<span class="cfg__bar-label">Sfondo</span>
 						<div class="cfg__dots">
@@ -285,6 +286,7 @@
 						</div>
 						<button type="button" class="cfg__tool" class:is-on={rimuovi} onclick={() => engine?.post('rimuovi')} title="Toglie lo sfondo del file: resta solo il disegno">✨ Rimuovi sfondo</button>
 					</div>
+					{/if}
 					<div class="cfg__bar-group">
 						<input bind:this={fileInput} type="file" accept="image/png,image/jpeg,image/svg+xml,application/pdf" hidden onchange={(e) => pick((e.currentTarget as HTMLInputElement).files?.[0])} />
 						<button type="button" class="cfg__tool cfg__tool--blue" onclick={() => fileInput?.click()} title={file.name}>Cambia file</button>
