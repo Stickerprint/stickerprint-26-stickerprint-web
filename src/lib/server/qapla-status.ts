@@ -22,7 +22,7 @@ export function interpret(u: QaplaUpdate): { status: string | null; kind: Kind; 
 	const label = [u.qaplaStatus, det].filter(Boolean).join(' · ');
 	if (id === 20 || id === 3 || id === 50) return { status: 'spedito', kind: 'spedito', detail: label };
 	if (id === 4) return { status: 'in_consegna', kind: 'in_consegna', detail: label };
-	if (id === 99) return { status: 'consegnato', kind: 'consegnato', detail: label };
+	if (id === 99) return { status: 'consegnato', kind: null, detail: label }; // consegnato: niente email (il giorno dopo parte la richiesta di recensione)
 	if (id === 10) return { status: 'in_consegna', kind: 'punto_ritiro', detail: label };
 	if (id === 8) return { status: null, kind: 'ritardo_corriere', detail: label }; // ritardo del corriere: email dedicata, non e' colpa nostra
 	if (id === 5 || id === 6 || id === 95) return { status: null, kind: 'problema', detail: label };

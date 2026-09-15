@@ -41,8 +41,7 @@ export function defaultQuoteEmail(q: Pick<Quote, 'number' | 'draft' | 'total_gro
 	const c = q.draft.customer;
 	const first = c.first_name?.trim() || c.name;
 	const items = q.draft.items.filter((i) => Number(i.qty) > 0);
-	const what = items.length === 1 ? `${Number(items[0].qty).toLocaleString('it-IT')} ${items[0].description}` : `${items.length} articoli`;
 	const subject = `Il tuo preventivo ${q.number}: ${items[0]?.description ?? 'la tua richiesta'}`.slice(0, 120);
-	const body = `Ciao ${first},\n\ngrazie per la richiesta. Ho preparato il preventivo ${q.number} per ${what}: lo trovi con tutti i dettagli dal bottone qui sotto.\n\nTotale ${eur(Number(q.total_gross))} IVA inclusa${q.valid_until ? `, valido fino al ${itLong(q.valid_until)}` : ''}. Se qualcosa non torna (quantità, materiale, tempi) rispondi a questa email e lo sistemiamo insieme.\n\nA presto,\n${sender ?? 'Stickerprint'}`;
+	const body = `Ciao ${first},\n\nti abbiamo finalmente preparato il preventivo richiesto: lo trovi nel link qui sotto, con tutti i dettagli.\nSe qualcosa non torna scrivimi pure.\n\nA presto,\n${sender ?? 'Stickerprint'}`;
 	return { subject, body };
 }
