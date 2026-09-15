@@ -27,6 +27,8 @@ export function itemsBlock(items: (string | EmailItem)[]): string {
 	return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:16px 0 4px;border-bottom:1px solid #eceef5;">${rows}</table>`;
 }
 
+/** l'emoji finale resta attaccata all'ultima parola: se il titolo va a capo, non va a capo da sola */
+const keepEmoji = (t: string) => t.replace(/ (\p{Extended_Pictographic}\uFE0F?)\s*$/u, '&nbsp;$1');
 function layout(title: string, body: string, cta?: { label: string; href: string }): string {
 	return `<!doctype html>
 <html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${esc(title)}</title><link href="https://fonts.googleapis.com/css2?family=Rubik:wght@800&family=Montserrat:wght@400;600;800&display=swap" rel="stylesheet"></head>
@@ -38,7 +40,7 @@ function layout(title: string, body: string, cta?: { label: string; href: string
     <img src="${SITE}/images/splogo-400.png" width="120" alt="Stickerprint" style="display:inline-block;transform:rotate(-5deg);">
   </td></tr>
   <tr><td style="padding:34px 32px 10px;">
-    <h1 style="margin:0 0 14px;font-family:Rubik,Montserrat,Helvetica,Arial,sans-serif;font-weight:800;font-size:28px;line-height:1.2;letter-spacing:-0.02em;color:#0b0b3b;">${esc(title)}</h1>
+    <h1 style="margin:0 0 14px;font-family:Rubik,Montserrat,Helvetica,Arial,sans-serif;font-weight:800;font-size:28px;line-height:1.2;letter-spacing:-0.02em;color:#0b0b3b;">${keepEmoji(esc(title))}</h1>
     <div style="font-size:15px;line-height:1.6;color:#3d3f63;">${body}</div>
     ${cta ? `<p style="margin:28px 0 8px;text-align:center;"><a href="${cta.href}" style="display:inline-block;background:#0e8bff;color:#fff;text-decoration:none;font-family:Rubik,Montserrat,Helvetica,Arial,sans-serif;font-weight:800;text-transform:uppercase;font-size:14px;letter-spacing:.02em;padding:14px 28px;border-radius:8px;">${esc(cta.label)}</a></p>` : ''}
   </td></tr>
@@ -136,17 +138,15 @@ ${opts.accountUrl ? `<p>Dalla tua area personale segui l'ordine passo passo, dal
 
 /** Conferma d'ordine per gli ordini inseriti dalla dashboard (con PDF allegato) */
 export function manualOrderEmail(opts: { name?: string | null; number: string; total: string; lines: (string | EmailItem)[]; shipDate: string; terms: string[] }) {
-	return {
-		subject: `Conferma d'ordine ${opts.number} – Stickerprint`,
-		tag: 'order-confirmation-manual',
-		html: `<p>Ciao ${opts.name || ''},</p>
-<p>ti confermiamo l'ordine <strong>${opts.number}</strong>. In allegato trovi il riepilogo in PDF.</p>
+	/* stesso template della conferma automatica: cambia solo il riquadro (totale, spedizione, scadenze) e l'allegato (conferma d'ordine in PDF) */
+	const n = esc(opts.number);
+	const body = `<p>Ciao ${esc(opts.name || '')},</p>
+<p>grazie per il tuo ordine! Lo abbiamo registrato e siamo già al lavoro: ecco cosa stiamo preparando per te.</p>
 ${itemsBlock(opts.lines)}
-<p><strong>Totale IVA inclusa:</strong> ${opts.total}<br><strong>Spedizione stimata:</strong> ${opts.shipDate}</p>
-${opts.terms.length ? `<p><strong>Scadenze di pagamento</strong><br>${opts.terms.join('<br>')}</p>` : ''}
-<p>Per qualsiasi modifica rispondi a questa email.</p>
-<p>A presto,<br>Il team Stickerprint</p>`
-	};
+<p style="margin:16px 0 0;padding:12px 14px;background:#f4f5fa;border-radius:10px;"><b>Totale IVA inclusa:</b> ${esc(opts.total)}<br><b>Spedizione stimata:</b> ${esc(opts.shipDate)}${opts.terms.length ? `<br><b>Scadenze di pagamento:</b><br>${opts.terms.map(esc).join('<br>')}` : ''}</p>
+<p>Per qualsiasi modifica rispondi a questa email: ti seguiamo noi.</p>
+<p>Qui sotto trovi anche la <b>conferma d'ordine ${n}</b> in PDF, in allegato.</p>`;
+	return { subject: `Ordine ${opts.number} confermato 🥳`, tag: 'order-confirmation-manual', html: layoutHtml(`Ordine ${n} ${hl('confermato')} 🥳`, body, { label: 'Vai su Stickerprint', href: `${SITE}/` }) };
 }
 
 /** parola chiave sottolineata di verde (stesso segno del sito): regge anche in Gmail e Outlook */
@@ -193,7 +193,7 @@ export function reviewRequestEmail(o: { name?: string | null; number: string; it
 /** stesso layout delle altre email, ma il titolo puo' contenere HTML (la parola sottolineata) */
 function layoutHtml(titleHtml: string, body: string, cta?: { label: string; href: string } | null): string {
 	const plain = titleHtml.replace(/<[^>]+>/g, '');
-	return layout('§TITLE§', body, cta ?? undefined).replace('<h1 style="margin:0 0 14px;font-family:Rubik,Montserrat,Helvetica,Arial,sans-serif;font-weight:800;font-size:28px;line-height:1.2;letter-spacing:-0.02em;color:#0b0b3b;">§TITLE§</h1>', `<h1 style="margin:0 0 14px;font-family:Rubik,Montserrat,Helvetica,Arial,sans-serif;font-weight:800;font-size:28px;line-height:1.3;letter-spacing:-0.02em;color:#0b0b3b;">${titleHtml}</h1>`).replace('<title>§TITLE§</title>', `<title>${esc(plain)}</title>`);
+	return layout('§TITLE§', body, cta ?? undefined).replace('<h1 style="margin:0 0 14px;font-family:Rubik,Montserrat,Helvetica,Arial,sans-serif;font-weight:800;font-size:28px;line-height:1.2;letter-spacing:-0.02em;color:#0b0b3b;">§TITLE§</h1>', `<h1 style="margin:0 0 14px;font-family:Rubik,Montserrat,Helvetica,Arial,sans-serif;font-weight:800;font-size:28px;line-height:1.3;letter-spacing:-0.02em;color:#0b0b3b;">${keepEmoji(titleHtml)}</h1>`).replace('<title>§TITLE§</title>', `<title>${esc(plain)}</title>`);
 }
 
 /** sollecito di approvazione dell'anteprima (o del file mancante), con la data entro cui rispondere per mantenere la spedizione */
