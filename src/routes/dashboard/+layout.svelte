@@ -64,6 +64,7 @@
 		] }
 	]);
 	const active = (href: string, exact = false) => path === href || (!exact && path.startsWith(href + '/'));
+	const isClosed = (g: { id: string; items: { href: string; count?: number }[] }) => closed.has(g.id) && !g.items.some((it) => active(it.href) || (it.count ?? 0) > 0);
 
 	// gruppi aperti/chiusi, ricordati nel browser
 	let closed = $state<Set<string>>(new Set());
@@ -131,11 +132,11 @@
 			</a>
 			<nav class="dash__nav">
 				{#each menu as group (group.id)}
-					<div class="dash__group" class:is-closed={closed.has(group.id)}>
-						<button type="button" class="dash__gtitle" onclick={() => toggle(group.id)} aria-expanded={!closed.has(group.id)}>
-							<span>{group.title}</span><i class="dash__chev">{closed.has(group.id) ? '▸' : '▾'}</i>
+					<div class="dash__group" class:is-closed={isClosed(group)}>
+						<button type="button" class="dash__gtitle" onclick={() => toggle(group.id)} aria-expanded={!isClosed(group)}>
+							<span>{group.title}</span><i class="dash__chev">{isClosed(group) ? '▸' : '▾'}</i>
 						</button>
-						{#if !closed.has(group.id)}
+						{#if !isClosed(group)}
 							{#each group.items as it (it.href)}
 								<a href={it.href} class:is-active={active(it.href, 'exact' in it && it.exact)}>{it.label}{#if it.count}<span class="dash__cnt">{it.count}</span>{/if}</a>
 							{/each}
