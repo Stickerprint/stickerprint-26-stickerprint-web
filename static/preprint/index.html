@@ -4966,7 +4966,7 @@ function disegnaVetro(g,W,H,padPx){
 }
 function riflessiVetro(g,W,H){
   g.save(); g.translate(W/2,H/2); g.rotate(-Math.PI/180*24);
-  const bands=[[-W*0.34,W*0.13,0.42],[-W*0.10,W*0.05,0.30],[W*0.14,W*0.11,0.36],[W*0.32,W*0.04,0.22]];
+  const bands=[[-W*0.34,W*0.13,0.30],[-W*0.10,W*0.05,0.20],[W*0.14,W*0.11,0.26],[W*0.32,W*0.04,0.16]];
   for(const [x,w,a] of bands){
     const lg=g.createLinearGradient(x,0,x+w,0);
     lg.addColorStop(0,'rgba(255,255,255,0)'); lg.addColorStop(0.2,'rgba(255,255,255,'+a+')'); lg.addColorStop(0.8,'rgba(255,255,255,'+a+')'); lg.addColorStop(1,'rgba(255,255,255,0)');
@@ -4974,7 +4974,7 @@ function riflessiVetro(g,W,H){
   }
   g.restore();
   /* velo del vetro: abbassa appena il contrasto di quello che sta dietro */
-  g.fillStyle='rgba(225,235,245,0.10)'; g.fillRect(0,0,W,H);
+  g.fillStyle='rgba(225,235,245,0.06)'; g.fillRect(0,0,W,H);
 }
 function ridipingi(){
   const a=S._an; if(!a)return;
@@ -5025,7 +5025,7 @@ function ridipingi(){
     } else if(S.vetro){
       /* vetrofania vista da fuori: stipite della finestra, vetro, la vetrofania dietro e i riflessi sopra */
       disegnaVetro(gb,cv.width,cv.height,pad*ppm);
-      gb.save();gb.shadowColor='rgba(0,0,0,0.26)';gb.shadowBlur=2*ppm;gb.shadowOffsetY=0.7*ppm;
+      gb.save();gb.shadowColor='rgba(0,0,0,0.22)';gb.shadowBlur=1.2*ppm;gb.shadowOffsetY=0.5*ppm;
       gb.drawImage(tile,pad*ppm,pad*ppm);gb.restore();
       riflessiVetro(gb,cv.width,cv.height);
     } else {
