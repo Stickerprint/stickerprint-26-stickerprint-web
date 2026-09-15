@@ -63,7 +63,7 @@
 									<div class="qp__bank">
 										<b>Bonifico bancario · {money(p.amount)}</b>
 										<span>Intestato a <b>{data.bank.name}</b>{#if data.bank.iban} · IBAN <b>{data.bank.iban}</b>{/if} · causale <b>{o.number}</b></span>
-										<small>Un bonifico può richiedere dalle 24 alle 48 ore per essere processato: appena vediamo l'accredito segniamo la scadenza come pagata{#if p.upfront} e la produzione parte{/if}. Se vuoi fare prima, mandaci la contabile dal bottone "Ho una domanda".</small>
+										<small>Un bonifico può richiedere dalle 24 alle 48 ore per essere processato: appena vediamo l'accredito segniamo la scadenza come pagata{#if p.upfront}{' '}e la produzione parte{/if}. Se vuoi fare prima, mandaci la contabile dal bottone "Ho una domanda".</small>
 									</div>
 								{/if}
 							{/if}
