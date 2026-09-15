@@ -65,6 +65,10 @@
 .qp__bank { display: grid; gap: 3px; font-size: 14px; max-width: 460px; }
 .qp__bank small { color: var(--muted); }
 .qp__addr { display: grid; gap: 1px; font-size: 14px; } .qp__addr b { margin-bottom: 3px; } .qp__addr span { color: var(--ink-soft); }
+.qp__addrs { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.qp__addr--card { background: #fff; border: 1px solid var(--line); border-radius: 20px; padding: 18px 22px; }
+.qp__addr--card b { font-family: var(--font-display); font-size: 15px; margin-bottom: 6px; }
+@media (max-width: 700px) { .qp__addrs { grid-template-columns: 1fr; } }
 
 /* tabella delle righe (fattura) */
 .qp__table { background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 6px 18px 10px; overflow: auto; }
@@ -78,8 +82,11 @@
 /* riquadro pagamenti della conferma e della fattura: blu notte con sfumatura verde, righe come schede chiare */
 .qp__cta--pay { background: linear-gradient(135deg, #0b0b3b 0%, #0f2f57 55%, #0e6b5a 100%); border-color: transparent; color: #fff; box-shadow: 0 14px 34px rgba(11, 11, 59, .22); }
 .qp__cta--pay .qp__h2 { color: #fff; }
-.qp__cta--pay .qp__pay-row { display: grid; gap: 12px; background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.18); color: #fff; }
-.qp__cta--pay .qp__pay-row.is-due { background: rgba(139,227,58,.12); border-color: rgba(139,227,58,.55); }
+/* schede "liquid glass": vetro smerigliato sul fondo colorato, riflesso in alto, bordo chiaro */
+.qp__cta--pay .qp__pay-row { position: relative; display: grid; gap: 12px; color: #fff; border-radius: 18px; border: 1px solid rgba(255,255,255,.38); background: linear-gradient(160deg, rgba(255,255,255,.22), rgba(255,255,255,.08) 45%, rgba(255,255,255,.14)); backdrop-filter: blur(18px) saturate(170%); -webkit-backdrop-filter: blur(18px) saturate(170%); box-shadow: inset 0 1px 0 rgba(255,255,255,.55), inset 0 -1px 0 rgba(255,255,255,.12), 0 10px 30px rgba(0,0,0,.22); }
+.qp__cta--pay .qp__pay-row::before { content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; background: radial-gradient(120% 60% at 20% 0%, rgba(255,255,255,.28), transparent 60%); }
+.qp__cta--pay .qp__pay-row > * { position: relative; }
+.qp__cta--pay .qp__pay-row.is-due { border-color: rgba(139,227,58,.7); box-shadow: inset 0 1px 0 rgba(255,255,255,.55), 0 0 0 1px rgba(139,227,58,.25), 0 10px 30px rgba(0,0,0,.22); }
 .qp__cta--pay .qp__pay-row.is-paid { opacity: .6; }
 .qp__cta--pay .qp__pay-row > div:first-child span, .qp__cta--pay .qp__pay-head span { color: rgba(255,255,255,.78); }
 .qp__pay-head { display: flex; justify-content: space-between; align-items: center; gap: 14px; flex-wrap: wrap; }

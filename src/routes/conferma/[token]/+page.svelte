@@ -10,7 +10,6 @@
 	const it = (d: string | null) => (d ? new Date(d.slice(0, 10) + 'T12:00:00').toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' }) : '');
 	const due = $derived(data.payments.filter((p) => p.upfront && p.status === 'da_pagare').reduce((a, p) => a + p.amount, 0));
 	const waiting = $derived(o.status === 'attesa_pagamento' || due > 0);
-	const initials = $derived((data.sender ?? 'SP').split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase());
 	const when = (d: string) => new Date(d).toLocaleString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 	let asking = $state(false);
 	let bankOpen = $state<number | null>(null);
@@ -100,11 +99,18 @@
 				</ul>
 			</div>
 			<aside class="qp__why">
-				<div class="qp__addr"><b>Fatturazione</b>{#each data.billing as l, k (k)}<span>{l}</span>{/each}{#if data.vat}<span>P.IVA {data.vat}</span>{/if}</div>
-				<div class="qp__addr"><b>Spedizione</b>{#each data.shipping as l, k (k)}<span>{l}</span>{/each}</div>
-				<div class="qp__person"><span class="qp__avatar">{initials}</span><div><b>{data.sender ?? 'Il team Stickerprint'}</b><br /><span>ti seguo io: qualcosa non torna? Dimmelo qui sotto prima che vada in stampa.</span></div></div>
+				<ul class="qp__perks">
+					<li>🇮🇹 Stampato in Italia, nel nostro laboratorio</li>
+					<li>🖨️ Materiali premium e taglio di precisione</li>
+					<li>📦 Spedizione gratuita da 50 €</li>
+				</ul>
 				{#if data.stats}<div class="qp__stars"><Stars value={data.stats.average ?? 4.9} count={data.stats.total ?? null} size={18} countLabel="recensioni verificate" /></div>{/if}
 			</aside>
+		</div>
+
+		<div class="qp__addrs">
+			<div class="qp__addr qp__addr--card"><b>Indirizzo di fatturazione</b>{#each data.billing as l, k (k)}<span>{l}</span>{/each}{#if data.vat}<span>P.IVA {data.vat}</span>{/if}</div>
+			<div class="qp__addr qp__addr--card"><b>Indirizzo di spedizione</b>{#each data.shipping as l, k (k)}<span>{l}</span>{/each}</div>
 		</div>
 
 		<div class="qp__cta" style="border-color:var(--line)">
