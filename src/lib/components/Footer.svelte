@@ -86,6 +86,10 @@
 				<a href="/support">Supporto</a>
 				<a href="/resi">Resi</a>
 				<a href="/recensioni">Recensioni</a>
+				<a href="/privacy">Privacy</a>
+				<a href="/cookie-policy">Cookie</a>
+				<a href="/termini">Termini</a>
+				<a href="/cookie-policy" class="iubenda-cs-preferences-link">Preferenze cookie</a>
 			</nav>
 			<p class="footer__copy">© {new Date().getFullYear()} Stickerprint Srl</p>
 			<div class="footer__meta">

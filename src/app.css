@@ -677,3 +677,8 @@ body { overflow-x: clip; }
 @media (prefers-reduced-motion: reduce) { .cred__line, .cred__lv, .cred__lv img, .cred__pct { transition: none !important; animation: none !important; opacity: 1 !important; transform: none !important; } .cred__shine::after { animation: none; } }
 
 .rv__note { text-align: center; font-size: 12.5px; color: var(--muted); margin: 10px 0 0; }
+
+/* iubenda: il widget flottante duplicato del banner (come sul sito attuale) e il testo delle policy incorporate */
+.iub__us-widget { display: none !important; }
+.policy .iub_content, .policy .iubenda_embed_policy { font-size: 15px; line-height: 1.6; color: var(--ink); }
+.policy h1, .policy h2, .policy h3 { font-family: var(--font-display); }
