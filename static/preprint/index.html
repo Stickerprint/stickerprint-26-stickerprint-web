@@ -2402,6 +2402,14 @@ function inkLayer(ppm){
   const c=document.createElement('canvas');c.width=W;c.height=H;
   const g=c.getContext('2d');g.setTransform(ppm,0,0,ppm,0,0);
   const p=new Path2D(S.pathD);
+  /* [sito] vetrofanie: nessun colore di fondo sotto o attorno al disegno. Dentro il taglio
+     c'e' solo la grafica del cliente (con la sua trasparenza), il resto lascia vedere il vetro. */
+  if(S.vetro){
+    g.save(); g.clip(p,'evenodd');
+    const A=artRect(); g.imageSmoothingQuality='high';
+    g.drawImage(S.artHi||S.artCanvas||S.work.canvas,A.x,A.y,A.w,A.h);
+    g.restore(); return c;
+  }
   /* --------------------------------------------------------------------
      FILETTI BIANCHI SUL PROFILO
      Ritagliare con clip() E POI riempire LA STESSA sagoma applica due volte
@@ -3979,6 +3987,7 @@ function renderTile(ppm,withMat,bleedMM){
   for(let i=0,p=0;i<N;i++,p+=4){
     if(g[i]>r2)continue;
     if(d[p+3]>=250)continue;
+    if(S.vetro){ if(d[p+3]<8){d[p]=255;d[p+1]=255;d[p+2]=255;d[p+3]=34;} continue; }
     const a=d[p+3]/255;
     const br=seen[i]?d[p]:col[0], bg2=seen[i]?d[p+1]:col[1], bb2=seen[i]?d[p+2]:col[2];
     d[p]  = a>0 ? d[p]  *a+br *(1-a) : br;
