@@ -5079,7 +5079,9 @@ function ridipingi(){
   if(S.vetro&&a.vk)g.setTransform(ppm*a.vk,0,0,ppm*a.vk,a.vox+b*ppm*a.vk,a.voy+b*ppm*a.vk);
   else g.setTransform(ppm,0,0,ppm,(pad+b)*ppm,(pad+b)*ppm);
   const p=new Path2D(a.path);
-  g.lineWidth=Math.max(.12,0.9/ppm);g.strokeStyle='#ff2d95';
+  /* [sito] vetrofanie: sulla vetrina il fucsia si perde; il taglio e' verde acceso e un po' piu' spesso */
+  if(S.vetro){g.lineWidth=Math.max(.2,1.5/(ppm*(a.vk||1)));g.strokeStyle='#39ff5a';}
+  else{g.lineWidth=Math.max(.12,0.9/ppm);g.strokeStyle='#ff2d95';}
   g.setLineDash([dash,dash*0.75]);g.lineDashOffset=-anT;g.lineCap='butt';
   g.stroke(p);g.setLineDash([]);g.lineDashOffset=0;
 }
