@@ -73,5 +73,21 @@
 .qp__table td { padding: 11px 8px; border-bottom: 1px solid #eef0f5; }
 .qp__table tr:last-child td { border-bottom: 0; }
 
-.qp__paybtns { display: grid; gap: 6px; justify-items: end; }
-.qp__paybtns .btn { min-width: 220px; justify-content: center; }
+.qp__paybtns { display: flex; flex-wrap: wrap; gap: 8px; }
+.qp__paybtns .btn { min-width: 200px; justify-content: center; display: inline-flex; align-items: center; gap: 8px; }
+/* riquadro pagamenti della conferma e della fattura: blu notte con sfumatura verde, righe come schede chiare */
+.qp__cta--pay { background: linear-gradient(135deg, #0b0b3b 0%, #0f2f57 55%, #0e6b5a 100%); border-color: transparent; color: #fff; box-shadow: 0 14px 34px rgba(11, 11, 59, .22); }
+.qp__cta--pay .qp__h2 { color: #fff; }
+.qp__cta--pay .qp__pay-row { display: grid; gap: 12px; background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.18); color: #fff; }
+.qp__cta--pay .qp__pay-row.is-due { background: rgba(139,227,58,.12); border-color: rgba(139,227,58,.55); }
+.qp__cta--pay .qp__pay-row.is-paid { opacity: .6; }
+.qp__cta--pay .qp__pay-row > div:first-child span, .qp__cta--pay .qp__pay-head span { color: rgba(255,255,255,.78); }
+.qp__pay-head { display: flex; justify-content: space-between; align-items: center; gap: 14px; flex-wrap: wrap; }
+.qp__pay-head > div { display: grid; gap: 2px; }
+.qp__pay-head > div b { font-family: var(--font-display); font-size: 20px; }
+.qp__cta--pay .qp__paid { color: #8be33a; }
+.qp__paynote { font-size: 12.5px; color: rgba(255,255,255,.7); }
+.qp__cta--pay .qp__bank { background: #fff; color: var(--ink); border-radius: 12px; padding: 12px 14px; max-width: none; }
+.qp__cta--pay .qp__bank small { color: var(--muted); }
+.btn--white { background: #fff; color: var(--navy); }
+.btn--white.is-on { box-shadow: inset 0 0 0 2px var(--green); }

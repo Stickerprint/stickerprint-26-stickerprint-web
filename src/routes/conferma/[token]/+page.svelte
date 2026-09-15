@@ -13,6 +13,7 @@
 	const initials = $derived((data.sender ?? 'SP').split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase());
 	const when = (d: string) => new Date(d).toLocaleString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 	let asking = $state(false);
+	let bankOpen = $state<number | null>(null);
 	let reporting = $state(false);
 	let sending = $state(false);
 	const submit = () => { sending = true; return async ({ update }: { update: (o?: { reset?: boolean }) => Promise<void> }) => { await update({ reset: false }); sending = false; asking = false; reporting = false; }; };
@@ -40,26 +41,31 @@
 		</header>
 
 		{#if data.payments.length}
-			<div class="qp__cta" style={waiting ? '' : 'border-color:var(--line)'}>
+			<div class="qp__cta qp__cta--pay">
 				<h2 class="qp__h2">{data.payments.length === 1 ? 'Pagamento' : 'Scadenze di pagamento'}</h2>
 				<div class="qp__pay">
 					{#each data.payments as p (p.seq)}
+						{@const riba = /ricevuta|riba|rid\b|sdd/i.test(p.method)}
+						{@const payable = p.status !== 'pagato' && !riba}
 						<div class="qp__pay-row" class:is-paid={p.status === 'pagato'} class:is-due={p.upfront && p.status === 'da_pagare'}>
-							<div><b>{money(p.amount)}</b><span>{paymentLabel(p.method)} · {p.upfront ? 'anticipato' : `scadenza ${it(p.due)}`}{#if !p.upfront && p.status !== 'pagato' && data.online && !/ricevuta|riba|rid\b|sdd/i.test(p.method)} · puoi saldarla anche subito{/if}</span></div>
-							{#if p.status === 'pagato'}
-								<span class="qp__paid">✓ Pagato {p.paid_at ? it(p.paid_at) : ''}</span>
-							{:else if p.upfront || (!/ricevuta|riba|rid\b|sdd/i.test(p.method) && data.online)}
-								{#if data.online}
-									<div class="qp__paybtns"><a class="btn btn--green" href="/conferma/{token()}/paga/{p.seq}" data-sveltekit-reload>💳 Paga con carta {money(p.amount)}</a>{#if data.paypal}<a class="btn btn--paypal" href="/conferma/{token()}/paypal/{p.seq}" data-sveltekit-reload><img src="/icons/footer/paypal.webp" alt="" /> Paga con PayPal</a>{/if}<small class="note">carta, Apple Pay, Google Pay{#if !data.paypal}, PayPal{/if}{#if data.simulation} · simulazione{/if}</small></div>
-								{:else}
+							<div class="qp__pay-head">
+								<div><b>{money(p.amount)}</b><span>{paymentLabel(p.method)} · {p.upfront ? 'anticipato' : `scadenza ${it(p.due)}`}{#if payable && !p.upfront} · puoi saldarla anche subito{/if}</span></div>
+								{#if p.status === 'pagato'}<span class="qp__paid">✓ Pagato {p.paid_at ? it(p.paid_at) : ''}</span>{/if}
+							</div>
+							{#if payable}
+								<div class="qp__paybtns">
+									{#if data.online}<a class="btn btn--green" href="/conferma/{token()}/paga/{p.seq}" data-sveltekit-reload>💳 Paga con carta</a>{/if}
+									{#if data.paypal}<a class="btn btn--paypal" href="/conferma/{token()}/paypal/{p.seq}" data-sveltekit-reload><img src="/icons/footer/paypal.webp" alt="" /> Paga con PayPal</a>{/if}
+									<button class="btn btn--white" class:is-on={bankOpen === p.seq} type="button" onclick={() => (bankOpen = bankOpen === p.seq ? null : p.seq)}>🏦 Paga con bonifico</button>
+								</div>
+								{#if data.online}<small class="qp__paynote">carta, Apple Pay, Google Pay{#if data.paypal}, PayPal{/if} o bonifico</small>{/if}
+								{#if bankOpen === p.seq}
 									<div class="qp__bank">
-										<b>Bonifico anticipato</b>
-										<span>{#if data.bank.iban}IBAN <b>{data.bank.iban}</b> · {/if}intestato a {data.bank.name} · causale <b>{o.number}</b></span>
-										<small>Appena vediamo l'accredito segniamo la scadenza come pagata e partiamo. Se vuoi fare prima, mandaci la contabile dal bottone "Ho una domanda".</small>
+										<b>Bonifico bancario · {money(p.amount)}</b>
+										<span>Intestato a <b>{data.bank.name}</b>{#if data.bank.iban} · IBAN <b>{data.bank.iban}</b>{/if} · causale <b>{o.number}</b></span>
+										<small>Un bonifico può richiedere dalle 24 alle 48 ore per essere processato: appena vediamo l'accredito segniamo la scadenza come pagata{#if p.upfront} e la produzione parte{/if}. Se vuoi fare prima, mandaci la contabile dal bottone "Ho una domanda".</small>
 									</div>
 								{/if}
-							{:else}
-								<span class="qp__later">Alla scadenza, con {paymentLabel(p.method)}. La fattura arriva a parte.</span>
 							{/if}
 						</div>
 					{/each}

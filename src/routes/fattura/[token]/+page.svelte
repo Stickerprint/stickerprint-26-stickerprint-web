@@ -13,6 +13,7 @@
 	const initials = $derived((inv.sender ?? 'SP').split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase());
 	const when = (d: string) => new Date(d).toLocaleString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 	let asking = $state(false);
+	let bankOpen = $state<number | null>(null);
 	let sending = $state(false);
 	const submit = () => { sending = true; return async ({ update }: { update: (o?: { reset?: boolean }) => Promise<void> }) => { await update({ reset: false }); sending = false; asking = false; }; };
 	const token = () => (typeof location !== 'undefined' ? location.pathname.split('/')[2] : '');
@@ -36,23 +37,29 @@
 			{#if form?.message}<p class="ok">{form.message}</p>{/if}
 		</header>
 
-		<div class="qp__cta" style={due > 0 ? '' : 'border-color:var(--line)'}>
+		<div class="qp__cta qp__cta--pay">
 			<h2 class="qp__h2">{data.payments.length === 1 ? 'Pagamento' : 'Scadenze di pagamento'}</h2>
 			<div class="qp__pay">
 				{#each data.payments as p (p.seq)}
 					<div class="qp__pay-row" class:is-paid={p.status === 'pagato'} class:is-due={p.payable && p.status === 'da_pagare'}>
-						<div><b>{money(p.amount)}</b><span>{paymentLabel(p.method)} · scadenza {it(p.due)}</span></div>
-						{#if p.status === 'pagato'}
-							<span class="qp__paid">✓ Pagato {p.paid_at ? it(p.paid_at) : ''}</span>
-						{:else if !p.payable}
-							<span class="qp__later">Addebito automatico con ricevuta bancaria alla scadenza: non devi fare nulla.</span>
-						{:else if data.online}
-							<div style="display:grid;gap:4px;justify-items:end">
-								<a class="btn btn--green" href="/fattura/{token()}/paga/{p.seq}" data-sveltekit-reload>💳 Paga ora {money(p.amount)}</a>
-								<small class="note">carta, Apple Pay, Google Pay, PayPal{#if data.simulation} · simulazione{/if}{#if data.bank.iban} · oppure bonifico: IBAN {data.bank.iban}, causale {inv.number}{/if}</small>
+						<div class="qp__pay-head">
+							<div><b>{money(p.amount)}</b><span>{paymentLabel(p.method)} · scadenza {it(p.due)}</span></div>
+							{#if p.status === 'pagato'}<span class="qp__paid">✓ Pagato {p.paid_at ? it(p.paid_at) : ''}</span>{/if}
+						</div>
+						{#if p.status !== 'pagato' && p.payable}
+							<div class="qp__paybtns">
+								{#if data.online}<a class="btn btn--green" href="/fattura/{token()}/paga/{p.seq}" data-sveltekit-reload>💳 Paga con carta</a>{/if}
+								{#if data.paypal}<a class="btn btn--paypal" href="/fattura/{token()}/paypal/{p.seq}" data-sveltekit-reload><img src="/icons/footer/paypal.webp" alt="" /> Paga con PayPal</a>{/if}
+								<button class="btn btn--white" class:is-on={bankOpen === p.seq} type="button" onclick={() => (bankOpen = bankOpen === p.seq ? null : p.seq)}>🏦 Paga con bonifico</button>
 							</div>
-						{:else}
-							<div class="qp__bank"><b>Bonifico bancario</b><span>{#if data.bank.iban}IBAN <b>{data.bank.iban}</b> · {/if}intestato a {data.bank.name} · causale <b>{inv.number}</b></span></div>
+							{#if data.online}<small class="qp__paynote">carta, Apple Pay, Google Pay{#if data.paypal}, PayPal{/if} o bonifico</small>{/if}
+							{#if bankOpen === p.seq}
+								<div class="qp__bank">
+									<b>Bonifico bancario · {money(p.amount)}</b>
+									<span>Intestato a <b>{data.bank.name}</b>{#if data.bank.iban} · IBAN <b>{data.bank.iban}</b>{/if} · causale <b>{inv.number}</b></span>
+									<small>Un bonifico può richiedere dalle 24 alle 48 ore per essere processato: appena vediamo l'accredito segniamo la scadenza come pagata. Se vuoi fare prima, mandaci la contabile dal bottone "Ho una domanda".</small>
+								</div>
+							{/if}
 						{/if}
 					</div>
 				{/each}
