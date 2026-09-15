@@ -5391,7 +5391,7 @@ function ppGeoUI(){
   try{ const pic=document.querySelector('#cBord .chip[data-b="0"]');
     if(pic)pic.style.display=(S.prod==='resin')?'none':'';
     if(S.prod==='resin'&&CL.bord===0){CL.bord=1;applyPreset(false);} }catch(e){}
-  const bs=$('ppBordHost'); if(bs&&bs.parentNode)bs.parentNode.style.display=geo?'none':'';
+  const bs=$('ppBordHost'); if(bs&&bs.parentNode)bs.parentNode.style.display=(geo||S.vetro)?'none':'';   /* [sito] vetrofanie: bordo fisso (medio), niente scelta */
   /* [sito] zoom e centratura su tutte le sagome, sagomato compreso: li' il disegno
      si ingrandisce o rimpicciolisce dentro il tracciato ricavato a misura piena */
   const gs=$('ppGeoSec'); if(gs)gs.style.display='';
