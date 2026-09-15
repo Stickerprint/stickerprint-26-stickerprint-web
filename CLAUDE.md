@@ -63,5 +63,5 @@ npm run build    # build di produzione
 
 1. Homepage: fatta. 2. Auth Supabase: fatta. 3. Postmark: modulo pronto, token da inserire.
 4. Pagine prodotto con configuratore: fatte (6 prodotti). Aziende, chi siamo, supporto, resi, blog: fatte. Campioni e catalogo `/prodotti`: da fare.
-5. Area personale cliente e programma fedeltà (Creator/Partner/Ambassador): fatti. Checkout `/checkout` con fattura PDF automatica (pdf-lib, bucket `invoices`) ed email di conferma: fatto con pagamento "Test"; carta e PayPal richiedono le chiavi Stripe/PayPal (da collegare).
+5. Area personale cliente e programma fedeltà (Creator/Partner/Ambassador): fatti. Checkout `/checkout` con Stripe Checkout (carta, Apple/Google Pay, Link; PayPal passa da Stripe con `payment_method_types=paypal`): l'ordine nasce `attesa_pagamento` con i dati in `checkout_sessions` e viene chiuso da `finalizeCheckout` (`src/lib/server/checkout.ts`: fattura PDF nel bucket `invoices`, email, produzione) al webhook `/api/stripe/webhook` o al ritorno su `/checkout/grazie?session_id=`. Il ritorno senza pagare (`/checkout?annullato=1&g=`) cancella gli ordini in attesa. Chiavi: `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET` su Vercel (oggi sandbox di test); senza chiave resta il pagamento "Test".
 6. Dashboard interna produzione (`/admin`): da fare.
