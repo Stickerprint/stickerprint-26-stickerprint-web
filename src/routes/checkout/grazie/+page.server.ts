@@ -1,6 +1,6 @@
 import { estimatedShipDate, formatItDate } from '$lib/utils/shipping';
 import { adminClient } from '$lib/server/admin';
-import { retrieveSession, stripeConfigured } from '$lib/server/stripe';
+import { retrievePaymentIntent, retrieveSession, stripeConfigured } from '$lib/server/stripe';
 import { finalizeCheckout, readCheckout, type CheckoutPayload } from '$lib/server/checkout';
 import { paypalConfigured, settlePayPalReturn } from '$lib/server/paypal';
 import type { PageServerLoad } from './$types';
@@ -23,6 +23,21 @@ export const load: PageServerLoad = async ({ url, locals: { user } }) => {
 		if (!r.ok) return { ...base, pending: true, ppError: r.error ?? null };
 		const payload = (await readCheckout(db, group))?.payload ?? null;
 		return payload ? { ...base, paid: { numbers: payload.numbers, group, payload } } : base;
+	}
+	// carta o wallet confermati in pagina (?pi=… oppure ?payment_intent=… dopo un 3D Secure con redirect)
+	const piId = url.searchParams.get('pi') ?? url.searchParams.get('payment_intent');
+	if (piId && stripeConfigured()) {
+		try {
+			const pi = await retrievePaymentIntent(piId);
+			if (!pi.checkout || !pi.group) return base;
+			if (!pi.paid) return { ...base, pending: pi.status === 'processing' };
+			const r = await finalizeCheckout(db, pi.group, { provider: 'stripe', ref: piId });
+			const payload = r.payload ?? (await readCheckout(db, pi.group))?.payload ?? null;
+			return payload ? { ...base, paid: { numbers: payload.numbers, group: pi.group, payload } } : base;
+		} catch (e) {
+			console.error('[grazie] stripe pi', e);
+			return base;
+		}
 	}
 	const sid = url.searchParams.get('session_id');
 	if (!sid || !stripeConfigured()) return base;

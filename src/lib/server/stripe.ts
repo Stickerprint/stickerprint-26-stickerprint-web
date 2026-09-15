@@ -63,3 +63,21 @@ export async function verifyWebhook(payload: string, header: string | null): Pro
 export async function expireCheckoutSession(id: string): Promise<void> {
 	try { await call(`/checkout/sessions/${encodeURIComponent(id)}/expire`, {}); } catch { /* gia' chiusa o scaduta */ }
 }
+
+/** PaymentIntent per la carta inserita sul sito (Card Element) o per i wallet (Express Checkout): niente cassa esterna */
+export async function createPaymentIntent(o: { amountCents: number; description: string; email: string | null; orderNumber: string; group: string; seq: number }): Promise<{ id: string; clientSecret: string }> {
+	const s = await call('/payment_intents', {
+		amount: o.amountCents, currency: 'eur', description: o.description, receipt_email: undefined,
+		'automatic_payment_methods[enabled]': 'true', 'automatic_payment_methods[allow_redirects]': 'never',
+		'metadata[group]': o.group, 'metadata[seq]': o.seq, 'metadata[order]': o.orderNumber, 'metadata[checkout]': '1', 'metadata[email]': o.email ?? undefined
+	});
+	return { id: String(s.id), clientSecret: String(s.client_secret) };
+}
+export async function retrievePaymentIntent(id: string): Promise<{ paid: boolean; status: string; group: string | null; checkout: boolean; order: string | null }> {
+	const s = await call(`/payment_intents/${encodeURIComponent(id)}`);
+	const md = (s.metadata ?? {}) as Record<string, string>;
+	return { paid: s.status === 'succeeded', status: String(s.status ?? ''), group: md.group ?? null, checkout: md.checkout === '1', order: md.order ?? null };
+}
+export async function cancelPaymentIntent(id: string): Promise<void> {
+	try { await call(`/payment_intents/${encodeURIComponent(id)}/cancel`, {}); } catch { /* gia' pagato o annullato */ }
+}

@@ -11,8 +11,16 @@ export const POST: RequestHandler = async ({ request }) => {
 	const payload = await request.text();
 	if (!(await verifyWebhook(payload, request.headers.get('stripe-signature')))) return json({ error: 'firma non valida' }, { status: 400 });
 	const ev = JSON.parse(payload) as { type: string; data: { object: Record<string, unknown> } };
-	if (ev.type !== 'checkout.session.completed' && ev.type !== 'checkout.session.async_payment_succeeded') return json({ ignored: ev.type });
 	const s = ev.data.object;
+	/* carta inserita sul sito o wallet: PaymentIntent con i dati dell'ordine nei metadata */
+	if (ev.type === 'payment_intent.succeeded') {
+		const md = (s.metadata ?? {}) as Record<string, string>;
+		const db = adminClient();
+		if (!db || md.checkout !== '1' || !md.group) return json({ ignored: 'non checkout' });
+		await finalizeCheckout(db, md.group, { provider: 'stripe', ref: String(s.id) });
+		return json({ ok: true });
+	}
+	if (ev.type !== 'checkout.session.completed' && ev.type !== 'checkout.session.async_payment_succeeded') return json({ ignored: ev.type });
 	if (s.payment_status !== 'paid') return json({ ignored: 'non pagato' });
 	const md = (s.metadata ?? {}) as Record<string, string>;
 	const db = adminClient();

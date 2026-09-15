@@ -6,6 +6,7 @@ export interface PaymentTerm { due: string; amount: number; method: string; xml_
 export const ECOMMERCE_METHODS: Record<string, { label: string; xml_code: string; icon: string }> = {
 	paypal: { label: 'PayPal', xml_code: 'MP08', icon: '/icons/footer/paypal.webp' },
 	stripe: { label: 'Carta di credito (Stripe)', xml_code: 'MP08', icon: '/icons/pay-stripe.svg' },
+	wallet: { label: 'Apple Pay / Google Pay (Stripe)', xml_code: 'MP08', icon: '/icons/pay-stripe.svg' },
 	test: { label: 'Test (nessun addebito)', xml_code: 'MP08', icon: '' }
 };
 export const paymentLabel = (m: string | null | undefined) => (m ? (ECOMMERCE_METHODS[m]?.label ?? m) : '—');

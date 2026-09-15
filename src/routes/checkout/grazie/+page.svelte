@@ -16,7 +16,7 @@
 			if (!sessionStorage.getItem(key)) {
 				sessionStorage.setItem(key, '1');
 				const p = paid.payload;
-				track.purchase({ orderNumber: p.numbers[0], items: cartItems(p.items), value: p.toPay, tax: p.vatAmount, paymentType: p.payment === 'paypal' ? 'PayPal' : 'Carta di credito', express: p.express, coupon: p.discountCode, discount: Math.round(p.discount * 1.22 * 100) / 100, returning: false, userId: p.userId, user: { email: p.email, phone: p.ship.phone ?? '', first_name: p.ship.first_name ?? '', last_name: p.ship.last_name ?? '', street: p.ship.street ?? '', city: p.ship.city ?? '', province: p.ship.province ?? '', zip: p.ship.zip ?? '' } });
+				track.purchase({ orderNumber: p.numbers[0], items: cartItems(p.items), value: p.toPay, tax: p.vatAmount, paymentType: p.payment === 'paypal' ? 'PayPal' : p.payment === 'wallet' ? 'Apple Pay / Google Pay' : 'Carta di credito', express: p.express, coupon: p.discountCode, discount: Math.round(p.discount * 1.22 * 100) / 100, returning: false, userId: p.userId, user: { email: p.email, phone: p.ship.phone ?? '', first_name: p.ship.first_name ?? '', last_name: p.ship.last_name ?? '', street: p.ship.street ?? '', city: p.ship.city ?? '', province: p.ship.province ?? '', zip: p.ship.zip ?? '' } });
 			}
 			for (const it of readCart()) deleteCartFile(it.id);
 			clearCart();

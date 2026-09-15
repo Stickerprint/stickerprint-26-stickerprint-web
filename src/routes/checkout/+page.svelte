@@ -30,7 +30,7 @@
 	let express = $state(false);
 	let useCredit = $state(false);
 	// svelte-ignore state_referenced_locally
-	let payment = $state(data.online ? 'stripe' : 'test');
+	let payment = $state(data.stripeKey ? 'card' : data.online ? 'stripe' : 'test');
 	// svelte-ignore state_referenced_locally
 	const PAY_ERR = data.cancelled ? 'Pagamento annullato: il tuo carrello è ancora qui, puoi riprovare quando vuoi.' : '';
 	let code = $state('');
@@ -92,7 +92,7 @@
 		if (!String(fd.get('first_name') ?? '').trim() || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return;
 		contactSent = true; track.addContactInfo(cartItems(items), discount?.code ?? null); klaviyo.identify(email);
 	}
-	const PAY_LABEL: Record<string, string> = { stripe: 'Carta di credito', paypal: 'PayPal', test: 'Test' };
+	const PAY_LABEL: Record<string, string> = { stripe: 'Carta di credito', card: 'Carta di credito', wallet: 'Apple Pay / Google Pay', paypal: 'PayPal', test: 'Test' };
 	$effect(() => { const p = payment; if (loaded && items.length && p && !paymentSent) { paymentSent = true; track.addPaymentInfo(cartItems(items), PAY_LABEL[p] ?? p, discount?.code ?? null); } });
 	async function applyCode() {
 		codeMsg = '';
@@ -109,15 +109,69 @@
 		if (file.type.startsWith('image/')) thumbs[id] = URL.createObjectURL(file);
 		items = updateCartItem(id, { fileName: file.name });
 	}
-	// prima carica i file su Storage, poi invia l'ordine all'azione del server
-	async function onSubmit(e: SubmitEvent) {
-		e.preventDefault();
-		err = '';
-		if (!canOrder) { err = data.user ? '' : data.guestAllowed ? 'Inserisci la tua email.' : 'Accedi o registrati per completare l’ordine.'; return; }
-		if (!allFiles) { err = 'Manca il file di un prodotto.'; return; }
-		if (!formEl) return;
-		submitting = true;
-		try {
+	// ---------- pagamento in pagina (Stripe.js): carta inserita a mano, Apple Pay / Google Pay ----------
+	type StripeJs = { elements: (o?: Record<string, unknown>) => StripeElements; confirmCardPayment: (cs: string, o: Record<string, unknown>) => Promise<{ error?: { message?: string }; paymentIntent?: { id: string; status: string } }>; confirmPayment: (o: Record<string, unknown>) => Promise<{ error?: { message?: string }; paymentIntent?: { id: string; status: string } }> };
+	type StripeElements = { create: (t: string, o?: Record<string, unknown>) => StripeElement; update: (o: Record<string, unknown>) => void; submit: () => Promise<{ error?: { message?: string } }> };
+	type StripeElement = { mount: (el: HTMLElement) => void; unmount: () => void; on: (ev: string, cb: (e: any) => void) => void; destroy: () => void }; // eslint-disable-line @typescript-eslint/no-explicit-any
+	let stripe = $state<StripeJs | null>(null);
+	let cardEl: StripeElement | null = null;
+	let cardHost = $state<HTMLDivElement | undefined>();
+	let cardReady = $state(false);
+	let cardErr = $state('');
+	let exElements: StripeElements | null = null;
+	let exHost = $state<HTMLDivElement | undefined>();
+	let walletsShown = $state(false);
+	/* ordine gia' creato in attesa del pagamento in pagina: si riusa se il carrello non e' cambiato (una carta rifiutata si puo' riprovare) */
+	let pending: { clientSecret: string; group: string; sig: string } | null = null;
+	const cents = (v: number) => Math.max(50, Math.round(v * 100));
+	const sig = () => JSON.stringify({ i: items.map((x) => [x.id, x.qty]), t: toPay, e: express, c: discount?.code ?? null, m: guestEmail, cr: useCredit });
+	async function loadStripe() {
+		if (!data.stripeKey || typeof window === 'undefined') return;
+		const w = window as unknown as { Stripe?: (k: string, o?: Record<string, unknown>) => StripeJs };
+		if (!w.Stripe) await new Promise<void>((res, rej) => { const sc = document.createElement('script'); sc.src = 'https://js.stripe.com/v3/'; sc.onload = () => res(); sc.onerror = () => rej(new Error('Stripe.js non caricato')); document.head.appendChild(sc); });
+		stripe = w.Stripe!(data.stripeKey, { locale: 'it' });
+		cardEl = stripe.elements({ locale: 'it' }).create('card', { hidePostalCode: true, style: { base: { fontFamily: 'Montserrat, Helvetica, Arial, sans-serif', fontSize: '15px', color: '#0b0b3b', '::placeholder': { color: '#9aa0b8' } }, invalid: { color: '#d0342c' } } });
+		cardEl.on('change', (ev: { error?: { message?: string }; complete?: boolean }) => { cardErr = ev.error?.message ?? ''; cardReady = !!ev.complete; });
+	}
+	/* Card Element montato quando la scelta "Carta di credito" e' aperta */
+	$effect(() => { const host = cardHost; if (host && cardEl) { cardEl.mount(host); return () => cardEl?.unmount(); } });
+	/* Apple Pay / Google Pay: Express Checkout Element (compare solo dove il wallet e' disponibile) */
+	$effect(() => {
+		const host = exHost; const st = stripe;
+		if (!host || !st || !loaded || items.length === 0) return;
+		const els = st.elements({ mode: 'payment', amount: cents(toPay), currency: 'eur', locale: 'it', appearance: { variables: { borderRadius: '10px' } } });
+		exElements = els;
+		const ex = els.create('expressCheckout', { paymentMethods: { link: 'never', paypal: 'never', amazonPay: 'never', klarna: 'never' }, buttonHeight: 48, layout: { maxColumns: 2, maxRows: 1, overflow: 'never' }, buttonType: { applePay: 'buy', googlePay: 'buy' }, buttonTheme: { applePay: 'black', googlePay: 'black' } });
+		ex.on('ready', (ev: { availablePaymentMethods?: Record<string, boolean> }) => { walletsShown = !!ev.availablePaymentMethods && Object.values(ev.availablePaymentMethods).some(Boolean); });
+		ex.on('click', (ev: { resolve: (o?: Record<string, unknown>) => void }) => {
+			err = '';
+			if (!canOrder) { err = data.user ? '' : data.guestAllowed ? 'Inserisci la tua email prima di pagare.' : 'Accedi o registrati per completare l’ordine.'; return; }
+			if (!allFiles) { err = 'Manca il file di un prodotto.'; return; }
+			ev.resolve({ emailRequired: false });
+		});
+		ex.on('confirm', async (ev: { paymentFailed: (o?: { reason?: string; message?: string }) => void }) => {
+			submitting = true; err = '';
+			try {
+				const { error: se } = await els.submit();
+				if (se) throw new Error(se.message ?? 'Dati non validi');
+				const cs = await ensurePending('wallet');
+				const r = await st.confirmPayment({ elements: els, clientSecret: cs.clientSecret, confirmParams: { return_url: `${location.origin}/checkout/grazie${express ? '?e=1' : ''}` }, redirect: 'if_required' });
+				if (r.error) { ev.paymentFailed({ reason: 'fail', message: r.error.message }); err = r.error.message ?? 'Pagamento non riuscito.'; submitting = false; return; }
+				await goto(`/checkout/grazie?pi=${encodeURIComponent(r.paymentIntent?.id ?? '')}${express ? '&e=1' : ''}`);
+			} catch (ex) {
+				ev.paymentFailed({ reason: 'fail', message: ex instanceof Error ? ex.message : 'Errore' });
+				err = ex instanceof Error ? ex.message : 'Errore durante il pagamento.'; submitting = false;
+			}
+		});
+		ex.mount(host);
+		return () => { ex.destroy(); exElements = null; };
+	});
+	$effect(() => { const t = toPay; exElements?.update({ amount: cents(t) }); });
+	onMount(() => { loadStripe().catch((e) => console.error('[stripe.js]', e)); });
+
+	/* carica i file su Storage e registra l'ordine (in attesa, se il pagamento avviene sul sito); restituisce la risposta del server */
+	async function prepare(paymentKind: string): Promise<{ type: string; data?: Record<string, unknown> }> {
+		if (!formEl) throw new Error('Modulo non pronto.');
 			const lines = [];
 			for (const it of items) {
 				let filePath = it.filePath ?? null;
@@ -159,21 +213,52 @@
 			}
 			const fd = new FormData(formEl);
 			fd.set('items', JSON.stringify(lines));
+			fd.set('payment', paymentKind);
 			const res = await fetch('?/order', { method: 'POST', body: fd, headers: { 'x-sveltekit-action': 'true' } });
-			const result = deserialize(await res.text());
+			return deserialize(await res.text()) as { type: string; data?: Record<string, unknown> };
+	}
+	/* per carta e wallet: l'ordine in attesa viene creato una volta sola; se il carrello cambia, quello vecchio viene annullato */
+	async function ensurePending(kind: 'card' | 'wallet'): Promise<{ clientSecret: string; group: string }> {
+		const now = sig() + kind;
+		if (pending && pending.sig === now) return pending;
+		if (pending) { const fd = new FormData(); fd.set('group', pending.group); await fetch('?/annulla', { method: 'POST', body: fd, headers: { 'x-sveltekit-action': 'true' } }).catch(() => {}); pending = null; }
+		const result = await prepare(kind);
+		if (result.type === 'success' && result.data?.clientSecret) { pending = { clientSecret: String(result.data.clientSecret), group: String(result.data.group), sig: now }; return pending; }
+		throw new Error(result.type === 'failure' ? String(result.data?.error ?? 'Ordine non inviato.') : 'Ordine non inviato, riprova.');
+	}
+	async function onSubmit(e: SubmitEvent) {
+		e.preventDefault();
+		err = '';
+		if (!canOrder) { err = data.user ? '' : data.guestAllowed ? 'Inserisci la tua email.' : 'Accedi o registrati per completare l’ordine.'; return; }
+		if (!allFiles) { err = 'Manca il file di un prodotto.'; return; }
+		if (!formEl) return;
+		if (payment === 'card' && (!cardReady || cardErr)) { err = cardErr || 'Inserisci i dati della carta.'; return; }
+		submitting = true;
+		try {
+			if (payment === 'card' && stripe && cardEl) {
+				/* carta inserita in pagina: ordine in attesa + conferma del pagamento nel browser (3D Secure compreso) */
+				const cs = await ensurePending('card');
+				const fd = new FormData(formEl);
+				const r = await stripe.confirmCardPayment(cs.clientSecret, { payment_method: { card: cardEl, billing_details: { name: `${fd.get('first_name') ?? ''} ${fd.get('last_name') ?? ''}`.trim(), email: data.user?.email ?? String(fd.get('email') ?? '') } } });
+				if (r.error) { err = r.error.message ?? 'Pagamento non riuscito: controlla i dati della carta.'; submitting = false; return; }
+				await goto(`/checkout/grazie?pi=${encodeURIComponent(r.paymentIntent?.id ?? '')}${express ? '&e=1' : ''}`);
+				return;
+			}
+			const result = await prepare(payment);
 			if (result.type === 'success' && result.data?.redirect) {
-				/* cassa Stripe: il carrello resta finche' il pagamento non va a buon fine (si svuota nella pagina Grazie) */
+				/* cassa esterna (PayPal, o Stripe hosted se manca la chiave pubblica): il carrello resta finche' il pagamento non va a buon fine */
 				location.href = String(result.data.redirect);
 				return;
 			}
 			if (result.type === 'success' && result.data?.numbers) {
 				const numbers = result.data.numbers as string[];
+				const fd = new FormData(formEl);
 				const g = (k: string) => String(fd.get(k) ?? '');
 				track.purchase({ orderNumber: numbers[0], items: cartItems(items), value: toPay, tax: Math.round(vatAmount * 100) / 100, paymentType: PAY_LABEL[payment] ?? payment, express, coupon: discount?.code ?? null, discount: Math.round(discountAmt * VAT * 100) / 100, returning: !!data.user && (data.orderCount ?? 0) > 0, userId: data.user?.id ?? null, orderCount: (data.orderCount ?? 0) + 1, lifetimeValue: Math.round(((data.lifetimeValue ?? 0) + toPay) * 100) / 100, user: { email: data.user?.email ?? g('email'), phone: g('phone'), first_name: g('first_name'), last_name: g('last_name'), street: g('street'), city: g('city'), province: g('province'), zip: g('zip') } });
 				if (trackingOn()) await new Promise((r) => setTimeout(r, 400));   /* il tempo di far partire i tag prima di cambiare pagina */
 				for (const it of items) deleteCartFile(it.id);
 				clearCart();
-				await goto(`/checkout/grazie?n=${encodeURIComponent((result.data.numbers as string[]).join(','))}${express ? '&e=1' : ''}`);
+				await goto(`/checkout/grazie?n=${encodeURIComponent(numbers.join(','))}${express ? '&e=1' : ''}`);
 				return;
 			}
 			err = result.type === 'failure' ? String(result.data?.error ?? 'Ordine non inviato.') : 'Ordine non inviato, riprova.';
@@ -246,12 +331,35 @@
 
 				<h2 style="margin-top:28px">Metodo di pagamento</h2>
 				<div class="co-pay">
+					{#if data.stripeKey}
+						<label class="co-pay__opt co-pay__opt--card" class:is-open={payment === 'card'}>
+							<input type="radio" name="payment" value="card" bind:group={payment} />
+							<span><b>Carta di credito</b><small>Visa, Mastercard, American Express · pagamento sicuro</small></span>
+							<span class="co-pay__logos"><img src="/icons/pay/visa.svg" alt="Visa" /><img src="/icons/pay/mastercard.svg" alt="Mastercard" /><img src="/icons/pay/amex.svg" alt="American Express" /></span>
+						</label>
+						{#if payment === 'card'}
+							<div class="co-card">
+								<p class="co-card__lead">Inserisci i dati della carta per questo ordine{#if !data.user} · <a class="link" href="/login?next=/checkout">Accedi</a> per ritrovare i tuoi dati la prossima volta{/if}</p>
+								<div class="co-card__box" bind:this={cardHost}>{#if !stripe}<span class="note">Caricamento del modulo carta…</span>{/if}</div>
+								{#if cardErr}<p class="error" style="margin:6px 0 0;font-size:13px">{cardErr}</p>{/if}
+								<p class="co-card__note">🔒 I dati della carta vanno direttamente a Stripe: non passano e non restano sui nostri sistemi.</p>
+							</div>
+						{/if}
+					{:else if data.online}
+						<label class="co-pay__opt"><input type="radio" name="payment" value="stripe" bind:group={payment} /><span><b>Carta di credito</b><small>Visa, Mastercard, American Express · pagamento sicuro con Stripe</small></span><span class="co-pay__logos"><img src="/icons/pay/visa.svg" alt="Visa" /><img src="/icons/pay/mastercard.svg" alt="Mastercard" /><img src="/icons/pay/amex.svg" alt="American Express" /></span></label>
+					{/if}
 					{#if data.online || data.paypal}
-						<label class="co-pay__opt"><input type="radio" name="payment" value="stripe" bind:group={payment} /><span><b>Carta di credito</b><small>Visa, Mastercard, Amex · anche Apple Pay, Google Pay e Link · pagamento sicuro con Stripe</small></span><img src="/icons/pay-stripe.svg" alt="Stripe" /></label>
-						<label class="co-pay__opt"><input type="radio" name="payment" value="paypal" bind:group={payment} /><span><b>PayPal</b><small>{data.paypal ? 'Vai su PayPal e paghi con il tuo conto, senza inserire la carta' : 'Paghi con il tuo conto PayPal'}</small></span><img src="/icons/footer/paypal.webp" alt="" /></label>
-					{:else}
-						<label class="co-pay__opt is-soon"><input type="radio" name="payment" value="stripe" disabled /><span><b>Carta di credito</b><small>Pagamento sicuro con Stripe · disponibile a breve</small></span><img src="/icons/pay-stripe.svg" alt="Stripe" /></label>
-						<label class="co-pay__opt is-soon"><input type="radio" name="payment" value="paypal" disabled /><span><b>PayPal</b><small>Disponibile a breve</small></span><img src="/icons/footer/paypal.webp" alt="" /></label>
+						<label class="co-pay__opt"><input type="radio" name="payment" value="paypal" bind:group={payment} /><span><b>PayPal</b><small>Paga subito con PayPal</small></span><img class="co-pay__paypal" src="/icons/pay/paypal.svg" alt="PayPal" /></label>
+					{/if}
+					{#if data.stripeKey}
+						<div class="co-wallets" class:is-on={walletsShown}>
+							<div class="co-wallets__sep"><span>oppure paga in un tocco</span></div>
+							<div bind:this={exHost}></div>
+						</div>
+					{/if}
+					{#if !data.online && !data.paypal}
+						<label class="co-pay__opt is-soon"><input type="radio" name="payment" value="stripe" disabled /><span><b>Carta di credito</b><small>Disponibile a breve</small></span></label>
+						<label class="co-pay__opt is-soon"><input type="radio" name="payment" value="paypal" disabled /><span><b>PayPal</b><small>Disponibile a breve</small></span></label>
 						<label class="co-pay__opt"><input type="radio" name="payment" value="test" bind:group={payment} /><span><b>Test (gratuito)</b><small>Crea l’ordine senza pagamento reale</small></span></label>
 					{/if}
 				</div>
@@ -261,7 +369,7 @@
 				{#if payment === 'paypal' && (data.paypal || data.online)}
 					<button class="btn btn--paypal btn--lg co-submit" type="submit" disabled={submitting || !canOrder || !allFiles || items.length === 0}><img src="/icons/footer/paypal.webp" alt="" />{submitting ? 'Ti portiamo su PayPal…' : 'Invia l’ordine e paga con PayPal'}</button>
 				{:else}
-					<button class="btn btn--green btn--lg co-submit" type="submit" disabled={submitting || !canOrder || !allFiles || items.length === 0}>{submitting ? (data.online && payment !== 'test' ? 'Ti portiamo alla cassa…' : 'Invio in corso…') : 'Invia il tuo ordine e paga'}</button>
+					<button class="btn btn--green btn--lg co-submit" type="submit" disabled={submitting || !canOrder || !allFiles || items.length === 0}>{submitting ? (payment === 'card' ? 'Pagamento in corso…' : data.online && payment !== 'test' ? 'Ti portiamo alla cassa…' : 'Invio in corso…') : payment === 'card' ? `Paga ${eur(toPay)} con carta` : 'Invia il tuo ordine e paga'}</button>
 				{/if}
 				<p class="note" style="margin-top:8px">Cliccando su Invia il tuo ordine, accetti la <a class="link" href="/privacy">privacy policy</a> e i <a class="link" href="/termini">termini e condizioni</a> di Stickerprint.</p>
 			</div>

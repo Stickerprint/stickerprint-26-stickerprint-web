@@ -13,7 +13,7 @@ import { orderConfirmationEmail } from './email-templates';
 import { estimatedShipDate, formatItDate } from '$lib/utils/shipping';
 import { ensurePlan } from './produzione';
 import type { OrderRow } from '$lib/dashboard/orders';
-import { expireCheckoutSession } from './stripe';
+import { cancelPaymentIntent, expireCheckoutSession } from './stripe';
 
 type DB = SupabaseClient;
 export interface CheckoutItem { product: string; productName: string; forma: string; materiale: string; finitura: string | null; w: number; h: number; qty: number; gross: number; previewUrl: string | null }
@@ -25,7 +25,7 @@ export interface CheckoutPayload {
 	vatAmount: number; totalGross: number; toPay: number; express: boolean; autoProof: boolean[];
 }
 /** Etichetta del metodo nei documenti */
-export const PAYMENT_NAME: Record<string, string> = { paypal: 'PayPal', stripe: 'Carta di credito (Stripe)', test: 'Test' };
+export const PAYMENT_NAME: Record<string, string> = { paypal: 'PayPal', stripe: 'Carta di credito (Stripe)', wallet: 'Apple Pay / Google Pay (Stripe)', test: 'Test' };
 
 function toBase64(bytes: Uint8Array): string {
 	let bin = '';
@@ -47,7 +47,7 @@ export async function readCheckout(db: DB, group: string): Promise<{ payload: Ch
 export async function cancelPendingCheckout(db: DB, group: string): Promise<void> {
 	const { data } = await db.from('checkout_sessions').update({ status: 'cancelled' }).eq('checkout_group', group).eq('status', 'pending').select('checkout_group, provider, session_id');
 	if (!data?.length) return;
-	if (data[0].provider === 'stripe' && data[0].session_id) await expireCheckoutSession(String(data[0].session_id));
+	if (data[0].provider === 'stripe' && data[0].session_id) { const sid = String(data[0].session_id); if (sid.startsWith('pi_')) await cancelPaymentIntent(sid); else await expireCheckoutSession(sid); }
 	await db.from('order_payments').delete().eq('checkout_group', group);
 	await db.from('orders').delete().eq('checkout_group', group).eq('status', 'attesa_pagamento');
 }
