@@ -33,7 +33,7 @@
 		{ id: 'fatturazione', title: 'Fatturazione', items: [
 			{ label: 'Ordini', href: '/dashboard/fatturazione/ordini', count: data.counts?.prove },
 			{ label: 'DDT', href: '/dashboard/fatturazione/ddt' },
-			{ label: 'Fatture', href: '/dashboard/fatturazione/fatture' }
+			{ label: 'Fatture', href: '/dashboard/fatturazione/fatture', count: data.counts?.fatture }
 		] },
 		{ id: 'anagrafica', title: 'Anagrafica', items: [
 			{ label: 'Clienti', href: '/dashboard/anagrafica/clienti' }

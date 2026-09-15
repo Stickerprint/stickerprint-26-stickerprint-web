@@ -1,13 +1,15 @@
 import { error, fail, redirect } from '@sveltejs/kit';
 import { buildInvoicePdf, type InvoiceLine } from '$lib/server/invoice';
 import type { PaymentMethod } from '$lib/dashboard/payments';
+import { getInvoice, loadInvoiceMessages, markInvoiceRead, replyInvoice, sendInvoice, setInvoicePaymentStatus, syncInvoicePayments, type InvoiceRow } from '$lib/server/fatture';
+import { operatorName } from '$lib/server/produzione';
 import type { Actions, PageServerLoad } from './$types';
 
 const r2 = (v: number) => Math.round(v * 100) / 100;
 const VAT = 0.22;
 interface Edit { issued_at: string; email: string; billing: Record<string, string>; lines: InvoiceLine[]; terms: { method: string; due: string; amount: number; xml_code: string }[]; notes: string }
 
-export const load: PageServerLoad = async ({ params, locals: { supabase } }) => {
+export const load: PageServerLoad = async ({ params, url, locals: { supabase, user } }) => {
 	const { data: inv } = await supabase.from('invoices').select('*').eq('id', params.id).maybeSingle();
 	if (!inv) error(404, 'Fattura non trovata');
 	const ddtIds: string[] = inv.ddt_ids?.length ? inv.ddt_ids : inv.ddt_id ? [inv.ddt_id] : [];
@@ -17,7 +19,9 @@ export const load: PageServerLoad = async ({ params, locals: { supabase } }) => 
 	]);
 	let pdf: string | null = null;
 	if (inv.pdf_path) { const { data: s } = await supabase.storage.from('invoices').createSignedUrl(inv.pdf_path, 3600); pdf = s?.signedUrl ?? null; }
-	return { inv, ddts: ddts ?? [], methods: (methods ?? []) as PaymentMethod[], pdf, locked: !!inv.xml_generated_at };
+	await markInvoiceRead(supabase, inv.id);
+	const [payments, messages, sender] = await Promise.all([syncInvoicePayments(supabase, inv as InvoiceRow), loadInvoiceMessages(supabase, inv.id), operatorName(supabase, user)]);
+	return { inv, ddts: ddts ?? [], methods: (methods ?? []) as PaymentMethod[], pdf, locked: !!inv.xml_generated_at, payments, messages, sender, openSend: url.searchParams.get('invia') === '1' };
 };
 
 export const actions: Actions = {
@@ -46,7 +50,25 @@ export const actions: Actions = {
 		} catch (err) { console.error('[fattura] pdf', err); }
 		const { error: er } = await supabase.from('invoices').update(patch).eq('id', params.id);
 		if (er) return fail(400, { error: er.message });
-		return { ok: true, saved: true, message: 'Fattura salvata e PDF rigenerato.' };
+		void getInvoice; return { ok: true, saved: true, message: 'Fattura salvata e PDF rigenerato.' };
+	},
+	/** Dal popup: email scritta dallo staff con il bottone "Apri la fattura" (niente allegato) */
+	invia: async ({ request, params, url, locals }) => {
+		const f = await request.formData();
+		const sender = String(f.get('sender') ?? '').trim() || (await operatorName(locals.supabase, locals.user));
+		const m = await sendInvoice(locals.supabase, params.id, url.origin, { to: String(f.get('to') ?? ''), cc: String(f.get('cc') ?? ''), subject: String(f.get('subject') ?? ''), message: String(f.get('message') ?? ''), sender });
+		return m.ok ? { ok: true, sent: true, message: m.message } : fail(400, { error: m.message, sendError: true });
+	},
+	pagamento: async ({ request, params, locals }) => {
+		const f = await request.formData();
+		const op = await operatorName(locals.supabase, locals.user);
+		const e = await setInvoicePaymentStatus(locals.supabase, params.id, Number(f.get('seq')), f.get('stato') === 'pagato' ? 'pagato' : 'da_pagare', op, String(f.get('rif') ?? ''));
+		return e ? fail(400, { error: e }) : { ok: true, message: 'Scadenza aggiornata.' };
+	},
+	rispondi: async ({ request, params, url, locals }) => {
+		const op = await operatorName(locals.supabase, locals.user);
+		const e = await replyInvoice(locals.supabase, params.id, String((await request.formData()).get('body') ?? ''), op, url.origin);
+		return e ? fail(400, { error: e }) : { ok: true, message: 'Risposta inviata.' };
 	},
 	delete: async ({ params, locals: { supabase } }) => {
 		const { data: inv } = await supabase.from('invoices').select('xml_generated_at, pdf_path').eq('id', params.id).maybeSingle();

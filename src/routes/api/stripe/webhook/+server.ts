@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import { adminClient } from '$lib/server/admin';
 import { setPaymentStatus } from '$lib/server/conferme';
+import { setInvoicePaymentStatus } from '$lib/server/fatture';
 import { verifyWebhook } from '$lib/server/stripe';
 import type { RequestHandler } from './$types';
 
@@ -14,7 +15,8 @@ export const POST: RequestHandler = async ({ request }) => {
 	if (s.payment_status !== 'paid') return json({ ignored: 'non pagato' });
 	const md = (s.metadata ?? {}) as Record<string, string>;
 	const db = adminClient();
-	if (!db || !md.group || !md.seq) return json({ error: 'dati mancanti' }, { status: 400 });
-	const e = await setPaymentStatus(db, md.group, Number(md.seq), 'pagato', null, typeof s.payment_intent === 'string' ? s.payment_intent : String(s.id), 'stripe');
+	if (!db || !md.seq || (!md.group && !md.invoice)) return json({ error: 'dati mancanti' }, { status: 400 });
+	const ref = typeof s.payment_intent === 'string' ? s.payment_intent : String(s.id);
+	const e = md.invoice ? await setInvoicePaymentStatus(db, md.invoice, Number(md.seq), 'pagato', null, ref, 'stripe') : await setPaymentStatus(db, md.group, Number(md.seq), 'pagato', null, ref, 'stripe');
 	return e ? json({ error: e }, { status: 500 }) : json({ ok: true });
 };

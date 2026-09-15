@@ -251,3 +251,13 @@ export function orderPaymentReminderEmail(o: { name?: string | null; number: str
 	const n = esc(o.number);
 	return { subject: `Ordine ${o.number}: manca il pagamento per partire`, tag: 'order-payment-reminder', html: layoutHtml(`L'ordine ${n} aspetta il ${hl('pagamento')} ⏳`, `<p>Ciao ${esc(o.name || '')},</p><p>la tua conferma d'ordine <b>${n}</b> è pronta, ma per mandarla in produzione ci manca il pagamento di <b>${esc(o.amount)}</b>. Trovi tutto nella pagina della conferma: appena arriva, partiamo.</p>${o.senderName ? `<p style="color:#8e92b0;font-size:13px;">${esc(o.senderName)} · Stickerprint</p>` : ''}`, { label: 'Vai al pagamento', href: o.href }) };
 }
+
+/* ---------- Fattura (pagina del cliente) ---------- */
+export function invoiceEmail(o: { subject: string; message: string; senderName: string | null; number: string; href: string; toPay: string | null }) {
+	const body = `<div style="white-space:pre-wrap;">${esc(o.message)}</div>${o.toPay ? `<p style="margin:16px 0 0;padding:12px 14px;background:#fef6db;border-radius:10px;"><b>Da pagare: ${esc(o.toPay)}</b>. Nella pagina della fattura puoi pagare subito con carta o vedere i dati per il bonifico.</p>` : ''}${o.senderName ? `<p style="margin:18px 0 0;color:#8e92b0;font-size:13px;">${esc(o.senderName)} · Stickerprint · per qualsiasi cosa rispondi pure a questa email.</p>` : ''}`;
+	return { subject: o.subject, tag: 'invoice', html: layoutHtml(`La tua fattura ${esc(o.number)} è ${hl('pronta')} 🧾`, body, { label: 'Apri la fattura', href: o.href }) };
+}
+export function invoiceReplyEmail(o: { name?: string | null; number: string; body: string; author?: string | null; href: string }) {
+	const n = esc(o.number);
+	return { subject: `Re: fattura ${o.number}`, tag: 'invoice-reply', html: layoutHtml(`Novità sulla fattura ${n} 💬`, `<p>Ciao ${esc(o.name || '')},</p><div style="white-space:pre-wrap;background:#f4f5fa;padding:14px 16px;border-radius:10px;">${esc(o.body)}</div>${o.author ? `<p style="margin-top:10px;color:#8e92b0;font-size:13px;">${esc(o.author)} · Stickerprint</p>` : ''}`, { label: 'Apri la fattura', href: o.href }) };
+}

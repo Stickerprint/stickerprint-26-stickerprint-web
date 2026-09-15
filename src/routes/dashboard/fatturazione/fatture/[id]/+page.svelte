@@ -25,12 +25,29 @@
 	const imponibile = $derived(Number(inv.subtotal_net) - Number(inv.discount_net) + Number(inv.express_net));
 	function setMethod(i: number, name: string) { const m = data.methods.find((x) => x.name === name); e.terms[i].method = name; if (m) e.terms[i].xml_code = m.xml_code; }
 	$effect(() => { if (form?.saved) { editing = false; invalidateAll(); } });
+
+	/* fattura come pagina del cliente: popup dell'email, scadenze con stato, conversazione */
+	import { PAYMENT_STATUS } from '$lib/dashboard/conferme';
+	import { defaultInvoiceEmail, dueNow } from '$lib/dashboard/fatture';
+	import { fmtAgo, fmtWhen } from '$lib/dashboard/produzione';
+	let sendOpen = $state(false);
+	let to = $state(''); let cc = $state(''); let subject = $state(''); let message = $state(''); let sender = $state('');
+	let sending = $state(false);
+	const due = $derived(dueNow(data.payments));
+	function openSend() {
+		const def = defaultInvoiceEmail(inv, data.payments, data.sender);
+		to = inv.email ?? ''; subject = inv.sent_subject ?? def.subject; message = inv.sent_message ?? def.body; sender = inv.sender_name ?? data.sender ?? '';
+		sendOpen = true;
+	}
+	$effect(() => { if (data.openSend) openSend(); });
+	$effect(() => { if (form?.sent) sendOpen = false; });
+	const previewLines = $derived(message.split('\n'));
 </script>
 
 <svelte:head><title>Fattura {inv.number} | Dashboard</title></svelte:head>
 
 <p class="lead" style="margin:0"><a class="link" href="/dashboard/fatturazione/fatture">← Torna alle fatture</a></p>
-{#if form?.error}<p class="error">{form.error}</p>{/if}
+{#if form?.error && !(form as { sendError?: boolean }).sendError}<p class="error">{form.error}</p>{/if}
 {#if form?.ok && form.message}<p class="success">{form.message}</p>{/if}
 
 <div class="toolbar" style="justify-content:space-between;align-items:flex-start">
@@ -41,6 +58,7 @@
 		<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
 			{#if !data.locked && !editing}<button type="button" class="btn btn--yellow btn--xs" onclick={startEdit}>✏️ Modifica</button>{/if}
 			{#if data.pdf}<a class="btn btn--ghost btn--xs" href={data.pdf} target="_blank" rel="noopener">⬇ PDF</a>{/if}
+			{#if !editing}<button type="button" class="btn btn--blue btn--xs" onclick={openSend}>✉️ {inv.sent_at ? 'Reinvia al cliente' : 'Invia al cliente'}</button><a class="btn btn--ghost btn--xs" href="/fattura/{inv.token}?anteprima=1" target="_blank" rel="noopener">🔗 Pagina del cliente</a>{/if}
 			{#if !data.locked}<a class="btn btn--ghost btn--xs" href="/dashboard/fatturazione/fatture/xml?ids={inv.id}" target="_blank" rel="noopener" onclick={() => setTimeout(invalidateAll, 1500)}>📤 Genera XML</a>{/if}
 		</div>
 	</div>
@@ -136,7 +154,7 @@
 			<div class="sumrow"><span>DDT collegati</span><b>{#if data.ddts.length}{#each data.ddts as d (d.id)}<a class="link" href="/dashboard/fatturazione/ddt/{d.id}/pdf" target="_blank">{d.number}</a> del {dmy(d.issued_at)}{' '}{/each}{:else if ddtNumbers.length}{ddtNumbers.join(', ')}{:else}—{/if}</b></div>
 			{#if inv.order_numbers?.length}<div class="sumrow"><span>Ordini</span><b>{#if inv.checkout_group}<a class="link" href="/dashboard/fatturazione/ordini/{inv.checkout_group}">{inv.order_numbers.join(', ')}</a>{:else}{inv.order_numbers.join(', ')}{/if}</b></div>{/if}
 			<div class="sumrow"><span>Pagamento</span><b>{#if paymentIcon(inv.payment_method)}<img src={paymentIcon(inv.payment_method)} alt="" style="height:16px;vertical-align:middle;margin-right:6px" />{/if}{paymentLabel(inv.payment_method)}{#if inv.paid_at} · pagata{/if}</b></div>
-			{#if inv.sent_at}<div class="sumrow"><span>Inviata al cliente</span><b>{dmy(inv.sent_at)}</b></div>{/if}
+			{#if inv.sent_at}<div class="sumrow"><span>Inviata al cliente</span><b>{fmtAgo(inv.sent_at)}{#if inv.sender_name} da {inv.sender_name}{/if} · 👁 {inv.opened_count ? `aperta ${inv.opened_count}×, ${fmtAgo(inv.opened_at)}` : 'mai aperta'}{#if inv.pdf_downloaded_at} · 📄 PDF scaricato{/if}</b></div>{/if}
 			{#if inv.notes}<h4 class="h4">Note</h4><p class="small">{inv.notes}</p>{/if}
 		</div>
 	</div>
@@ -155,7 +173,11 @@
 		<div class="riepilogo">
 			<div>
 				<div class="h4" style="margin-top:0">Scadenze di pagamento</div>
-				{#if inv.payment_terms?.length}
+				{#if data.payments.length}
+					<table class="dtable"><thead><tr><th>Metodo di pagamento</th><th>Scadenza</th><th style="text-align:right">Importo</th><th>Stato</th></tr></thead>
+						<tbody>{#each data.payments as p (p.id)}{@const ps = PAYMENT_STATUS[p.status]}<tr><td>{paymentLabel(p.method)}{#if !p.payable} <span class="pr-chip" title="Addebito alla scadenza, niente bottone di pagamento">ricevuta</span>{:else} <span class="pr-chip" title="Il cliente puo' pagare online o con bonifico">pagabile online</span>{/if}</td><td>{dmy(p.due)}</td><td style="text-align:right"><b>{money(Number(p.amount))}</b></td><td><span class="pill" style="background:{ps.soft};color:{ps.color}">{ps.label}</span>{#if p.status === 'pagato'}<div class="osub">{fmtWhen(p.paid_at)}{#if p.provider_ref} · {p.provider_ref}{/if}</div><form method="POST" action="?/pagamento" use:enhance style="margin-top:4px"><input type="hidden" name="seq" value={p.seq} /><input type="hidden" name="stato" value="da_pagare" /><button class="link-btn" type="submit" style="font-size:12px">annulla</button></form>{:else}<form method="POST" action="?/pagamento" use:enhance class="pr-block" style="margin-top:4px"><input type="hidden" name="seq" value={p.seq} /><input type="hidden" name="stato" value="pagato" /><input name="rif" placeholder="rif. (facoltativo)" style="min-width:130px;font-size:12px" /><button class="btn btn--green btn--xs" type="submit">✓ Segna pagato</button></form>{/if}</td></tr>{/each}</tbody></table>
+					{#if due > 0}<p class="osub" style="margin-top:8px">Da incassare online o con bonifico: <b>{money(due)}</b>.</p>{/if}
+				{:else if inv.payment_terms?.length}
 					<table class="dtable"><thead><tr><th>Metodo di pagamento</th><th>Scadenza</th><th style="text-align:right">Importo</th></tr></thead><tbody>{#each inv.payment_terms as t, i (i)}<tr><td>{paymentLabel(t.method)}</td><td>{dmy(t.due)}</td><td style="text-align:right"><b>{money(Number(t.amount))}</b></td></tr>{/each}</tbody></table>
 				{:else}<p class="small">{paymentLabel(inv.payment_method)}</p>{/if}
 			</div>
@@ -165,5 +187,53 @@
 				<div class="sumrow sumrow--tot"><span>Totale IVA inclusa</span><b>{money(Number(inv.amount_gross))}</b></div>
 			</div>
 		</div>
+	</div>
+	{#if data.messages.length || inv.sent_at}
+		<div class="dcard">
+			<h3>💬 Dalla pagina della fattura <span class="note">domande del cliente</span></h3>
+			{#if data.messages.length === 0}<p class="osub">Nessun messaggio finora.</p>{/if}
+			<div class="hd-thread" style="margin-bottom:12px">
+				{#each data.messages as m (m.id)}
+					<div class="hd-msg hd-msg--{m.direction}"><div class="hd-msg__head"><b>{m.direction === 'in' ? (m.author ?? 'Cliente') : `${m.author ?? 'Stickerprint'} · risposta`}</b><span class="osub">{fmtWhen(m.created_at)} · {fmtAgo(m.created_at)}</span></div><div class="hd-msg__body">{m.body}</div></div>
+				{/each}
+			</div>
+			<form method="POST" action="?/rispondi" use:enhance class="pr-block"><input name="body" placeholder="Rispondi al cliente: riceve un'email con il link alla fattura…" required style="flex:1" /><button class="btn btn--blue btn--xs" type="submit">✉ Rispondi</button></form>
+		</div>
+	{/if}
+{/if}
+
+{#if sendOpen}
+	<div class="dmodal-bg" role="presentation" onclick={(ev) => { if (ev.target === ev.currentTarget) sendOpen = false; }}>
+		<form class="dmodal dmodal--lg qt-send" method="POST" action="?/invia" use:enhance={() => { sending = true; return async ({ update }) => { await update({ reset: false }); sending = false; }; }}>
+			<h3>✉ Invia la fattura {inv.number}</h3>
+			<p class="osub" style="margin:-6px 0 4px">Il cliente riceve solo questa email con il bottone "Apri la fattura": dettaglio, PDF e pagamento sono sulla pagina. Bonifici → può pagare subito con carta; ricevute bancarie → solo scadenza e importo.</p>
+			{#if (form as { sendError?: boolean } | null)?.sendError}<p class="error">{form?.error}</p>{/if}
+			<div class="qt-send__grid">
+				<div class="qt-send__form">
+					<label class="osub">A <input name="to" type="email" bind:value={to} required /></label>
+					<label class="osub">Copia a (facoltativo) <input name="cc" bind:value={cc} placeholder="amministrazione@azienda.it" /></label>
+					<label class="osub">Oggetto <input name="subject" bind:value={subject} required /></label>
+					<label class="osub">Testo <textarea name="message" bind:value={message} rows="11" required></textarea></label>
+					<label class="osub">Firma <input name="sender" bind:value={sender} placeholder="Chi segue il cliente" /></label>
+				</div>
+				<div class="qt-send__preview">
+					<div class="qt-mail">
+						<div class="qt-mail__head">STICKERPRINT</div>
+						<div class="qt-mail__body">
+							<div class="qt-mail__subject">{subject || '…'}</div>
+							<h4>La tua fattura {inv.number} <u>pronta</u> 🧾</h4>
+							{#each previewLines as l, i (i)}<p>{l || '\u00a0'}</p>{/each}
+							{#if due > 0}<p style="background:#fef6db;padding:10px 12px;border-radius:8px"><b>Da pagare: {money(due)}</b>. Nella pagina della fattura puoi pagare subito con carta o vedere i dati per il bonifico.</p>{/if}
+							{#if sender}<p class="qt-mail__sig">{sender} · Stickerprint · per qualsiasi cosa rispondi pure a questa email.</p>{/if}
+							<span class="qt-mail__btn">APRI LA FATTURA</span>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div class="toolbar" style="justify-content:flex-end;gap:8px">
+				<button class="btn btn--ghost btn--xs" type="button" onclick={() => (sendOpen = false)}>Annulla</button>
+				<button class="btn btn--blue" type="submit" disabled={sending || !to || !subject.trim() || !message.trim()}>{sending ? 'Invio…' : '✉ Invia adesso'}</button>
+			</div>
+		</form>
 	</div>
 {/if}

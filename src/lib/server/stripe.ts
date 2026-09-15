@@ -20,7 +20,7 @@ async function call(path: string, body?: Record<string, string | number | undefi
 }
 
 /** Sessione Checkout per una scadenza: importo in centesimi, ritorno alla pagina della conferma */
-export async function createCheckoutSession(o: { amountCents: number; description: string; email: string | null; orderNumber: string; group: string; seq: number; successUrl: string; cancelUrl: string }): Promise<{ id: string; url: string }> {
+export async function createCheckoutSession(o: { amountCents: number; description: string; email: string | null; orderNumber: string; group: string; seq: number; successUrl: string; cancelUrl: string; invoice?: string | null }): Promise<{ id: string; url: string }> {
 	const s = await call('/checkout/sessions', {
 		mode: 'payment',
 		'line_items[0][quantity]': 1,
@@ -29,16 +29,16 @@ export async function createCheckoutSession(o: { amountCents: number; descriptio
 		'line_items[0][price_data][product_data][name]': o.description,
 		customer_email: o.email ?? undefined,
 		client_reference_id: `${o.group}:${o.seq}`,
-		'metadata[group]': o.group, 'metadata[seq]': o.seq, 'metadata[order]': o.orderNumber,
+		'metadata[group]': o.group, 'metadata[seq]': o.seq, 'metadata[order]': o.orderNumber, 'metadata[invoice]': o.invoice ?? undefined,
 		'payment_intent_data[description]': `Ordine ${o.orderNumber} · scadenza ${o.seq}`,
 		success_url: o.successUrl, cancel_url: o.cancelUrl, locale: 'it'
 	});
 	return { id: String(s.id), url: String(s.url) };
 }
-export async function retrieveSession(id: string): Promise<{ paid: boolean; group: string | null; seq: number | null; ref: string | null }> {
+export async function retrieveSession(id: string): Promise<{ paid: boolean; group: string | null; seq: number | null; ref: string | null; invoice: string | null }> {
 	const s = await call(`/checkout/sessions/${encodeURIComponent(id)}`);
 	const md = (s.metadata ?? {}) as Record<string, string>;
-	return { paid: s.payment_status === 'paid', group: md.group ?? null, seq: md.seq ? Number(md.seq) : null, ref: typeof s.payment_intent === 'string' ? s.payment_intent : null };
+	return { paid: s.payment_status === 'paid', group: md.group ?? null, seq: md.seq ? Number(md.seq) : null, ref: typeof s.payment_intent === 'string' ? s.payment_intent : null, invoice: md.invoice ?? null };
 }
 /** Firma del webhook (Stripe-Signature: t=…,v1=…), HMAC SHA-256 con WebCrypto */
 export async function verifyWebhook(payload: string, header: string | null): Promise<boolean> {
