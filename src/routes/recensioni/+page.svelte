@@ -8,7 +8,7 @@
 	<h1 style="font-size:clamp(30px,4vw,46px)">Come gestiamo le recensioni</h1>
 	<p class="lead" style="margin-top:10px">Poche regole, scritte chiare, perché una recensione serve a chi deve ancora ordinare solo se può fidarsi.</p>
 	<div class="card" style="padding:28px;margin-top:22px;display:grid;gap:18px;font-size:15.5px;line-height:1.6">
-		<div><b>Chi può scriverle.</b> Solo chi ha effettivamente acquistato: il giorno dopo la consegna mandiamo un'email con un link personale legato all'ordine. Una recensione per ordine. Le recensioni che i clienti ci lasciano su altri canali (Google, email, messaggi) possiamo riportarle sul sito, e in quel caso lo indichiamo sotto la recensione.</div>
+		<div><b>Chi può scriverle.</b> Solo chi ha effettivamente acquistato: il giorno dopo la consegna mandiamo un'email con un link personale legato all'ordine. Una recensione per ordine. Le recensioni che i clienti ci lasciano su altri canali (Google, email, messaggi) possiamo riportarle sul sito.</div>
 		<div><b>Cosa regaliamo.</b> A chi lascia una recensione diamo un codice sconto del 10% sul prossimo ordine, uguale per tutti e indipendente dal voto: una stella o cinque, il codice arriva lo stesso.</div>
 		<div><b>Cosa pubblichiamo.</b> Le leggiamo tutte prima di pubblicarle. Non pubblichiamo testi offensivi, dati personali di terzi o contenuti che non riguardano l'ordine. Le recensioni negative restano: rispondiamo pubblicamente e cerchiamo di risolvere.</div>
 		<div><b>Cosa non facciamo.</b> Non scriviamo recensioni noi, non le compriamo e non le facciamo scrivere a terzi. La media e il numero che vedi sul sito contano tutte le recensioni pubblicate, di qualunque voto.</div>

@@ -12,8 +12,9 @@
 	/* quante schede stanno nel riquadro: si legge dalla larghezza vera della prima scheda */
 	const perView = () => { if (!vp) return 1; const c = vp.querySelector<HTMLElement>('.rv__card'); return c ? Math.max(1, Math.round(vp.clientWidth / (c.offsetWidth + 16))) : 1; };
 	const step = () => { const c = vp?.querySelector<HTMLElement>('.rv__card'); return c ? c.offsetWidth + 16 : 320; };
-	function onScroll() { if (!vp) return; page = Math.round(vp.scrollLeft / (step() * perView())); }
-	function goPage(i: number) { if (!vp) return; const n = perView(); vp.scrollTo({ left: i * step() * n, behavior: 'smooth' }); }
+	function onScroll() { if (!vp || Date.now() < settling) return; page = Math.round(vp.scrollLeft / (step() * perView())); }
+	let settling = 0;
+	function goPage(i: number) { if (!vp) return; const n = perView(); page = i; settling = Date.now() + 900; vp.scrollTo({ left: i * step() * n, behavior: 'smooth' }); }
 	function go(d: number) {
 		if (!vp) return;
 		const n = perView(); const max = Math.max(0, Math.ceil(reviews.length / n) - 1);
@@ -23,7 +24,8 @@
 	onMount(() => {
 		const calc = () => { pages = Math.max(1, Math.ceil(reviews.length / perView())); };
 		calc(); const ro = new ResizeObserver(calc); if (vp) ro.observe(vp);
-		const t = setInterval(() => { if (!hover && !open && document.visibilityState === 'visible') go(1); }, 5000);
+		const desktop = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+		const t = setInterval(() => { if (desktop && !hover && !open && document.visibilityState === 'visible') go(1); }, 5000);
 		return () => { clearInterval(t); ro.disconnect(); };
 	});
 
@@ -38,7 +40,7 @@
 {#snippet meta(r: HomeReview)}
 	<div class="review__meta">
 		<span class="review__author">{r.author}</span>
-		{#if !r.source || r.source === 'ordine'}<span><span class="verified" aria-hidden="true">✓</span> Ordine verificato</span>{:else}<span title="Recensione ricevuta fuori dal sito e riportata da noi">{r.source}</span>{/if}
+		<span><span class="verified" aria-hidden="true">✓</span> Recensione verificata</span>
 		<span><a class="review__product" href={r.href} onclick={(e) => e.stopPropagation()}>{r.product}</a></span>
 	</div>
 {/snippet}
@@ -60,7 +62,7 @@
 		{/each}
 	</div>
 	<button type="button" class="rv__arrow rv__arrow--next" aria-label="Recensioni successive" onclick={() => go(1)}>›</button>
-	<p class="rv__note note">Recensioni di clienti che hanno acquistato davvero; se raccolta su un altro canale, è indicato. <a class="link" href="/recensioni">Come le gestiamo</a>.</p>
+	<p class="rv__note note">Recensioni verificate e acquisite post acquisto. <a class="link" href="/recensioni">Come le gestiamo</a>.</p>
 	{#if pages > 1}<div class="rv__dots">{#each Array(pages) as _, i (i)}<button type="button" class:is-on={i === page} aria-label="Vai alla pagina {i + 1}" onclick={() => goPage(i)}></button>{/each}</div>{/if}
 </div>
 

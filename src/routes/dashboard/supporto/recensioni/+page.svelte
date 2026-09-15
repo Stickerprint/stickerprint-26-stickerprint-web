@@ -31,12 +31,12 @@
 		{#each Object.entries(STATUS) as [k, v] (k)}<a class="tab-link" class:is-active={filter === k} href="?stato={k}">{v.label} ({count(k)})</a>{/each}
 		<a class="tab-link" class:is-active={filter === 'tutte'} href="?stato=tutte">Tutte</a>
 	</div>
-	<button class="btn btn--xs" type="button" onclick={() => (adding = !adding)}>＋ Inserisci una recensione ricevuta altrove</button>
+	<button class="btn btn--xs" type="button" onclick={() => (adding = !adding)}>＋ Inserisci una recensione</button>
 </div>
 
 {#if adding}
 	<form method="POST" action="?/aggiungi" use:enhance={() => async ({ update }) => { await update(); adding = false; }} class="dcard hd-tpl">
-		<p class="osub" style="margin:0">Per le recensioni vere che i clienti lasciano fuori dal sito (Google, email, WhatsApp, di persona): indica dove l'hai ricevuta. Vengono pubblicate subito.</p>
+		<p class="osub" style="margin:0">Per le recensioni che i clienti lasciano fuori dal sito (Google, email, WhatsApp, di persona). Vengono pubblicate subito.</p>
 		<div class="toolbar" style="gap:10px">
 			<input name="author" placeholder="Nome del cliente (es. Marco R.)" required style="flex:1" />
 			<label class="osub" style="display:flex;gap:6px;align-items:center">Stelle <span style="font-size:22px;cursor:pointer">{#each [1, 2, 3, 4, 5] as n (n)}<button type="button" class="link-btn" style="color:{n <= stars ? '#f5b301' : '#d6d9e2'};font-size:22px;padding:0 1px" onclick={() => (stars = n)}>★</button>{/each}</span><input type="hidden" name="rating" value={stars} /></label>
@@ -45,7 +45,6 @@
 		<input name="title" placeholder="Titolo (facoltativo)" />
 		<textarea name="comment" rows="4" placeholder="Testo della recensione, così com'è stata scritta" required></textarea>
 		<div class="toolbar" style="gap:10px">
-			<input name="source_note" placeholder="Dove l'hai ricevuta (es. recensione Google del 12/09)" required style="flex:1" />
 			<label class="osub">Data <input type="date" name="date" class="sel-sm" /></label>
 			<button class="btn btn--green btn--xs" type="submit">Pubblica</button>
 			<button class="btn btn--ghost btn--xs" type="button" onclick={() => (adding = false)}>Annulla</button>
@@ -58,7 +57,7 @@
 		{@const st = STATUS[r.status]}
 		<div class="dcard" style="display:grid;gap:8px">
 			<div class="toolbar" style="justify-content:space-between;gap:10px">
-				<div class="toolbar" style="gap:8px"><span style="color:#f5b301;font-size:18px;letter-spacing:1px">{'★'.repeat(r.rating)}<span style="color:#d6d9e2">{'★'.repeat(5 - r.rating)}</span></span><b>{name(r)}</b><span class="pill" style="background:{st.soft};color:{st.color}">{st.label}</span>{#if r.source === 'staff'}<span class="pr-chip" title={r.source_note ?? ''}>inserita da noi{#if r.source_note} · {r.source_note}{/if}</span>{:else}<span class="pr-chip">cliente verificato</span>{/if}{#if r.product_slug}<span class="pr-chip">{CATS[r.product_slug]?.name ?? r.product_slug}</span>{/if}</div>
+				<div class="toolbar" style="gap:8px"><span style="color:#f5b301;font-size:18px;letter-spacing:1px">{'★'.repeat(r.rating)}<span style="color:#d6d9e2">{'★'.repeat(5 - r.rating)}</span></span><b>{name(r)}</b><span class="pill" style="background:{st.soft};color:{st.color}">{st.label}</span>{#if r.source === 'staff'}<span class="pr-chip">inserita da noi</span>{:else}<span class="pr-chip">dal sito</span>{/if}{#if r.product_slug}<span class="pr-chip">{CATS[r.product_slug]?.name ?? r.product_slug}</span>{/if}</div>
 				<span class="osub">{dmy(r.created_at)}{#if r.order} · <a class="link" href="/dashboard/fatturazione/ordini/{r.order_id}">{r.order.number}</a>{/if}{#if r.coupon_code} · codice {r.coupon_code}{/if}</span>
 			</div>
 			{#if r.title}<b>{r.title}</b>{/if}
