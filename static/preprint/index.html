@@ -224,7 +224,7 @@ html,body{height:100%;overflow:hidden}
       <div id="ppBordHost"></div>
     </div>
 
-    <div class="pp-sec">
+    <div class="pp-sec" id="ppSfondoSec">
       <div class="pp-h">Sfondo</div>
       <div class="dots" id="ppDots"></div>
       <input type="color" id="ppCol" style="position:absolute;width:0;height:0;opacity:0;border:0;padding:0">
@@ -3376,6 +3376,7 @@ function resinDome(core,ppm){
    ========================================================================== */
 S.rilievo=false; S.rilGen=0; S.ril=null;
 S.vetro=false; /* [sito] vetrofanie: scena con finestra, vetro e riflessi */
+function vetroUI(){ const sec=document.getElementById('ppSfondoSec'); if(sec)sec.style.display=S.vetro?'none':''; }
 /* [sito] 'Dettagli rilievo': solo sagoma e zone in rilievo in tinta piatta RDG_GLOSS (#86a7b3) */
 S.rilDettagli=false; const RDG_GLOSS='#86a7b3';
 function rilievoMask(){
@@ -3887,6 +3888,9 @@ function renderCoreRaw(ppm,withMat){
   const c=document.createElement('canvas');c.width=ink.width;c.height=ink.height;
   const g=c.getContext('2d');
   if(m==='clear'){
+    /* [sito] vetrofanie: si stampa con la base bianca sotto la grafica, i colori restano pieni;
+       solo il contorno oltre il disegno e' vinile trasparente */
+    if(S.vetro)return ink;
     /* [sito] trasparente: i colori si vedono sbiaditi, come inchiostro su vinile
        trasparente senza fondo bianco. Opacità ridotta e un velo chiaro sopra. */
     g.globalAlpha=0.62;g.drawImage(ink,0,0);
@@ -4610,7 +4614,7 @@ $('mat').onchange=()=>{
   if(S.src&&S.bbox){redo(0);}
   const m=matKind();
   toast(m==='white'?'Materiale bianco':
-    m==='clear'?'Trasparente: nel mockup lo sticker esce al 82% di opacità':
+    m==='clear'?(S.vetro?'Vetrofania: grafica piena con base bianca, contorno trasparente':'Trasparente: nel mockup lo sticker esce al 82% di opacità'):
     'Materiale applicato solo ad anteprima e mockup');};
 $('tol').addEventListener('input',()=>{$('tolV').textContent=$('tol').value;
   if(S.seeds.length||S.lineSeed)deb(()=>refresh(false),300);});
@@ -4784,7 +4788,7 @@ function uBloccaCombinazione(){
   }
   if(c.foglio!==undefined){const v=String(c.foglio).toLowerCase(); S.foglio=!(v===''||v==='0'||v==='false'||v==='no');}
   if(c.rilievo!==undefined){const v=String(c.rilievo).toLowerCase(); S.rilievo=!(v===''||v==='0'||v==='false'||v==='no');}
-  if(c.vetro!==undefined){const v=String(c.vetro).toLowerCase(); S.vetro=!(v===''||v==='0'||v==='false'||v==='no');}
+  if(c.vetro!==undefined){const v=String(c.vetro).toLowerCase(); S.vetro=!(v===''||v==='0'||v==='false'||v==='no'); vetroUI();}
   try{const qq=new URLSearchParams(location.search); if(qq.get('rildebug')==='1')S.rilDebug=true;}catch(e){}
   const f=U_FORMA[String(c.forma||'').toLowerCase()];
   if(f){
@@ -4942,39 +4946,53 @@ function disegnaPagina(g,x,y,w,h,ppm){
   g.restore();
   g.save();g.strokeStyle='rgba(11,11,59,0.10)';g.lineWidth=1;g.strokeRect(x+0.5,y+0.5,w-1,h-1);g.restore();}
 
-/* [sito] vetrofanie: la scena e' una finestra vista da fuori. Lo stipite occupa l'angolo in alto a sinistra
-   (mai piu' largo del margine, cosi' non copre la vetrofania), il vetro e' un fondo chiaro appena azzurrato,
-   la vetrofania sta dietro il vetro e i riflessi della luce le passano sopra. */
+/* [sito] vetrofanie: la scena e' la vetrina di un locale vista da fuori. L'interno e' sfocato (si disegna
+   piccolo e si ingrandisce), con le luci calde e il bokeh; l'infisso in alluminio nero sta a sinistra e in
+   alto, mai piu' largo del margine; sopra a tutto i riflessi del vetro. */
 function disegnaVetro(g,W,H,padPx){
-  const fr=Math.max(6,Math.min(Math.round(Math.min(W,H)*0.085),Math.round(padPx*0.62)));
-  let gr=g.createLinearGradient(0,0,W,H); gr.addColorStop(0,'#f1f4f8'); gr.addColorStop(1,'#dde3ea');
-  g.fillStyle=gr; g.fillRect(0,0,W,H);
-  /* stipite: fascia in alto e a sinistra, con lo smusso verso il vetro */
-  for(const vert of [false,true]){
+  const sw=36, sh=Math.max(10,Math.round(36*H/W));
+  const sc=document.createElement('canvas'); sc.width=sw; sc.height=sh;
+  const gs=sc.getContext('2d');
+  let gr=gs.createLinearGradient(0,0,0,sh); gr.addColorStop(0,'#26252a'); gr.addColorStop(0.42,'#47423e'); gr.addColorStop(0.74,'#7b7065'); gr.addColorStop(1,'#a99d90');
+  gs.fillStyle=gr; gs.fillRect(0,0,sw,sh);
+  /* mobili e ombre dell'interno */
+  for(const [x,y,w,h,a] of [[0.12,0.52,0.14,0.48,0.42],[0.50,0.60,0.20,0.40,0.36],[0.80,0.64,0.14,0.36,0.34],[0.34,0.42,0.10,0.16,0.22]]){gs.fillStyle='rgba(18,16,18,'+a+')'; gs.fillRect(x*sw,y*sh,w*sw,h*sh);}
+  /* lampade e insegne */
+  for(const [x,y,r,c] of [[0.62,0.16,3.4,'#ffd28a'],[0.82,0.22,2.4,'#ffe3b0'],[0.44,0.28,1.8,'#ffc978'],[0.92,0.44,1.5,'#fff1d0'],[0.28,0.18,1.3,'#ffd9a3']]){
+    const rg=gs.createRadialGradient(x*sw,y*sh,0,x*sw,y*sh,r); rg.addColorStop(0,c); rg.addColorStop(1,'rgba(0,0,0,0)'); gs.fillStyle=rg; gs.fillRect(0,0,sw,sh);}
+  g.imageSmoothingEnabled=true; g.imageSmoothingQuality='high';
+  g.drawImage(sc,0,0,W,H);
+  /* bokeh in primo piano */
+  for(const [x,y,r,a] of [[0.58,0.13,0.055,0.34],[0.71,0.21,0.04,0.28],[0.87,0.11,0.05,0.30],[0.94,0.35,0.035,0.26],[0.41,0.09,0.03,0.22],[0.77,0.49,0.03,0.18]]){
+    const R=r*W, rg=g.createRadialGradient(x*W,y*H,R*0.15,x*W,y*H,R);
+    rg.addColorStop(0,'rgba(255,226,172,'+a+')'); rg.addColorStop(0.82,'rgba(255,214,150,'+(a*0.55)+')'); rg.addColorStop(1,'rgba(255,214,150,0)');
+    g.fillStyle=rg; g.fillRect(x*W-R,y*H-R,2*R,2*R);}
+  /* infisso in alluminio nero: montante a sinistra, traversa in alto, con gli smussi */
+  const fr=Math.max(8,Math.min(Math.round(Math.min(W,H)*0.10),Math.round(padPx*0.8)));
+  const frame=(vert)=>{
     const lg=vert?g.createLinearGradient(0,0,fr,0):g.createLinearGradient(0,0,0,fr);
-    lg.addColorStop(0,'#fbfbfc'); lg.addColorStop(0.45,'#e2e5ea'); lg.addColorStop(0.8,'#c3c8d1'); lg.addColorStop(1,'#9ea5b1');
+    lg.addColorStop(0,'#101115'); lg.addColorStop(0.16,'#3a3d45'); lg.addColorStop(0.30,'#1a1c21'); lg.addColorStop(0.74,'#24272d'); lg.addColorStop(0.90,'#555a64'); lg.addColorStop(1,'#0b0c0f');
     g.fillStyle=lg; if(vert)g.fillRect(0,0,fr,H); else g.fillRect(0,0,W,fr);
-  }
-  /* seconda anta piu' interna, come nelle finestre vere */
-  const in2=Math.round(fr*0.42);
-  g.fillStyle='rgba(255,255,255,0.55)'; g.fillRect(fr,fr,W-fr,in2); g.fillRect(fr,fr,in2,H-fr);
-  g.strokeStyle='rgba(20,25,40,0.28)'; g.lineWidth=1; g.strokeRect(fr+in2+0.5,fr+in2+0.5,W,H);
-  /* ombra dello stipite sul vetro */
-  const x0=fr+in2;
-  let sh=g.createLinearGradient(0,x0,0,x0+fr*1.1); sh.addColorStop(0,'rgba(0,0,0,0.14)'); sh.addColorStop(1,'rgba(0,0,0,0)'); g.fillStyle=sh; g.fillRect(x0,x0,W-x0,fr*1.1);
-  sh=g.createLinearGradient(x0,0,x0+fr*1.1,0); sh.addColorStop(0,'rgba(0,0,0,0.14)'); sh.addColorStop(1,'rgba(0,0,0,0)'); g.fillStyle=sh; g.fillRect(x0,x0,fr*1.1,H-x0);
+  };
+  frame(false); frame(true);
+  const gu=Math.max(1,Math.round(fr*0.10));
+  g.fillStyle='#07080a'; g.fillRect(fr,fr,W-fr,gu); g.fillRect(fr,fr,gu,H-fr);
+  const x0=fr+gu;
+  let shd=g.createLinearGradient(0,x0,0,x0+fr*1.5); shd.addColorStop(0,'rgba(0,0,0,0.5)'); shd.addColorStop(1,'rgba(0,0,0,0)'); g.fillStyle=shd; g.fillRect(x0,x0,W-x0,fr*1.5);
+  shd=g.createLinearGradient(x0,0,x0+fr*1.5,0); shd.addColorStop(0,'rgba(0,0,0,0.5)'); shd.addColorStop(1,'rgba(0,0,0,0)'); g.fillStyle=shd; g.fillRect(x0,x0,fr*1.5,H-x0);
+  return x0;
 }
 function riflessiVetro(g,W,H){
-  g.save(); g.translate(W/2,H/2); g.rotate(-Math.PI/180*24);
-  const bands=[[-W*0.34,W*0.13,0.30],[-W*0.10,W*0.05,0.20],[W*0.14,W*0.11,0.26],[W*0.32,W*0.04,0.16]];
-  for(const [x,w,a] of bands){
+  /* il cielo si riflette nel vetro: piu' chiaro in alto a sinistra */
+  const sky=g.createLinearGradient(0,0,W*0.35,H); sky.addColorStop(0,'rgba(205,220,240,0.30)'); sky.addColorStop(0.55,'rgba(205,220,240,0.08)'); sky.addColorStop(1,'rgba(205,220,240,0)');
+  g.fillStyle=sky; g.fillRect(0,0,W,H);
+  g.save(); g.translate(W/2,H/2); g.rotate(-Math.PI/180*22);
+  for(const [x,w,a] of [[-W*0.30,W*0.16,0.17],[-W*0.06,W*0.05,0.12],[W*0.16,W*0.12,0.16],[W*0.34,W*0.04,0.10]]){
     const lg=g.createLinearGradient(x,0,x+w,0);
     lg.addColorStop(0,'rgba(255,255,255,0)'); lg.addColorStop(0.2,'rgba(255,255,255,'+a+')'); lg.addColorStop(0.8,'rgba(255,255,255,'+a+')'); lg.addColorStop(1,'rgba(255,255,255,0)');
     g.fillStyle=lg; g.fillRect(x,-H*1.5,w,3*H);
   }
   g.restore();
-  /* velo del vetro: abbassa appena il contrasto di quello che sta dietro */
-  g.fillStyle='rgba(225,235,245,0.06)'; g.fillRect(0,0,W,H);
 }
 function ridipingi(){
   const a=S._an; if(!a)return;
@@ -5023,10 +5041,13 @@ function ridipingi(){
       gb.save();gb.shadowColor='rgba(0,0,0,0.10)';gb.shadowBlur=0.22*ppm;gb.shadowOffsetY=0.08*ppm;
       gb.drawImage(tile,pad*ppm,pad*ppm);gb.restore();
     } else if(S.vetro){
-      /* vetrofania vista da fuori: stipite della finestra, vetro, la vetrofania dietro e i riflessi sopra */
-      disegnaVetro(gb,cv.width,cv.height,pad*ppm);
-      gb.save();gb.shadowColor='rgba(0,0,0,0.22)';gb.shadowBlur=1.2*ppm;gb.shadowOffsetY=0.5*ppm;
-      gb.drawImage(tile,pad*ppm,pad*ppm);gb.restore();
+      /* vetrina vista da fuori: infisso, interno sfocato, la vetrofania dietro il vetro (un po' piu' piccola
+         e verso il centro, lontana dall'angolo) e i riflessi sopra */
+      const x0=disegnaVetro(gb,cv.width,cv.height,pad*ppm);
+      const k=0.82, ox=x0+(cv.width-x0-tile.width*k)*0.58, oy=x0+(cv.height-x0-tile.height*k)*0.55;
+      a.vk=k; a.vox=ox; a.voy=oy;
+      gb.save();gb.shadowColor='rgba(0,0,0,0.35)';gb.shadowBlur=1.4*ppm;gb.shadowOffsetY=0.6*ppm;
+      gb.drawImage(tile,ox,oy,tile.width*k,tile.height*k);gb.restore();
       riflessiVetro(gb,cv.width,cv.height);
     } else {
       gb.save();gb.shadowColor='rgba(0,0,0,0.4)';gb.shadowBlur=3*ppm;gb.shadowOffsetY=1.5*ppm;
@@ -5036,7 +5057,7 @@ function ridipingi(){
   }
   g.drawImage(a.base,0,0);
   try{
-    const f=((S.prod==='resin'&&!S.senzaResina)||S.rilievo)?99:fasBagliore();
+    const f=((S.prod==='resin'&&!S.senzaResina)||S.rilievo||S.vetro)?99:fasBagliore();
     if(f<10){
       g.globalCompositeOperation='screen';
       g.drawImage(bagliore(tile,f),pad*ppm,pad*ppm);
@@ -5044,7 +5065,8 @@ function ridipingi(){
     }
   }catch(e){}
   if(!S.showCut)return;
-  g.setTransform(ppm,0,0,ppm,(pad+b)*ppm,(pad+b)*ppm);
+  if(S.vetro&&a.vk)g.setTransform(ppm*a.vk,0,0,ppm*a.vk,a.vox+b*ppm*a.vk,a.voy+b*ppm*a.vk);
+  else g.setTransform(ppm,0,0,ppm,(pad+b)*ppm,(pad+b)*ppm);
   const p=new Path2D(a.path);
   g.lineWidth=Math.max(.12,0.9/ppm);g.strokeStyle='#ff2d95';
   g.setLineDash([dash,dash*0.75]);g.lineDashOffset=-anT;g.lineCap='butt';
@@ -5215,7 +5237,7 @@ draw=function(){ _pp_draw.apply(this,arguments);
     if(nota){
       const clear=(matKind()==='clear');
       nota.style.display=(clear&&S.src)?'block':'none';
-      nota.innerHTML='I colori saranno semitrasparenti';
+      nota.innerHTML=S.vetro?'Stampata con base bianca: colori pieni, solo il contorno resta trasparente.':'I colori saranno semitrasparenti';
     }
   }catch(e){console.warn(e);}
 };
@@ -5569,7 +5591,7 @@ function ppGeoUI(){
         if(c.prodotto){const p=String(c.prodotto).toLowerCase().indexOf('resin')>=0?'resin':'sticker'; if(p!==S.prod){setProd(p);geom=true;try{ppGeoUI();}catch(e){}}}
         if(c.foglio!==undefined){const fg=!!c.foglio; if(fg!==S.foglio){S.foglio=fg;geom=true;}}
         if(c.rilievo!==undefined){const rl=!!c.rilievo; if(rl!==S.rilievo){S.rilievo=rl;mat=true;}}
-        if(c.vetro!==undefined){const vt=!!c.vetro; if(vt!==S.vetro){S.vetro=vt;mat=true;}}
+        if(c.vetro!==undefined){const vt=!!c.vetro; if(vt!==S.vetro){S.vetro=vt;mat=true;vetroUI();}}
         /* cavallotto del kit (spigoli vivi, niente angoli) e adesivi passano dallo stesso motore */
         if(c.noang!==undefined&&(!!c.noang)!==NOANG){NOANG=!!c.noang;try{applyPreset(false);ppGeoUI();}catch(e){}geom=true;}
         const f=U_FORMA[String(c.forma||'').toLowerCase()];
