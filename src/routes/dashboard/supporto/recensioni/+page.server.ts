@@ -1,9 +1,9 @@
 import { fail } from '@sveltejs/kit';
-import { addStaffReview, deleteReview, listReviews, setReviewStatus } from '$lib/server/recensioni';
+import { addStaffReview, deleteReview, listReviewRequests, listReviews, setReviewStatus } from '$lib/server/recensioni';
 import type { Actions, PageServerLoad } from './$types';
 
 /** Recensioni: da approvare, pubblicate, rifiutate; inserimento di recensioni ricevute altrove */
-export const load: PageServerLoad = async ({ locals: { supabase } }) => ({ reviews: await listReviews(supabase) });
+export const load: PageServerLoad = async ({ locals: { supabase } }) => { const [reviews, requests] = await Promise.all([listReviews(supabase), listReviewRequests(supabase)]); return { reviews, requests }; };
 
 export const actions: Actions = {
 	stato: async ({ request, locals: { supabase } }) => {

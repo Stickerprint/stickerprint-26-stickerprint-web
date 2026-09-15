@@ -11,6 +11,12 @@
 	let adding = $state(false);
 	let stars = $state(5);
 	const STATUS: Record<string, { label: string; color: string; soft: string }> = { pending: { label: 'Da approvare', color: '#b45309', soft: '#fef3c7' }, approved: { label: 'Pubblicata', color: '#15803d', soft: '#dcfce7' }, rejected: { label: 'Rifiutata', color: '#6b7280', soft: '#e5e7eb' } };
+	const TABS = ['pending', 'approved'];
+	const when = (d: string | null) => (d ? new Date(d).toLocaleString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '');
+	const reqs = $derived(data.requests);
+	const opened = $derived(reqs.filter((r) => r.opened_count > 0).length);
+	const tracked = $derived(reqs.filter((r) => r.tracked).length);
+	const reviewed = $derived(reqs.filter((r) => r.review_id).length);
 </script>
 
 <svelte:head><title>Recensioni | Dashboard</title></svelte:head>
@@ -52,6 +58,41 @@
 	</form>
 {/if}
 
+{#if filter === 'inviate'}
+	<div class="dcard" style="display:grid;gap:10px">
+		<div class="toolbar" style="justify-content:space-between;align-items:flex-start;gap:12px">
+			<p class="osub" style="margin:0;max-width:640px">Le email "Com'è andata con l'ordine?" partono da sole il giorno dopo la consegna. Qui vedi chi le ha ricevute, chi le ha aperte e quante volte, chi ha cliccato e chi ha lasciato la recensione. L'apertura si conta con un'immagine invisibile: chi blocca le immagini nella posta risulta "non aperta" anche se l'ha letta.</p>
+			<div class="pr-kpis pr-kpis--side" style="min-width:320px">
+				<div class="pr-kpi"><b>{reqs.length}</b><span>inviate</span></div>
+				<div class="pr-kpi"><b>{tracked ? Math.round((opened / tracked) * 100) : 0}%</b><span>aperte</span></div>
+				<div class="pr-kpi"><b>{reqs.length ? Math.round((reviewed / reqs.length) * 100) : 0}%</b><span>recensite</span></div>
+			</div>
+		</div>
+		<div style="overflow-x:auto">
+			<table class="dtable">
+				<thead><tr><th>Inviata</th><th>Ordine</th><th>Cliente</th><th>Aperta</th><th>Cliccato</th><th>Recensione</th></tr></thead>
+				<tbody>
+					{#each reqs as r (r.id)}
+						<tr>
+							<td>{when(r.sent_at)}</td>
+							<td>{#if r.checkout_group}<a class="link" href="/dashboard/fatturazione/ordini/{r.checkout_group}">{r.number}</a>{:else}{r.number}{/if}</td>
+							<td><b>{r.name ?? ''}</b><div class="osub">{r.email}</div></td>
+							<td>
+								{#if !r.tracked}<span class="osub">non tracciata</span>
+								{:else if r.opened_count > 0}<span class="pill" style="background:#dcfce7;color:#15803d">✓ {r.opened_count} {r.opened_count === 1 ? 'volta' : 'volte'}</span><div class="osub">{r.opened_count === 1 ? '' : 'prima '}{when(r.first_opened_at)}{#if r.opened_count > 1} · ultima {when(r.last_opened_at)}{/if}</div>
+								{:else}<span class="pill" style="background:#fee2e2;color:#b91c1c">non aperta</span>{/if}
+							</td>
+							<td>{#if r.clicked_at}<span class="pill" style="background:#dbeafe;color:#1d4ed8">✓ {when(r.clicked_at)}</span>{:else}<span class="osub">—</span>{/if}</td>
+							<td>{#if r.review}<span style="color:#f5b301">{'★'.repeat(r.review.rating)}</span> <span class="osub">{STATUS[r.review.status]?.label ?? r.review.status}</span>{:else}<span class="osub">non ancora</span>{/if}</td>
+						</tr>
+					{:else}
+						<tr><td colspan="6" style="text-align:center;color:var(--muted)">Nessuna richiesta inviata finora.</td></tr>
+					{/each}
+				</tbody>
+			</table>
+		</div>
+	</div>
+{:else}
 <div class="rq-list">
 	{#each list as r (r.id)}
 		{@const st = STATUS[r.status]}
@@ -73,3 +114,4 @@
 		<div class="dcard" style="text-align:center;color:var(--muted)">Nessuna recensione qui.</div>
 	{/each}
 </div>
+{/if}

@@ -2,16 +2,17 @@ import { error, fail } from '@sveltejs/kit';
 import { createClient } from '@supabase/supabase-js';
 import { env } from '$env/dynamic/private';
 import { PUBLIC_SUPABASE_URL } from '$env/static/public';
-import { submitReview } from '$lib/server/recensioni';
+import { markReviewRequestClicked, submitReview } from '$lib/server/recensioni';
 import type { Actions, PageServerLoad } from './$types';
 
 /** Recensione da link email (anche ospiti): l'id ordine fa da chiave, una recensione per ordine */
 const admin = () => (env.SUPABASE_SERVICE_ROLE_KEY ? createClient(PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } }) : null);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export const load: PageServerLoad = async ({ params }) => {
+export const load: PageServerLoad = async ({ params, url }) => {
 	const db = admin();
 	if (!db || !UUID.test(params.id)) error(404, 'Ordine non trovato');
+	await markReviewRequestClicked(db, url.searchParams.get('r'));
 	/* il link puo' portare l'id della riga (un prodotto) o l'id dell'ordine intero (checkout_group) */
 	const { data: found } = await db.from('orders').select('id, number, checkout_group, user_id, shipping, product_name, qty, status').or(`id.eq.${params.id},checkout_group.eq.${params.id}`).order('created_at').limit(1);
 	const o = found?.[0];

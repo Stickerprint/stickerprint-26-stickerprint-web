@@ -1,9 +1,11 @@
 import { fail } from '@sveltejs/kit';
 import type { Order } from '$lib/account';
-import { submitReview } from '$lib/server/recensioni';
+import { markReviewRequestClicked, submitReview } from '$lib/server/recensioni';
+import { adminClient } from '$lib/server/admin';
 import type { Actions, PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ locals: { supabase, user } }) => {
+export const load: PageServerLoad = async ({ url, locals: { supabase, user } }) => {
+	{ const a = adminClient(); if (a) await markReviewRequestClicked(a, url.searchParams.get('r')); }
 	const [{ data: orders }, { data: reviews }] = await Promise.all([
 		supabase.from('orders').select('*').eq('user_id', user!.id).eq('status', 'consegnato').order('created_at', { ascending: false }),
 		supabase.from('reviews').select('id, order_id, rating, title, comment, created_at, status, coupon_code').eq('user_id', user!.id)

@@ -33,6 +33,7 @@ export async function submitReview(db: DB, o: { orderId: string; userId: string 
 	const { data, error } = await db.from('reviews').insert({ user_id: o.userId, order_id: o.orderId, rating, title: o.title?.slice(0, 120) || null, comment: o.comment?.slice(0, 2000) || null, author: o.author, email: o.email?.toLowerCase() || null, product_slug: o.productSlug, status: 'pending', source: 'cliente' }).select('id').single();
 	if (error || !data) return { ok: false, error: /duplicate|unique/i.test(error?.message ?? '') ? 'Hai già lasciato una recensione per questo ordine, grazie!' : (error?.message ?? 'Errore') };
 	const code = await issueReviewCoupon(db, data.id, o.email);
+	await linkReviewToRequest(db, o.orderId, data.id).catch(() => {});
 	if (o.email && code) {
 		const validTo = new Date(); validTo.setMonth(validTo.getMonth() + REVIEW_COUPON.months);
 		await sendEmail({ to: o.email, ...reviewThanksEmail({ name: o.author?.split(' ')[0] ?? null, number: o.number, code, validUntil: validTo.toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' }), href: `${o.origin}/` }), metadata: { order: o.number } });
@@ -65,4 +66,25 @@ export async function deleteReview(db: DB, id: string): Promise<string | null> {
 export async function pendingReviews(db: DB): Promise<number> {
 	const { count } = await db.from('reviews').select('id', { count: 'exact', head: true }).eq('status', 'pending');
 	return count ?? 0;
+}
+
+/* ---------- richieste di recensione inviate via email ---------- */
+export interface ReviewRequestRow { id: string; order_id: string | null; checkout_group: string | null; number: string; email: string; name: string | null; sent_at: string; tracked: boolean; opened_count: number; first_opened_at: string | null; last_opened_at: string | null; clicked_at: string | null; review_id: string | null; review?: { rating: number; status: string } | null }
+export async function listReviewRequests(db: DB): Promise<ReviewRequestRow[]> {
+	const { data } = await db.from('review_requests').select('*, review:reviews(rating, status)').order('sent_at', { ascending: false }).limit(500);
+	return (data ?? []) as ReviewRequestRow[];
+}
+/** Registra l'invio (prima di mandare la mail, cosi' il pixel e i link hanno gia' l'id) */
+export async function createReviewRequest(db: DB, o: { orderId: string; checkoutGroup: string | null; number: string; email: string; name: string | null }): Promise<string | null> {
+	const { data } = await db.from('review_requests').insert({ order_id: o.orderId, checkout_group: o.checkoutGroup, number: o.number, email: o.email, name: o.name }).select('id').single();
+	return data?.id ?? null;
+}
+/** Il cliente ha aperto la pagina della recensione dal link dell'email */
+export async function markReviewRequestClicked(db: DB, id: string | null): Promise<void> {
+	if (!id || !/^[0-9a-f-]{36}$/.test(id)) return;
+	await db.from('review_requests').update({ clicked_at: new Date().toISOString() }).eq('id', id).is('clicked_at', null);
+}
+/** Collega la recensione ricevuta alla richiesta inviata per quell'ordine */
+export async function linkReviewToRequest(db: DB, orderId: string, reviewId: string): Promise<void> {
+	await db.from('review_requests').update({ review_id: reviewId }).eq('order_id', orderId).is('review_id', null);
 }
