@@ -3375,6 +3375,7 @@ function resinDome(core,ppm){
    netti, quindi una campitura sfumata resta una regione sola: piatta.
    ========================================================================== */
 S.rilievo=false; S.rilGen=0; S.ril=null;
+S.vetro=false; /* [sito] vetrofanie: scena con finestra, vetro e riflessi */
 /* [sito] 'Dettagli rilievo': solo sagoma e zone in rilievo in tinta piatta RDG_GLOSS (#86a7b3) */
 S.rilDettagli=false; const RDG_GLOSS='#86a7b3';
 function rilievoMask(){
@@ -4768,7 +4769,7 @@ const U_MATER={bianco:'white',white:'white',olografico:'holo',holo:'holo',
 function uLeggiConfig(){
   const q=new URLSearchParams(location.search);
   const c=Object.assign({},window.SPPS_CONFIG||{});
-  ['forma','materiale','w','h','qta','prodotto','lamina','foglio','rilievo'].forEach(k=>{
+  ['forma','materiale','w','h','qta','prodotto','lamina','foglio','rilievo','vetro'].forEach(k=>{
     if(c[k]===undefined&&q.get(k)!==null)c[k]=q.get(k);});
   return c;
 }
@@ -4783,6 +4784,7 @@ function uBloccaCombinazione(){
   }
   if(c.foglio!==undefined){const v=String(c.foglio).toLowerCase(); S.foglio=!(v===''||v==='0'||v==='false'||v==='no');}
   if(c.rilievo!==undefined){const v=String(c.rilievo).toLowerCase(); S.rilievo=!(v===''||v==='0'||v==='false'||v==='no');}
+  if(c.vetro!==undefined){const v=String(c.vetro).toLowerCase(); S.vetro=!(v===''||v==='0'||v==='false'||v==='no');}
   try{const qq=new URLSearchParams(location.search); if(qq.get('rildebug')==='1')S.rilDebug=true;}catch(e){}
   const f=U_FORMA[String(c.forma||'').toLowerCase()];
   if(f){
@@ -4940,6 +4942,40 @@ function disegnaPagina(g,x,y,w,h,ppm){
   g.restore();
   g.save();g.strokeStyle='rgba(11,11,59,0.10)';g.lineWidth=1;g.strokeRect(x+0.5,y+0.5,w-1,h-1);g.restore();}
 
+/* [sito] vetrofanie: la scena e' una finestra vista da fuori. Lo stipite occupa l'angolo in alto a sinistra
+   (mai piu' largo del margine, cosi' non copre la vetrofania), il vetro e' un fondo chiaro appena azzurrato,
+   la vetrofania sta dietro il vetro e i riflessi della luce le passano sopra. */
+function disegnaVetro(g,W,H,padPx){
+  const fr=Math.max(6,Math.min(Math.round(Math.min(W,H)*0.085),Math.round(padPx*0.62)));
+  let gr=g.createLinearGradient(0,0,W,H); gr.addColorStop(0,'#f1f4f8'); gr.addColorStop(1,'#dde3ea');
+  g.fillStyle=gr; g.fillRect(0,0,W,H);
+  /* stipite: fascia in alto e a sinistra, con lo smusso verso il vetro */
+  for(const vert of [false,true]){
+    const lg=vert?g.createLinearGradient(0,0,fr,0):g.createLinearGradient(0,0,0,fr);
+    lg.addColorStop(0,'#fbfbfc'); lg.addColorStop(0.45,'#e2e5ea'); lg.addColorStop(0.8,'#c3c8d1'); lg.addColorStop(1,'#9ea5b1');
+    g.fillStyle=lg; if(vert)g.fillRect(0,0,fr,H); else g.fillRect(0,0,W,fr);
+  }
+  /* seconda anta piu' interna, come nelle finestre vere */
+  const in2=Math.round(fr*0.42);
+  g.fillStyle='rgba(255,255,255,0.55)'; g.fillRect(fr,fr,W-fr,in2); g.fillRect(fr,fr,in2,H-fr);
+  g.strokeStyle='rgba(20,25,40,0.28)'; g.lineWidth=1; g.strokeRect(fr+in2+0.5,fr+in2+0.5,W,H);
+  /* ombra dello stipite sul vetro */
+  const x0=fr+in2;
+  let sh=g.createLinearGradient(0,x0,0,x0+fr*1.1); sh.addColorStop(0,'rgba(0,0,0,0.14)'); sh.addColorStop(1,'rgba(0,0,0,0)'); g.fillStyle=sh; g.fillRect(x0,x0,W-x0,fr*1.1);
+  sh=g.createLinearGradient(x0,0,x0+fr*1.1,0); sh.addColorStop(0,'rgba(0,0,0,0.14)'); sh.addColorStop(1,'rgba(0,0,0,0)'); g.fillStyle=sh; g.fillRect(x0,x0,fr*1.1,H-x0);
+}
+function riflessiVetro(g,W,H){
+  g.save(); g.translate(W/2,H/2); g.rotate(-Math.PI/180*24);
+  const bands=[[-W*0.34,W*0.13,0.42],[-W*0.10,W*0.05,0.30],[W*0.14,W*0.11,0.36],[W*0.32,W*0.04,0.22]];
+  for(const [x,w,a] of bands){
+    const lg=g.createLinearGradient(x,0,x+w,0);
+    lg.addColorStop(0,'rgba(255,255,255,0)'); lg.addColorStop(0.2,'rgba(255,255,255,'+a+')'); lg.addColorStop(0.8,'rgba(255,255,255,'+a+')'); lg.addColorStop(1,'rgba(255,255,255,0)');
+    g.fillStyle=lg; g.fillRect(x,-H*1.5,w,3*H);
+  }
+  g.restore();
+  /* velo del vetro: abbassa appena il contrasto di quello che sta dietro */
+  g.fillStyle='rgba(225,235,245,0.10)'; g.fillRect(0,0,W,H);
+}
 function ridipingi(){
   const a=S._an; if(!a)return;
   if(a.sheet){
@@ -4975,7 +5011,7 @@ function ridipingi(){
      in una tela di appoggio: le ombre sfumate del canvas costano decine di
      millisecondi e prima venivano rifatte a ogni fotogramma dell'animazione
      del tratteggio, saturando il processore e ritardando tutto il resto. */
-  if(!a.base||a.baseTile!==tile||a.base.width!==cv.width||a.base.height!==cv.height||a.baseRes!==(S.prod+'|'+!!S.senzaResina)){
+  if(!a.base||a.baseTile!==tile||a.base.width!==cv.width||a.base.height!==cv.height||a.baseRes!==(S.prod+'|'+!!S.senzaResina+'|'+!!S.vetro)){
     const base=document.createElement('canvas');base.width=cv.width;base.height=cv.height;
     const gb=base.getContext('2d');
     if(S.prod==='resin'&&!S.senzaResina){
@@ -4986,11 +5022,17 @@ function ridipingi(){
       gb.drawImage(tile,pad*ppm,pad*ppm);gb.restore();
       gb.save();gb.shadowColor='rgba(0,0,0,0.10)';gb.shadowBlur=0.22*ppm;gb.shadowOffsetY=0.08*ppm;
       gb.drawImage(tile,pad*ppm,pad*ppm);gb.restore();
+    } else if(S.vetro){
+      /* vetrofania vista da fuori: stipite della finestra, vetro, la vetrofania dietro e i riflessi sopra */
+      disegnaVetro(gb,cv.width,cv.height,pad*ppm);
+      gb.save();gb.shadowColor='rgba(0,0,0,0.26)';gb.shadowBlur=2*ppm;gb.shadowOffsetY=0.7*ppm;
+      gb.drawImage(tile,pad*ppm,pad*ppm);gb.restore();
+      riflessiVetro(gb,cv.width,cv.height);
     } else {
       gb.save();gb.shadowColor='rgba(0,0,0,0.4)';gb.shadowBlur=3*ppm;gb.shadowOffsetY=1.5*ppm;
       gb.drawImage(tile,pad*ppm,pad*ppm);gb.restore();
     }
-    a.base=base;a.baseTile=tile;a.baseRes=S.prod+'|'+!!S.senzaResina;
+    a.base=base;a.baseTile=tile;a.baseRes=S.prod+'|'+!!S.senzaResina+'|'+!!S.vetro;
   }
   g.drawImage(a.base,0,0);
   try{
@@ -5527,6 +5569,7 @@ function ppGeoUI(){
         if(c.prodotto){const p=String(c.prodotto).toLowerCase().indexOf('resin')>=0?'resin':'sticker'; if(p!==S.prod){setProd(p);geom=true;try{ppGeoUI();}catch(e){}}}
         if(c.foglio!==undefined){const fg=!!c.foglio; if(fg!==S.foglio){S.foglio=fg;geom=true;}}
         if(c.rilievo!==undefined){const rl=!!c.rilievo; if(rl!==S.rilievo){S.rilievo=rl;mat=true;}}
+        if(c.vetro!==undefined){const vt=!!c.vetro; if(vt!==S.vetro){S.vetro=vt;mat=true;}}
         /* cavallotto del kit (spigoli vivi, niente angoli) e adesivi passano dallo stesso motore */
         if(c.noang!==undefined&&(!!c.noang)!==NOANG){NOANG=!!c.noang;try{applyPreset(false);ppGeoUI();}catch(e){}geom=true;}
         const f=U_FORMA[String(c.forma||'').toLowerCase()];

@@ -86,6 +86,8 @@
 	// etichette in fogli: il motore mostra il foglio e dice quante etichette ci entrano
 	const foglio = $derived(product === 'etichette');
 	const rilievo = $derived(product === 'adesivi_rilievo');
+	// vetrofanie: l'anteprima mostra la vetrofania dietro il vetro di una finestra, vista da fuori
+	const vetro = $derived(product === 'vetrofanie');
 	let perSheet = $state<{ n: number; cols: number; rows: number; w: number; h: number } | null>(null);
 	let over = $state(false);
 	let customOpen = $state(false);
@@ -268,7 +270,7 @@
 		<!-- ANTEPRIMA + BARRA COMANDI (sfondo · rimuovi sfondo · cambia file · tracciato) -->
 		<div class="cfg__preview">
 			{#if file}
-				<EnginePreview bind:this={engine} {file} {forma} {materiale} finitura={showFinish ? finitura : 'lucida'} prodotto={engineProduct} {foglio} {rilievo} {w} {h} {showCut} panel stage={foglio ? 440 : 370} onrender={onRender} />
+				<EnginePreview bind:this={engine} {file} {forma} {materiale} finitura={showFinish ? finitura : 'lucida'} prodotto={engineProduct} {foglio} {rilievo} {vetro} {w} {h} {showCut} panel stage={foglio ? 440 : 370} onrender={onRender} />
 				{#if fileUrl}<img src={fileUrl} alt="" hidden onload={onImgLoad} />{/if}
 				<div class="cfg__bar">
 					<div class="cfg__bar-group">

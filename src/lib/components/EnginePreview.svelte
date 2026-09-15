@@ -14,6 +14,7 @@
 		prodotto = 'sticker',
 		foglio = false,
 		rilievo = false,
+		vetro = false,
 		w = 0,
 		h = 0,
 		panel = false,
@@ -29,6 +30,7 @@
 		prodotto?: string;
 		foglio?: boolean;
 		rilievo?: boolean;
+		vetro?: boolean;
 		w?: number;
 		h?: number;
 		panel?: boolean;
@@ -53,6 +55,7 @@
 		const q = new URLSearchParams({ embed: '1', forma, materiale, prodotto, lamina: finitura });
 		if (foglio) q.set('foglio', '1');
 		if (rilievo) q.set('rilievo', '1');
+		if (vetro) q.set('vetro', '1');
 		if (noang) q.set('noang', '1');
 		if (w > 0) q.set('w', String(w));
 		if (h > 0) q.set('h', String(h));
@@ -97,14 +100,14 @@
 	const resentFor = new WeakMap<File, number>(); // quante volte la misura del sito e' stata rimandata per quel file
 	$effect(() => {
 		const f = file;
-		const next = f ? `${prodotto}|${foglio}|${rilievo}|${panel}|${stage}` : '';
+		const next = f ? `${prodotto}|${foglio}|${rilievo}|${vetro}|${panel}|${stage}` : '';
 		untrack(() => {
 			if (!f) { src = ''; ready = false; lastSrc = ''; sentFor = null; sentCfg = ''; return; }
 			if (next !== lastSrc) { lastSrc = next; sentFor = null; sentCfg = ''; busy = true; ready = false; src = buildSrc(); }
 		});
 	});
 	$effect(() => {
-		const cfg = JSON.stringify({ forma, materiale, lamina: finitura, w, h, prodotto, foglio, rilievo, noang });
+		const cfg = JSON.stringify({ forma, materiale, lamina: finitura, w, h, prodotto, foglio, rilievo, vetro, noang });
 		untrack(() => {
 			if (!file || !src || cfg === sentCfg) return;
 			clearTimeout(cfgTimer);
@@ -135,7 +138,7 @@
 			if (cfgSentAt) { console.debug('[anteprima] aggiornata in', Math.round(performance.now() - cfgSentAt), 'ms'); cfgSentAt = 0; }
 			busy = false;
 			ready = true;
-			sentCfg = JSON.stringify({ forma, materiale, lamina: finitura, w, h, prodotto, foglio, rilievo, noang });
+			sentCfg = JSON.stringify({ forma, materiale, lamina: finitura, w, h, prodotto, foglio, rilievo, vetro, noang });
 			clearTimeout(retry);
 			/* al caricamento il motore propone una misura sua (dalle proporzioni del file); sulle forme
 			   geometriche la misura e' quella del sito e si rimanda subito (una volta per file) */
@@ -145,7 +148,7 @@
 			if (cur && w > 0 && h > 0 && forma !== 'sagomato' && n < 3 && (Math.abs(rw - w) > 0.6 || Math.abs(rh - h) > 0.6)) {
 				resentFor.set(cur, n + 1);
 				console.debug('[anteprima] misura del sito rimandata al motore', { w, h, rw, rh });
-				frame?.contentWindow?.postMessage({ source: 'sito', type: 'config', config: { forma, materiale, lamina: finitura, w, h, prodotto, foglio, rilievo, noang } }, location.origin);
+				frame?.contentWindow?.postMessage({ source: 'sito', type: 'config', config: { forma, materiale, lamina: finitura, w, h, prodotto, foglio, rilievo, vetro, noang } }, location.origin);
 			}
 			onrender?.({ png: d.detail.png, name: d.detail.name ?? null, shape: d.detail.shape ?? null, w: d.detail.w ?? 0, h: d.detail.h ?? 0, srcMM: d.detail.srcMM ?? null, cut: d.detail.cut ?? null, view: d.detail.view ?? null, palette: d.detail.palette ?? [], palIdx: d.detail.palIdx ?? 0, rimuovi: !!d.detail.rimuovi, foglio: d.detail.foglio ?? null });
 			frame?.contentWindow?.postMessage({ source: 'sito', type: 'cut', on: showCut }, location.origin);
