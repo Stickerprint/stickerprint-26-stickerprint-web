@@ -6,7 +6,7 @@
  */
 import { env } from '$env/dynamic/private';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { finalizeCheckout } from './checkout';
+import { checkoutPending, finalizeCheckout } from './checkout';
 import { setPaymentStatus } from './conferme';
 import { setInvoicePaymentStatus } from './fatture';
 
@@ -73,11 +73,20 @@ export async function applyPayPalCapture(db: SupabaseClient, o: OrderInfo): Prom
 	if (kind === 'invoice' && a && b) return setInvoicePaymentStatus(db, a, Number(b), 'pagato', null, ref, 'paypal');
 	return 'Riferimento PayPal non riconosciuto.';
 }
+/** Si puo' ancora incassare? Un checkout annullato o scaduto e una scadenza gia' pagata non si catturano */
+export async function canCapture(db: SupabaseClient, customId: string | null): Promise<boolean> {
+	const [kind, a, b] = (customId ?? '').split(':');
+	if (kind === 'checkout' && a) return checkoutPending(db, a);
+	if (kind === 'order' && a && b) { const { data } = await db.from('order_payments').select('status').eq('checkout_group', a).eq('seq', Number(b)).maybeSingle(); return data?.status === 'da_pagare'; }
+	if (kind === 'invoice' && a && b) { const { data } = await db.from('invoice_payments').select('status').eq('invoice_id', a).eq('seq', Number(b)).maybeSingle(); return data?.status === 'da_pagare'; }
+	return false;
+}
 /** Ritorno dal sito PayPal (?token=ID): cattura e applica. Restituisce l'esito per la pagina. */
 export async function settlePayPalReturn(db: SupabaseClient, orderId: string, expectPrefix: string): Promise<{ ok: boolean; error?: string; customId: string | null }> {
 	try {
 		const cur = await getPayPalOrder(orderId);
 		if (!cur.customId?.startsWith(expectPrefix)) return { ok: false, error: 'Pagamento non riconosciuto.', customId: cur.customId };
+		if (cur.status !== 'COMPLETED' && !(await canCapture(db, cur.customId))) return { ok: false, error: 'Questo ordine è stato annullato o è scaduto: torna al carrello e rifai l’ordine.', customId: cur.customId };
 		const done = cur.status === 'COMPLETED' ? cur : await capturePayPalOrder(orderId);
 		const e = await applyPayPalCapture(db, done);
 		return e ? { ok: false, error: e, customId: done.customId } : { ok: true, customId: done.customId };

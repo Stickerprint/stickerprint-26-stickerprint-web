@@ -12,7 +12,7 @@ import { estimatedShipDate, formatItDate } from '$lib/utils/shipping';
 import { MATERIAL_LABEL } from '$lib/account';
 import { createCheckoutSession, stripeConfigured } from '$lib/server/stripe';
 import { createPayPalOrder, paypalConfigured } from '$lib/server/paypal';
-import { cancelPendingCheckout, finalizeCheckout, savePendingCheckout, setCheckoutSession, type CheckoutItem, type CheckoutPayload } from '$lib/server/checkout';
+import { cancelPendingCheckout, expireStaleCheckouts, finalizeCheckout, savePendingCheckout, setCheckoutSession, type CheckoutItem, type CheckoutPayload } from '$lib/server/checkout';
 import type { Actions, PageServerLoad } from './$types';
 
 /** Produzione express: +30% sui prodotti (concorre al credito) */
@@ -32,6 +32,7 @@ export const load: PageServerLoad = async ({ url, locals: { supabase, user } }) 
 	/* ritorno da Stripe senza pagare: gli ordini in attesa vengono tolti, il carrello e' ancora nel browser */
 	const cancelledGroup = url.searchParams.get('annullato') === '1' ? url.searchParams.get('g') : null;
 	if (cancelledGroup && /^[0-9a-f-]{36}$/.test(cancelledGroup)) { const a = adminClient(); if (a) await cancelPendingCheckout(a, cancelledGroup); }
+	{ const a = adminClient(); if (a) expireStaleCheckouts(a).catch(() => {}); }
 	const base = { shipDate: formatItDate(ship), expressDate: formatItDate(estimatedShipDate(3)), expressRate: EXPRESS_RATE, guestAllowed: !!env.SUPABASE_SERVICE_ROLE_KEY, online: stripeConfigured(), paypal: paypalConfigured(), cancelled: !!cancelledGroup };
 	if (!user) return { ...base, profile: null, addresses: [], credit: 0, loyalty: null, orderCount: 0, lifetimeValue: 0 };
 	const [{ data: profile }, { data: addresses }, { data: credit }, { data: loyalty }] = await Promise.all([

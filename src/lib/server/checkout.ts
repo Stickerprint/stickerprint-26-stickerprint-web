@@ -13,6 +13,7 @@ import { orderConfirmationEmail } from './email-templates';
 import { estimatedShipDate, formatItDate } from '$lib/utils/shipping';
 import { ensurePlan } from './produzione';
 import type { OrderRow } from '$lib/dashboard/orders';
+import { expireCheckoutSession } from './stripe';
 
 type DB = SupabaseClient;
 export interface CheckoutItem { product: string; productName: string; forma: string; materiale: string; finitura: string | null; w: number; h: number; qty: number; gross: number; previewUrl: string | null }
@@ -44,10 +45,23 @@ export async function readCheckout(db: DB, group: string): Promise<{ payload: Ch
 }
 /** Pagamento annullato dal cliente: gli ordini in attesa spariscono, il carrello resta nel browser */
 export async function cancelPendingCheckout(db: DB, group: string): Promise<void> {
-	const { data } = await db.from('checkout_sessions').update({ status: 'cancelled' }).eq('checkout_group', group).eq('status', 'pending').select('checkout_group');
+	const { data } = await db.from('checkout_sessions').update({ status: 'cancelled' }).eq('checkout_group', group).eq('status', 'pending').select('checkout_group, provider, session_id');
 	if (!data?.length) return;
+	if (data[0].provider === 'stripe' && data[0].session_id) await expireCheckoutSession(String(data[0].session_id));
 	await db.from('order_payments').delete().eq('checkout_group', group);
 	await db.from('orders').delete().eq('checkout_group', group).eq('status', 'attesa_pagamento');
+}
+/** Il checkout online e' ancora aperto? (una cassa chiusa o scaduta non deve piu' incassare) */
+export async function checkoutPending(db: DB, group: string): Promise<boolean> {
+	const { data } = await db.from('checkout_sessions').select('status').eq('checkout_group', group).maybeSingle();
+	return data?.status === 'pending';
+}
+/** Tentativi abbandonati (cassa aperta e mai pagata da piu' di 24 ore): gli ordini in attesa spariscono, come per un annullamento */
+export async function expireStaleCheckouts(db: DB): Promise<number> {
+	const limit = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+	const { data } = await db.from('checkout_sessions').select('checkout_group').eq('status', 'pending').lt('created_at', limit).limit(50);
+	for (const r of data ?? []) await cancelPendingCheckout(db, String(r.checkout_group));
+	return data?.length ?? 0;
 }
 
 /**

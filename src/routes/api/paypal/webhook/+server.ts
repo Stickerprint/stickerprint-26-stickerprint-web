@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import { adminClient } from '$lib/server/admin';
-import { applyPayPalCapture, capturePayPalOrder, getPayPalOrder, paypalConfigured } from '$lib/server/paypal';
+import { applyPayPalCapture, canCapture, capturePayPalOrder, getPayPalOrder, paypalConfigured } from '$lib/server/paypal';
 import type { RequestHandler } from './$types';
 
 /**
@@ -20,7 +20,7 @@ export const POST: RequestHandler = async ({ request }) => {
 	if (!db) return json({ error: 'db' }, { status: 503 });
 	try {
 		let o = await getPayPalOrder(orderId);
-		if (o.status === 'APPROVED') o = await capturePayPalOrder(orderId);
+		if (o.status === 'APPROVED') { if (!(await canCapture(db, o.customId))) return json({ ignored: 'checkout chiuso' }); o = await capturePayPalOrder(orderId); }
 		if (o.status !== 'COMPLETED') return json({ ignored: o.status });
 		const e = await applyPayPalCapture(db, o);
 		return e ? json({ error: e }, { status: 500 }) : json({ ok: true });

@@ -59,3 +59,7 @@ export async function verifyWebhook(payload: string, header: string | null): Pro
 	for (let i = 0; i < expected.length; i++) diff |= expected.charCodeAt(i) ^ v1.charCodeAt(i);
 	return diff === 0;
 }
+/** Chiude una sessione Checkout ancora aperta (ordine annullato o scaduto): il cliente non puo' piu' pagarla */
+export async function expireCheckoutSession(id: string): Promise<void> {
+	try { await call(`/checkout/sessions/${encodeURIComponent(id)}/expire`, {}); } catch { /* gia' chiusa o scaduta */ }
+}
