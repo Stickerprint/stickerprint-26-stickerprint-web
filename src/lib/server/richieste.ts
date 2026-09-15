@@ -7,7 +7,7 @@ import { money } from '$lib/dashboard/orders';
 import { draftTotals, emptyDraft, type OrderDraft } from '$lib/dashboard/orderDraft';
 import { buildOrderPdf } from './docs';
 import { sendEmail } from './email';
-import { OWNER_EMAIL, ownerNotifyEmail, quoteAcceptedEmail, quoteEmail, quoteReminderEmail, quoteReplyEmail } from './email-templates';
+import { OWNER_EMAIL, ownerNotifyEmail, quoteEmail, quoteReminderEmail, quoteReplyEmail } from './email-templates';
 import { loadEditorData, saveOrderDraft, upsertContact } from './orders';
 import { applyPaymentGate, defaultConfirmEmail, loadGroup, sendConfirmation, syncPayments } from './conferme';
 import { pushStaff } from './push';
@@ -228,9 +228,9 @@ export async function acceptQuoteByToken(db: DB, token: string, who: string, ori
 	if (q.status !== 'inviato') return { ok: false, message: 'Questo preventivo non è più valido: scrivici e te ne mandiamo uno aggiornato.' };
 	await db.from('quotes').update({ status: 'accettato', accepted_at: new Date().toISOString(), accepted_by: who || q.draft.customer.email, updated_at: new Date().toISOString() }).eq('id', q.id);
 	const owner = ownerNotifyEmail({ title: `Preventivo ${q.number} accettato da ${q.draft.customer.name}`, lines: [`Totale ${money(Number(q.total_gross))} IVA inclusa`, `Cliente: ${q.draft.customer.name} · ${q.draft.customer.email}`, 'Crea l’ordine dalla dashboard: Aziende › Preventivi.'], href: `${origin}/dashboard/aziende/preventivi/${q.id}` });
+	/* al cliente non si manda l'email di conferma: la pagina gli ha gia' detto tutto, e la conferma d'ordine arriva dopo */
 	await Promise.all([
 		sendEmail({ to: OWNER_EMAIL, ...owner }),
-		sendEmail({ to: q.draft.customer.email, ...quoteAcceptedEmail({ name: q.draft.customer.first_name || q.draft.customer.name, number: q.number, orderNumber: null }) }),
 		pushStaff({ title: `Preventivo ${q.number} accettato`, body: `${q.draft.customer.name} · ${money(Number(q.total_gross))}`, url: `/dashboard/aziende/preventivi/${q.id}`, tag: `quote-${q.id}` })
 	]);
 	return { ok: true, message: 'Preventivo confermato.' };
