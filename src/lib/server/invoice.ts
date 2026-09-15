@@ -1,7 +1,7 @@
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import { COMPANY } from './company';
 import { LOGO_PNG_B64 } from './logo-b64';
-import { DOC_COLS, drawTable, drawTotals } from './docs';
+import { DOC_COLS, drawTable, drawTotals, wrapText } from './docs';
 
 export interface InvoiceLine { description: string; qty: number; unit_net: number; total_net: number; ddt?: string | null; ddt_date?: string | null }
 export interface InvoiceData {
@@ -94,10 +94,14 @@ export async function buildInvoicePdf(inv: InvoiceData): Promise<Uint8Array> {
 	const base = Math.min(y - 10, 200);
 	const pm = PAYMENT_TEXT[inv.payment_method] ?? inv.payment_method;
 	let yl = base;
-	text(`Pagamento: ${pm}${inv.payment_method === 'paypal' || inv.payment_method === 'stripe' ? ' · pagato' : ''}${inv.orders.length ? ` · Ordini: ${inv.orders.join(', ')}` : ''}`, M, yl, 9, bold); yl -= 14;
-	if (inv.ddt_numbers?.length) { text(`DDT collegati: ${inv.ddt_numbers.join(', ')}`, M, yl, 9, bold); yl -= 14; }
+	// blocco sinistro largo al massimo 340 pt (i totali stanno a destra): testi lunghi vanno a capo, mai sovrapposti
+	const LEFT_W = 340;
+	const para = (label: string, value: string) => { for (const line of wrapText(bold, `${label}: ${value}`, 9, LEFT_W, 4)) { text(line, M, yl, 9, bold); yl -= 12; } yl -= 2; };
+	para('Pagamento', `${pm}${inv.payment_method === 'paypal' || inv.payment_method === 'stripe' ? ' · pagato' : ''}`);
+	if (inv.orders.length) para('Ordini', inv.orders.join(', '));
+	if (inv.ddt_numbers?.length) para('DDT collegati', inv.ddt_numbers.join(', '));
 	if (inv.payment_terms?.length) {
-		yl = drawTable({ page, x: M, y: yl - 2, cols: [{ label: 'Scadenza', width: 70 }, { label: 'Importo', width: 70, align: 'right' }, { label: 'Metodo', width: 200 }], rows: inv.payment_terms.map((t) => [new Date(t.due).toLocaleDateString('it-IT'), eur(t.amount), t.method]), font, bold, size: 9, headSize: 8, minRowH: 18 });
+		yl = drawTable({ page, x: M, y: yl - 2, cols: [{ label: 'Scadenza', width: 70 }, { label: 'Importo', width: 70, align: 'right' }, { label: 'Metodo', width: 200, maxLines: 2 }], rows: inv.payment_terms.map((t) => [new Date(t.due).toLocaleDateString('it-IT'), eur(t.amount), t.method]), font, bold, size: 9, headSize: 8, minRowH: 18 });
 		yl -= 12;
 		if (COMPANY.iban) { text(`IBAN ${COMPANY.iban} · ${COMPANY.name}`, M, yl, 9, font, gray); yl -= 12; }
 	}

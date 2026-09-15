@@ -177,12 +177,13 @@ export async function buildOrderPdf(d: OrderDocData): Promise<Uint8Array> {
 	if (d.email) L.push(d.email);
 	for (let i = 0; i < Math.max(L.length, R.length); i++) { if (L[i]) t(L[i], M, y, i === 0 ? 11 : 10, i === 0 ? bold : font); if (R[i]) t(R[i], 320, y, i === 0 ? 11 : 10, i === 0 ? bold : font); y -= 13; }
 	y -= 8;
-	t(`Spedizione: ${d.shipping_method}${d.delivery_date ? ` · prevista il ${new Date(d.delivery_date).toLocaleDateString('it-IT')}` : ''}${d.lead_time ? ` · Tempi: ${d.lead_time}` : ''}`.slice(0, 150), M, y, 9, font, gray); y -= 22;
+	for (const line of wrapText(font, `Spedizione: ${d.shipping_method}${d.delivery_date ? ` · prevista il ${new Date(d.delivery_date).toLocaleDateString('it-IT')}` : ''}${d.lead_time ? ` · Tempi: ${d.lead_time}` : ''}`, 9, 499, 3)) { t(line, M, y, 9, font, gray); y -= 12; }
+	y -= 10;
 	y = drawTable({ page, x: M, y: y + 6, cols: DOC_COLS(), rows: d.lines.map((l) => [l.description, l.qty.toLocaleString('it-IT'), eur(l.unit_net), eur(l.total_net)]), font, bold });
 	y -= 14;
-	if (d.notes) { t(`Note: ${d.notes}`.slice(0, 140), M, y, 9, font, gray); y -= 13; }
+	if (d.notes) { for (const line of wrapText(font, `Note: ${d.notes}`, 9, 499, 3)) { t(line, M, y, 9, font, gray); y -= 12; } }
 	if (quote) {
-		t(`Preventivo valido fino al ${d.valid_until ? new Date(d.valid_until).toLocaleDateString('it-IT') : '30 giorni dalla data'}. Prezzi IVA esclusa salvo diversa indicazione.${d.lead_time ? ` Tempi: ${d.lead_time}.` : ''}`.slice(0, 160), M, y, 9, font, gray); y -= 13;
+		for (const line of wrapText(font, `Preventivo valido fino al ${d.valid_until ? new Date(d.valid_until).toLocaleDateString('it-IT') : '30 giorni dalla data'}. Prezzi IVA esclusa salvo diversa indicazione.${d.lead_time ? ` Tempi: ${d.lead_time}.` : ''}`, 9, 499, 3)) { t(line, M, y, 9, font, gray); y -= 12; }
 		t('Per accettare basta un clic sul link ricevuto via email, oppure rispondere "confermo il preventivo".', M, y, 9, font, gray); y -= 13;
 	}
 	// in fondo alla pagina: metodo di pagamento e scadenze a sinistra, imponibile / IVA / totale a destra
