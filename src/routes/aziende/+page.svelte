@@ -1,7 +1,6 @@
 <script lang="ts">
 	/* Reel dell'hero (YouTube, Shorts o file .mp4): link da inserire qui */
 	const REEL = '';
-	const ytId = (u: string) => u.match(/(?:v=|youtu\.be\/|shorts\/|embed\/)([\w-]{6,})/)?.[1] ?? u;
 	import '$lib/styles/pages.css';
 	import Stars from '$lib/components/Stars.svelte';
 	import { track } from '$lib/tracking';
