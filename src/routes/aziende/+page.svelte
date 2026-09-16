@@ -39,8 +39,8 @@
 </script>
 
 <svelte:head>
-	<title>Aziende: nessuna improvvisazione | Stickerprint</title>
-	<meta name="description" content="Produzioni strutturate, grandi volumi o richieste speciali: quando il configuratore non basta, entriamo in gioco noi." />
+	<title>Aziende: il tuo progetto è grande, trattiamolo come tale | Stickerprint</title>
+	<meta name="description" content="Produzioni complesse, grandi volumi o richieste speciali: referente dedicato, preventivi su misura e un processo sotto controllo dall’inizio alla consegna." />
 </svelte:head>
 
 <!-- hero su fascia blu scuro, come in home -->
