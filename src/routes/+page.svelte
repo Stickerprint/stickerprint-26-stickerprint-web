@@ -59,7 +59,8 @@
 	<meta property="og:type" content="website" />
 </svelte:head>
 
-<!-- HERO -->
+<!-- HERO: fascia blu scuro come l'header, a tutta larghezza (solo in home) -->
+<div class="hero-band">
 <section class="hero container">
 	<div class="hero__grid">
 		<div>
@@ -82,6 +83,7 @@
 		</div>
 	</div>
 </section>
+</div>
 
 <!-- LOGHI -->
 <section class="section--tight logos container center">

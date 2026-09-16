@@ -234,6 +234,19 @@ body { overflow-x: clip; }
   position: absolute; background: #fff; border-radius: 16px; padding: 10px 14px; font-weight: 800; font-size: 13px;
   box-shadow: 0 12px 30px rgba(11,11,59,.15); display: flex; gap: 8px; align-items: center;
 }
+/* Home: hero su fondo blu scuro, stesso colore dell'header (continua senza stacco) */
+.hero-band { background: var(--navy); color: #fff; }
+.hero-band .hero { padding-top: clamp(40px, 4vw, 56px); padding-bottom: clamp(36px, 4vw, 60px); }
+.hero-band h1 { color: #fff; }
+.hero-band .lead { color: rgba(255,255,255,.86); }
+.hero-band .hero__stars { color: #fff; }
+.hero-band .pill--blue { background: rgba(255,255,255,.10); color: #fff; border-color: rgba(255,255,255,.22); }
+.hero-band .pill--yellow { background: rgba(255,214,0,.16); color: var(--yellow); border-color: rgba(255,214,0,.35); }
+.hero-band .pill--green { background: rgba(58,214,122,.16); color: #5be08f; border-color: rgba(58,214,122,.35); }
+.hero-band .hero__ship { background: rgba(255,255,255,.10); color: #fff; }
+.hero-band .hero__ship b { color: var(--yellow); }
+.hero-band .hero__visual { box-shadow: 0 30px 60px rgba(0,0,0,.35); }
+.hero-band .btn--blue { box-shadow: 0 10px 30px rgba(0,177,253,.35); }
 @media (max-width: 900px) {
   .hero__grid { grid-template-columns: 1fr; }
   .hero__visual { max-width: 520px; }
