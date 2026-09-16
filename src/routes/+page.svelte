@@ -18,10 +18,10 @@
 
 	// card "Cosa creiamo oggi?": ordine fisso, un colore per card, prezzo minimo dal listino (data.fromPrices)
 	const products = [
-		{ slug: 'adesivi_resinati', href: '/adesivi-resinati', img: '/images/ig-7.jpg', name: 'Adesivi resinati', desc: 'Effetto 3D con cupola in resina. Premium.', pill: 'pill--blue' },
-		{ slug: 'adesivi_personalizzati', href: '/adesivi-personalizzati', img: '/images/ig-1.jpg', name: 'Adesivi personalizzati', desc: 'Vinile fustellato, qualsiasi forma. Opachi o lucidi.', pill: 'pill--yellow' },
-		{ slug: 'adesivi_rilievo', href: '/adesivi-rilievo', img: '/images/home/rilievo-card.webp', name: 'Adesivi in rilievo', desc: 'Dettagli in rilievo che si sentono al tatto.', pill: 'pill--pink' },
-		{ slug: 'etichette', href: '/etichette', img: '/images/ig-5.jpg', name: 'Etichette in fogli', desc: 'Per prodotti, packaging e confezioni.', pill: 'pill--green' }
+		{ slug: 'adesivi_resinati', href: '/adesivi-resinati', img: '/images/prodotti/resinati/other-3.webp', name: 'Adesivi resinati', desc: 'Effetto 3D con cupola in resina. Premium.', pill: 'pill--blue', color: 'var(--blue)' },
+		{ slug: 'adesivi_personalizzati', href: '/adesivi-personalizzati', img: '/images/prodotti/adesivi-personalizzati/other-3.webp', name: 'Adesivi personalizzati', desc: 'Vinile fustellato, qualsiasi forma. Opachi o lucidi.', pill: 'pill--yellow', color: 'var(--yellow)' },
+		{ slug: 'adesivi_rilievo', href: '/adesivi-rilievo', img: '/images/home/rilievo-card.webp', name: 'Adesivi in rilievo', desc: 'Dettagli in rilievo che si sentono al tatto.', pill: 'pill--pink', color: 'var(--pink)' },
+		{ slug: 'etichette', href: '/etichette', img: '/images/prodotti/etichette/other-4.webp', name: 'Etichette in fogli', desc: 'Per prodotti, packaging e confezioni.', pill: 'pill--green', color: 'var(--green)' }
 	];
 	const eur0 = (v: number) => v.toLocaleString('it-IT', { maximumFractionDigits: 0 }) + ' €';
 
@@ -103,7 +103,7 @@
 	</p>
 	<div class="products" style="text-align:left">
 		{#each products as p}
-			<a class="product" href={p.href}>
+			<a class="product" href={p.href} style="--c:{p.color}">
 				<div class="product__art"><img src={p.img} alt="" width="600" height="600" loading="lazy" /></div>
 				<div class="product__name">{p.name}</div>
 				<div class="product__desc">{p.desc}</div>
