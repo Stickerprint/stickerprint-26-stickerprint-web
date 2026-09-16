@@ -28,7 +28,7 @@
 <!-- HERO -->
 <section class="container ph">
 	<div>
-		<h1><span class="hl hl--yellow">{p.title}</span></h1>
+		<h1>{#if p.h1}{p.h1[0]}<br /><span class="hl hl--yellow">{p.h1[1]}</span>{:else}<span class="hl hl--yellow">{p.title}</span>{/if}</h1>
 		<p class="ph__sub">{p.sub}</p>
 		<div class="ph__stars"><Stars value={stats.average} count={stats.total} size={22} /></div>
 		<p class="ph__desc">{p.desc}</p>

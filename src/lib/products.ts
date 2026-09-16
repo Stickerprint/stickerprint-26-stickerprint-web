@@ -4,6 +4,7 @@ export interface ProductContent {
 	gallery: string[]; others: string[]; faq: { q: string; a: string }[]; faqTitle: string;
 	engineProduct: 'sticker' | 'resinati'; cta: string;
 	compare?: import('$lib/components/CompareBlock.svelte').CompareData;
+	h1?: [string, string]; // titolo dell'hero su due righe (la seconda evidenziata)
 	care: { title: string; hl: string; intro: string; checks: string[]; closing: string };
 	reviewsTitle: string; reviewsHl: string; reviewsSub: string;
 }
@@ -13,7 +14,7 @@ export const KIT = { price: '10€', checks: ['Ricevi i nostri migliori adesivi'
 
 export const PRODUCTS: Record<string, ProductContent> = {
 	adesivi_personalizzati: {
-		slug: 'adesivi_personalizzati', route: '/adesivi-personalizzati', name: 'Adesivi personalizzati', title: 'Adesivi personalizzati',
+		slug: 'adesivi_personalizzati', route: '/adesivi-personalizzati', name: 'Adesivi personalizzati', title: 'Adesivi personalizzati', h1: ['Adesivi', 'personalizzati'],
 		sub: 'Fatti bene. Punto.',
 		desc: 'Materiali premium. Stampa di alta qualità. Taglio preciso. Carichi il file, al resto pensiamo noi.',
 		checks: ['Prova automatica immediata', 'Spedizione stimata {ship} · gratuita da 50 €', 'Stampiamo solo se viene bene', 'Nessuna sorpresa sul risultato'],
