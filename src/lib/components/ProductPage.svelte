@@ -2,6 +2,7 @@
 	import '$lib/styles/product.css';
 	import Carousel from '$lib/components/Carousel.svelte';
 	import Configurator from '$lib/components/Configurator.svelte';
+	import SheetBuilder from '$lib/components/SheetBuilder.svelte';
 	import ReviewsCarousel from '$lib/components/ReviewsCarousel.svelte';
 	import { type ProductContent } from '$lib/products';
 	import SamplesBlock from '$lib/components/SamplesBlock.svelte';
@@ -44,7 +45,11 @@
 
 <!-- PREVENTIVATORE -->
 <section class="container" id="preventivatore" style="scroll-margin-top:80px">
-	<Configurator {shipDate} cfg={engine} product={p.slug} productName={p.cta.replace(/^(i tuoi|le tue) /, '')} engineProduct={p.engineProduct} />
+	{#if p.slug === 'fogli_adesivi'}
+		<SheetBuilder cfg={engine} {shipDate} />
+	{:else}
+		<Configurator {shipDate} cfg={engine} product={p.slug} productName={p.cta.replace(/^(i tuoi|le tue) /, '')} engineProduct={p.engineProduct} />
+	{/if}
 </section>
 
 <!-- CONTROLLI PRIMA DELLA STAMPA -->

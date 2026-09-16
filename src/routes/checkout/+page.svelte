@@ -204,6 +204,17 @@
 						await putFile(`${dir}/${name}.${extOf(kf)}`, kf);
 					}
 					filePath = `${dir}/`;
+				} else if (it.product === 'fogli_adesivi' && (await getCartFile(it.id + ':layout'))) {
+					/* foglio composto sul sito: foglio.png (file di stampa), sfondo, i design e la disposizione, in una cartella */
+					const dir = `${data.user?.id ?? 'guest'}/${it.id}`;
+					const keys = [':foglio', ':bg', ':layout', ...Array.from({ length: 12 }, (_, k) => `:s${k + 1}`)];
+					for (const key of keys) {
+						const kf = await getCartFile(it.id + key);
+						if (!kf) continue;
+						const name = key === ':foglio' ? 'foglio' : key === ':bg' ? 'sfondo' : key === ':layout' ? 'layout' : `design-${key.slice(2)}`;
+						await putFile(`${dir}/${name}.${extOf(kf)}`, kf);
+					}
+					filePath = `${dir}/`;
 				} else if (f) {
 					const ext = extOf(f);
 					const path = `${data.user?.id ?? 'guest'}/${it.id}.${ext}`;
