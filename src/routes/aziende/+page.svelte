@@ -14,7 +14,16 @@
 	   (anche Shorts; finché manca compare il segnaposto) e il caso studio in due
 	   righe: cosa abbiamo fatto e con che risultato. Basta compilare qui. */
 	type Reel = { brand: string; logo: string; url?: string; caso?: string };
-	const REELS: Reel[] = [1, 2, 3, 4, 5, 6, 7].map((n) => ({ brand: `Cliente ${n}`, logo: `/images/aziende/logo/${n}.png` }));
+	/* i reel dei progetti (YouTube Shorts), uno per logo */
+	const REELS: Reel[] = [
+		{ brand: 'Golden Goose', logo: '/images/aziende/logo/1.png', url: 'https://youtube.com/shorts/FGh1Y1d42l0' },
+		{ brand: 'VeraLab', logo: '/images/aziende/logo/2.png', url: 'https://youtube.com/shorts/0cP9ccRh0SY' },
+		{ brand: 'Moscot', logo: '/images/aziende/logo/3.png', url: 'https://youtube.com/shorts/Sj96mdpp03k' },
+		{ brand: 'Sephora', logo: '/images/aziende/logo/4.png', url: 'https://youtube.com/shorts/fIoQs88BwfQ' },
+		{ brand: 'MAC', logo: '/images/aziende/logo/5.png', url: 'https://youtube.com/shorts/BkrM1Eg_MBo' },
+		{ brand: 'Guerlain', logo: '/images/aziende/logo/6.png', url: 'https://youtube.com/shorts/Eqg70M83vX4' },
+		{ brand: 'Samsung', logo: '/images/aziende/logo/7.png', url: 'https://youtube.com/shorts/AofMPTxfWp4' }
+	];
 	const ytId = (u: string) => u.match(/(?:v=|youtu\.be\/|shorts\/|embed\/)([\w-]{6,})/)?.[1] ?? u;
 	const VISIBILI = 4;
 	let start = $state(0);
