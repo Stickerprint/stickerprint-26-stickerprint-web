@@ -137,10 +137,11 @@
 <!-- SOCIAL PROOF -->
 <section class="section container">
 	<div class="panel panel--navy social-proof center">
-		<h2>Scelti da chi vuole adesivi<br /><span class="hl hl--yellow">fatti come si deve.</span></h2>
+		<h2>Grandi progetti.<br /><span class="hl hl--yellow">Un partner all’altezza.</span></h2>
 		<p class="lead" style="margin-top:22px">
-			Il <strong>100%</strong> di chi ordina su <strong>Stickerprint</strong> sa esattamente cosa riceverà.<br />E torna a stampare con noi.
+			Dalla prima prova alle grandi tirature: affianchiamo aziende, agenzie e professionisti con assistenza dedicata, qualità costante e soluzioni su misura.
 		</p>
+		<p style="margin-top:22px"><a class="btn btn--yellow btn--lg" href="/aziende">Scopri le soluzioni business</a></p>
 		<div class="stats">
 			<div class="stat stat--blue"><b>3K+</b><span>Ordini spediti</span></div>
 			<div class="stat stat--yellow"><b>{data.stats.average.toLocaleString('it-IT', { minimumFractionDigits: 1 })} ★</b><span>Valutazione media</span></div>
