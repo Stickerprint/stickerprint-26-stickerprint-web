@@ -1,10 +1,12 @@
 <script lang="ts">
+	import Seo from '$lib/components/Seo.svelte';
 	import '$lib/styles/product.css';
 	import '$lib/styles/pages.css';
 	import { addToCart } from '$lib/cart';
 	let { data } = $props();
 	let added = $state(false);
 	// Reel YouTube del kit campioni: inserire qui i link (anche Shorts)
+	import LiteYouTube from '$lib/components/LiteYouTube.svelte';
 	const REELS: string[] = [];
 	const ytId = (u: string) => u.match(/(?:v=|youtu\.be\/|shorts\/|embed\/)([\w-]{6,})/)?.[1] ?? u;
 	const ITEMS: { img: string; title: string; lines: string[] }[] = [
@@ -27,10 +29,7 @@
 	}
 </script>
 
-<svelte:head>
-	<title>Kit campioni a 10 € | Stickerprint</title>
-	<meta name="description" content="Scopri materiali e finiture dei nostri adesivi personalizzati, resinati e in rilievo: pacchetto campioni a 10 € con spedizione gratuita." />
-</svelte:head>
+<Seo title="Kit campioni a 10 € | Stickerprint" description="Scopri materiali e finiture dei nostri adesivi personalizzati, resinati e in rilievo: pacchetto campioni a 10 € con spedizione gratuita." />
 
 <section class="container hero2 hero2--about">
 	<div>
@@ -50,7 +49,7 @@
 	</div>
 	<div class="reels reels--kit">
 		{#if REELS.length}
-			{#each REELS as r (r)}<iframe class="reel" src="https://www.youtube.com/embed/{ytId(r)}" title="Kit campioni Stickerprint" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe>{/each}
+			{#each REELS as r (r)}<LiteYouTube id={ytId(r)} title="Kit campioni Stickerprint" />{/each}
 		{:else}
 			<div class="reel reel--soon"><span>▶</span><small>Reel in arrivo</small></div>
 		{/if}

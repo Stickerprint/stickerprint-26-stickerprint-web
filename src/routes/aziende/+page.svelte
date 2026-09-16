@@ -1,5 +1,7 @@
 <script lang="ts">
+	import Seo from '$lib/components/Seo.svelte';
 	/* Reel dell'hero (YouTube, Shorts o file .mp4): link da inserire qui */
+	import LiteYouTube from '$lib/components/LiteYouTube.svelte';
 	const REEL = '';
 	import '$lib/styles/pages.css';
 	import Stars from '$lib/components/Stars.svelte';
@@ -15,13 +17,13 @@
 	type Reel = { brand: string; logo: string; url?: string; caso?: string };
 	/* i reel dei progetti (YouTube Shorts), uno per logo */
 	const REELS: Reel[] = [
-		{ brand: 'Golden Goose', logo: '/images/aziende/logo/1.png', url: 'https://youtube.com/shorts/FGh1Y1d42l0' },
-		{ brand: 'Sephora', logo: '/images/aziende/logo/4.png', url: 'https://youtube.com/shorts/fIoQs88BwfQ' },
-		{ brand: 'Moscot', logo: '/images/aziende/logo/3.png', url: 'https://youtube.com/shorts/Sj96mdpp03k' },
-		{ brand: 'VeraLab', logo: '/images/aziende/logo/2.png', url: 'https://youtube.com/shorts/0cP9ccRh0SY' },
-		{ brand: 'Samsung', logo: '/images/aziende/logo/7.png', url: 'https://youtube.com/shorts/AofMPTxfWp4' },
-		{ brand: 'Guerlain', logo: '/images/aziende/logo/6.png', url: 'https://youtube.com/shorts/Eqg70M83vX4' },
-		{ brand: 'MAC', logo: '/images/aziende/logo/5.png', url: 'https://youtube.com/shorts/BkrM1Eg_MBo' }
+		{ brand: 'Golden Goose', logo: '/images/aziende/logo/1.webp', url: 'https://youtube.com/shorts/FGh1Y1d42l0' },
+		{ brand: 'Sephora', logo: '/images/aziende/logo/4.webp', url: 'https://youtube.com/shorts/fIoQs88BwfQ' },
+		{ brand: 'Moscot', logo: '/images/aziende/logo/3.webp', url: 'https://youtube.com/shorts/Sj96mdpp03k' },
+		{ brand: 'VeraLab', logo: '/images/aziende/logo/2.webp', url: 'https://youtube.com/shorts/0cP9ccRh0SY' },
+		{ brand: 'Samsung', logo: '/images/aziende/logo/7.webp', url: 'https://youtube.com/shorts/AofMPTxfWp4' },
+		{ brand: 'Guerlain', logo: '/images/aziende/logo/6.webp', url: 'https://youtube.com/shorts/Eqg70M83vX4' },
+		{ brand: 'MAC', logo: '/images/aziende/logo/5.webp', url: 'https://youtube.com/shorts/BkrM1Eg_MBo' }
 	];
 	const ytId = (u: string) => u.match(/(?:v=|youtu\.be\/|shorts\/|embed\/)([\w-]{6,})/)?.[1] ?? u;
 	const VISIBILI = 4;
@@ -37,13 +39,10 @@
 	const tEnd = (e: TouchEvent) => { const dx = e.changedTouches[0].clientX - touchX; if (dx < -40) next(); else if (dx > 40) prev(); paused = false; };
 	/* niente scorrimento automatico: si sfoglia con le frecce (desktop) o con lo swipe (mobile) */
 	let sending = $state(false);
-	const gallery = ['1.jpg', '2.webp', '3.jpg', '4.jpg', '5.jpg', '6.jpg', '7.jpg', '8.jpg', '9.jpg'].map((g) => `/images/aziende/gallery/${g}`);
+	const gallery = ['1.webp', '2.webp', '3.webp', '4.webp', '5.webp', '6.webp', '7.webp', '8.webp', '9.webp'].map((g) => `/images/aziende/gallery/${g}`);
 </script>
 
-<svelte:head>
-	<title>Aziende: il tuo progetto è grande, trattiamolo come tale | Stickerprint</title>
-	<meta name="description" content="Produzioni complesse, grandi volumi o richieste speciali: referente dedicato, preventivi su misura e un processo sotto controllo dall’inizio alla consegna." />
-</svelte:head>
+<Seo title="Adesivi personalizzati per aziende e grandi quantità | Stickerprint" description="Produzioni complesse, grandi volumi o richieste speciali: referente dedicato, preventivi su misura e un processo sotto controllo dall’inizio alla consegna." />
 
 <!-- hero su fascia blu scuro, come in home -->
 <div class="hero-band">
@@ -65,7 +64,7 @@
 		{#if REEL && /\.mp4($|\?)/i.test(REEL)}
 			<video class="reel" src={REEL} autoplay muted loop playsinline></video>
 		{:else if REEL}
-			<iframe class="reel" src="https://www.youtube.com/embed/{ytId(REEL)}" title="Stickerprint per le aziende" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe>
+			<LiteYouTube id={ytId(REEL)} title="Stickerprint per le aziende" />
 		{:else}
 			<div class="reel reel--soon"><span>▶</span><small>Reel in arrivo</small></div>
 		{/if}
@@ -88,7 +87,7 @@
 				<article class="reel-card">
 					<div class="reel-card__brand"><img src={r.logo} alt={r.brand} loading="lazy" /></div>
 					{#if r.url}
-						<iframe class="reel" src="https://www.youtube.com/embed/{ytId(r.url)}" title="Reel {r.brand}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe>
+						<LiteYouTube id={ytId(r.url)} title="Reel {r.brand}" />
 					{:else}
 						<div class="reel reel--soon"><span>▶</span><small>Reel in arrivo</small></div>
 					{/if}
@@ -102,7 +101,7 @@
 				<article class="reel-card reel-card--big">
 					<div class="reel-card__brand"><img src={reel.logo} alt={reel.brand} loading="lazy" /></div>
 					{#if reel.url}
-						<iframe class="reel" src="https://www.youtube.com/embed/{ytId(reel.url)}" title="Reel {reel.brand}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe>
+						<LiteYouTube id={ytId(reel.url)} title="Reel {reel.brand}" />
 					{:else}
 						<div class="reel reel--soon"><span>▶</span><small>Reel in arrivo</small></div>
 					{/if}

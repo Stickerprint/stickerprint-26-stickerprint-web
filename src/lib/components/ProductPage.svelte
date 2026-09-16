@@ -12,24 +12,34 @@
 	import type { EngineConfig } from '$lib/pricing/engine';
 	import type { HomeReview } from '$lib/server/reviews';
 	import Stars from './Stars.svelte';
+	import Seo from './Seo.svelte';
+	import Breadcrumb from './Breadcrumb.svelte';
+	import { breadcrumbLd, productLd } from '$lib/seo';
+	import { lowestPrice } from '$lib/pricing/engine';
 
 	let { p, engine, reviews, stats, shipDate, shipShort, faq = [] }: {
-		p: ProductContent; engine: EngineConfig; reviews: HomeReview[]; stats: { total: number; average: number }; shipDate: string; shipShort: string; faq?: { q: string; a: string }[];
+		p: ProductContent; engine: EngineConfig; reviews: HomeReview[]; stats: { total: number; average: number; real?: boolean }; shipDate: string; shipShort: string; faq?: { q: string; a: string }[];
 	} = $props();
 	const avg = $derived(stats.average.toLocaleString('it-IT', { minimumFractionDigits: 1, maximumFractionDigits: 1 }));
+	/* SEO: prezzo "a partire da" dal listino (lo stesso della home), recensioni SOLO se vere (dal database, mai quelle di esempio) */
+	const fromPrice = $derived.by(() => { try { return lowestPrice(engine); } catch { return null; } });
+	const realReviews = $derived(reviews.filter((r) => r.real && r.comment));
+	const crumbs = $derived([{ name: 'Home', path: '/' }, { name: p.engineProduct === 'resinati' || p.slug.startsWith('adesivi') || p.slug === 'vetrofanie' ? 'Adesivi' : 'Etichette', path: '/prodotti' }, { name: p.title, path: p.route }]);
+	const ld = $derived([
+		productLd({ path: p.route, name: p.title, description: p.seoDesc ?? `${p.sub} ${p.desc}`, images: p.gallery, sku: p.slug, category: p.seoCategory, material: p.engineProduct === 'resinati' ? 'Vinile con resina poliuretanica' : 'Vinile', fromPrice, rating: stats.real ? { average: stats.average, count: stats.total } : null, reviews: realReviews.map((r) => ({ author: r.author, body: r.comment, rating: r.rating, date: r.dateIso, title: r.title })) }),
+		breadcrumbLd(crumbs)
+	]);
 	const big = $derived(p.careImg ?? p.others[0] ?? p.gallery[0]);
 	const mosaic = $derived(p.mosaic ?? [p.others[1] ?? p.gallery[1], p.others[2] ?? p.gallery[2], p.gallery[p.gallery.length - 1]]);
 </script>
 
-<svelte:head>
-	<title>{p.title} | Stickerprint</title>
-	<meta name="description" content="{p.title}: {p.sub} {p.desc}" />
-</svelte:head>
+<Seo title={p.seoTitle ?? `${p.title} | Stickerprint`} description={p.seoDesc ?? `${p.title}: ${p.sub} ${p.desc}`} image={p.gallery[0]} type="product" {ld} />
 
 <!-- HERO -->
 <section class="container ph">
 	<div>
-		<h1>{#if p.h1}{p.h1[0]}<br /><span class="hl hl--yellow">{p.h1[1]}</span>{:else}<span class="hl hl--yellow">{p.title}</span>{/if}</h1>
+		<Breadcrumb items={crumbs} />
+		<h1 style="margin-top:10px">{#if p.h1}{p.h1[0]}<br /><span class="hl hl--yellow">{p.h1[1]}</span>{:else}<span class="hl hl--yellow">{p.title}</span>{/if}</h1>
 		<p class="ph__sub">{p.sub}</p>
 		<div class="ph__stars"><Stars value={stats.average} count={stats.total} size={22} /></div>
 		<p class="ph__desc">{p.desc}</p>

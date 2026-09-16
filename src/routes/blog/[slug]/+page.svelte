@@ -1,14 +1,16 @@
 <script lang="ts">
+	import Seo from '$lib/components/Seo.svelte';
+	import { ORG_ID, absUrl, breadcrumbLd, canonicalUrl } from '$lib/seo';
 	import '$lib/styles/pages.css';
 	import { postDate } from '$lib/blog';
 	let { data } = $props();
 	const p = $derived(data.post);
 </script>
 
-<svelte:head>
-	<title>{p.title} | Blog Stickerprint</title>
-	{#if p.excerpt}<meta name="description" content={p.excerpt} />{/if}
-</svelte:head>
+<Seo title={`${p.title} | Blog Stickerprint`} description={p.excerpt ?? `${p.title}: articolo dal blog Stickerprint.`} image={p.cover_url} type="article" ld={[
+	{ '@context': 'https://schema.org', '@type': 'BlogPosting', headline: p.title, description: p.excerpt ?? undefined, image: p.cover_url ? [absUrl(p.cover_url)] : undefined, datePublished: p.published_at ?? p.created_at, dateModified: p.updated_at ?? p.published_at ?? p.created_at, author: { '@type': 'Person', name: p.author }, publisher: { '@id': ORG_ID }, mainEntityOfPage: canonicalUrl(`/blog/${p.slug}`) },
+	breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Blog', path: '/blog' }, { name: p.title, path: `/blog/${p.slug}` }])
+]} />
 
 <article class="section container post">
 	<a class="link" href="/blog">← Torna al blog</a>

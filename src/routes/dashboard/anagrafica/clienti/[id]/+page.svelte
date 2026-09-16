@@ -19,7 +19,7 @@
 		{#if p}<p class="lead">{p.customer_type === 'azienda' ? '🏢 Azienda' : '👤 Privato'} · cliente registrato dal {dmy(p.created_at)} · <a class="link" href="mailto:{p.email}">{p.email}</a>{#if p.phone} · {p.phone}{/if}</p>
 		{:else if c}<p class="lead">{c.kind === 'azienda' || c.vat ? '🏢 Azienda' : '👤 Privato'} · in anagrafica dal {dmy(c.created_at)}{#if c.email} · <a class="link" href="mailto:{c.email}">{c.email}</a>{/if}{#if c.phone} · {c.phone}{/if}</p>{/if}
 	</div>
-	{#if lv}<div class="dcard" style="display:flex;gap:10px;align-items:center;padding:10px 14px"><img src="/images/loyalty/{data.loyalty?.level}.png" alt="" style="width:40px;height:40px" /><div><b>{lv.name}</b><div class="osub">{Math.round(lv.credit_rate * 100)}% di credito · {data.loyalty?.period_points} SP nel periodo</div></div></div>{/if}
+	{#if lv}<div class="dcard" style="display:flex;gap:10px;align-items:center;padding:10px 14px"><img src="/images/loyalty/{data.loyalty?.level}.webp" alt="" style="width:40px;height:40px" /><div><b>{lv.name}</b><div class="osub">{Math.round(lv.credit_rate * 100)}% di credito · {data.loyalty?.period_points} SP nel periodo</div></div></div>{/if}
 </div>
 
 <div class="stats5" style="grid-template-columns:repeat(3,1fr)">

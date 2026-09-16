@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Seo from '$lib/components/Seo.svelte';
 	import '$lib/styles/product.css';
 	import '$lib/styles/kit.css';
 	import '$lib/styles/promo.css';
@@ -106,10 +107,7 @@
 	}
 </script>
 
-<svelte:head>
-	<title>Offerte: adesivi personalizzati a prezzo promo | Stickerprint</title>
-	<meta name="description" content="Offerte a tempo sugli adesivi personalizzati: quantità fissa, prezzo bloccato, prova automatica immediata e pronti per la spedizione in pochi giorni." />
-</svelte:head>
+<Seo title="Offerte: adesivi personalizzati a prezzo promo | Stickerprint" description="Offerte a tempo sugli adesivi personalizzati: quantità fissa, prezzo bloccato, prova automatica immediata e pronti per la spedizione in pochi giorni." />
 
 <div class="promo-page">
 {#if promo}

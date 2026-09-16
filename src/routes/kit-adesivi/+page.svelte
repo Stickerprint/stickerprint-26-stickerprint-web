@@ -10,6 +10,10 @@
 	import SamplesBlock from '$lib/components/SamplesBlock.svelte';
 	import FaqList from '$lib/components/FaqList.svelte';
 	import FinalCta from '$lib/components/FinalCta.svelte';
+	import Seo from '$lib/components/Seo.svelte';
+	import Breadcrumb from '$lib/components/Breadcrumb.svelte';
+	import { breadcrumbLd, productLd } from '$lib/seo';
+	import { kitBaseGross } from '$lib/pricing/kit';
 	let { data } = $props();
 
 	/* foto dei kit: le quattro dell'hero e quella del tavolo per "Zero ansia" */
@@ -17,6 +21,12 @@
 	/* le tre foto di "Cosa stai stampando" */
 	const MOSAIC = ['/images/prodotti/kit/other-1.webp', '/images/prodotti/kit/other-2.webp', '/images/prodotti/kit/other-3.webp'];
 	const avg = $derived((data.stats?.average ?? 0).toLocaleString('it-IT', { minimumFractionDigits: 1, maximumFractionDigits: 1 }));
+	const crumbs = [{ name: 'Home', path: '/' }, { name: 'Adesivi', path: '/prodotti' }, { name: 'Kit di adesivi', path: '/kit-adesivi' }];
+	/* JSON-LD: prezzo del kit tipo (10 kit, 6 adesivi da 50 mm) come mostrato in pagina; niente recensioni finche' non ce ne sono di specifiche del kit */
+	const ld = [
+		productLd({ path: '/kit-adesivi', name: 'Kit di adesivi personalizzati', description: 'Bustina trasparente con cavallotto personalizzato stampato fronte e retro e fino a 6 adesivi sagomati. Confezionato a mano, pronto da vendere o regalare.', images: GALLERY, sku: 'kit_adesivi', category: 'Kit di adesivi', material: 'Vinile', fromPrice: kitBaseGross(10) }),
+		breadcrumbLd(crumbs)
+	];
 	/* domande frequenti del kit (se in dashboard c'e' la categoria FAQ del kit, vince quella) */
 	const FAQ = [
 		{ q: 'Quanti adesivi posso mettere in un kit?', a: 'Fino a 6 adesivi diversi tra loro. Carichi un file per ogni adesivo e ognuno viene scontornato come un adesivo sagomato. Puoi anche farne meno di sei: il prezzo del kit scende di conseguenza.' },
@@ -29,15 +39,13 @@
 	];
 </script>
 
-<svelte:head>
-	<title>Kit di adesivi personalizzati con cavallotto | Stickerprint</title>
-	<meta name="description" content="Crea il tuo kit di adesivi personalizzati con fino a 6 grafiche, bustina trasparente e cavallotto stampato. Confezionato e pronto da vendere o regalare." />
-</svelte:head>
+<Seo title="Kit di adesivi personalizzati con cavallotto | Sticker pack" description="Crea il tuo kit di adesivi personalizzati con fino a 6 grafiche, bustina trasparente e cavallotto stampato. Confezionato e pronto da vendere o regalare." image={GALLERY[0]} type="product" {ld} />
 
 <!-- HERO -->
 <section class="container ph">
 	<div>
-		<h1>Pacchetti di adesivi <span class="hl hl--yellow">personalizzati.</span></h1>
+		<Breadcrumb items={crumbs} />
+		<h1 style="margin-top:10px">Pacchetti di adesivi <span class="hl hl--yellow">personalizzati.</span></h1>
 		<p class="ph__desc" style="margin-top:18px">Crea il tuo sticker pack pronto da vendere, regalare o inserire nei tuoi ordini. Personalizzi gli adesivi e il cavallotto; noi stampiamo, tagliamo e confezioniamo ogni bustina.</p>
 		{#if data.stats?.total}<div class="ph__stars" style="margin-top:14px"><Stars value={data.stats.average} count={data.stats.total} size={22} /></div>{/if}
 		<ul class="ph__list" style="margin-top:22px">

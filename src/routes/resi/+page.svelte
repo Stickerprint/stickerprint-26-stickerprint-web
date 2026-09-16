@@ -1,14 +1,12 @@
 <script lang="ts">
+	import Seo from '$lib/components/Seo.svelte';
 	import '$lib/styles/pages.css';
 	import { enhance } from '$app/forms';
 	let { form } = $props();
 	let sending = $state(false);
 </script>
 
-<svelte:head>
-	<title>Resi e problemi con l’ordine | Stickerprint</title>
-	<meta name="description" content="Qualcosa non è andato come previsto? Succede raramente. Quando succede, ce ne occupiamo noi." />
-</svelte:head>
+<Seo title="Resi e problemi con l’ordine | Stickerprint" description="Qualcosa non è andato come previsto? Succede raramente. Quando succede, ce ne occupiamo noi." />
 
 <section class="section container">
 	<div class="split2" style="align-items:start">

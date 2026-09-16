@@ -1,7 +1,7 @@
 <!-- Kit campioni: lo stesso blocco della home, usato anche nelle pagine prodotto -->
 <section class="section--tight container">
 	<div class="samples">
-		<div class="samples__pile"><img src="/images/sticker-pile.png" alt="Pila di adesivi campione Stickerprint" loading="lazy" /></div>
+		<div class="samples__pile"><img src="/images/sticker-pile.webp" alt="Pila di adesivi campione Stickerprint" loading="lazy" /></div>
 		<div class="samples__body">
 			<span class="tag tag--yellow">Tocca con mano la qualità</span>
 			<h2 style="margin-top:14px">Prova i <span class="hl hl--yellow">nostri adesivi</span></h2>

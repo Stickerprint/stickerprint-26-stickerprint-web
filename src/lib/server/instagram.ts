@@ -14,7 +14,7 @@ export interface IgData { username: string; profileUrl: string; followers: numbe
 const PROFILE = 'https://www.instagram.com/stickerprint.it/';
 const TTL_MS = 30 * 60 * 1000;          // il feed si rinnova ogni 30 minuti, in sottofondo
 let refreshing: Promise<void> | null = null;
-const FALLBACK: IgData = { username: 'stickerprint.it', profileUrl: PROFILE, followers: null, media: [1, 2, 3, 4, 5, 6, 7, 8].map((i) => ({ id: `static-${i}`, permalink: PROFILE, image: `/images/ig-${i}.jpg`, caption: '', isVideo: false })), live: false, source: 'static', updatedAt: new Date(0).toISOString() };
+const FALLBACK: IgData = { username: 'stickerprint.it', profileUrl: PROFILE, followers: null, media: [1, 2, 3, 4, 5, 6, 7, 8].map((i) => ({ id: `static-${i}`, permalink: PROFILE, image: `/images/ig-${i}.webp`, caption: '', isVideo: false })), live: false, source: 'static', updatedAt: new Date(0).toISOString() };
 let cache: { at: number; data: IgData } | null = null;
 
 async function fromPeriz(): Promise<IgData | null> {

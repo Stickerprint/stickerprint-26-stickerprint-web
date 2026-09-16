@@ -5,6 +5,9 @@ export interface ProductContent {
 	engineProduct: 'sticker' | 'resinati'; cta: string;
 	compare?: import('$lib/components/CompareBlock.svelte').CompareData;
 	h1?: [string, string]; // titolo dell'hero su due righe (la seconda evidenziata)
+	seoTitle?: string; // <title> per Google (l'H1 in pagina resta `title`)
+	seoDesc?: string; // meta description
+	seoCategory?: string; // categoria nel JSON-LD Product
 	careImg?: string; // foto del blocco 'Zero ansia' (altrimenti others[0])
 	mosaic?: [string, string, string]; // le tre foto di 'Cosa stai stampando' (altrimenti others[1], others[2], ultima della galleria)
 	care: { title: string; hl: string; intro: string; checks: string[]; closing: string };
@@ -17,6 +20,7 @@ export const KIT = { price: '10€', checks: ['Ricevi i nostri migliori adesivi'
 export const PRODUCTS: Record<string, ProductContent> = {
 	adesivi_personalizzati: {
 		slug: 'adesivi_personalizzati', route: '/adesivi-personalizzati', name: 'Adesivi personalizzati', title: 'Adesivi personalizzati', h1: ['Adesivi', 'personalizzati'],
+		seoTitle: 'Adesivi personalizzati online con anteprima immediata | Stickerprint', seoDesc: 'Adesivi personalizzati in vinile, sagomati in qualsiasi forma, opachi o lucidi. Carichi il file, vedi subito l’anteprima e ordini da 15 pezzi. Stampati in Italia.', seoCategory: 'Adesivi personalizzati',
 		sub: 'Fatti bene. Punto.',
 		desc: 'Materiali premium. Stampa di alta qualità. Taglio preciso. Carichi il file, al resto pensiamo noi.',
 		checks: ['Prova automatica immediata', 'Spedizione stimata {ship} · gratuita da 50 €', 'Stampiamo solo se viene bene', 'Nessuna sorpresa sul risultato'],
@@ -51,6 +55,7 @@ export const PRODUCTS: Record<string, ProductContent> = {
 	},
 	adesivi_resinati: {
 		slug: 'adesivi_resinati', route: '/adesivi-resinati', name: 'Adesivi resinati', title: 'Adesivi Resinati',
+		seoTitle: 'Adesivi resinati 3D personalizzati | Stickerprint', seoDesc: 'Adesivi resinati con cupola 3D: effetto bombato, colori profondi e resina protettiva. Tondi, quadrati, ovali o sagomati, con anteprima immediata e produzione in Italia.', seoCategory: 'Adesivi resinati',
 		sub: 'Volume vero. Effetto premium assicurato.',
 		desc: 'Finitura bombata, lucida e tridimensionale. Quando il design non deve solo vedersi. Deve farsi notare.',
 		checks: ['Resina premium ultra brillante', 'Prova automatica immediata', 'Spedizione stimata {ship} · gratuita da 50 €', 'Stampiamo solo se viene bene', 'Nessuna sorpresa sul risultato'],
@@ -74,6 +79,7 @@ export const PRODUCTS: Record<string, ProductContent> = {
 	},
 	adesivi_rilievo: {
 		slug: 'adesivi_rilievo', route: '/adesivi-rilievo', name: 'Adesivi in rilievo', title: 'Adesivi in rilievo',
+		seoTitle: 'Adesivi in rilievo UV personalizzati | Stickerprint', seoDesc: 'Adesivi con rilievo UV selettivo: dettagli che si sentono al tatto, finitura lucida o opaca, taglio su misura. Anteprima immediata prima di ordinare.', seoCategory: 'Adesivi in rilievo',
 		sub: 'Rilievo selettivo. Il dettaglio prende spessore.',
 		desc: 'Vernice spot applicata solo dove serve. Alcuni dettagli prendono rilievo, altri restano piatti. Il risultato? un adesivo che si guarda e si sente.',
 		checks: ['Prova automatica immediata', 'Spedizione stimata {ship} · gratuita da 50 €', 'Stampiamo solo se viene bene', 'Nessuna sorpresa sul risultato', 'Effetto rilievo applicato con precisione'],
@@ -94,6 +100,7 @@ export const PRODUCTS: Record<string, ProductContent> = {
 	},
 	etichette: {
 		slug: 'etichette', route: '/etichette', name: 'Etichette in fogli', title: 'Etichette in fogli',
+		seoTitle: 'Etichette adesive in fogli personalizzate | Stickerprint', seoDesc: 'Etichette personalizzate in fogli per prodotti, packaging e confezioni: materiali resistenti, lamina protettiva, mezzo taglio per staccarle facilmente. Ordina online con anteprima.', seoCategory: 'Etichette adesive',
 		sub: 'Ordine, velocità, risultato pulito.',
 		desc: 'Più etichette su un unico foglio, pronte da applicare. Ideali per packaging, prodotti e spedizioni. Quando servono praticità e qualità, insieme.',
 		checks: ['Più etichette su un unico foglio', 'Stacco facile, applicazione manuale rapida', 'Materiali resistenti ad acqua, olio e uso quotidiano', 'Finitura protettiva per una resa pulita', 'Prova automatica immediata'],
@@ -114,6 +121,7 @@ export const PRODUCTS: Record<string, ProductContent> = {
 	},
 	fogli_adesivi: {
 		slug: 'fogli_adesivi', route: '/fogli', name: 'Fogli di adesivi', title: 'Fogli di adesivi',
+		seoTitle: 'Fogli di adesivi personalizzati | Stickerprint', seoDesc: 'Fogli di adesivi con più grafiche nello stesso foglio: tre formati, verticale o orizzontale, sfondo a scelta e mezzo taglio su ogni adesivo. Perfetti per kit, merch e collezioni.', seoCategory: 'Fogli di adesivi',
 		sub: 'Il modo più smart per creare kit, set e collezioni.',
 		desc: 'Inserisci più adesivi, anche diversi tra loro, in un unico foglio. Li disponi tu o lo facciamo noi per te. Ideali per merch, eventi, packaging e kit pronti all\'uso.',
 		checks: ['Prova automatica immediata', 'Spedizione stimata {ship} · gratuita da 50 €', 'Mezzo taglio su ogni adesivo (si staccano facile)', 'Più sagome diverse nello stesso foglio', 'Stampiamo solo se viene bene'],
@@ -134,6 +142,7 @@ export const PRODUCTS: Record<string, ProductContent> = {
 	},
 	vetrofanie: {
 		slug: 'vetrofanie', route: '/vetrofanie', name: 'Vetrofanie', title: 'Vetrofanie',
+		seoTitle: 'Vetrofanie personalizzate per negozi e aziende | Stickerprint', seoDesc: 'Vetrofanie in vinile da applicare all’interno del vetro e leggere dall’esterno: taglio su misura, colori nitidi, anteprima immediata. Per vetrine, uffici e spazi commerciali.', seoCategory: 'Vetrofanie',
 		sub: 'Visibili fuori. Perfette dentro.',
 		desc: 'Adesivi pensati per essere applicati all\'interno del vetro e letti perfettamente dall\'esterno. Pulite, professionali, fatte per durare su vetrine, uffici e spazi commerciali.',
 		checks: ['Applicazione interna, lettura esterna perfetta', 'Vinile resistente, colori nitidi', 'Taglio preciso su misura', 'Prova automatica immediata', 'Stampiamo solo se viene bene'],

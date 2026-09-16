@@ -1,11 +1,9 @@
 <script lang="ts">
+	import Seo from '$lib/components/Seo.svelte';
 	import '$lib/styles/pages.css';
 </script>
 
-<svelte:head>
-	<title>Chi siamo | Stickerprint</title>
-	<meta name="description" content="Siamo Stickerprint: creatività, stampa e attenzione maniacale ai dettagli, dal primo file all’ultimo adesivo." />
-</svelte:head>
+<Seo title="Chi siamo | Stickerprint" description="Siamo Stickerprint: creatività, stampa e attenzione maniacale ai dettagli, dal primo file all’ultimo adesivo." />
 
 <section class="container hero2 hero2--about">
 	<div>
@@ -14,12 +12,12 @@
 		<p class="lead">Siamo un team di creativi che lavorano tra Milano e New York. Due città dove il design non è un optional e la qualità non è un’opinione.</p>
 		<p class="lead">Questo approccio ce lo portiamo dietro in tutto quello che stampiamo: materiali giusti, scelte chiare, risultati solidi. Se scegli Stickerprint per stampare, deve uscire fatto bene.</p>
 	</div>
-	<img class="photo" src="/images/chi-siamo/team.jpg" alt="Il team Stickerprint" />
+	<img class="photo" src="/images/chi-siamo/team.webp" alt="Il team Stickerprint" />
 </section>
 
 <section class="section container">
 	<div class="split2">
-		<img class="photo" src="/images/chi-siamo/mastersp.png" alt="" loading="lazy" />
+		<img class="photo" src="/images/chi-siamo/mastersp.webp" alt="" loading="lazy" />
 		<div>
 			<h2>Stesso metodo.<br />Che sia un brand<br /><span class="hl hl--green">o un’idea nata alle due di notte.</span></h2>
 			<p class="lead">Ci capita di seguire produzioni per brand importanti e il giorno dopo lavorare a un’idea nata alle due di notte. Non fa differenza. Ogni progetto viene trattato allo stesso modo: con testa, esperienza e attenzione.</p>
@@ -45,6 +43,6 @@
 			</ul>
 			<p class="lead" style="margin-top:16px"><b>Con Stickerprint, la tua idea viaggia. Il livello resta lo stesso.</b></p>
 		</div>
-		<img src="/images/chi-siamo/worldsp.png" alt="" loading="lazy" />
+		<img src="/images/chi-siamo/worldsp.webp" alt="" loading="lazy" />
 	</div>
 </section>

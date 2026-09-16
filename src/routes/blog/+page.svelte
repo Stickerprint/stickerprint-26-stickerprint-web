@@ -1,10 +1,11 @@
 <script lang="ts">
+	import Seo from '$lib/components/Seo.svelte';
 	import '$lib/styles/pages.css';
 	import { postDate } from '$lib/blog';
 	let { data } = $props();
 </script>
 
-<svelte:head><title>Blog | Stickerprint</title><meta name="description" content="News, consigli e idee dal mondo Stickerprint." /></svelte:head>
+<Seo title="Blog: news, consigli e idee sugli adesivi | Stickerprint" description="Guide e consigli su file di stampa, materiali, finiture e usi degli adesivi personalizzati, più le novità di Stickerprint." />
 
 <section class="section container">
 	<h1 style="font-size:clamp(34px,4.5vw,56px)">Il nostro <span class="hl hl--yellow">blog</span></h1>

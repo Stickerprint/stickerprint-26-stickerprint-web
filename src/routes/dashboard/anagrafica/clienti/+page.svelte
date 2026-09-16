@@ -10,7 +10,7 @@
 	const list = $derived(data.customers.filter((c) => c.type === type && (level === 'all' || c.level === level) && (!search || `${c.name} ${c.email} ${c.company ?? ''} ${c.vat ?? ''}`.toLowerCase().includes(search.toLowerCase()))));
 	const count = (t: string) => data.customers.filter((c) => c.type === t).length;
 	const exportUrl = $derived(`/dashboard/anagrafica/clienti/export?type=${type}&level=${level}`);
-	const LV_IMG: Record<string, string> = { creator: '/images/loyalty/creator.png', partner: '/images/loyalty/partner.png', ambassador: '/images/loyalty/ambassador.png' };
+	const LV_IMG: Record<string, string> = { creator: '/images/loyalty/creator.webp', partner: '/images/loyalty/partner.webp', ambassador: '/images/loyalty/ambassador.webp' };
 	$effect(() => { if (form?.ok) adding = false; });
 </script>
 

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Seo from '$lib/components/Seo.svelte';
 	import '$lib/styles/pages.css';
 	let { data } = $props();
 	let current = $state(0);
@@ -6,10 +7,7 @@
 	const cat = $derived(cats[current] ?? cats[0]);
 </script>
 
-<svelte:head>
-	<title>Supporto: le domande più frequenti | Stickerprint</title>
-	<meta name="description" content="Materiali, finiture, ordini, spedizioni, resi: le risposte alle domande più frequenti su Stickerprint." />
-</svelte:head>
+<Seo title="Supporto: le domande più frequenti | Stickerprint" description="Materiali, finiture, ordini, spedizioni, resi: le risposte alle domande più frequenti su Stickerprint." />
 
 <section class="section container center" style="padding-bottom:8px">
 	<h1 style="font-size:clamp(34px,4.5vw,56px)">Le domande <span class="hl hl--yellow">più frequenti.</span></h1>

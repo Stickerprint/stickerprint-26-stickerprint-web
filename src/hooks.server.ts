@@ -1,5 +1,6 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { redirect, type Handle } from '@sveltejs/kit';
+import { isPrivatePath, isProductionHost } from '$lib/seo';
 import { sequence } from '@sveltejs/kit/hooks';
 import { PUBLIC_SUPABASE_ANON_KEY, PUBLIC_SUPABASE_URL } from '$env/static/public';
 import { LOCALE_COOKIE, detectLocale, isLocale } from '$lib/i18n';
@@ -93,6 +94,8 @@ const securityHeaders: Handle = async ({ event, resolve }) => {
 	response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
 	response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
 	response.headers.set('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
+	/* SEO: fuori dal dominio definitivo (anteprime Vercel, meett.it) e sulle pagine private niente indicizzazione */
+	if (!isProductionHost(event.url.host) || isPrivatePath(event.url.pathname)) response.headers.set('X-Robots-Tag', 'noindex, nofollow');
 	return response;
 };
 

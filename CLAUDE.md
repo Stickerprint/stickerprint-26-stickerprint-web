@@ -65,3 +65,10 @@ npm run build    # build di produzione
 4. Pagine prodotto con configuratore: fatte (6 prodotti). Aziende, chi siamo, supporto, resi, blog: fatte. Campioni e catalogo `/prodotti`: da fare.
 5. Area personale cliente e programma fedeltà (Creator/Partner/Ambassador): fatti. Checkout `/checkout` con Stripe Checkout (carta, Apple/Google Pay, Link; PayPal passa da Stripe con `payment_method_types=paypal`): l'ordine nasce `attesa_pagamento` con i dati in `checkout_sessions` e viene chiuso da `finalizeCheckout` (`src/lib/server/checkout.ts`: fattura PDF nel bucket `invoices`, email, produzione) al webhook `/api/stripe/webhook` o al ritorno su `/checkout/grazie?session_id=`. Il ritorno senza pagare (`/checkout?annullato=1&g=`) cancella gli ordini in attesa. Chiavi: `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET` su Vercel (oggi sandbox di test); senza chiave resta il pagamento "Test".
 6. Dashboard interna produzione (`/admin`): da fare.
+
+## SEO
+
+- Dominio definitivo e canonico: `https://stickerprint.it` (senza www), fissato in `src/lib/seo.ts`. Fuori da quell'host (anteprime Vercel, meett.it) tutto e' `noindex, nofollow` (meta nel layout + header in `hooks.server.ts`) e la sitemap risponde 404.
+- Metadata: `Seo.svelte` in ogni pagina pubblica (titolo, description, Open Graph, JSON-LD); canonical e robots li mette `+layout.svelte`. Titoli/description dei prodotti in `products.ts` (`seoTitle`, `seoDesc`).
+- Dati strutturati: WebSite + OnlineStore in home (`seo-home.ts`), Product + BreadcrumbList sui prodotti e sul kit, BlogPosting sugli articoli. Le stelle (AggregateRating) escono solo con recensioni vere del database (`real: true`), mai con quelle di esempio.
+- `robots.txt` e `sitemap.xml` sono route dinamiche. Controllo: `node scripts/seo-check.mjs <url> [--test]` (in locale `SEO_HOST=stickerprint.it ... http://localhost:4173` dopo `npm run preview`). Procedura di lancio in `docs/seo.md`.

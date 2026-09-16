@@ -12,6 +12,9 @@ export interface HomeReview {
 	date?: string;
 	/** 'ordine' = cliente che ha acquistato sul sito; altrimenti il canale dove l'abbiamo ricevuta (es. Google) */
 	source?: string;
+	/** true solo per le recensioni vere del database (mai per quelle di esempio): sono le uniche che finiscono nei dati strutturati */
+	real?: boolean;
+	dateIso?: string;
 }
 
 export const PRODUCTS: Record<string, { label: string; href: string }> = {
@@ -43,7 +46,7 @@ const FALLBACK: HomeReview[] = [
 
 export interface ReviewsResult {
 	reviews: HomeReview[];
-	stats: { total: number; average: number };
+	stats: { total: number; average: number; real?: boolean };
 }
 
 /**
@@ -67,7 +70,7 @@ export async function loadReviews(supabase: SupabaseClient, productType?: string
 async function loadReviewsFresh(supabase: SupabaseClient, productType?: string): Promise<ReviewsResult> {
 	let reviews = productType ? FALLBACK.filter((r) => r.productType === productType) : FALLBACK;
 	if (productType && reviews.length < 3) reviews = [...reviews, ...FALLBACK.filter((r) => r.productType !== productType)].slice(0, 6);
-	let stats = productType ? { total: 15, average: 4.9 } : { total: 225, average: 4.9 };
+	let stats: ReviewsResult['stats'] = productType ? { total: 15, average: 4.9 } : { total: 225, average: 4.9 };
 
 	try {
 		/* MEDIA E CONTEGGIO: su TUTTE le recensioni pubbliche, di qualunque voto. Per un prodotto solo le sue;
@@ -77,7 +80,7 @@ async function loadReviewsFresh(supabase: SupabaseClient, productType?: string):
 		const { data: all } = await qs;
 		if (all && all.length >= 3) {
 			const avg = all.reduce((s, r) => s + (r.rating ?? 0), 0) / all.length;
-			stats = { total: all.length, average: Math.round(avg * 10) / 10 };
+			stats = { total: all.length, average: Math.round(avg * 10) / 10, real: true };
 		}
 		/* ELENCO MOSTRATO: le migliori con un commento vero. Schema del nuovo sito: reviews → orders (prodotto,
 		   nome di spedizione) e profiles (nome dell'utente); le recensioni degli ospiti hanno il nome nella colonna author */
@@ -110,7 +113,9 @@ async function loadReviewsFresh(supabase: SupabaseClient, productType?: string):
 						href: p.href,
 						productType: type,
 						source: r.source === 'staff' ? (r.source_note ? `Ricevuta ${r.source_note}` : 'Ricevuta su altro canale') : 'ordine',
-						date: r.created_at ? new Intl.DateTimeFormat('it-IT', { month: 'long', year: 'numeric' }).format(new Date(r.created_at)) : undefined
+						date: r.created_at ? new Intl.DateTimeFormat('it-IT', { month: 'long', year: 'numeric' }).format(new Date(r.created_at)) : undefined,
+						dateIso: r.created_at ? String(r.created_at).slice(0, 10) : undefined,
+						real: true
 					};
 				});
 			/* le recensioni vere vanno sempre davanti; finche' sono poche, dietro restano quelle di partenza a riempire il carosello */

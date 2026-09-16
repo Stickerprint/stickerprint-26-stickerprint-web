@@ -1,5 +1,10 @@
 <script lang="ts">
+	import '@fontsource/montserrat/latin-400.css';
+	import '@fontsource/montserrat/latin-500.css';
+	import '@fontsource/montserrat/latin-700.css';
+	import '@fontsource/rubik/latin-800.css';
 	import '../app.css';
+	import { SITE_NAME, canonicalUrl, isPrivatePath } from '$lib/seo';
 	import { afterNavigate, invalidate } from '$app/navigation';
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
@@ -15,6 +20,9 @@
 
 	/* tracciamento (GTM-PXKJS5J6 + Klaviyo): acceso solo su stickerprint.it con PUBLIC_TRACKING=on */
 	const tracking = $derived(trackingOn(page.url.hostname));
+	/* SEO comune a tutte le pagine: canonical assoluto sul dominio definitivo; noindex sui domini di test e sulle pagine private */
+	const noindex = $derived(!data.indexable || isPrivatePath(page.url.pathname));
+	const canonical = $derived(canonicalUrl(page.url.pathname));
 	afterNavigate(() => { if (!isDashboard) track.pageView(user?.id); });
 	onMount(() => {
 		// Quando Supabase cambia sessione nel browser (login, logout, refresh token)
@@ -29,7 +37,11 @@
 	});
 </script>
 
-<svelte:head>{#if tracking && !isDashboard}{@html GTM_HEAD}{/if}</svelte:head>
+<svelte:head>
+	{#if noindex}<meta name="robots" content="noindex, nofollow" />{:else}<link rel="canonical" href={canonical} /><meta name="robots" content="index, follow, max-image-preview:large" />{/if}
+	<meta property="og:site_name" content={SITE_NAME} />
+	{#if tracking && !isDashboard}{@html GTM_HEAD}{/if}
+</svelte:head>
 
 <div class="app">
 	{#if tracking && !isDashboard}{@html GTM_BODY}{/if}

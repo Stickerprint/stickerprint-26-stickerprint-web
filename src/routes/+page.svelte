@@ -13,6 +13,8 @@
 	import SamplesBlock from '$lib/components/SamplesBlock.svelte';
 	import FinalCta from '$lib/components/FinalCta.svelte';
 	import HowTo from '$lib/components/HowTo.svelte';
+	import Seo from '$lib/components/Seo.svelte';
+	import { HOME_LD } from '$lib/seo-home';
 
 	let { data } = $props();
 
@@ -50,14 +52,9 @@
 </script>
 
 <svelte:head>
-	<title>Stickerprint | Adesivi personalizzati con anteprima automatica</title>
-	<meta name="description" content="Adesivi perfetti, zero sorprese. Carica il file, guarda subito l’anteprima automatica e conferma. Prova automatica immediata, spedizione stimata in pochi giorni, fino al 6% in credito su ogni ordine." />
-	<link rel="canonical" href="https://stickerprint.it/" />
-	<meta property="og:title" content="Stickerprint — Adesivi perfetti. Zero sorprese." />
-	<meta property="og:description" content="Carica il file e guarda subito l’anteprima automatica dei tuoi adesivi." />
-	<meta property="og:image" content="https://stickerprint.it/images/splogo.png" />
-	<meta property="og:type" content="website" />
+	<link rel="preload" as="image" href="/images/ig-3.webp" fetchpriority="high" />
 </svelte:head>
+<Seo title="Adesivi personalizzati online, stampati in Italia | Stickerprint" description="Adesivi personalizzati, resinati, in rilievo, etichette e vetrofanie: carichi il file, vedi subito l’anteprima automatica e ordini. Spedizione in pochi giorni, gratuita da 50 €." image="/images/og-stickerprint.jpg" ld={HOME_LD} />
 
 <!-- HERO: fascia blu scuro come l'header, a tutta larghezza (solo in home) -->
 <div class="hero-band">
@@ -77,7 +74,7 @@
 			<p class="hero__ship"><span class="hero__rocket" aria-hidden="true">🚀</span><span>Spedizione stimata <b>{data.shipDate}</b>, gratuita da 50 €.</span></p>
 		</div>
 		<div class="hero__visual">
-			<img src="/images/ig-3.jpg" alt="Adesivi fustellati Bubu's Smashburger stampati da Stickerprint" width="600" height="600" />
+			<img src="/images/ig-3.webp" alt="Adesivi fustellati Bubu's Smashburger stampati da Stickerprint" width="600" height="600" fetchpriority="high" />
 			<div class="hero__sticker" style="left:18px;bottom:18px">✅ Anteprima pronta in 2 secondi</div>
 			<div class="hero__sticker" style="right:18px;top:18px">📦 Spedizione stimata {data.shipDate}</div>
 		</div>
@@ -172,16 +169,16 @@
 		<div class="cred__path" class:is-in={credIn} use:credObserve>
 			<div class="cred__line" aria-hidden="true"></div>
 			<div class="cred__lv">
-				<img src="/images/loyalty/creator.png" alt="" loading="lazy" />
+				<img src="/images/loyalty/creator.webp" alt="" loading="lazy" />
 				<b>Creator</b><span class="cred__pct">2%</span><small>dal primo ordine</small>
 			</div>
 			<div class="cred__lv is-mid">
-				<img src="/images/loyalty/partner.png" alt="" loading="lazy" />
+				<img src="/images/loyalty/partner.webp" alt="" loading="lazy" />
 				<b>Partner</b><span class="cred__pct">4%</span><small>da 500 punti</small>
 			</div>
 			<div class="cred__lv is-top">
 				<i class="cred__shine" aria-hidden="true"></i>
-				<img src="/images/loyalty/ambassador.png" alt="" loading="lazy" />
+				<img src="/images/loyalty/ambassador.webp" alt="" loading="lazy" />
 				<b>Ambassador</b><span class="cred__pct">6%</span><small>da 1.500 punti</small>
 			</div>
 		</div>
