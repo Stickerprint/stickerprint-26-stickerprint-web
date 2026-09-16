@@ -17,7 +17,8 @@
 		p: ProductContent; engine: EngineConfig; reviews: HomeReview[]; stats: { total: number; average: number }; shipDate: string; shipShort: string; faq?: { q: string; a: string }[];
 	} = $props();
 	const avg = $derived(stats.average.toLocaleString('it-IT', { minimumFractionDigits: 1, maximumFractionDigits: 1 }));
-	const [big, s1, s2] = $derived([p.others[0] ?? p.gallery[0], p.others[1] ?? p.gallery[1], p.others[2] ?? p.gallery[2]]);
+	const big = $derived(p.careImg ?? p.others[0] ?? p.gallery[0]);
+	const mosaic = $derived(p.mosaic ?? [p.others[1] ?? p.gallery[1], p.others[2] ?? p.gallery[2], p.gallery[p.gallery.length - 1]]);
 </script>
 
 <svelte:head>
@@ -72,9 +73,7 @@
 	<h2><span class="hl hl--yellow">Cosa stai stampando, esattamente</span></h2>
 	<p class="lead" style="margin-top:16px">{p.cosa}</p>
 	<div class="mosaic">
-		<img src={s1} alt="" loading="lazy" />
-		<img src={s2} alt="" loading="lazy" />
-		<img src={p.gallery[p.gallery.length - 1]} alt="" loading="lazy" />
+		{#each mosaic as src (src)}<img {src} alt="" loading="lazy" />{/each}
 	</div>
 </section>
 

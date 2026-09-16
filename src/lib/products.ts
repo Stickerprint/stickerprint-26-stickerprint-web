@@ -5,6 +5,8 @@ export interface ProductContent {
 	engineProduct: 'sticker' | 'resinati'; cta: string;
 	compare?: import('$lib/components/CompareBlock.svelte').CompareData;
 	h1?: [string, string]; // titolo dell'hero su due righe (la seconda evidenziata)
+	careImg?: string; // foto del blocco 'Zero ansia' (altrimenti others[0])
+	mosaic?: [string, string, string]; // le tre foto di 'Cosa stai stampando' (altrimenti others[1], others[2], ultima della galleria)
 	care: { title: string; hl: string; intro: string; checks: string[]; closing: string };
 	reviewsTitle: string; reviewsHl: string; reviewsSub: string;
 }
@@ -55,6 +57,9 @@ export const PRODUCTS: Record<string, ProductContent> = {
 		cosa: 'Adesivi resinati. Effetto premium che si vede da subito. Finitura bombata 3D, colori più profondi e una resina che protegge e valorizza il design. Quando l\'adesivo non deve solo attaccarsi, ma distinguersi.',
 		gallery: ['/images/prodotti/resinati/1.webp', '/images/prodotti/resinati/2.webp', '/images/prodotti/resinati/3.webp', '/images/prodotti/resinati/4.webp', '/images/prodotti/resinati/5.webp', '/images/prodotti/resinati/6.webp', '/images/prodotti/resinati/7.webp'],
 		others: ['/images/prodotti/resinati/other-2.webp', '/images/prodotti/resinati/other-3.webp', '/images/prodotti/resinati/other-4.webp'],
+		/* come sul sito attuale: nel blocco 'Zero ansia' la prima foto della galleria, nel mosaico le tre 'other' */
+		careImg: '/images/prodotti/resinati/1.webp',
+		mosaic: ['/images/prodotti/resinati/other-2.webp', '/images/prodotti/resinati/other-3.webp', '/images/prodotti/resinati/other-4.webp'],
 		faq: [
 			{ q: 'Perché servono angoli arrotondati?', a: 'Gli angoli arrotondati sono necessari per garantire una perfetta colata della resina. Con angoli vivi, la resina tende a non distribuirsi uniformemente e può creare imperfezioni. Gli angoli arrotondati assicurano una copertura omogenea e un risultato impeccabile.' },
 			{ q: 'Serve la stampa del colore bianco?', a: 'Sì, il bianco è fondamentale per gli adesivi resinati. Poiché la resina è trasparente, senza una base bianca i colori risulterebbero sbiaditi o trasparenti. La stampa del bianco garantisce colori vividi e brillanti sotto la cupola di resina.' },
