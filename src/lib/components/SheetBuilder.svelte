@@ -274,6 +274,8 @@
 		const s = slots[i]; const long = Math.max(s.w, s.h);
 		const target = Math.round(Math.max(FREE_MIN, Math.min(freeMax, long * k)) * 2) / 2;
 		const f = target / long; s.w = Math.round(s.w * f * 10) / 10; s.h = Math.round(s.h * f * 10) / 10; s.misura = Math.max(s.w, s.h);
+		/* anche il motore passa alla nuova misura: cosi' l'adesivo viene ridisegnato alla risoluzione giusta e la misura resta quando cambia il materiale */
+		if (s.cfgW && s.cfgH) { s.cfgW = Math.round(s.cfgW * f * 2) / 2; s.cfgH = Math.round(s.cfgH * f * 2) / 2; s.busy = true; setTimeout(() => { if (slots[i]?.busy) slots[i].busy = false; }, 15000); }
 	}
 	const mm1 = (v: number) => v.toFixed(v % 1 ? 1 : 0).replace('.', ',');
 	function centerAll() { slots.forEach((s, i) => { if (s.file) { const [cx, cy] = cellCenter(i); s.x = cx; s.y = cy; } }); }
