@@ -66,8 +66,8 @@
 .reels-wrap { touch-action: pan-y; }
 .reels { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; }
 .reel-card { display: grid; gap: 10px; }
-.reel-card__brand { height: 44px; display: grid; place-items: center; }
-.reel-card__brand img { max-height: 40px; max-width: 140px; width: auto; object-fit: contain; }
+.reel-card__brand { height: 60px; display: grid; place-items: center; }
+.reel-card__brand img { max-height: 54px; max-width: 190px; width: auto; object-fit: contain; }   /* loghi +35% */
 .reel-card__caso { font-size: 13.5px; color: var(--ink-soft); line-height: 1.45; text-align: center; }
 .reels__arrow { position: absolute; top: 50%; transform: translateY(-50%); z-index: 2; width: 44px; height: 44px; border-radius: 50%; border: 0; background: #fff; color: var(--ink); box-shadow: 0 8px 20px rgba(11,11,59,.18); font-size: 26px; line-height: 1; cursor: pointer; }
 .reels__arrow--prev { left: -12px; } .reels__arrow--next { right: -12px; }
@@ -100,13 +100,6 @@
 .checks li { display: flex; gap: 12px; align-items: center; }
 .checks .ck { width: 22px; height: 22px; border-radius: 5px; background: var(--ok); color: #fff; display: grid; place-items: center; font-size: 13px; font-weight: 800; flex: 0 0 auto; }
 
-/* iPhone con il reel (hero Aziende): cornice nera, isola in alto, schermo 9:19.5 */
-.phone-wrap { display: grid; justify-content: center; }
-.phone { position: relative; width: min(300px, 100%); aspect-ratio: 9 / 19.2; border-radius: 46px; background: #0c0c12; padding: 12px; box-shadow: 0 30px 70px rgba(0,0,0,.45), inset 0 0 0 2px #3a3a44, inset 0 0 0 4px #17171d; }
-.phone::before, .phone::after { content: ""; position: absolute; width: 3px; border-radius: 2px; background: #2a2a33; }
-.phone::before { left: -3px; top: 22%; height: 11%; }
-.phone::after { right: -3px; top: 26%; height: 16%; }
-.phone__island { position: absolute; top: 22px; left: 50%; transform: translateX(-50%); width: 34%; height: 26px; border-radius: 16px; background: #000; z-index: 2; }
-.phone__screen { width: 100%; height: 100%; border-radius: 36px; overflow: hidden; background: #000; }
-.phone__screen video, .phone__screen iframe, .phone__screen .reel { width: 100%; height: 100%; object-fit: cover; border: 0; border-radius: 0; aspect-ratio: auto; display: block; }
-@media (max-width: 900px) { .phone { width: min(260px, 100%); } }
+/* reel nell'hero Aziende: un solo blocco, come quelli del carosello */
+.reels--hero { grid-template-columns: minmax(0, 300px); justify-content: center; margin-top: 0; }
+.reels--hero video.reel { object-fit: cover; }

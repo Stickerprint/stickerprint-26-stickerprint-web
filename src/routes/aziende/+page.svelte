@@ -5,7 +5,6 @@
 	import Stars from '$lib/components/Stars.svelte';
 	import { track } from '$lib/tracking';
 	import { enhance } from '$app/forms';
-	import { onMount } from 'svelte';
 	import Carousel from '$lib/components/Carousel.svelte';
 	import { BRANDS } from '$lib/brands';
 	let { form, data } = $props();
@@ -17,12 +16,12 @@
 	/* i reel dei progetti (YouTube Shorts), uno per logo */
 	const REELS: Reel[] = [
 		{ brand: 'Golden Goose', logo: '/images/aziende/logo/1.png', url: 'https://youtube.com/shorts/FGh1Y1d42l0' },
-		{ brand: 'VeraLab', logo: '/images/aziende/logo/2.png', url: 'https://youtube.com/shorts/0cP9ccRh0SY' },
-		{ brand: 'Moscot', logo: '/images/aziende/logo/3.png', url: 'https://youtube.com/shorts/Sj96mdpp03k' },
 		{ brand: 'Sephora', logo: '/images/aziende/logo/4.png', url: 'https://youtube.com/shorts/fIoQs88BwfQ' },
-		{ brand: 'MAC', logo: '/images/aziende/logo/5.png', url: 'https://youtube.com/shorts/BkrM1Eg_MBo' },
+		{ brand: 'Moscot', logo: '/images/aziende/logo/3.png', url: 'https://youtube.com/shorts/Sj96mdpp03k' },
+		{ brand: 'VeraLab', logo: '/images/aziende/logo/2.png', url: 'https://youtube.com/shorts/0cP9ccRh0SY' },
+		{ brand: 'Samsung', logo: '/images/aziende/logo/7.png', url: 'https://youtube.com/shorts/AofMPTxfWp4' },
 		{ brand: 'Guerlain', logo: '/images/aziende/logo/6.png', url: 'https://youtube.com/shorts/Eqg70M83vX4' },
-		{ brand: 'Samsung', logo: '/images/aziende/logo/7.png', url: 'https://youtube.com/shorts/AofMPTxfWp4' }
+		{ brand: 'MAC', logo: '/images/aziende/logo/5.png', url: 'https://youtube.com/shorts/BkrM1Eg_MBo' }
 	];
 	const ytId = (u: string) => u.match(/(?:v=|youtu\.be\/|shorts\/|embed\/)([\w-]{6,})/)?.[1] ?? u;
 	const VISIBILI = 4;
@@ -36,15 +35,7 @@
 	let touchX = 0;
 	const tStart = (e: TouchEvent) => { touchX = e.touches[0].clientX; paused = true; };
 	const tEnd = (e: TouchEvent) => { const dx = e.changedTouches[0].clientX - touchX; if (dx < -40) next(); else if (dx > 40) prev(); paused = false; };
-	onMount(() => {
-		if (REELS.length <= 1) return;
-		// desktop: 4 reel affiancati che scorrono ogni 4,5 s; mobile: un reel solo ogni 7 s
-		const mobile = () => window.matchMedia('(max-width: 800px)').matches;
-		let t = setInterval(() => { if (!paused) next(); }, mobile() ? 7000 : 4500);
-		const onResize = () => { clearInterval(t); t = setInterval(() => { if (!paused) next(); }, mobile() ? 7000 : 4500); };
-		window.addEventListener('resize', onResize);
-		return () => { clearInterval(t); window.removeEventListener('resize', onResize); };
-	});
+	/* niente scorrimento automatico: si sfoglia con le frecce (desktop) o con lo swipe (mobile) */
 	let sending = $state(false);
 	const gallery = ['1.jpg', '2.webp', '3.jpg', '4.jpg', '5.jpg', '6.jpg', '7.jpg', '8.jpg', '9.jpg'].map((g) => `/images/aziende/gallery/${g}`);
 </script>
@@ -69,20 +60,15 @@
 			<a class="btn btn--yellow btn--lg" href="#processo">Scopri come lavoriamo</a>
 		</div>
 	</div>
-	<!-- iPhone con il reel: il link si mette in REEL (YouTube/Shorts oppure un file .mp4) -->
-	<div class="phone-wrap">
-		<div class="phone">
-			<div class="phone__island"></div>
-			<div class="phone__screen">
-				{#if REEL && /\.mp4($|\?)/i.test(REEL)}
-					<video src={REEL} autoplay muted loop playsinline></video>
-				{:else if REEL}
-					<iframe src="https://www.youtube.com/embed/{ytId(REEL)}?autoplay=1&mute=1&loop=1&playlist={ytId(REEL)}&controls=0&playsinline=1&rel=0&modestbranding=1" title="Stickerprint per le aziende" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen loading="lazy"></iframe>
-				{:else}
-					<div class="reel reel--soon"><span>▶</span><small>Reel in arrivo</small></div>
-				{/if}
-			</div>
-		</div>
+	<!-- reel dell'hero, stesso blocco di quelli sotto: il link si mette in REEL (YouTube/Shorts oppure un file .mp4) -->
+	<div class="reels reels--hero">
+		{#if REEL && /\.mp4($|\?)/i.test(REEL)}
+			<video class="reel" src={REEL} autoplay muted loop playsinline></video>
+		{:else if REEL}
+			<iframe class="reel" src="https://www.youtube.com/embed/{ytId(REEL)}" title="Stickerprint per le aziende" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe>
+		{:else}
+			<div class="reel reel--soon"><span>▶</span><small>Reel in arrivo</small></div>
+		{/if}
 	</div>
 </section>
 </div>
