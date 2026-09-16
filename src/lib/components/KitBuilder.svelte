@@ -56,7 +56,7 @@
 	const filled = $derived(slots.filter((s) => s.file));
 	const n = $derived(filled.length);
 	const misuraMedia = $derived(n ? Math.round(filled.reduce((a, s) => a + s.misura, 0) / n) : 50);
-	const q = $derived(kitQuote(cfg, { materiale, finitura, misura: misuraMedia, n: Math.max(1, n), qty }));
+	const q = $derived(kitQuote(cfg, { materiale, finitura, misura: misuraMedia, n: n || KIT_MAX, qty }));
 	const ready = $derived(n > 0 && !!cav.png && slots.every((s) => !s.busy));
 	const eur0 = (v: number) => v.toLocaleString('it-IT', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
 	const eur2 = (v: number) => v.toLocaleString('it-IT', { style: 'currency', currency: 'EUR' });
@@ -402,7 +402,7 @@
 				<div class="step__body">
 					<div class="qty-grid">
 						{#each KIT_QTY as k (k)}
-							{@const qq = kitQuote(cfg, { materiale, finitura, misura: misuraMedia, n: Math.max(1, n), qty: k })}
+							{@const qq = kitQuote(cfg, { materiale, finitura, misura: misuraMedia, n: n || KIT_MAX, qty: k })}
 							<button type="button" class="qty" class:is-active={qty === k} onclick={() => (qty = k)}>
 								<span class="qty__top"><b>{k.toLocaleString('it-IT')}</b><b>{eur0(vatIncluded ? qq.gross : qq.net)}</b></span>
 								<span class="qty__bottom">{(vatIncluded ? qq.perKitGross : qq.perKitNet).toFixed(2).replace('.', ',')} €/kit</span>
