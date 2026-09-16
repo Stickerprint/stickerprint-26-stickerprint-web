@@ -9,8 +9,8 @@
 
 	/* foto dei kit: le quattro dell'hero e quella del tavolo per "Zero ansia" */
 	const GALLERY = ['/images/prodotti/kit/1.webp', '/images/prodotti/kit/2.webp', '/images/prodotti/kit/3.webp', '/images/prodotti/kit/4.webp'];
-	/* le tre foto di "Cosa stai stampando": in attesa di quelle definitive, intanto tre dei kit */
-	const MOSAIC = ['/images/prodotti/kit/5.webp', '/images/prodotti/kit/2.webp', '/images/prodotti/kit/3.webp'];
+	/* le tre foto di "Cosa stai stampando" */
+	const MOSAIC = ['/images/prodotti/kit/other-1.webp', '/images/prodotti/kit/other-2.webp', '/images/prodotti/kit/other-3.webp'];
 </script>
 
 <svelte:head>
@@ -64,8 +64,8 @@
 <!-- COSA STAI STAMPANDO -->
 <section class="section container center">
 	<h2><span class="hl hl--yellow">Cosa stai stampando esattamente?</span></h2>
-	<p class="lead" style="margin-top:16px">Non stai ordinando una semplice manciata di adesivi. Stai creando un prodotto completo: una bustina trasparente, fino a sei adesivi sagomati e un cavallotto personalizzato stampato fronte e retro, piegato e fissato con due punti metallici.</p>
-	<p class="lead" style="margin-top:12px">Tutti gli adesivi del kit condividono la stessa misura, lo stesso materiale e la stessa finitura. Ogni bustina viene confezionata a mano ed è pronta per essere venduta, regalata o inserita nei tuoi ordini.</p>
+	<p class="lead" style="margin-top:16px">Non stai ordinando una semplice manciata di adesivi. Stai creando un prodotto completo.</p>
+	<p class="lead" style="margin-top:12px">Ogni bustina viene confezionata a mano nel nostro laboratorio, ed è pronta per essere venduta, regalata o inserita nei tuoi ordini.</p>
 	<p style="margin-top:20px"><span class="pill pill--yellow">Ideale per creator, artisti, brand, negozi, eventi e welcome kit.</span></p>
 	<div class="mosaic">
 		{#each MOSAIC as src (src)}<img {src} alt="" loading="lazy" />{/each}
