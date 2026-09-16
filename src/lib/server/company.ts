@@ -13,7 +13,8 @@ export const COMPANY = {
 	regime: 'RF01',            // regime fiscale FatturaPA (RF01 = ordinario)
 	email: 'info@stickerprint.it',
 	pec: '',
-	iban: '',                  // stampato in fattura per bonifici e ricevute bancarie
+	iban: 'IT95H0623011330000048185346', // Crédit Agricole, c/c intestato a Stickerprint Srl (stampato in fattura e nel riquadro bonifico)
+	bank: 'Crédit Agricole',
 	phone: '',
 	site: 'stickerprint.it',
 	vatRate: 0.22,
