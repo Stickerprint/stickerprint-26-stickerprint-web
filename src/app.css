@@ -246,6 +246,11 @@ body { overflow-x: clip; }
 .hero-band .hero__ship { background: rgba(255,255,255,.10); color: #fff; }
 .hero-band .hero__ship b { color: var(--yellow); }
 .hero-band .hero__sticker { color: var(--ink); }
+/* la stessa fascia nella pagina Aziende (hero2) */
+.hero-band .hero2 { padding: clamp(36px, 4vw, 56px) 0 clamp(36px, 4vw, 56px); }
+.hero-band .hero2 img.photo { box-shadow: 0 30px 60px rgba(0,0,0,.35); }
+.hero-band .btn--ghost { color: #fff; border-color: rgba(255,255,255,.55); background: transparent; }
+.hero-band .btn--ghost:hover { background: rgba(255,255,255,.1); }
 .hero-band .hero__visual { box-shadow: 0 30px 60px rgba(0,0,0,.35); }
 .hero-band .btn--blue { box-shadow: 0 10px 30px rgba(0,177,253,.35); }
 @media (max-width: 900px) {

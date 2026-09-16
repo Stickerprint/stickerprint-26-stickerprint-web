@@ -43,20 +43,24 @@
 	<meta name="description" content="Produzioni strutturate, grandi volumi o richieste speciali: quando il configuratore non basta, entriamo in gioco noi." />
 </svelte:head>
 
+<!-- hero su fascia blu scuro, come in home -->
+<div class="hero-band">
 <section class="container hero2">
 	<div>
-		<h1 class="hero2__big"><span class="hl hl--yellow">Nessuna</span><br /><span class="hl hl--yellow">improvvisazione.</span></h1>
-		<p class="lead">Produzioni strutturate, grandi volumi, o richieste speciali. Quando il configuratore non basta, entriamo in gioco noi.</p>
+		<h1 class="hero2__big">Il tuo progetto è grande.<br /><span class="hl hl--yellow">Trattiamolo come tale.</span></h1>
+		<p class="lead">Produzioni complesse, grandi volumi o richieste speciali: ti affianchiamo con un referente dedicato, preventivi su misura e un processo sotto controllo dall’inizio alla consegna.</p>
 		<div class="pills">
-			<div class="pills__row"><span class="pill pill--pink">Project Manager dedicato</span><span class="pill pill--purple">Tutto sotto controllo</span></div>
-			<div class="pills__row"><span class="pill pill--orange">Preventivi su misura</span></div>
+			<div class="pills__row"><span class="pill pill--green">✦ Referente dedicato</span><span class="pill pill--yellow">✦ Preventivi su misura</span></div>
+			<div class="pills__row"><span class="pill pill--blue">✦ Produzione sotto controllo</span></div>
 		</div>
 		<div class="hero2__cta">
-			<a class="btn btn--blue btn--lg" href="#contatto">Parla con noi</a>
+			<a class="btn btn--yellow btn--lg" href="#contatto">Richiedi un preventivo</a>
+			<a class="btn btn--ghost btn--lg" href="#processo">Scopri come lavoriamo</a>
 		</div>
 	</div>
 	<img class="photo" src="/images/aziende/hero.webp" alt="Produzione Stickerprint per aziende" />
 </section>
+</div>
 
 <!-- subito sotto la testata: chi ci ha scelto e i reel dei progetti -->
 <section class="section container center">
