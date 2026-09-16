@@ -137,11 +137,10 @@
 <!-- SOCIAL PROOF -->
 <section class="section container">
 	<div class="panel panel--navy social-proof center">
-		<h2>Grandi progetti.<br /><span class="hl hl--yellow">Un partner all’altezza.</span></h2>
+		<h2>Scelti da chi vuole adesivi<br /><span class="hl hl--yellow">fatti come si deve.</span></h2>
 		<p class="lead" style="margin-top:22px">
-			Dalla prima prova alle grandi tirature: affianchiamo aziende, agenzie e professionisti con assistenza dedicata, qualità costante e soluzioni su misura.
+			Il <strong>100%</strong> di chi ordina su <strong>Stickerprint</strong> sa esattamente cosa riceverà.<br />E torna a stampare con noi.
 		</p>
-		<p style="margin-top:22px"><a class="btn btn--yellow btn--lg" href="/aziende">Scopri le soluzioni business</a></p>
 		<div class="stats">
 			<div class="stat stat--blue"><b>3K+</b><span>Ordini spediti</span></div>
 			<div class="stat stat--yellow"><b>{data.stats.average.toLocaleString('it-IT', { minimumFractionDigits: 1 })} ★</b><span>Valutazione media</span></div>
@@ -194,9 +193,9 @@
 	<div class="business">
 		<div class="business__text">
 			<span class="tag tag--periwinkle">Stickerprint for business</span>
-			<h2 style="margin-top:16px">Da grandi poteri derivano grandi <span class="hl hl--periwinkle">responsabilità.</span></h2>
-			<p>Dalla prima prova alla produzione in quantità: affianchiamo aziende, agenzie e retail con un referente dedicato.</p>
-			<p style="margin-top:30px"><a class="btn btn--periwinkle" href="/aziende">Scopri di più</a></p>
+			<h2 style="margin-top:16px">Grandi progetti.<br /><span class="hl hl--periwinkle">Un partner all’altezza.</span></h2>
+			<p>Dalla prima prova alle grandi tirature: affianchiamo aziende, agenzie e professionisti con assistenza dedicata, qualità costante e soluzioni su misura.</p>
+			<p style="margin-top:30px"><a class="btn btn--periwinkle" href="/aziende">Scopri le soluzioni business</a></p>
 		</div>
 		<div class="business__visual"><img src="/images/home/business.webp" alt="Lo studio Stickerprint con la parete di adesivi" width="2000" height="1526" loading="lazy" /></div>
 	</div>
