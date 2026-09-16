@@ -56,8 +56,8 @@
 			<div class="pills__row"><span class="pill pill--blue">✦ Produzione sotto controllo</span></div>
 		</div>
 		<div class="hero2__cta">
-			<a class="btn btn--periwinkle btn--lg" href="#contatto">Richiedi un preventivo</a>
-			<a class="btn btn--yellow btn--lg" href="#processo">Scopri come lavoriamo</a>
+			<a class="btn btn--yellow btn--lg" href="#contatto">Richiedi un preventivo</a>
+			<a class="btn btn--periwinkle btn--lg" href="#processo">Scopri come lavoriamo</a>
 		</div>
 	</div>
 	<!-- reel dell'hero, stesso blocco di quelli sotto: il link si mette in REEL (YouTube/Shorts oppure un file .mp4) -->
@@ -75,7 +75,7 @@
 
 <!-- subito sotto la testata: chi ci ha scelto e i reel dei progetti -->
 <section class="section container center">
-	<h2>Produzioni vere.<br /><span class="hl hl--blue">Non mockup.</span></h2>
+	<h2>Questi non sono mockup.<br /><span class="hl hl--blue">Sono lavori veri.</span></h2>
 	<p class="lead" style="margin-top:12px;max-width:720px;margin-inline:auto">Brand, agenzie e team che ci hanno scelto per progetti strutturati e produzioni che non ammettono improvvisazioni.</p>
 	<div class="reels-wrap" role="region" aria-label="Reel dei clienti" onmouseenter={() => (paused = true)} onmouseleave={() => (paused = false)} ontouchstart={tStart} ontouchend={tEnd}>
 		{#if REELS.length > 1}
@@ -122,7 +122,7 @@
 			<h2 class="h2-big">Quando ha senso<br /><span class="hl hl--blue">contattarci.</span></h2>
 			<p class="lead">Qui seguiamo progetti e produzioni che richiedono attenzione, esperienza e confronto. Perfetto se:</p>
 			<ul class="checks">
-				<li><span class="ck">✓</span>Hai grosse produzioni</li>
+				<li><span class="ck">✓</span>Devi gestire grandi volumi o produzioni ricorrenti</li>
 				<li><span class="ck">✓</span>Il progetto richiede studio, test o campioni</li>
 				<li><span class="ck">✓</span>Vuoi controllo sul risultato finale</li>
 				<li><span class="ck">✓</span>Hai scadenze reali da rispettare</li>
@@ -153,7 +153,8 @@
 
 <!-- LOGHI (come nella home) -->
 <section class="section--tight logos container center">
-	<h2><span class="hl hl--purple">Abbiamo fornito adesivi e esperienza per</span></h2>
+	<h2><span class="hl hl--purple">Produzioni realizzate per</span></h2>
+	<p class="lead" style="margin-top:14px;max-width:720px;margin-inline:auto">Dai brand internazionali alle realtà emergenti: ogni progetto riceve la stessa attenzione.</p>
 	<div class="marquee" aria-hidden="true">
 		<div class="marquee__track">
 			{#each [...BRANDS, ...BRANDS] as b, k (k)}{#if b.img}<img src="/images/brands/{b.img}" alt={b.name} title={b.name} onerror={(e) => { const el = e.currentTarget as HTMLImageElement; const s = document.createElement('span'); s.textContent = b.name; el.replaceWith(s); }} />{:else}<span>{b.name}</span>{/if}{/each}
