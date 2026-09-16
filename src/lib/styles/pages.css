@@ -99,3 +99,14 @@
 .checks { list-style: none; padding: 0; margin: 22px 0 0; display: grid; gap: 12px; font-size: 17px; }
 .checks li { display: flex; gap: 12px; align-items: center; }
 .checks .ck { width: 22px; height: 22px; border-radius: 5px; background: var(--ok); color: #fff; display: grid; place-items: center; font-size: 13px; font-weight: 800; flex: 0 0 auto; }
+
+/* iPhone con il reel (hero Aziende): cornice nera, isola in alto, schermo 9:19.5 */
+.phone-wrap { display: grid; justify-content: center; }
+.phone { position: relative; width: min(300px, 100%); aspect-ratio: 9 / 19.2; border-radius: 46px; background: #0c0c12; padding: 12px; box-shadow: 0 30px 70px rgba(0,0,0,.45), inset 0 0 0 2px #3a3a44, inset 0 0 0 4px #17171d; }
+.phone::before, .phone::after { content: ""; position: absolute; width: 3px; border-radius: 2px; background: #2a2a33; }
+.phone::before { left: -3px; top: 22%; height: 11%; }
+.phone::after { right: -3px; top: 26%; height: 16%; }
+.phone__island { position: absolute; top: 22px; left: 50%; transform: translateX(-50%); width: 34%; height: 26px; border-radius: 16px; background: #000; z-index: 2; }
+.phone__screen { width: 100%; height: 100%; border-radius: 36px; overflow: hidden; background: #000; }
+.phone__screen video, .phone__screen iframe, .phone__screen .reel { width: 100%; height: 100%; object-fit: cover; border: 0; border-radius: 0; aspect-ratio: auto; display: block; }
+@media (max-width: 900px) { .phone { width: min(260px, 100%); } }

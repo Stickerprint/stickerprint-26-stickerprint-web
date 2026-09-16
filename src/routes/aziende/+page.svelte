@@ -1,4 +1,7 @@
 <script lang="ts">
+	/* Reel dell'hero (YouTube, Shorts o file .mp4): link da inserire qui */
+	const REEL = '';
+	const ytId = (u: string) => u.match(/(?:v=|youtu\.be\/|shorts\/|embed\/)([\w-]{6,})/)?.[1] ?? u;
 	import '$lib/styles/pages.css';
 	import Stars from '$lib/components/Stars.svelte';
 	import { track } from '$lib/tracking';
@@ -47,18 +50,32 @@
 <div class="hero-band">
 <section class="container hero2">
 	<div>
-		<h1 class="hero2__big">Il tuo progetto è grande.<br /><span class="hl hl--yellow">Trattiamolo come tale.</span></h1>
+		<h1 class="hero2__big">Il tuo progetto è grande.<br /><span class="hl hl--periwinkle">Trattiamolo come tale.</span></h1>
 		<p class="lead">Produzioni complesse, grandi volumi o richieste speciali: ti affianchiamo con un referente dedicato, preventivi su misura e un processo sotto controllo dall’inizio alla consegna.</p>
 		<div class="pills">
 			<div class="pills__row"><span class="pill pill--green">✦ Referente dedicato</span><span class="pill pill--yellow">✦ Preventivi su misura</span></div>
 			<div class="pills__row"><span class="pill pill--blue">✦ Produzione sotto controllo</span></div>
 		</div>
 		<div class="hero2__cta">
-			<a class="btn btn--yellow btn--lg" href="#contatto">Richiedi un preventivo</a>
-			<a class="btn btn--ghost btn--lg" href="#processo">Scopri come lavoriamo</a>
+			<a class="btn btn--periwinkle btn--lg" href="#contatto">Richiedi un preventivo</a>
+			<a class="btn btn--yellow btn--lg" href="#processo">Scopri come lavoriamo</a>
 		</div>
 	</div>
-	<img class="photo" src="/images/aziende/hero.webp" alt="Produzione Stickerprint per aziende" />
+	<!-- iPhone con il reel: il link si mette in REEL (YouTube/Shorts oppure un file .mp4) -->
+	<div class="phone-wrap">
+		<div class="phone">
+			<div class="phone__island"></div>
+			<div class="phone__screen">
+				{#if REEL && /\.mp4($|\?)/i.test(REEL)}
+					<video src={REEL} autoplay muted loop playsinline></video>
+				{:else if REEL}
+					<iframe src="https://www.youtube.com/embed/{ytId(REEL)}?autoplay=1&mute=1&loop=1&playlist={ytId(REEL)}&controls=0&playsinline=1&rel=0&modestbranding=1" title="Stickerprint per le aziende" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen loading="lazy"></iframe>
+				{:else}
+					<div class="reel reel--soon"><span>▶</span><small>Reel in arrivo</small></div>
+				{/if}
+			</div>
+		</div>
+	</div>
 </section>
 </div>
 
