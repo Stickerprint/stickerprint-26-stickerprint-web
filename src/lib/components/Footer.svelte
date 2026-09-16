@@ -66,7 +66,7 @@
 			</div>
 			<div class="footer__col footer__col--right">
 				<div class="newsletter">
-					<h4>Iscriviti alla Nostra Newsletter</h4>
+					<h3 class="newsletter__title">Iscriviti alla Nostra Newsletter</h3>
 					<form onsubmit={subscribe}>
 						<label class="sr-only" for="nl-email">Il tuo indirizzo email</label>
 						<input id="nl-email" type="email" placeholder="il tuo indirizzo mail" required bind:value={email} autocomplete="email" />

@@ -28,6 +28,7 @@
 	const eur0 = (v: number) => v.toLocaleString('it-IT', { maximumFractionDigits: 0 }) + ' €';
 
 	import { BRANDS as brands } from '$lib/brands';
+	import { untrack } from 'svelte';
 	const IG_URL = 'https://www.instagram.com/stickerprint.it/';
 	// feed e follower live: dal server, poi riletti ogni minuto dal browser (contatore che si aggiorna da solo)
 	// svelte-ignore state_referenced_locally
@@ -37,7 +38,9 @@
 	const followers = $derived(Math.round(shown));
 	$effect(() => {
 		const target = ig.followers ?? 6455;
-		const from = shown; if (from === target) return;
+		/* untrack: l'animazione scrive `shown` a ogni fotogramma; se l'effetto lo leggesse come dipendenza
+		   si riavvierebbe a ogni scrittura (loop di requestAnimationFrame, secondi di CPU sul telefono) */
+		const from = untrack(() => shown); if (from === target) return;
 		const t0 = performance.now(); const dur = 900;
 		const step = (t: number) => { const k = Math.min(1, (t - t0) / dur); shown = from + (target - from) * (1 - Math.pow(1 - k, 3)); if (k < 1) requestAnimationFrame(step); };
 		requestAnimationFrame(step);
