@@ -304,7 +304,7 @@
 <section class="cfg kitcfg sheetcfg" id="configura">
 	<!-- ANTEPRIMA: il foglio -->
 	<div class="cfg__preview kit__preview">
-		<div class="sheet__stage" class:is-over={over} bind:this={stage} role="region" aria-label="Anteprima del foglio" ondragover={(e) => { e.preventDefault(); over = true; }} ondragleave={() => (over = false)} ondrop={onDrop} onpointermove={move} onpointerup={up} onpointercancel={up}>
+		<div class="sheet__stage" class:is-over={over} bind:this={stage} style="height:{px(sheetH + 2 * PAD)}px" role="region" aria-label="Anteprima del foglio" ondragover={(e) => { e.preventDefault(); over = true; }} ondragleave={() => (over = false)} ondrop={onDrop} onpointermove={move} onpointerup={up} onpointercancel={up}>
 			{#if pronto}
 				<div class="sheet" class:is-dark={!readyUrl} style="left:{px(PAD)}px;top:{px(PAD)}px;width:{px(sheetW)}px;height:{px(sheetH)}px;background:#fff">
 					{#if readyUrl}<img class="sheet__ready" src={readyUrl} alt="" />{:else}<p class="sheet__hint">{readyFile ? `${readyFile.name}: si stampa così com’è` : 'Carica il tuo foglio già impaginato'}</p>{/if}

@@ -1,5 +1,5 @@
 /* Fogli di adesivi: il foglio a schermo, gli adesivi trascinabili, le scelte di formato e sfondo */
-.sheet__stage { position: relative; width: 100%; aspect-ratio: auto; min-height: 380px; border-radius: 18px; background: radial-gradient(120% 90% at 50% 0%, #f7f8fb, #e6e9f0); border: 2px dashed transparent; overflow: visible; touch-action: none; user-select: none; }
+.sheet__stage { position: relative; width: 100%; min-height: 300px; border-radius: 18px; background: radial-gradient(120% 90% at 50% 0%, #f7f8fb, #e6e9f0); border: 2px dashed transparent; overflow: visible; touch-action: none; user-select: none; }
 .sheet__stage.is-over { border-color: var(--blue); }
 .sheet { position: absolute; border-radius: 6px; box-shadow: 0 12px 30px rgba(11,11,59,.18), 0 0 0 1px rgba(11,11,59,.08); overflow: hidden; display: grid; place-items: center; }
 .sheet::after { content: ''; position: absolute; inset: 0; border-radius: inherit; border: 2px dashed #ff2d95; pointer-events: none; opacity: .85; }
