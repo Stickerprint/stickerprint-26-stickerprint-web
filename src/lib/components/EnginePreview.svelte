@@ -22,6 +22,7 @@
 		showCut = true,
 		noang = false,
 		hires = false,
+		noombra = false,
 		onrender
 	}: {
 		file: File | null;
@@ -39,6 +40,7 @@
 		showCut?: boolean;
 		noang?: boolean;
 		hires?: boolean;
+		noombra?: boolean;
 		onrender?: (s: { png: string | null; name?: string | null; shape?: string | null; w: number; h: number; srcMM: { w: number; h: number } | null; cut?: { x: number; y: number; w: number; h: number } | null; view?: { zoom: number; dx: number; dy: number } | null; palette?: { hex: string; img?: string }[]; palIdx?: number; rimuovi?: boolean; foglio?: { n: number; cols: number; rows: number; w: number; h: number } | null }) => void;
 	} = $props();
 
@@ -60,6 +62,7 @@
 		if (vetro) q.set('vetro', '1');
 		if (noang) q.set('noang', '1');
 		if (hires) q.set('hires', '1');
+		if (noombra) q.set('noombra', '1');
 		if (w > 0) q.set('w', String(w));
 		if (h > 0) q.set('h', String(h));
 		if (panel) {

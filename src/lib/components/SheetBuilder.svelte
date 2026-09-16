@@ -543,7 +543,7 @@
 			{/if}
 			{#each engines as e (e.key)}
 				<div class="kit__modal-engine" hidden={pop?.key !== e.key}>
-					<EnginePreview bind:this={engRefs[e.key]} file={e.file} forma={engForma(e)} {materiale} {finitura} prodotto="sticker" w={engW(e)} h={engH(e)} panel showCut hires stage={300} onrender={(r) => engRender(e, r)} />
+					<EnginePreview bind:this={engRefs[e.key]} file={e.file} forma={engForma(e)} {materiale} {finitura} prodotto="sticker" w={engW(e)} h={engH(e)} panel showCut hires noombra stage={300} onrender={(r) => engRender(e, r)} />
 				</div>
 			{/each}
 			{#if pop}

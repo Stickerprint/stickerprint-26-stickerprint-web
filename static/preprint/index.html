@@ -656,6 +656,7 @@ const RESIN_NECK=5.0;       // collo minimo per il resinato, in mm
 const RESIN_BORDER=2.5;     // bordo minimo, così l'arrotondamento non mangia il disegno
 const EMBED=(new URLSearchParams(location.search)).get('embed')==='1';
 let NOANG=(new URLSearchParams(location.search)).get('noang')==='1';
+let NOOMBRA=(new URLSearchParams(location.search)).get('noombra')==='1'; /* [sito] fogli: niente ombra portata sotto l'adesivo (pesa e sporca il foglio) */
 const S={prod:'sticker',foglio:false,lente:false,artClip:null,palette:null,palIdx:0,bgOpaque:true,viewTotW:50,resinR:0,src:null,artCanvas:null,name:'',srcW:0,srcH:0,srcMM:null,work:null,mask:null,mw:0,mh:0,bbox:null,
   bgCol:null,bgSrc:'',cands:[],chosen:-1,ctx0:null,seeds:[],lineSeed:null,wand:false,keptPct:0,
   Rsafe:null,RsafeFor:null,polys:null,pathD:'',cutW:0,cutH:0,bleed:0,art:null,quality:null,
@@ -5040,7 +5041,7 @@ function ridipingi(){
      in una tela di appoggio: le ombre sfumate del canvas costano decine di
      millisecondi e prima venivano rifatte a ogni fotogramma dell'animazione
      del tratteggio, saturando il processore e ritardando tutto il resto. */
-  if(!a.base||a.baseTile!==tile||a.base.width!==cv.width||a.base.height!==cv.height||a.baseRes!==(S.prod+'|'+!!S.senzaResina+'|'+!!S.vetro)){
+  if(!a.base||a.baseTile!==tile||a.base.width!==cv.width||a.base.height!==cv.height||a.baseRes!==(S.prod+'|'+!!S.senzaResina+'|'+!!S.vetro+'|'+!!NOOMBRA)){
     const base=document.createElement('canvas');base.width=cv.width;base.height=cv.height;
     const gb=base.getContext('2d');
     if(S.prod==='resin'&&!S.senzaResina){
@@ -5060,11 +5061,13 @@ function ridipingi(){
       gb.save();gb.shadowColor='rgba(0,0,0,0.35)';gb.shadowBlur=1.4*ppm;gb.shadowOffsetY=0.6*ppm;
       gb.drawImage(tile,ox,oy,tile.width*k,tile.height*k);gb.restore();
       riflessiVetro(gb,cv.width,cv.height);
+    } else if(NOOMBRA){
+      gb.drawImage(tile,pad*ppm,pad*ppm);
     } else {
       gb.save();gb.shadowColor='rgba(0,0,0,0.4)';gb.shadowBlur=3*ppm;gb.shadowOffsetY=1.5*ppm;
       gb.drawImage(tile,pad*ppm,pad*ppm);gb.restore();
     }
-    a.base=base;a.baseTile=tile;a.baseRes=S.prod+'|'+!!S.senzaResina+'|'+!!S.vetro;
+    a.base=base;a.baseTile=tile;a.baseRes=S.prod+'|'+!!S.senzaResina+'|'+!!S.vetro+'|'+!!NOOMBRA;
   }
   g.drawImage(a.base,0,0);
   try{
@@ -5606,6 +5609,7 @@ function ppGeoUI(){
         if(c.rilievo!==undefined){const rl=!!c.rilievo; if(rl!==S.rilievo){S.rilievo=rl;mat=true;}}
         if(c.vetro!==undefined){const vt=!!c.vetro; if(vt!==S.vetro){S.vetro=vt;mat=true;vetroUI();}}
         /* cavallotto del kit (spigoli vivi, niente angoli) e adesivi passano dallo stesso motore */
+        if(c.noombra!==undefined&&(!!c.noombra)!==NOOMBRA){NOOMBRA=!!c.noombra;mat=true;}
         if(c.noang!==undefined&&(!!c.noang)!==NOANG){NOANG=!!c.noang;try{applyPreset(false);ppGeoUI();}catch(e){}geom=true;}
         const f=U_FORMA[String(c.forma||'').toLowerCase()];
         if(f&&f!==CL.shape){const eraDiecut=(CL.shape==='diecut');CL.shape=f;document.querySelectorAll('#cShape .chip').forEach(e=>e.classList.toggle('on',e.dataset.s===f));applyPreset(false);geom=true;
