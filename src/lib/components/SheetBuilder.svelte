@@ -17,6 +17,7 @@
 	import { addToCart, cartGross as cartGrossOf, onCartChange } from '$lib/cart';
 	import { saveCartFile, saveCartPreview } from '$lib/utils/draftStore';
 	import { quoteWith, type EngineConfig } from '$lib/pricing/engine';
+	import { matKindOf, paintSheetBackground } from '$lib/material-texture';
 
 	let { cfg, shipDate }: { cfg: EngineConfig; shipDate: string } = $props();
 	let cartGross = $state(0);
@@ -47,6 +48,8 @@
 	let finitura = $state('');
 	$effect(() => { if (!MATERIALS.some((m) => m.id === materiale)) materiale = MATERIALS[0]?.id ?? 'bianco'; if (!FINISHES.some((f) => f.id === finitura)) finitura = FINISHES.find((f) => !f.laminate)?.id ?? FINISHES[0]?.id ?? 'nessuna'; });
 	const material = $derived(MATERIALS.find((m) => m.id === materiale));
+	/* il materiale si vede sotto lo sfondo: la stampa non e' coprente (olografico → foglio olografico, blu su glitter → blu glitterato) */
+	const matKind = $derived(matKindOf(materiale));
 	const finish = $derived(FINISHES.find((f) => f.id === finitura));
 	const SHAPES = [
 		{ id: 'sagomato', label: 'Sagomato' }, { id: 'tondo', label: 'Rotondo' }, { id: 'quadrato', label: 'Quadrato' }, { id: 'ovale', label: 'Ovale' }, { id: 'rettangolare', label: 'Rettangolo' }
@@ -64,8 +67,8 @@
 	type View = { zoom: number; dx: number; dy: number };
 	type Cut = { x: number; y: number; w: number; h: number };
 	type Render = { png: string; w: number; h: number; view: View | null; cut: Cut | null };
-	type Slot = { file: File | null; png: string | null; w: number; h: number; cfgW: number; cfgH: number; misura: number; forma: string; x: number; y: number; busy: boolean };
-	const blank = (): Slot => ({ file: null, png: null, w: 0, h: 0, cfgW: 0, cfgH: 0, misura: 40, forma: 'sagomato', x: 0, y: 0, busy: false });
+	type Slot = { file: File | null; png: string | null; w: number; h: number; cfgW: number; cfgH: number; misura: number; forma: string; x: number; y: number; rot: number; busy: boolean };
+	const blank = (): Slot => ({ file: null, png: null, w: 0, h: 0, cfgW: 0, cfgH: 0, misura: 40, forma: 'sagomato', x: 0, y: 0, rot: 0, busy: false });
 	let slots = $state<Slot[]>(Array.from({ length: 12 }, blank));
 	const filled = $derived(slots.slice(0, MAX).filter((s) => s.file));
 	const n = $derived(filled.length);
@@ -73,7 +76,8 @@
 	const freeMax = $derived(Math.round(Math.max(cellW, cellH) * 1.6));
 	const clampMM = (v: number) => Math.round(Math.max(FREE_MIN, Math.min(freeMax, v || 0)) * 2) / 2;
 	/** un adesivo sporge dal foglio: il foglio diventa sagomato e il taglio lo segue */
-	const overhang = (s: Slot) => s.png && (s.x - s.w / 2 < 0 || s.y - s.h / 2 < 0 || s.x + s.w / 2 > sheetW || s.y + s.h / 2 > sheetH);
+	const bbox = (s: Slot) => { const a = (s.rot * Math.PI) / 180, c = Math.abs(Math.cos(a)), n = Math.abs(Math.sin(a)); return { w: s.w * c + s.h * n, h: s.w * n + s.h * c }; };
+	const overhang = (s: Slot) => { if (!s.png) return false; const b = bbox(s); return s.x - b.w / 2 < 0 || s.y - b.h / 2 < 0 || s.x + b.w / 2 > sheetW || s.y + b.h / 2 > sheetH; };
 	const sagomato = $derived(filled.some(overhang));
 	const forma = $derived(sagomato ? 'sagomato' : orientamento);
 
@@ -188,7 +192,7 @@
 		if (confirmed) engines[i].file = confirmed; else engines.splice(i, 1);
 	}
 	function pickSlot(e: Event, i: number) { const f = (e.currentTarget as HTMLInputElement).files?.[0]; (e.currentTarget as HTMLInputElement).value = ''; if (f) openPop(i, f); }
-	function removeSticker(i: number) { slots[i] = blank(); const k = engines.findIndex((x) => x.key === keyOf(i)); if (k >= 0) engines.splice(k, 1); }
+	function removeSticker(i: number) { if (selected === i) selected = null; slots[i] = blank(); const k = engines.findIndex((x) => x.key === keyOf(i)); if (k >= 0) engines.splice(k, 1); }
 	let over = $state(false);
 	let pending: File[] = [];
 	function onDrop(e: DragEvent) {
@@ -228,6 +232,16 @@
 	});
 
 	/* ---- il foglio a schermo: scala mm → px, trascinamento ---- */
+	let bgCanvas = $state<HTMLCanvasElement | undefined>();
+	$effect(() => {
+		const c = bgCanvas; const k = matKind; const col = bgColor; const W = sheetW; const H = sheetH;
+		if (!c) return;
+		c.width = Math.round(W * 4); c.height = Math.round(H * 4);
+		const g = c.getContext('2d'); if (!g) return;
+		g.clearRect(0, 0, c.width, c.height);
+		if (k === 'white') { g.fillStyle = col; g.fillRect(0, 0, c.width, c.height); }
+		else paintSheetBackground(g, 0, 0, c.width, c.height, k, col);
+	});
 	let stage = $state<HTMLDivElement | undefined>();
 	let stageW = $state(520);
 	onMount(() => { const ro = new ResizeObserver(() => { if (stage) stageW = stage.clientWidth; }); if (stage) ro.observe(stage); return () => ro.disconnect(); });
@@ -238,6 +252,7 @@
 	let top = $state(10);
 	function down(e: PointerEvent, i: number) {
 		(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+		selected = i;
 		drag = { i, sx: e.clientX, sy: e.clientY, x0: slots[i].x, y0: slots[i].y };
 		top += 1; (e.currentTarget as HTMLElement).style.zIndex = String(top);
 		e.preventDefault();
@@ -247,10 +262,20 @@
 		const s = slots[drag.i];
 		const x = drag.x0 + (e.clientX - drag.sx) / scale, y = drag.y0 + (e.clientY - drag.sy) / scale;
 		/* puo' uscire dal foglio, ma resta con almeno meta' adesivo dentro: cosi' il foglio sagomato ha sempre un aggancio */
-		s.x = Math.max(s.w * 0.25, Math.min(sheetW - s.w * 0.25, x));
-		s.y = Math.max(s.h * 0.25, Math.min(sheetH - s.h * 0.25, y));
+		const b = bbox(s);
+		s.x = Math.max(b.w * 0.25, Math.min(sheetW - b.w * 0.25, x));
+		s.y = Math.max(b.h * 0.25, Math.min(sheetH - b.h * 0.25, y));
 	}
 	function up() { drag = null; }
+	/* adesivo selezionato: sopra compare la barra con rotazione e misura */
+	let selected = $state<number | null>(null);
+	function rotate(i: number, deg: number) { const s = slots[i]; s.rot = ((s.rot + deg) % 360 + 360) % 360; }
+	function resize(i: number, k: number) {
+		const s = slots[i]; const long = Math.max(s.w, s.h);
+		const target = Math.round(Math.max(FREE_MIN, Math.min(freeMax, long * k)) * 2) / 2;
+		const f = target / long; s.w = Math.round(s.w * f * 10) / 10; s.h = Math.round(s.h * f * 10) / 10; s.misura = Math.max(s.w, s.h);
+	}
+	const mm1 = (v: number) => v.toFixed(v % 1 ? 1 : 0).replace('.', ',');
 	function centerAll() { slots.forEach((s, i) => { if (s.file) { const [cx, cy] = cellCenter(i); s.x = cx; s.y = cy; } }); }
 
 	/* ---- file di stampa e anteprima: il foglio composto (sfondo + adesivi) a 12 px/mm, trasparente fuori dal taglio ---- */
@@ -263,12 +288,13 @@
 		const ox = extra * ppm, oy = extra * ppm, r = 4 * ppm;
 		const rr = (x: number, y: number, w: number, h: number, rad: number) => { g.beginPath(); g.moveTo(x + rad, y); g.arcTo(x + w, y, x + w, y + h, rad); g.arcTo(x + w, y + h, x, y + h, rad); g.arcTo(x, y + h, x, y, rad); g.arcTo(x, y, x + w, y, rad); g.closePath(); };
 		g.save(); rr(ox, oy, sheetW * ppm, sheetH * ppm, r); g.clip();
-		g.fillStyle = bgColor; g.fillRect(ox, oy, sheetW * ppm, sheetH * ppm);
+		if (matKind === 'white') { g.fillStyle = bgColor; g.fillRect(ox, oy, sheetW * ppm, sheetH * ppm); }
+		else paintSheetBackground(g, ox, oy, sheetW * ppm, sheetH * ppm, matKind, bgColor);
 		if (bgUrl) { try { const im = await load(bgUrl); const k = Math.max((sheetW * ppm) / im.width, (sheetH * ppm) / im.height); const dw = im.width * k, dh = im.height * k; g.drawImage(im, ox + (sheetW * ppm - dw) / 2, oy + (sheetH * ppm - dh) / 2, dw, dh); } catch { /* senza sfondo */ } }
 		g.restore();
 		for (const s of filled) {
 			if (!s.png) continue;
-			try { const im = await load(s.png); g.drawImage(im, ox + (s.x - s.w / 2) * ppm, oy + (s.y - s.h / 2) * ppm, s.w * ppm, s.h * ppm); } catch { /* adesivo saltato */ }
+			try { const im = await load(s.png); g.save(); g.translate(ox + s.x * ppm, oy + s.y * ppm); g.rotate((s.rot * Math.PI) / 180); g.drawImage(im, (-s.w / 2) * ppm, (-s.h / 2) * ppm, s.w * ppm, s.h * ppm); g.restore(); } catch { /* adesivo saltato */ }
 		}
 		return new Promise((res) => c.toBlob(res, 'image/png'));
 	}
@@ -291,7 +317,7 @@
 				if (preview) await saveCartPreview(item.id, preview);
 				if (bgFile) await saveCartFile(`${item.id}:bg`, bgFile);
 				let k = 0; for (const s of filled) if (s.file) { k++; await saveCartFile(`${item.id}:s${k}`, s.file); }
-				const layout = { sheet: { w: sheetW, h: sheetH, orientamento, formato, sagomato, bgColor, bgImage: !!bgFile, materiale, finitura }, stickers: filled.map((s, i) => ({ n: i + 1, file: s.file?.name, forma: s.forma, w: s.w, h: s.h, x: s.x, y: s.y })) };
+				const layout = { sheet: { w: sheetW, h: sheetH, orientamento, formato, sagomato, bgColor, bgImage: !!bgFile, materiale, finitura }, stickers: filled.map((s, i) => ({ n: i + 1, file: s.file?.name, forma: s.forma, w: s.w, h: s.h, x: s.x, y: s.y, rot: s.rot })) };
 				await saveCartFile(`${item.id}:layout`, new File([JSON.stringify(layout, null, 2)], 'layout.json', { type: 'application/json' }));
 			}
 			track.addToCart({ product: 'fogli_adesivi', productName: 'Fogli di adesivi', forma, w: sheetW, h: sheetH, materiale, finitura, qty, gross: quote.gross });
@@ -311,18 +337,31 @@
 				</div>
 			{:else}
 				<div class="sheet" class:is-cut={sagomato} style="left:{px(PAD)}px;top:{px(PAD)}px;width:{px(sheetW)}px;height:{px(sheetH)}px;background:{bgColor}">
+					<canvas class="sheet__bg" bind:this={bgCanvas}></canvas>
 					{#if bgUrl}<img class="sheet__bg" src={bgUrl} alt="" />{/if}
 					{#if !n}<p class="sheet__hint">Trascina qui i tuoi design<br /><small>fino a {MAX} per questo foglio</small></p>{/if}
 				</div>
 				{#each slots.slice(0, MAX) as s, i (i)}
 					{#if s.png}
-						<img class="sheet__stk" class:is-out={overhang(s)} class:busy={s.busy} src={s.png} alt="Design {i + 1}" draggable="false" style="left:{px(PAD + s.x - s.w / 2)}px;top:{px(PAD + s.y - s.h / 2)}px;width:{px(s.w)}px;height:{px(s.h)}px" onpointerdown={(e) => down(e, i)} />
+						<img class="sheet__stk" class:is-out={overhang(s)} class:is-sel={selected === i} class:busy={s.busy} src={s.png} alt="Design {i + 1}" draggable="false" style="left:{px(PAD + s.x - s.w / 2)}px;top:{px(PAD + s.y - s.h / 2)}px;width:{px(s.w)}px;height:{px(s.h)}px;transform:rotate({s.rot}deg)" onpointerdown={(e) => down(e, i)} />
+						{#if selected === i}
+							<div class="sheet__tools" style="left:{px(PAD + s.x)}px;top:{px(PAD + s.y - bbox(s).h / 2) - 46}px">
+								<button type="button" title="Ruota a sinistra" onclick={() => rotate(i, -15)}>↺</button>
+								<button type="button" title="Ruota a destra" onclick={() => rotate(i, 15)}>↻</button>
+								<span class="sheet__tools-sep"></span>
+								<button type="button" title="Riduci" onclick={() => resize(i, 0.9)}>−</button>
+								<span class="sheet__tools-mm">{mm1(s.w)} × {mm1(s.h)} mm</span>
+								<button type="button" title="Ingrandisci" onclick={() => resize(i, 1.1)}>+</button>
+								<span class="sheet__tools-sep"></span>
+								<button type="button" title="Chiudi" onclick={() => (selected = null)}>✕</button>
+							</div>
+						{/if}
 					{/if}
 				{/each}
 			{/if}
 			<div class="sheet__size">{sheetW} × {sheetH} mm{#if sagomato} · foglio sagomato{/if}</div>
 		</div>
-		{#if n && !pronto}<p class="kit__tip">Sposta i design con il mouse. Se uno esce dal bordo, il foglio viene tagliato seguendo la sua sagoma. <button type="button" class="link-btn" onclick={centerAll}>Riallinea</button></p>{/if}
+		{#if n && !pronto}<p class="kit__tip">Clicca un design per ruotarlo o cambiarne la misura, trascinalo per spostarlo. Se esce dal bordo, il foglio viene tagliato seguendo la sua sagoma. <button type="button" class="link-btn" onclick={centerAll}>Riallinea</button></p>{/if}
 	</div>
 
 	<!-- PASSAGGI -->
@@ -393,7 +432,7 @@
 				</button>
 				{#if step === 'sfondo'}
 					<div class="step__body">
-						<p class="step__hint">Un colore, oppure una tua immagine che riempie tutto il foglio dietro agli adesivi.</p>
+						<p class="step__hint">Un colore, oppure una tua immagine che riempie tutto il foglio dietro agli adesivi.{#if matKind !== 'white'} Sul {material?.label?.toLowerCase()} la stampa non è coprente: il colore si vede sopra all'effetto del materiale.{/if}</p>
 						<div class="sheet__colors">
 							{#each PRESET_COLORS as c (c)}<button type="button" class="sheet__color" class:is-on={bgColor === c && !bgFile} style="background:{c}" aria-label="Sfondo {c}" onclick={() => { bgColor = c; clearBg(); }}></button>{/each}
 							<label class="sheet__color sheet__color--free" title="Scegli un colore tuo"><input type="color" value={bgColor} oninput={(e) => { bgColor = (e.currentTarget as HTMLInputElement).value; clearBg(); }} /></label>
@@ -502,7 +541,7 @@
 			{/if}
 			{#each engines as e (e.key)}
 				<div class="kit__modal-engine" hidden={pop?.key !== e.key}>
-					<EnginePreview bind:this={engRefs[e.key]} file={e.file} forma={engForma(e)} {materiale} {finitura} prodotto="sticker" w={engW(e)} h={engH(e)} panel showCut stage={300} onrender={(r) => engRender(e, r)} />
+					<EnginePreview bind:this={engRefs[e.key]} file={e.file} forma={engForma(e)} {materiale} {finitura} prodotto="sticker" w={engW(e)} h={engH(e)} panel showCut hires stage={300} onrender={(r) => engRender(e, r)} />
 				</div>
 			{/each}
 			{#if pop}

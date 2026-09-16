@@ -4032,7 +4032,7 @@ function draw(){
   let cap=(S.prod==='resin'&&!S.senzaResina)?12:16;
   /* dentro il sito l'anteprima e' alta 300-400 px: si disegna a risoluzione
      retina di quello spazio, non a 16 px/mm — un quarto dei pixel, un quarto del tempo */
-  try{ if(EMBED){const st=$('ppStage'); const lato=Math.min(st.clientWidth||400,st.clientHeight||400)||400; const kk=(S.lente&&!S.foglio)?4.6:1.7; cap=Math.min(cap,Math.max(6,Math.ceil(kk*lato/Math.max(totW,totH))));} }catch(e){}
+  try{ if(EMBED){const st=$('ppStage'); const lato=Math.min(st.clientWidth||400,st.clientHeight||400)||400; const hires=(new URLSearchParams(location.search)).get('hires')==='1'; const kk=(S.lente&&!S.foglio)||hires?4.6:1.7; cap=Math.min(cap,Math.max(hires?9:6,Math.ceil(kk*lato/Math.max(totW,totH))));} }catch(e){}
   const ppm=Math.min(1400/totW,1000/totH,cap);
   const tile=renderTile(ppm,true,0);
   /* [sito] ETICHETTE IN FOGLI: l'anteprima mostra il foglio (circa A4) con dentro

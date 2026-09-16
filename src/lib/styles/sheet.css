@@ -5,6 +5,13 @@
 .sheet::after { content: ''; position: absolute; inset: 0; border-radius: inherit; border: 2px dashed #ff2d95; pointer-events: none; opacity: .85; }
 .sheet.is-cut::after { border-style: dotted; }
 .sheet__bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.sheet__stk.is-sel { outline: 2px solid var(--blue); outline-offset: 2px; border-radius: 6px; }
+/* barra sopra l'adesivo selezionato: ruota, misura (con il rettangolo colorato), ingrandisci/riduci */
+.sheet__tools { position: absolute; transform: translateX(-50%); display: flex; align-items: center; gap: 4px; background: var(--navy); color: #fff; border-radius: 999px; padding: 5px 8px; box-shadow: 0 8px 22px rgba(11,11,59,.3); z-index: 50; white-space: nowrap; }
+.sheet__tools button { width: 28px; height: 28px; border-radius: 50%; border: 0; background: rgba(255,255,255,.12); color: #fff; font: 700 15px/1 Montserrat, system-ui; cursor: pointer; }
+.sheet__tools button:hover { background: var(--blue); }
+.sheet__tools-sep { width: 1px; height: 18px; background: rgba(255,255,255,.25); margin: 0 3px; }
+.sheet__tools-mm { background: var(--yellow); color: var(--ink); font: 800 12px/1 Montserrat, system-ui; padding: 6px 9px; border-radius: 999px; }
 .sheet__ready { width: 100%; height: 100%; object-fit: contain; }
 .sheet__hint { position: relative; margin: 0; text-align: center; color: #6b6e8c; font-size: 14px; line-height: 1.45; padding: 12px; }
 .sheet__hint small { color: #9aa0b8; }
