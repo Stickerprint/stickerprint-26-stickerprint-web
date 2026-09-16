@@ -53,7 +53,7 @@
 	<button type="button" class="rv__arrow rv__arrow--prev" aria-label="Recensioni precedenti" onclick={() => go(-1)}>‹</button>
 	<div class="rv__viewport" bind:this={vp} onscroll={onScroll} ontouchstart={() => (hover = true)} ontouchend={() => setTimeout(() => (hover = false), 4000)}>
 		{#each reviews as r, i (i)}
-			<div class="review rv__card" role="button" tabindex="0" aria-label="{r.title}: leggi tutta la recensione di {r.author}" onclick={() => (open = r)} onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), (open = r))}>
+			<div class="review rv__card" role="button" tabindex="0" onclick={() => (open = r)} onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), (open = r))}>
 				<div class="review__stars" aria-label="{r.rating} stelle su 5">{stars(r.rating)}</div>
 				<div class="review__title">{r.title}</div>
 				<p class="review__text">{r.comment}</p>

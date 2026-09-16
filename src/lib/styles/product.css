@@ -27,8 +27,11 @@
 .carousel__arrow { position: absolute; top: 50%; transform: translateY(-50%); width: 40px; height: 40px; border-radius: 50%; border: 0; background: rgba(255,255,255,.85); color: var(--ink); font-size: 26px; line-height: 1; cursor: pointer; display: grid; place-items: center; }
 .carousel__arrow--prev { left: 12px; } .carousel__arrow--next { right: 12px; }
 .carousel__dots { position: absolute; left: 0; right: 0; bottom: 12px; display: flex; justify-content: center; gap: 8px; }
-.carousel__dots button { width: 10px; height: 10px; border-radius: 50%; border: 0; background: rgba(255,255,255,.6); cursor: pointer; padding: 0; }
-.carousel__dots button.is-active { background: var(--blue); }
+/* puntini: area toccabile 24px, pallino da 10px disegnato dentro */
+.carousel__dots { gap: 2px; }
+.carousel__dots button { width: 24px; height: 24px; border-radius: 50%; border: 0; background: transparent; cursor: pointer; padding: 0; position: relative; }
+.carousel__dots button::after { content: ""; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,.6); }
+.carousel__dots button.is-active::after { background: var(--blue); }
 
 /* Preventivatore */
 .cfg { display: grid; grid-template-columns: 1fr 1fr; gap: 0; border: 2px solid var(--line); border-radius: 26px; overflow: hidden; background: #fff; margin-top: 20px; }
