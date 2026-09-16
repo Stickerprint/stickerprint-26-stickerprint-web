@@ -43,8 +43,8 @@
 			<li><span class="ck">✓</span>Li recuperi subito sul primo ordine</li>
 		</ul>
 		<div class="kit-buy">
-			<span class="kit-buy__price">10€</span>
-			<button type="button" class="btn btn--green btn--lg" onclick={add}>Aggiungi al carrello</button>
+			<span class="kit-buy__price hl hl--yellow">10€</span>
+			<button type="button" class="btn btn--yellow btn--lg" onclick={add}>Aggiungi al carrello</button>
 		</div>
 		<p class="note" style="margin-top:10px">🚀 Spedizione stimata <b>{data.shipDate}</b> · nessun file da caricare</p>
 	</div>
@@ -58,7 +58,7 @@
 </section>
 
 <section class="section container">
-	<h2 class="center"><span class="hl hl--green">Cosa c’è dentro</span></h2>
+	<h2 class="center"><span class="hl hl--yellow">Cosa c’è dentro</span></h2>
 	<p class="lead center" style="margin-top:14px;max-width:760px;margin-inline:auto">In questo pacchetto di adesivi troverai una selezione dei nostri prodotti: adesivi fustellati, adesivi in rilievo e adesivi resinati realizzati con materiali e finiture diverse, perfetti per toccare con mano la nostra qualità e scegliere lo stile più adatto ai tuoi progetti.</p>
 	<div class="kit-grid">
 		{#each ITEMS as it (it.img)}
@@ -88,7 +88,7 @@
 
 <style>
 	.kit-buy { display: flex; align-items: center; gap: 18px; margin-top: 22px; }
-	.kit-buy__price { font-family: var(--font-display); font-weight: 800; font-size: 44px; letter-spacing: -0.03em; color: var(--blue); }
+	.kit-buy__price { font-family: var(--font-display); font-weight: 800; font-size: 60px; letter-spacing: -0.03em; color: var(--ink); line-height: 1; }
 	.reels--kit { grid-template-columns: minmax(0, 300px); justify-content: end; margin-top: 0; }
 	@media (max-width: 900px) { .reels--kit { justify-content: center; } }
 	.kit-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 30px; }

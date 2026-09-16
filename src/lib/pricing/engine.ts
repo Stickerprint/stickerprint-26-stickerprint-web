@@ -156,7 +156,7 @@ export const DEFAULT_ENGINES: Record<string, EngineConfig> = {
 	adesivi_rilievo: base({
 		materials: withMaterials(MAT_STICKER), shapes: stdShapes(STICKER_IMGS, [50, 80, 100, 125]), quantities: QTY_SMALL, size: { minMm: 20, maxMm: 500, minByShape: MIN_STICKER, startByShape: START_STICKER },
 		// niente lamina sul rilievo: la finitura e' una vernice UV, il rilievo resta sempre lucido
-		finishTitle: 'Finitura', finishNote: "L'effetto rilievo è sempre lucido.",
+		finishTitle: 'Stampa', finishNote: "L'effetto rilievo è sempre lucido.",
 		finishes: [
 			{ id: 'uv-opaca', label: 'UV opaca', description: 'Satinata, senza riflessi', tag: 'Consigliato', img: `${IMG}/lamina_opaca.webp`, laminate: true, visible: true },
 			{ id: 'uv-lucida', label: 'UV lucida', description: 'Brillante, riflette la luce', img: `${IMG}/lamina_lucida.webp`, laminate: true, visible: true }
