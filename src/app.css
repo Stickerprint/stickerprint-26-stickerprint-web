@@ -245,6 +245,7 @@ body { overflow-x: clip; }
 .hero-band .pill--green { background: rgba(58,214,122,.16); color: #5be08f; border-color: rgba(58,214,122,.35); }
 .hero-band .hero__ship { background: rgba(255,255,255,.10); color: #fff; }
 .hero-band .hero__ship b { color: var(--yellow); }
+.hero-band .hero__sticker { color: var(--ink); }
 .hero-band .hero__visual { box-shadow: 0 30px 60px rgba(0,0,0,.35); }
 .hero-band .btn--blue { box-shadow: 0 10px 30px rgba(0,177,253,.35); }
 @media (max-width: 900px) {
