@@ -8,7 +8,7 @@
 	import SamplesBlock from '$lib/components/SamplesBlock.svelte';
 	import FinalCta from '$lib/components/FinalCta.svelte';
 	import FaqList from '$lib/components/FaqList.svelte';
-	import CompareBlock from '$lib/components/CompareBlock.svelte';
+	import HowTo from '$lib/components/HowTo.svelte';
 	import type { EngineConfig } from '$lib/pricing/engine';
 	import type { HomeReview } from '$lib/server/reviews';
 	import Stars from './Stars.svelte';
@@ -87,9 +87,8 @@
 	</div>
 </section>
 
-{#if p.compare}
-	<CompareBlock data={p.compare} />
-{/if}
+<!-- COME FUNZIONA (stesso blocco della home) -->
+<HowTo {shipDate} />
 
 <!-- KIT CAMPIONI (stesso blocco della home) -->
 <SamplesBlock />
