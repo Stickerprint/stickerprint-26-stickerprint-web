@@ -727,6 +727,9 @@ body { overflow-x: clip; }
   main > .hero-band:first-child > .hero { padding-top: 48px; }
   /* home: hero */
   .hero__stars { flex-wrap: wrap; row-gap: 4px; font-size: 14px; }
+  /* stelle + conteggio recensioni: vanno a capo invece di uscire dal bordo */
+  .rating { flex-wrap: wrap; row-gap: 2px; justify-content: inherit; }
+  .offer__stars, .ph__stars { flex-wrap: wrap; }
   .hero__ctas { margin-top: 26px; }
   .hero__ctas .btn { width: 100%; }
   .hero__ship { font-size: 15px; }
