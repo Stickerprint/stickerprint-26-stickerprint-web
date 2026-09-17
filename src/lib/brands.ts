@@ -4,5 +4,6 @@ export const BRANDS: { name: string; img?: string }[] = [
 	{ name: 'VeraLab', img: 'veralab.png' }, { name: 'Samsung', img: 'samsung.png' }, { name: 'Jordan', img: 'jordan.png' }, { name: 'Moscot NY', img: 'moscot.png' },
 	{ name: 'Sephora', img: 'sephora.png' }, { name: 'Golden Goose', img: 'goldengoose.png' }, { name: 'Red Bull', img: 'redbull.png' }, { name: 'Würth', img: 'wurth.png' },
 	{ name: 'Tiffany & Co.', img: 'tiffany.png' }, { name: 'Technogym', img: 'technogym.png' }, { name: 'Ralph Lauren', img: 'ralphlauren.png' }, { name: 'MAC Cosmetics', img: 'maccosmetics.png' },
-	{ name: 'Dolce & Gabbana', img: 'dolcegabbana.png' }, { name: 'Guerlain', img: 'guerlain.png' }, { name: 'Borotalco' }, { name: 'Rapid Bike' }
+	{ name: 'Dolce & Gabbana', img: 'dolcegabbana.png' }, { name: 'Guerlain', img: 'guerlain.png' }, { name: 'Borotalco', img: 'borotalco.png' }, { name: 'Rapid Bike', img: 'rapidbike.png' },
+	{ name: "L'Oréal", img: 'loreal.png' }, { name: 'Amazon', img: 'amazon.png' }, { name: 'Maybelline New York', img: 'maybelline.png' }, { name: 'Monster Energy', img: 'monster.png' }
 ];
