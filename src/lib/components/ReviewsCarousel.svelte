@@ -63,7 +63,8 @@
 	</div>
 	<button type="button" class="rv__arrow rv__arrow--next" aria-label="Recensioni successive" onclick={() => go(1)}>›</button>
 	<p class="rv__note note">Recensioni verificate e acquisite post acquisto. <a class="link" href="/recensioni">Come le gestiamo</a>.</p>
-	{#if pages > 1}<div class="rv__dots">{#each Array(pages) as _, i (i)}<button type="button" class:is-on={i === page} aria-label="Vai alla pagina {i + 1}" onclick={() => goPage(i)}></button>{/each}</div>{/if}
+	{#if pages > 1 && pages <= 12}<div class="rv__dots">{#each Array(pages) as _, i (i)}<button type="button" class:is-on={i === page} aria-label="Vai alla pagina {i + 1}" onclick={() => goPage(i)}></button>{/each}</div>
+	{:else if pages > 12}<p class="rv__count" aria-live="polite">{page + 1} / {pages}</p>{/if}
 </div>
 
 {#if open}

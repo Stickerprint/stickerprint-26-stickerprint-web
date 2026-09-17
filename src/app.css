@@ -401,6 +401,8 @@ body { overflow-x: clip; }
 .rv__arrow { position: absolute; top: 50%; transform: translateY(-50%); z-index: 2; width: 40px; height: 40px; border-radius: 50%; border: 0; background: #fff; color: var(--navy); font-size: 26px; line-height: 1; cursor: pointer; box-shadow: 0 6px 18px rgba(0,0,0,.25); display: grid; place-items: center; }
 .rv__arrow--prev { left: -18px; } .rv__arrow--next { right: -18px; }
 .rv__dots { display: flex; justify-content: center; gap: 8px; margin-top: 14px; }
+/* con molte pagine (mobile: una recensione per pagina) al posto dei puntini c'e' il contatore */
+.rv__count { margin: 14px 0 0; text-align: center; font-family: var(--font-display); font-weight: 800; font-size: 14px; color: rgba(255,255,255,.75); letter-spacing: .04em; }
 /* puntini: area toccabile 24px (accessibilita'), pallino disegnato dentro */
 .rv__dots button { width: 24px; height: 24px; border-radius: 50%; border: 0; background: transparent; cursor: pointer; padding: 0; position: relative; }
 .rv__dots button::after { content: ""; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 9px; height: 9px; border-radius: 50%; background: rgba(255,255,255,.35); }
