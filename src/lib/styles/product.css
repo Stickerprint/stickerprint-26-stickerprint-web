@@ -278,3 +278,15 @@
 .cfg__freeship { grid-column: 1 / -1; margin-top: 10px; }
 
 .special__beta { margin: 10px 0 0; font-size: 13px; line-height: 1.5; color: var(--ink-soft); background: #fef6db; border-radius: 10px; padding: 10px 12px; }
+
+/* pagine prodotto su mobile */
+@media (max-width: 700px) {
+  .ph { padding-top: 48px; gap: 22px; }
+  .ph h1 { font-size: clamp(34px, 9.6vw, 44px); }
+  .ph__sub { font-size: 19px; }
+  .ph__desc { font-size: 16px; }
+  .ph__list { font-size: 15.5px; }
+  .ph__go { margin-top: 18px; }
+  .split { gap: 18px; }
+  .mosaic { gap: 10px; }
+}

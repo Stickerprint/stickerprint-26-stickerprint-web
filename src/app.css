@@ -247,7 +247,8 @@ body { overflow-x: clip; }
 .hero-band .hero__ship b { color: var(--yellow); }
 .hero-band .hero__sticker { color: var(--ink); }
 /* la stessa fascia nella pagina Aziende (hero2) */
-.hero-band .hero2 { padding: clamp(36px, 4vw, 56px) 0 clamp(36px, 4vw, 56px); grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); }
+.hero-band .hero2 { padding: clamp(36px, 4vw, 56px) 0 clamp(36px, 4vw, 56px); }
+@media (min-width: 901px) { .hero-band .hero2 { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); } }
 .hero-band .hero2 > div { min-width: 0; }
 .hero-band .hero2 h1.hero2__big { font-size: clamp(34px, 3.9vw, 50px); }   /* due righe: "Il tuo progetto è grande." / "Trattiamolo come tale." */
 .hero-band .hero2 img.photo { box-shadow: 0 30px 60px rgba(0,0,0,.35); }
@@ -710,3 +711,47 @@ body { overflow-x: clip; }
 .iub__us-widget { display: none !important; }
 .policy .iub_content, .policy .iubenda_embed_policy { font-size: 15px; line-height: 1.6; color: var(--ink); }
 .policy h1, .policy h2, .policy h3 { font-family: var(--font-display); }
+
+/* --------------------------------------------------------------------------
+   Mobile (la maggior parte degli ordini arriva da telefono): titoli piu' compatti, niente
+   elementi che escono dal bordo, tutto centrato e con margini uguali
+   -------------------------------------------------------------------------- */
+@media (max-width: 700px) {
+  h1 { font-size: clamp(34px, 9.6vw, 44px); line-height: 1.04; }
+  h2 { font-size: clamp(28px, 8vw, 36px); line-height: 1.08; }
+  h3 { font-size: clamp(20px, 5.6vw, 24px); }
+  .lead { font-size: 16.5px; }
+  .section { padding-block: 22px; }
+  /* il logo dell'header scende sotto la barra: la prima sezione di ogni pagina lascia spazio */
+  main > .container:first-child, main > section:first-child, main > div:first-child > .container:first-child { padding-top: 52px; }
+  main > .hero-band:first-child > .hero { padding-top: 48px; }
+  /* home: hero */
+  .hero__stars { flex-wrap: wrap; row-gap: 4px; font-size: 14px; }
+  .hero__ctas { margin-top: 26px; }
+  .hero__ctas .btn { width: 100%; }
+  .hero__ship { font-size: 15px; }
+  .hero-band .hero2 h1.hero2__big { font-size: clamp(32px, 9vw, 40px); }
+  .hero2 { padding-top: 48px; }
+  .hero2__cta .btn { width: 100%; }
+  .reels--hero { margin-top: 26px; justify-content: center; }
+  /* pillole: a tutta riga, allineate a sinistra come il testo */
+  .pills { gap: 8px; }
+  .pill { font-size: 14px; padding: 10px 14px; }
+  /* schede prodotto in home: foto meno alte, cosi' la pagina e' meno lunga */
+  .product__art { aspect-ratio: 1.45; }
+  .product { min-height: 0; }
+  /* carosello recensioni: una scheda per volta, puntini che vanno a capo */
+  .rv__dots { flex-wrap: wrap; row-gap: 2px; max-width: 100%; }
+  .rv__dots button { width: 18px; height: 18px; }
+  /* numeri del blocco recensioni */
+  .stats { gap: 8px; }
+  /* blocco "come funziona": una colonna */
+  .howto { grid-template-columns: 1fr; gap: 12px; }
+  /* footer: tutto centrato */
+  .footer { text-align: center; }
+  .newsletter form, .newsletter__row { justify-content: center; }
+}
+@media (max-width: 400px) {
+  h1 { font-size: clamp(30px, 9.2vw, 38px); }
+  .btn--lg, .btn--xl { padding-inline: 18px; }
+}

@@ -86,7 +86,8 @@
 {/if}
 
 <style>
-	.kit-buy { display: flex; align-items: center; gap: 18px; margin-top: 22px; }
+	.kit-buy { display: flex; align-items: center; gap: 18px; margin-top: 22px; flex-wrap: wrap; }
+	@media (max-width: 700px) { .kit-buy { flex-direction: column; align-items: stretch; gap: 14px; } .kit-buy__price { font-size: 54px; text-align: center; align-self: center; } .kit-buy .btn { width: 100%; } }
 	.kit-buy__price { font-family: var(--font-display); font-weight: 800; font-size: 60px; letter-spacing: -0.03em; color: var(--ink); line-height: 1; }
 	.reels--kit { grid-template-columns: minmax(0, 300px); justify-content: end; margin-top: 0; }
 	@media (max-width: 900px) { .reels--kit { justify-content: center; } }
