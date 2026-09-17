@@ -11,9 +11,9 @@ create table if not exists public.loyalty_levels (
   img         text
 );
 insert into public.loyalty_levels (level, rank, name, credit_rate, next_points, keep_points, img) values
-  ('creator', 1, 'Creator', 0.02, 500, 0, '/images/loyalty/creator.png'),
-  ('partner', 2, 'Partner', 0.04, 1500, 500, '/images/loyalty/partner.png'),
-  ('ambassador', 3, 'Ambassador', 0.06, null, 1500, '/images/loyalty/ambassador.png')
+  ('creator', 1, 'Creator', 0.02, 500, 0, '/images/loyalty/creator.webp'),
+  ('partner', 2, 'Partner', 0.04, 1500, 500, '/images/loyalty/partner.webp'),
+  ('ambassador', 3, 'Ambassador', 0.06, null, 1500, '/images/loyalty/ambassador.webp')
 on conflict (level) do update set name = excluded.name, credit_rate = excluded.credit_rate, next_points = excluded.next_points, keep_points = excluded.keep_points, img = excluded.img;
 
 create table if not exists public.loyalty (
