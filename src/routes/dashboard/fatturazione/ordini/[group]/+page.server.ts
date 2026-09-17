@@ -18,6 +18,11 @@ export const load: PageServerLoad = async ({ params, url, locals: { supabase, us
 	/* kit di adesivi: file_path e' una cartella (cavallotto + adesivo-1..6), si elencano tutti i file */
 	const fileLists: Record<string, { name: string; url: string }[]> = {};
 	for (const it of group.items) {
+		/* prove di stampa importate dal vecchio sito: percorso nel bucket privato, non un URL → link firmato */
+		if (it.proof_url && !/^https?:\/\//.test(it.proof_url)) {
+			const { data: s } = await supabase.storage.from('order-files').createSignedUrl(it.proof_url, 3600);
+			it.proof_url = s?.signedUrl ?? null;
+		}
 		if (!it.file_path) continue;
 		if (it.file_path.endsWith('/')) {
 			const dir = it.file_path.replace(/\/$/, '');
