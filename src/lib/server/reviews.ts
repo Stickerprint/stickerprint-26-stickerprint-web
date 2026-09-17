@@ -27,22 +27,6 @@ export const PRODUCTS: Record<string, { label: string; href: string }> = {
 	campioni: { label: 'Kit campioni', href: '/campioni' }
 };
 
-const FALLBACK: HomeReview[] = [
-	{ author: 'Mattia B.', title: 'Effetto WOW!!!', comment: 'Devo essere sincero: mi sono servito spesso di servizi di stampa online, ma mai per gli adesivi. Ero un po’ prevenuto e invece… qualità incredibile, colori pieni e taglio perfetto.', rating: 5, product: 'Adesivi personalizzati', href: '/adesivi-personalizzati', productType: 'adesivi_personalizzati' },
-	{ author: 'Giulia R.', title: 'Impeccabile', comment: 'Tutto impeccabile, ordinare su questo sito è davvero molto semplice, prima della conferma stampa ti inviano anche l’anteprima.', rating: 5, product: 'Etichette', href: '/etichette', productType: 'etichette' },
-	{ author: 'Luca F.', title: 'FOTONICI', comment: 'Processo di acquisto semplicissimo, assistenza impeccabile e prodotto FOTONICO! Assolutamente consigliati.', rating: 5, product: 'Adesivi resinati', href: '/adesivi-resinati', productType: 'adesivi_resinati' },
-	{ author: 'Sara M.', title: 'Fantastici!', comment: 'Potessi metterei 1000 stelle! Son stata seguita con pazienza fin dal momento dell’ordine, ho ricevuto il pacco in pochissimi giorni.', rating: 5, product: 'Adesivi personalizzati', href: '/adesivi-personalizzati', productType: 'adesivi_personalizzati' },
-	{ author: 'Andrea C.', title: 'Esperienza e serietà', comment: 'Seri, puntuali e con esperienza. Ho effettuato il mio ordine, mi hanno mandato velocemente la bozza e ho subito dato l’ok.', rating: 5, product: 'Etichette', href: '/etichette', productType: 'etichette' },
-	{ author: 'Elena P.', title: 'Adesivi 🔝', comment: 'Adesivi fatti veramente bene, stupendi, top. Super qualità di stampa e materiale resistente.', rating: 5, product: 'Adesivi personalizzati', href: '/adesivi-personalizzati', productType: 'adesivi_personalizzati' },
-	{ author: 'Marco T.', title: 'Adesivi finitura opaca', comment: 'Bella qualità di stampa, molto professionale. Finitura opaca perfetta per i nostri prodotti.', rating: 5, product: 'Adesivi personalizzati', href: '/adesivi-personalizzati', productType: 'adesivi_personalizzati' },
-	{ author: 'Chiara V.', title: 'Ottimo', comment: 'Adesivi ben fatti e di ottima qualità, la stampa è veramente ottima. Consegna nei tempi promessi.', rating: 4, product: 'Adesivi personalizzati', href: '/adesivi-personalizzati', productType: 'adesivi_personalizzati' },
-	{ author: 'Paolo G.', title: 'Resinati top', comment: 'Effetto bombato bellissimo, colori profondi. Li ho messi sulle borracce e sono ancora perfetti dopo mesi.', rating: 5, product: 'Adesivi resinati', href: '/adesivi-resinati', productType: 'adesivi_resinati' },
-	{ author: 'Federica S.', title: 'Etichette perfette', comment: 'Fogli ordinati, etichette che si staccano con un dito e stampa nitida anche sui testi piccoli. Le uso per le confezioni del mio laboratorio.', rating: 5, product: 'Etichette', href: '/etichette', productType: 'etichette' },
-	{ author: 'Stefano R.', title: 'Rilievo che si sente', comment: 'Il rilievo selettivo sul logo fa la differenza: tutti lo toccano. Consegna puntuale.', rating: 5, product: 'Adesivi a rilievo', href: '/adesivi-rilievo', productType: 'adesivi_rilievo' },
-	{ author: 'Ilaria M.', title: 'Vetrofania per il negozio', comment: 'Applicata dall’interno, si legge perfettamente da fuori. Taglio preciso e colori vivi.', rating: 5, product: 'Vetrofanie', href: '/vetrofanie', productType: 'vetrofanie' },
-	{ author: 'Gianni P.', title: 'Kit di adesivi', comment: 'Foglio con sei grafiche diverse, mezzo taglio perfetto. Ottimo per il merch dell’evento.', rating: 5, product: 'Fogli adesivi', href: '/fogli', productType: 'fogli_adesivi' },
-	{ author: 'Davide L.', title: 'Non c’è paragone', comment: 'Qualità fantastica rispetto ad altri servizi provati. Il taglio segue perfettamente il disegno.', rating: 5, product: 'Adesivi personalizzati', href: '/adesivi-personalizzati', productType: 'adesivi_personalizzati' }
-];
 
 export interface ReviewsResult {
 	reviews: HomeReview[];
@@ -50,7 +34,7 @@ export interface ReviewsResult {
 }
 
 /**
- * Recensioni pubbliche da Supabase (tabella `reviews`), con fallback statico.
+ * Recensioni pubbliche da Supabase (tabella `reviews`): solo quelle vere, approvate.
  * `productType` limita alle recensioni di un prodotto (es. adesivi_personalizzati).
  */
 /* cache in memoria (5 minuti, rinnovo in sottofondo): le recensioni non cambiano ogni secondo
@@ -68,9 +52,9 @@ export async function loadReviews(supabase: SupabaseClient, productType?: string
 }
 
 async function loadReviewsFresh(supabase: SupabaseClient, productType?: string): Promise<ReviewsResult> {
-	let reviews = productType ? FALLBACK.filter((r) => r.productType === productType) : FALLBACK;
-	if (productType && reviews.length < 3) reviews = [...reviews, ...FALLBACK.filter((r) => r.productType !== productType)].slice(0, 6);
-	let stats: ReviewsResult['stats'] = productType ? { total: 15, average: 4.9 } : { total: 225, average: 4.9 };
+	/* solo recensioni vere dal database: in home tutte, nella pagina prodotto solo quelle di quel prodotto (niente riempitivi) */
+	let reviews: HomeReview[] = [];
+	let stats: ReviewsResult['stats'] = { total: 0, average: 0 };
 
 	try {
 		/* MEDIA E CONTEGGIO: su TUTTE le recensioni pubbliche, di qualunque voto. Per un prodotto solo le sue;
@@ -78,7 +62,7 @@ async function loadReviewsFresh(supabase: SupabaseClient, productType?: string):
 		let qs = supabase.from('reviews').select('rating').eq('is_public', true).eq('status', 'approved');
 		if (productType) qs = qs.eq('product_slug', productType);
 		const { data: all } = await qs;
-		if (all && all.length >= 3) {
+		if (all && all.length) {
 			const avg = all.reduce((s, r) => s + (r.rating ?? 0), 0) / all.length;
 			stats = { total: all.length, average: Math.round(avg * 10) / 10, real: true };
 		}
@@ -90,14 +74,13 @@ async function loadReviewsFresh(supabase: SupabaseClient, productType?: string):
 			.eq('is_public', true).eq('status', 'approved')
 			.gte('rating', 4)
 			.order('created_at', { ascending: false })
-			.limit(40);
+			.limit(300);
 		if (productType) q = q.eq('product_slug', productType);
 		const { data: rows } = await q;
 
 		if (rows && rows.length) {
 			const mapped = rows
 				.filter((r) => (r.comment ?? '').trim().length > 0)
-				.slice(0, 12)
 				.map((r) => {
 					const order = (Array.isArray(r.order) ? r.order[0] : r.order) as { product_slug?: string; shipping?: { first_name?: string; last_name?: string } } | null;
 					const profile = (Array.isArray(r.profile) ? r.profile[0] : r.profile) as { full_name?: string } | null;
@@ -118,8 +101,7 @@ async function loadReviewsFresh(supabase: SupabaseClient, productType?: string):
 						real: true
 					};
 				});
-			/* le recensioni vere vanno sempre davanti; finche' sono poche, dietro restano quelle di partenza a riempire il carosello */
-			if (mapped.length) reviews = [...mapped, ...reviews.filter((f) => !mapped.some((m) => m.comment === f.comment))].slice(0, 12);
+			reviews = mapped;
 		}
 	} catch (e) {
 		console.warn('[reviews] uso fallback', e);
