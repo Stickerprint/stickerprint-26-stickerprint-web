@@ -16,7 +16,9 @@
 .offer__head .offer__stars { display: flex; justify-content: center; }
 .offer h1 { font-size: clamp(36px, 5vw, 62px); line-height: 1.08; letter-spacing: -0.03em; }
 .offer h1 mark { background: var(--green); color: var(--navy); padding: 0 12px; border-radius: 6px; }
-.offer__sub { margin-top: 16px; font-size: 18px; line-height: 1.5; color: #d9dcf2; }
+/* "Anteprima immediata inclusa": Rubik grassetto con la sottolineatura gialla */
+.offer__sub { margin-top: 18px; font-family: var(--font-display); font-weight: 800; font-size: 20px; line-height: 1.4; color: #fff; }
+.offer__sub .hl::before { height: 12px; bottom: -3px; }
 .offer__sub b { color: var(--yellow); }
 .offer__ends { margin-top: 10px; font-weight: 700; font-size: 15px; color: #d9dcf2; }
 .offer__ends b { color: var(--yellow); }
@@ -26,21 +28,25 @@
 .offer__chips span:nth-child(2n) { background: #7c4dff; }
 .offer__chips span.is-size { background: var(--yellow); color: var(--navy); }
 /* conto alla rovescia */
-.offer__count { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 18px; }
+/* "Scade tra" sopra il conto alla rovescia, tutto centrato (desktop e mobile) */
+.offer__count { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; margin-top: 18px; }
 .offer__count-lbl { font-family: var(--font-display); font-weight: 800; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: #d9dcf2; }
 .offer__count-box { display: inline-flex; align-items: center; gap: 6px; background: #e0245e; color: #fff; border-radius: 12px; padding: 8px 16px; }
 .offer__count-box span { display: grid; justify-items: center; min-width: 40px; }
 .offer__count-box b { font-family: var(--font-display); font-weight: 800; font-size: 24px; line-height: 1; }
 .offer__count-box small { font-size: 9.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; opacity: .9; margin-top: 2px; }
 .offer__count-box i { font-style: normal; font-weight: 800; font-size: 22px; line-height: 1; margin-bottom: 12px; }
-.offer__row.is-date { border-top: 1px solid rgba(255,255,255,.14); margin-top: 6px; padding-top: 10px; } .offer__row.is-date b { color: #8fb8ff; }
+.offer__row.is-date { border-top: 1px solid rgba(255,255,255,.18); margin-top: 8px; padding-top: 10px; } .offer__row.is-date b { color: #8fb8ff; }
 /* sotto: box "cosa ricevi" allineato al titolo, a destra il caricamento (o l'anteprima), centrato in verticale */
 .offer__grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 28px; align-items: stretch; margin-top: 26px; }
 .offer__box { background: #1a1f6e; border-radius: 18px; padding: 18px 22px; display: flex; flex-direction: column; justify-content: center; }
 .offer__box h4 { font-family: var(--font-display); font-weight: 800; font-size: 11.5px; letter-spacing: .08em; text-transform: uppercase; color: #8fb8ff; margin: 0 0 8px; }
 .offer__box h4 + h4 { margin-top: 14px; }
-.offer__row { display: flex; justify-content: space-between; gap: 16px; font-size: 14.5px; padding: 5px 0; }
-.offer__row b { font-weight: 700; }
+.offer__box h4:not(:first-child) { margin-top: 16px; }
+/* righe: voce a sinistra, valore a destra sulla stessa colonna, senza andare a capo */
+.offer__row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 16px; font-size: 14.5px; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,.07); }
+.offer__row:last-child { border-bottom: 0; }
+.offer__row b { font-weight: 700; text-align: right; white-space: nowrap; }
 .offer__row.is-save b { color: #ff8a80; } .offer__row.is-pay b { background: var(--green); color: var(--navy); padding: 2px 8px; border-radius: 6px; font-weight: 800; }
 .offer__right { display: grid; gap: 14px; align-content: center; }
 .offer__dz.dropzone { border-color: rgba(255,255,255,.3); background: transparent; color: #fff; min-height: 220px; }

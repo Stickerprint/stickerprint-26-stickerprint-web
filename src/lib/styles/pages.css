@@ -81,7 +81,8 @@
 .hero2--about .lead { font-size: 16px; }
 @media (max-width: 800px) { .reels--desktop { display: none; } .reels--mobile { display: block; } .reels__arrow--prev { left: 0; } .reels__arrow--next { right: 0; } .reel-card--big .reel-card__brand { height: 56px; } .reel-card--big .reel-card__brand img { max-height: 50px; max-width: 180px; } }
 @media (max-width: 600px) {
-	.pills__row { flex-wrap: nowrap; } .pills__row .pill { flex: 1 1 0; justify-content: center; font-size: 12.5px; padding: 10px 8px; white-space: nowrap; }
+	/* pillole: sulla stessa riga, testo piu' piccolo e centrato; se non ci sta va a capo dentro la pillola */
+	.pills__row { flex-wrap: nowrap; justify-content: center; } .pills__row .pill { flex: 1 1 auto; justify-content: center; text-align: center; font-size: 12px; padding: 9px 8px; white-space: normal; line-height: 1.15; }
 	.pills__row:last-child .pill { flex: 0 1 auto; }
 	.hero2__cta .btn { width: 100%; text-align: center; }
 	.stat-big { font-size: 40px; } .stat-big span { font-size: .6em; }
@@ -101,5 +102,7 @@
 .checks .ck { width: 22px; height: 22px; border-radius: 5px; background: var(--ok); color: #fff; display: grid; place-items: center; font-size: 13px; font-weight: 800; flex: 0 0 auto; }
 
 /* reel nell'hero Aziende: un solo blocco, come quelli del carosello */
-.reels--hero { grid-template-columns: minmax(0, 300px); justify-content: center; margin-top: 0; }
+.reels--hero { grid-template-columns: minmax(0, 240px); justify-content: center; margin-top: 0; }
 .reels--hero video.reel { object-fit: cover; }
+/* su telefono il reel nell'hero non si vede: resta il carosello dei lavori piu' sotto */
+@media (max-width: 700px) { .reels--hero { display: none; } }

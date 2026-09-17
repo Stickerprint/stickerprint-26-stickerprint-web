@@ -402,7 +402,6 @@ body { overflow-x: clip; }
 .rv__arrow--prev { left: -18px; } .rv__arrow--next { right: -18px; }
 .rv__dots { display: flex; justify-content: center; gap: 8px; margin-top: 14px; }
 /* con molte pagine (mobile: una recensione per pagina) al posto dei puntini c'e' il contatore */
-.rv__count { margin: 14px 0 0; text-align: center; font-family: var(--font-display); font-weight: 800; font-size: 14px; color: rgba(255,255,255,.75); letter-spacing: .04em; }
 /* puntini: area toccabile 24px (accessibilita'), pallino disegnato dentro */
 .rv__dots button { width: 24px; height: 24px; border-radius: 50%; border: 0; background: transparent; cursor: pointer; padding: 0; position: relative; }
 .rv__dots button::after { content: ""; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 9px; height: 9px; border-radius: 50%; background: rgba(255,255,255,.35); }
@@ -457,9 +456,13 @@ body { overflow-x: clip; }
 @media (max-width: 900px) { .business { grid-template-columns: 1fr; } }
 
 /* Campioni */
-.samples { background: var(--navy); color: #fff; border-radius: 22px; display: grid; grid-template-columns: 0.9fr 1.2fr 0.8fr; gap: 24px; align-items: center; overflow: hidden; }
-.samples__pile { align-self: stretch; position: relative; min-height: 340px; }
-.samples__pile img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: left center; }
+/* blocco campioni: la foto dei campioni fa da sfondo a tutto il riquadro (come sul vecchio sito):
+   pila di adesivi a sinistra che sfuma nel blu, testo e bottone a destra */
+.samples { background: var(--navy); color: #fff; border-radius: 22px; display: grid; grid-template-columns: 0.85fr 1.25fr 0.8fr; gap: 24px; align-items: center; overflow: hidden; position: relative; isolation: isolate; min-height: 420px; }
+.samples__pile { position: absolute; inset: 0; z-index: -1; }
+.samples__pile img { width: 52%; height: 100%; object-fit: cover; object-position: center 45%; }
+.samples__pile::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(5,5,56,.05) 0%, rgba(5,5,56,.2) 22%, rgba(5,5,56,.9) 37%, var(--navy) 46%); }
+.samples__body { grid-column: 2; }
 .samples__body { padding: clamp(28px, 4vw, 48px) 0; }
 .samples__body h2 { font-size: clamp(38px, 4.6vw, 64px); }
 .samples__list { list-style: none; padding: 0; margin: 26px 0 0; display: grid; gap: 12px; font-weight: 600; font-size: 15px; }
@@ -707,7 +710,7 @@ body { overflow-x: clip; }
 @keyframes cred-float { 0%, 100% { translate: 0 0; } 50% { translate: 0 -6px; } }
 @media (prefers-reduced-motion: reduce) { .cred__line, .cred__lv, .cred__lv img, .cred__pct { transition: none !important; animation: none !important; opacity: 1 !important; transform: none !important; } .cred__shine::after { animation: none; } }
 
-.rv__note { text-align: center; font-size: 12.5px; color: var(--muted); margin: 10px 0 0; }
+.rv__note { display: block; width: 100%; text-align: center; font-size: 12.5px; color: var(--muted); margin: 10px auto 0; }
 
 /* iubenda: il widget flottante duplicato del banner (come sul sito attuale) e il testo delle policy incorporate */
 .iub__us-widget { display: none !important; }
@@ -733,19 +736,41 @@ body { overflow-x: clip; }
   .rating { flex-wrap: wrap; row-gap: 2px; justify-content: inherit; font-size: 14px; gap: 6px; }
   .rating .star { width: 17px; height: 17px; }   /* stelle un po' piu' piccole: stanno su una riga */
   .offer__stars, .ph__stars { flex-wrap: wrap; }
-  .hero__ctas { margin-top: 26px; }
+  .hero__ctas { margin-top: 26px; justify-content: center; }
   .hero__ctas .btn { width: 100%; }
-  .hero__ship { font-size: 15px; }
+  /* regola generale: su telefono tutto centrato (titoli, testi, bottoni, pillole, stelle) */
+  .hero__grid > div, .hero2 > div, .ph, .ph > div, .business__text, .samples__body, .samples__cta, .kit-buy, .split > div, .split2 > div, .panel, .section > .container, .hero2__text { text-align: center; }
+  .hero__stars, .hero2__cta, .pills__row, .hero__pill, .rating, .ph__stars, .samples__price, .kit-buy, .ph__ctas, .cta-row { justify-content: center; }
+  .lead, .ph__desc, .business__text p { margin-inline: auto; }
+  /* liste con la spunta: il blocco e' centrato, le voci restano allineate tra loro */
+  .samples__list, .checks, .ph__list { width: max-content; max-width: 100%; margin-inline: auto; text-align: left; }
+  .samples__cta { justify-items: center; }
+  /* spedizione stimata: razzo sopra e tre righe centrate */
+  .hero__ship { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 15px; border-radius: 18px; padding: 12px 18px 14px; width: 100%; text-align: center; }
+  .hero__ship-txt { display: grid; justify-items: center; line-height: 1.25; }
+  .hero__ship-sep { display: none; }
+  .hero__ship b { font-size: 18px; }
   .hero-band .hero2 h1.hero2__big { font-size: clamp(32px, 9vw, 40px); }
   .hero2 { padding-top: 48px; }
   .hero2__cta .btn { width: 100%; }
-  .reels--hero { margin-top: 26px; justify-content: center; }
-  /* pillole: a tutta riga, allineate a sinistra come il testo */
+  /* pillole: sulla stessa riga, testo piu' piccolo */
   .pills { gap: 8px; }
-  .pill { font-size: 14px; padding: 10px 14px; }
-  /* schede prodotto in home: foto meno alte, cosi' la pagina e' meno lunga */
+  .pills__row { flex-wrap: nowrap; justify-content: center; }
+  .pills__row .pill { flex: 1 1 auto; justify-content: center; text-align: center; white-space: normal; line-height: 1.15; }
+  .pills__row:last-child:not(:first-child) .pill { flex: 0 1 auto; }
+  .pill { font-size: 12px; padding: 9px 8px; }
+  /* schede prodotto in home: foto meno alte, tutto centrato */
   .product__art { aspect-ratio: 1.45; }
-  .product { min-height: 0; }
+  .product { min-height: 0; align-items: center; text-align: center; }
+  .product__name, .product__from { align-self: center; }
+  /* box business: testo centrato */
+  .business__text { text-align: center; }
+  /* blocco campioni: una colonna, foto di sfondo velata di piu' */
+  .samples { grid-template-columns: 1fr; min-height: 0; }
+  .samples__pile img { width: 100%; object-position: center 30%; }
+  .samples__pile::after { background: rgba(5,5,56,.88); }
+  .samples__body { grid-column: 1; padding: 28px 18px 0; }
+  .samples__cta { padding: 0 18px 28px; }
   /* carosello recensioni: una scheda per volta, puntini che vanno a capo */
   .rv__dots { flex-wrap: wrap; row-gap: 2px; max-width: 100%; }
   .rv__dots button { width: 18px; height: 18px; }

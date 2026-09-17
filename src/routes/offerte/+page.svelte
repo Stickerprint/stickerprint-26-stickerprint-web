@@ -126,7 +126,7 @@
 					</div>
 				</div>
 			{/if}
-			<p class="offer__sub"><b>Solo questa settimana:</b> {promo.qty.toLocaleString('it-IT')} {promo.product_label} a {eur(price)}.<br />Anteprima immediata compresa.</p>
+			<p class="offer__sub"><span class="hl hl--yellow">Anteprima immediata inclusa</span></p>
 			<div class="offer__stars"><Stars value={data.stats?.average ?? 4.9} count={data.stats?.total ?? null} size={22} countLabel="recensioni verificate" /></div>
 			<div class="offer__chips"><span class="is-size">{mm(promo.w)}×{mm(promo.h)} mm</span>{#each promo.chips as c (c)}<span>{c}</span>{/each}</div>
 			</div>
@@ -200,9 +200,7 @@
 		<h2>Consigliati da <span class="hl hl--green">persone come te.</span></h2>
 		<p class="lead">Il <strong>100%</strong> di chi ha lasciato una recensione ha detto che ordinerebbe di nuovo.</p>
 		<div class="stats">
-			<div class="stat stat--blue"><b>3K+</b><span>Ordini spediti</span></div>
-			<div class="stat stat--yellow"><b>{(data.stats?.average ?? 4.9).toLocaleString('it-IT', { minimumFractionDigits: 1 })} ★</b><span>Valutazione media</span></div>
-			<div class="stat stat--pink"><b>5 gg</b><span>Media di produzione</span></div>
+			<div class="stat stat--yellow"><b>{(data.stats?.average ?? 4.9).toLocaleString('it-IT', { minimumFractionDigits: 1 })} su 5</b><span>recensioni verificate</span></div>
 		</div>
 		<ReviewsCarousel reviews={data.reviews} />
 	</div>

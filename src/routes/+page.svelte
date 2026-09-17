@@ -74,7 +74,7 @@
 				<a class="btn btn--yellow btn--lg" href="/campioni">Campioni</a>
 			</div>
 			<div class="pills"><div class="pills__row"><span class="pill pill--green">✦ Anteprima immediata</span><span class="pill pill--yellow">✦ Fino al 6% di Credito Stickerprint</span></div></div>
-			<p class="hero__ship"><span class="hero__rocket" aria-hidden="true">🚀</span><span>Spedizione stimata <b>{data.shipDate}</b>, gratuita da 50 €.</span></p>
+			<p class="hero__ship"><span class="hero__rocket" aria-hidden="true">🚀</span><span class="hero__ship-txt"><span>Spedizione stimata</span><i class="hero__ship-sep">&nbsp;</i><b>{data.shipDate}</b><i class="hero__ship-sep">,&nbsp;</i><span>gratuita da 50 €</span></span></p>
 		</div>
 		<div class="hero__visual">
 			<img src="/images/ig-3.webp" alt="Adesivi fustellati Bubu's Smashburger stampati da Stickerprint" width="600" height="600" fetchpriority="high" />
@@ -142,9 +142,7 @@
 			Il <strong>100%</strong> di chi ordina su <strong>Stickerprint</strong> sa esattamente cosa riceverà.<br />E torna a stampare con noi.
 		</p>
 		<div class="stats">
-			<div class="stat stat--blue"><b>3K+</b><span>Ordini spediti</span></div>
-			<div class="stat stat--yellow"><b>{data.stats.average.toLocaleString('it-IT', { minimumFractionDigits: 1 })} ★</b><span>Valutazione media</span></div>
-			<div class="stat stat--pink"><b>5 gg</b><span>Media di produzione</span></div>
+			<div class="stat stat--yellow"><b>{data.stats.average.toLocaleString('it-IT', { minimumFractionDigits: 1 })} su 5</b><span>recensioni verificate</span></div>
 		</div>
 		<ReviewsCarousel reviews={data.reviews} />
 	</div>
