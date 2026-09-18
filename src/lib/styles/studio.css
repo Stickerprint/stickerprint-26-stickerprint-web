@@ -104,3 +104,9 @@
 .st-ord__t { margin: 0 0 4px; font-size: 15px; }
 .st-ord__s { margin: 0; font-size: 13.5px; color: #3d3f63; line-height: 1.45; }
 .st-real { background: #fff7e0; border-radius: 8px; padding: 6px 9px; color: #6b4e00; }
+
+/* Data Link Server */
+.st-dls { display: flex; flex-direction: column; gap: 8px; padding-top: 12px; border-top: 1px solid #e6e7f0; }
+.st-link { border: 0; background: none; padding: 0; color: var(--blue); font: inherit; text-decoration: underline; cursor: pointer; }
+.st-link:disabled { color: #9aa0c3; cursor: default; }
+.st-ok { margin: 0; color: #2e7d32; font-size: 13px; font-weight: 600; }

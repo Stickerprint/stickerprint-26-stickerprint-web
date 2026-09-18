@@ -4,6 +4,8 @@
 	import { showFinishStep, showMaterialStep, minForShape, startSize, sizeProposals, roundHalf, proportionalSize } from '$lib/pricing/engine';
 	import { KIT_CAVALLOTTO } from '$lib/studio/products';
 	import { STRIP_MATERIALS, SHEET_RULES, layoutLoose, layoutSheets, type Strip } from '$lib/studio/layout';
+	import { MARKED_MARGIN, pageWidthFor, DEFAULT_COND, markRects, barcodeRects } from '$lib/studio/graphtec';
+	import { pickDataLink, savedDataLink, takenJobIds, writeXpf, type DataLinkDir } from '$lib/studio/datalink';
 	import { SPOTS } from '$lib/studio/spots';
 
 	let { data } = $props();
@@ -157,7 +159,7 @@
 	}
 
 	/* ------------------------------------------------------------ esportazioni */
-	let busy = $state<'' | 'mockup' | 'print' | 'strip'>('');
+	let busy = $state<'' | 'mockup' | 'print' | 'strip' | 'dls'>('');
 	let downloadErr = $state('');
 	let dpi = $state<'auto' | number>('auto');
 	let traceInfo = $state('');
@@ -177,7 +179,7 @@
 		setTimeout(() => URL.revokeObjectURL(url), 60000);
 	}
 
-	async function run(kind: 'mockup' | 'print' | 'strip', fn: () => Promise<void>) {
+	async function run(kind: 'mockup' | 'print' | 'strip' | 'dls', fn: () => Promise<void>) {
 		if (busy || !engine) return;
 		busy = kind;
 		downloadErr = '';
@@ -240,7 +242,11 @@
 	const maxH = $derived(P.mode === 'fogli' ? mat.maxHSheets : mat.maxHLoose);
 	let stripH = $state(0);
 	let qty = $state<number | ''>('');
-	let margin = $state(5);
+	/* crocini e codice a barre Graphtec, SEMPRE: la pagina e' larga quanto quella di Cutting Master
+	   (bobina meno 12 mm) e i pezzi stanno fuori dai bracci dei crocini e dalle fasce dei codici */
+	const pageW = $derived(pageWidthFor(mat.width));
+	const margin = MARKED_MARGIN.x;
+	const marginY = MARKED_MARGIN.y;
 	let gap = $state(8);
 	/* fra un foglio e l'altro almeno 1 cm (resinati, etichette, fogli di adesivi) */
 	const MIN_SHEET_GAP = 10;
@@ -255,15 +261,16 @@
 		const H = Math.min(stripH || maxH, maxH);
 		if (P.mode === 'fogli') {
 			const rules = SHEET_RULES[P.sheetRules ?? 'etichette'];
-			const probe = layoutSheets(cutW, cutH, rules, { stripW: mat.width, stripH: H, margin, sheetGap: sGap, sheets: 0 });
+			const probe = layoutSheets(cutW, cutH, rules, { stripW: pageW, stripH: H, margin, marginY, sheetGap: sGap, sheets: 0 });
 			if (!probe.ok || !probe.sheet) return { kind: 'fogli' as const, r: probe, sheets: 0 };
 			const want = typeof qty === 'number' && qty > 0 ? Math.ceil(qty / probe.sheet.grid.n) : 0;
-			return { kind: 'fogli' as const, r: want ? layoutSheets(cutW, cutH, rules, { stripW: mat.width, stripH: H, margin, sheetGap: sGap, sheets: want }) : probe, sheets: want };
+			return { kind: 'fogli' as const, r: want ? layoutSheets(cutW, cutH, rules, { stripW: pageW, stripH: H, margin, marginY, sheetGap: sGap, sheets: want }) : probe, sheets: want };
 		}
-		return { kind: 'sciolti' as const, r: layoutLoose(cutW, cutH, { stripW: mat.width, stripH: H, margin, gap, qty: typeof qty === 'number' && qty > 0 ? qty : 0 }) };
+		return { kind: 'sciolti' as const, r: layoutLoose(cutW, cutH, { stripW: pageW, stripH: H, margin, marginY, gap, qty: typeof qty === 'number' && qty > 0 ? qty : 0 }) };
 	});
 	const strips = $derived<Strip[]>(plan?.r.ok ? plan.r.strips : []);
 	const preview = $derived(strips[0] ?? null);
+	const previewMarks = $derived(preview ? [...markRects(preview.w, preview.h), ...barcodeRects(preview.w, preview.h, 'G1200PROV').rects] : []);
 
 	const generaStriscia = () => run('strip', async () => {
 		const { buildPdf } = await import('$lib/studio/pdf');
@@ -273,18 +280,70 @@
 		let pages: Strip[];
 		if (P.mode === 'fogli') {
 			const rules = SHEET_RULES[P.sheetRules ?? 'etichette'];
-			const probe = layoutSheets(art.cutW, art.cutH, rules, { stripW: mat.width, stripH: H, margin, sheetGap: sGap, sheets: 0 });
+			const probe = layoutSheets(art.cutW, art.cutH, rules, { stripW: pageW, stripH: H, margin, marginY, sheetGap: sGap, sheets: 0 });
 			if (!probe.ok || !probe.sheet) throw new Error(probe.error ?? 'Impaginazione non possibile');
 			const want = typeof qty === 'number' && qty > 0 ? Math.ceil(qty / probe.sheet.grid.n) : 0;
-			pages = (want ? layoutSheets(art.cutW, art.cutH, rules, { stripW: mat.width, stripH: H, margin, sheetGap: sGap, sheets: want }) : probe).strips;
+			pages = (want ? layoutSheets(art.cutW, art.cutH, rules, { stripW: pageW, stripH: H, margin, marginY, sheetGap: sGap, sheets: want }) : probe).strips;
 		} else {
-			const r = layoutLoose(art.cutW, art.cutH, { stripW: mat.width, stripH: H, margin, gap, qty: typeof qty === 'number' && qty > 0 ? qty : 0 });
+			const r = layoutLoose(art.cutW, art.cutH, { stripW: pageW, stripH: H, margin, marginY, gap, qty: typeof qty === 'number' && qty > 0 ? qty : 0 });
 			if (!r.ok) throw new Error(r.error ?? 'Impaginazione non possibile');
 			pages = r.strips;
 		}
-		const bytes = await buildPdf({ title: `${jobName} — ${mat.label}`, art, pages, pieceCut: P.pieceCut, sheetCut: P.mode === 'fogli' ? P.sheetCut : undefined });
+		/* un codice del lavoro per ogni striscia DIVERSA (strisce uguali = stesso taglio = stesso codice) */
+		const taken = dlDir ? await takenJobIds(dlDir).catch(() => new Set<string>()) : new Set<string>();
+		const { newJobId } = await import('$lib/studio/graphtec');
+		const bySig = new Map<string, string>();
+		const ids = pages.map((pg) => {
+			const sig = `${pg.h}|${pg.pieces.length}|${pg.sheets?.length ?? 0}`;
+			let id = bySig.get(sig);
+			if (!id) { id = newJobId(taken); taken.add(id); bySig.set(sig, id); }
+			return id;
+		});
+		const bytes = await buildPdf({ title: `${jobName} — ${mat.label}`, art, pages, pieceCut: P.pieceCut, sheetCut: P.mode === 'fogli' ? P.sheetCut : undefined, graphtecIds: ids });
 		const n = pages.reduce((a, s) => a + s.pieces.length, 0);
+		lastJob = { ids, pages, art: { pathD: art.pathD, cutW: art.cutW, cutH: art.cutH }, name: baseName() };
+		sent = '';
 		download(new Blob([bytes as BlobPart], { type: 'application/pdf' }), `${baseName()}_striscia-${mat.width / 10}cm_${n}pz${pages.length > 1 ? `_${pages.length}strisce` : ''}.pdf`);
+	});
+
+	/* ------------------------------------------------------------ Data Link Server */
+	/* l'ultimo PDF generato: il taglio da mandare al plotter deve essere ESATTAMENTE quello */
+	let lastJob = $state<{ ids: string[]; pages: Strip[]; art: { pathD: string; cutW: number; cutH: number }; name: string } | null>(null);
+	let dlDir = $state<DataLinkDir | null>(null);
+	let dlName = $state('');
+	let cutMode = $state<'tutto' | 'passante'>('tutto');
+	let condHalf = $state(DEFAULT_COND.half);
+	let condThrough = $state(DEFAULT_COND.through);
+	let sent = $state('');
+	onMount(async () => { try { dlDir = await savedDataLink(); dlName = dlDir?.name ?? ''; } catch { /* nessuna cartella salvata */ } });
+	async function sceglieCartella() {
+		try { dlDir = await pickDataLink(); dlName = dlDir.name; } catch (e) { if (e instanceof Error && e.name !== 'AbortError') downloadErr = e.message; }
+	}
+	function xpfJobs() {
+		if (!lastJob) return [];
+		const cond = (spot: 'Passante' | 'CutContour') => (spot === 'Passante' ? condThrough : condHalf);
+		const seen = new Set<string>();
+		return lastJob.pages.flatMap((pg, i) => {
+			const id = lastJob!.ids[i];
+			if (seen.has(id)) return [];
+			seen.add(id);
+			const onlyThrough = P.mode === 'fogli' && cutMode === 'passante';
+			return [{ id, W: pg.w, H: pg.h, pathD: lastJob!.art.pathD, cutW: lastJob!.art.cutW, cutH: lastJob!.art.cutH, pieces: pg.pieces, sheets: pg.sheets, pieceCond: onlyThrough ? null : cond(P.pieceCut), sheetCond: P.mode === 'fogli' && P.sheetCut ? cond(P.sheetCut) : null }];
+		});
+	}
+	const inviaDataLink = () => run('dls', async () => {
+		if (!lastJob) throw new Error('Genera prima il PDF della striscia: il taglio deve essere quello stampato.');
+		if (!dlDir) await sceglieCartella();
+		if (!dlDir) return;
+		const { buildXpf } = await import('$lib/studio/graphtec');
+		const done: string[] = [];
+		for (const j of xpfJobs()) { await writeXpf(dlDir, `SP_${j.id}.xpf`, buildXpf(j)); done.push(j.id); }
+		sent = `Inviato a Data Link Server: ${done.join(', ')}. Sul plotter fai leggere il codice a barre.`;
+	});
+	const scaricaXpf = () => run('dls', async () => {
+		if (!lastJob) throw new Error('Genera prima il PDF della striscia.');
+		const { buildXpf } = await import('$lib/studio/graphtec');
+		for (const j of xpfJobs()) download(new Blob([buildXpf(j) as BlobPart], { type: 'application/octet-stream' }), `SP_${j.id}.xpf`);
 	});
 
 	/* anteprima della striscia col contorno vero: il tracciato si chiede al motore (a bassa risoluzione) */
@@ -460,7 +519,9 @@
 					<label class="st-field"><span>{P.mode === 'fogli' ? 'Etichette da stampare' : 'Pezzi da stampare'} <em>(vuoto = una striscia piena)</em></span><input class="input" type="number" min="1" step="1" bind:value={qty} placeholder="riempi la striscia" /></label>
 					<details class="st-adv">
 						<summary>Margini e spazi</summary>
-						<label class="st-field"><span>Margine dal bordo della striscia (mm)</span><input class="input" type="number" min="0" step="0.5" bind:value={margin} /></label>
+						<p class="st-note">Crocini e codice a barre Graphtec sempre presenti: pagina {pageW} mm, pezzi a {margin} mm dai lati e {marginY} mm da sopra e sotto.</p>
+						<label class="st-field"><span>Condizione plotter mezzo taglio</span><input class="input" type="number" min="1" max="8" step="1" bind:value={condHalf} /></label>
+						<label class="st-field"><span>Condizione plotter passante</span><input class="input" type="number" min="1" max="8" step="1" bind:value={condThrough} /></label>
 						{#if P.mode === 'fogli'}
 							<label class="st-field"><span>Spazio fra i fogli (mm, minimo {MIN_SHEET_GAP})</span><input class="input" type="number" min={MIN_SHEET_GAP} step="0.5" bind:value={sheetGap} /></label>
 							<p class="st-note">Foglio: bordo {SHEET_RULES[P.sheetRules ?? 'etichette'].margin} mm, {SHEET_RULES[P.sheetRules ?? 'etichette'].gap} mm fra le etichette{SHEET_RULES[P.sheetRules ?? 'etichette'].mod5 ? ', multipli di 5 (resinatrice a 10 aghi)' : ''}.</p>
@@ -480,9 +541,27 @@
 							{:else if plan.kind === 'sciolti'}
 								<li>Striscia: {plan.r.grid.cols} × {plan.r.grid.rows} = <b>{plan.r.perStrip} pezzi</b>{plan.r.grid.rot ? ' (girati di 90°)' : ''}</li>
 							{/if}
-							<li>{strips.length} {strips.length === 1 ? 'striscia' : 'strisce'}, {strips.reduce((a, s) => a + s.pieces.length, 0)} pezzi in tutto · prima striscia {mat.width} × {strips[0]?.h} mm</li>
+							<li>{strips.length} {strips.length === 1 ? 'striscia' : 'strisce'}, {strips.reduce((a, s) => a + s.pieces.length, 0)} pezzi in tutto · prima striscia {pageW} × {strips[0]?.h} mm</li>
 						</ul>
 						<button type="button" class="btn btn--green" disabled={!!busy || !strips.length} onclick={generaStriscia}>{busy === 'strip' ? 'Genero il PDF…' : 'Scarica PDF striscia'}</button>
+
+						<div class="st-dls">
+							<p class="st-label">Taglio sul Graphtec</p>
+							{#if P.mode === 'fogli'}
+								<div class="st-chips">
+									<button type="button" class="st-chip" class:is-on={cutMode === 'tutto'} onclick={() => (cutMode = 'tutto')}>Mezzo taglio + passante</button>
+									<button type="button" class="st-chip" class:is-on={cutMode === 'passante'} onclick={() => (cutMode = 'passante')}>Solo passante (verde)</button>
+								</div>
+							{/if}
+							<button type="button" class="btn btn--blue" disabled={!!busy || !lastJob} onclick={inviaDataLink}>{busy === 'dls' ? 'Invio…' : 'Invia taglio a Data Link Server'}</button>
+							<p class="st-note">
+								{#if !lastJob}Prima scarica il PDF della striscia: il taglio inviato è quello di quel PDF (stesso codice a barre).
+								{:else}Codice{lastJob.ids.length > 1 && new Set(lastJob.ids).size > 1 ? 'i' : ''}: <b>{[...new Set(lastJob.ids)].join(', ')}</b>{/if}
+								· Cartella: {dlName ? dlName : 'da scegliere al primo invio'} <button type="button" class="st-link" onclick={sceglieCartella}>cambia</button>
+								· <button type="button" class="st-link" disabled={!lastJob} onclick={scaricaXpf}>scarica il file di taglio</button>
+							</p>
+							{#if sent}<p class="st-ok">✓ {sent}</p>{/if}
+						</div>
 					{/if}
 				</div>
 
@@ -490,6 +569,7 @@
 					<div class="st-strip__view">
 						<svg viewBox="-2 -2 {preview.w + 4} {preview.h + 4}" preserveAspectRatio="xMidYMin meet">
 							<rect x="0" y="0" width={preview.w} height={preview.h} fill="#fff" stroke="#c7cbe0" stroke-width="1" />
+							{#each previewMarks as r, i (i)}<rect x={r.x} y={r.y} width={r.w} height={r.h} fill="#111" />{/each}
 							{#if lastPath || forma}
 								{#each preview.pieces as p, i (i)}
 									{#if lastPath}
@@ -503,7 +583,7 @@
 								<rect x={s.x} y={s.y} width={s.w} height={s.h} fill="none" stroke={cutColor(P.sheetCut ?? 'Passante')} stroke-width="1" />
 							{/each}
 						</svg>
-						<p class="st-note">{mat.width} mm di larghezza · la prima striscia. {lastPath ? '' : 'Il contorno vero compare dopo il primo file generato.'}</p>
+						<p class="st-note">{mat.label}: pagina {pageW} mm con crocini e codice a barre · la prima striscia. {lastPath ? '' : 'Il contorno vero compare dopo il primo file generato.'}</p>
 					</div>
 				{/if}
 			</section>

@@ -9,7 +9,8 @@
  *   CutContour — mezzo taglio, fucsia C2 M93 Y0 K0
  * (valori presi dai file di produzione Roland dell'azienda)
  */
-import { PDFDocument, PDFName, PDFNumber, PDFOperator, PDFOperatorNames as Op, type PDFPage, type PDFRef, type PDFDict } from 'pdf-lib';
+import { PDFDocument, PDFName, PDFNumber, PDFOperator, PDFOperatorNames as Op, StandardFonts, degrees, type PDFFont, type PDFPage, type PDFRef, type PDFDict } from 'pdf-lib';
+import { markRects, barcodeRects } from './graphtec';
 import type { Placement, Strip } from './layout';
 
 import { SPOTS, type CutSpot } from './spots';
@@ -65,6 +66,8 @@ export interface PdfJob {
 	pieceCut: CutSpot;
 	/** taglio sul bordo dei fogli (resinati, etichette) */
 	sheetCut?: CutSpot;
+	/** crocini e codice a barre Graphtec: il codice del lavoro per ogni pagina */
+	graphtecIds?: string[];
 }
 
 interface Res {
@@ -89,7 +92,7 @@ function setupResources(pdf: PDFDocument, imgRef: PDFRef): Res {
  * Ogni pagina ha due soli oggetti: il GRUPPO della grafica e il GRUPPO del taglio (due Form XObject:
  * Illustrator e gli altri programmi li aprono come due gruppi, da selezionare o separare con un clic).
  */
-function drawPage(page: PDFPage, job: PdfJob, strip: Strip, res: Res) {
+function drawPage(page: PDFPage, job: PdfJob, strip: Strip, res: Res, pageIndex: number, font: PDFFont) {
 	const { art } = job;
 	const ctx = page.doc.context;
 	const W = strip.w * PT, H = strip.h * PT;
@@ -122,9 +125,28 @@ function drawPage(page: PDFPage, job: PdfJob, strip: Strip, res: Res) {
 	const cutForm = ctx.register(ctx.formXObject(cutOps, { BBox: [0, 0, W, H], Resources: { ColorSpace: cs, ExtGState: { GS: res.gs } } }));
 
 	const node = page.node;
+	/* 3. gruppo CROCINI e codici a barre Graphtec (nero pieno, si stampa) */
+	const gid = job.graphtecIds?.[pageIndex];
+	let nMarks: PDFName | null = null;
+	if (gid) {
+		const bc = barcodeRects(strip.w, strip.h, gid);
+		const mOps: PDFOperator[] = [mm(), op(Op.NonStrokingColorGray, 0)];
+		for (const r of [...markRects(strip.w, strip.h), ...bc.rects]) mOps.push(op(Op.AppendRectangle, r.x, r.y, r.w, r.h));
+		mOps.push(op(Op.FillNonZero));
+		const marksForm = ctx.register(ctx.formXObject(mOps, { BBox: [0, 0, W, H], Resources: {} }));
+		nMarks = node.newXObject('Crocini', marksForm);
+		// codice leggibile accanto ai codici a barre
+		for (const l of bc.labels) {
+			const size = 6.5, tw = font.widthOfTextAtSize(l.text, size);
+			if (!l.rot180) page.drawText(l.text, { x: l.x * PT - tw, y: H - l.y * PT - size * 0.35, size, font });
+			else page.drawText(l.text, { x: l.x * PT + tw, y: H - l.y * PT + size * 0.35, size, font, rotate: degrees(180) });
+		}
+	}
 	const nArt = node.newXObject('Grafica', artForm);
 	const nCut = node.newXObject('Taglio', cutForm);
-	page.pushOperators(op(Op.PushGraphicsState), op(Op.DrawObject, nArt), op(Op.PopGraphicsState), op(Op.PushGraphicsState), op(Op.DrawObject, nCut), op(Op.PopGraphicsState));
+	page.pushOperators(op(Op.PushGraphicsState), op(Op.DrawObject, nArt), op(Op.PopGraphicsState));
+	if (nMarks) page.pushOperators(op(Op.PushGraphicsState), op(Op.DrawObject, nMarks), op(Op.PopGraphicsState));
+	page.pushOperators(op(Op.PushGraphicsState), op(Op.DrawObject, nCut), op(Op.PopGraphicsState));
 }
 
 export async function buildPdf(job: PdfJob): Promise<Uint8Array> {
@@ -134,10 +156,11 @@ export async function buildPdf(job: PdfJob): Promise<Uint8Array> {
 	pdf.setProducer('Stickerprint Studio');
 	const img = await pdf.embedPng(job.art.png);
 	const res = setupResources(pdf, img.ref);
-	for (const strip of job.pages) {
+	const font = await pdf.embedFont(StandardFonts.Helvetica);
+	job.pages.forEach((strip, i) => {
 		const page = pdf.addPage([strip.w * PT, strip.h * PT]);
-		drawPage(page, job, strip, res);
-	}
+		drawPage(page, job, strip, res, i, font);
+	});
 	return pdf.save({ useObjectStreams: false });
 }
 
