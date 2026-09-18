@@ -19,7 +19,7 @@
 	/* icone delle sagome: cambiano con il prodotto (adesivi, resinati, etichette) */
 	const SHAPE_IMG: Record<Product, Record<string, string>> = {
 		personalizzati: { sagomato: '/images/estimator/custom_stickers.webp', tondo: '/images/estimator/round_stickers.webp', quadrato: '/images/estimator/square_stickers.webp', ovale: '/images/estimator/oval_stickers.webp', rettangolare: '/images/estimator/rect_stickers.webp' },
-		resinati: { sagomato: '/images/estimator/res/custom_res.webp', tondo: '/images/estimator/res/round_res.webp', quadrato: '/images/estimator/res/round_res.webp', ovale: '/images/estimator/res/oval_res.webp', rettangolare: '/images/estimator/res/rect_res.webp' },
+		resinati: { sagomato: '/images/estimator/res/custom_res.webp', tondo: '/images/estimator/res/round_res.webp', quadrato: '/images/estimator/res/square_res.webp', ovale: '/images/estimator/res/oval_res.webp', rettangolare: '/images/estimator/res/rect_res.webp' },
 		fogli: { sagomato: '/images/estimator/label/custom_labels.webp', tondo: '/images/estimator/label/round_label.webp', quadrato: '/images/estimator/label/square_labels.webp', ovale: '/images/estimator/label/oval_labels.webp', rettangolare: '/images/estimator/label/rect_label.webp' }
 	};
 	const shapeImg = (id: string) => SHAPE_IMG[product][id] ?? SHAPE_IMG.personalizzati[id];
@@ -40,13 +40,16 @@
 		{ id: 'argento', label: 'Argento', img: '/images/estimator/silver.webp' }
 	];
 
+	/* resinati: solo i materiali dei resinati (niente olografico ne' glitterato; il supertack resta nella pagina prodotto) */
+	const MAT_RESINATI = ['bianco', 'trasparente', 'oro', 'argento'];
+
 	let file = $state<File | null>(null);
 	let url = $state<string | null>(null);
 	let over = $state(false);
 	let widthMm = $state(80);
 	let heightMm = $state(0);
 	let error = $state('');
-	let product: Product = $state('personalizzati');
+	let product = $state<Product>('personalizzati');
 	let forma = $state('sagomato');
 	let materiale = $state('bianco');
 
@@ -59,6 +62,7 @@
 	let saving = $state(false);
 
 	const current = $derived(PRODUCTS.find((p) => p.id === product)!);
+	const materiali = $derived(product === 'resinati' ? MATERIALI.filter((m) => MAT_RESINATI.includes(m.id)) : MATERIALI);
 	const usesEngine = true;
 	const ACCEPT = ['image/png', 'image/jpeg', 'image/svg+xml', 'application/pdf'];
 
@@ -145,6 +149,7 @@
 	}
 	function setProduct(id: Product) {
 		product = id;
+		if (id === 'resinati' && !MAT_RESINATI.includes(materiale)) materiale = 'bianco';
 		snapshot = null;
 		if (file) loadEngine();
 	}
@@ -196,8 +201,8 @@
 		</div>
 		<div class="up__step">
 			<div class="up__head"><span class="up__n">3</span><b>Che materiale?</b><span class="up__pick">{MATERIALI.find((m) => m.id === materiale)?.label}</span></div>
-			<div class="up__mats" role="radiogroup" aria-label="Materiale">
-				{#each MATERIALI as m (m.id)}
+			<div class="up__mats" data-n={materiali.length} role="radiogroup" aria-label="Materiale">
+				{#each materiali as m (m.id)}
 					<button type="button" class="up__mat" class:is-on={materiale === m.id} role="radio" aria-checked={materiale === m.id} title={m.label} onclick={() => setMateriale(m.id)}><img src={m.img} alt="" loading="lazy" /><span>{m.label}</span></button>
 				{/each}
 			</div>

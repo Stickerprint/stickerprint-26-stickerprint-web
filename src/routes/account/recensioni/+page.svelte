@@ -19,7 +19,7 @@
 		<p class="empty">Nessun ordine in attesa di recensione.</p>
 	{:else}
 		{#each data.toReview as o (o.id)}
-			<div class="orow" style="grid-template-columns:1fr auto">
+			<div class="orow orow--act">
 				<div><div class="orow__meta">Ordine {o.number} · {dateIt(o.created_at, true)}</div><div class="orow__title">{o.items.length === 1 ? o.product_name : `${o.items.length} articoli`}</div><div class="orow__spec">{o.items.join(' · ')}</div></div>
 				<button type="button" class="btn btn--yellow btn--xs" onclick={() => { open = open === o.id ? null : o.id; stars = 5; }}>{open === o.id ? 'Chiudi' : '⭐ Scrivi recensione'}</button>
 				{#if open === o.id}
@@ -43,7 +43,7 @@
 	<div class="acard">
 		<h3>Le tue recensioni</h3>
 		{#each data.reviewed as r (r.review.id)}
-			<div class="orow" style="grid-template-columns:1fr">
+			<div class="orow orow--one">
 				<div><div class="orow__meta">Ordine {r.order.number} · {dateIt(r.review.created_at, true)}</div><div class="orow__title"><span style="color:#f5b301">{'★'.repeat(r.review.rating)}</span> {r.review.title ?? r.order.product_name}</div>{#if r.review.comment}<div class="orow__spec">{r.review.comment}</div>{/if}</div>
 			</div>
 		{/each}

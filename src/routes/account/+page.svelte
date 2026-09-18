@@ -11,7 +11,7 @@
 
 <svelte:head><title>La mia area | Stickerprint</title></svelte:head>
 
-<div class="acc__head">
+<div class="acc__head ov-head">
 	<div>
 		<p class="eyebrow">Area personale</p>
 		<h1>Ciao, {first}!</h1>
@@ -21,7 +21,7 @@
 
 {#if data.loyalty}<LoyaltyCard l={data.loyalty} />{/if}
 
-<div class="credit-hero">
+<div class="credit-hero ov-credit">
 	<div>
 		<p class="eyebrow">Il tuo credito</p>
 		<small>Disponibile ora</small>
@@ -36,14 +36,14 @@
 	</div>
 </div>
 
-<div class="stat3">
+<div class="stat3 ov-stats">
 	<a class="acard stat" href="/account/ordini"><span class="ico">📦</span><span><b>{data.counts.orders}</b><small>Ordini effettuati</small></span></a>
 	<div class="acard stat"><span class="ico" style="background:#e1f3e8">💰</span><span><b>{eur(data.credit.earnedYear)}</b><small>Credito guadagnato nel {new Date().getFullYear()}</small></span></div>
 	<a class="acard stat" href="/account/recensioni"><span class="ico" style="background:#fff3d6">⭐</span><span><b>{data.counts.toReview}</b><small>Ordini da recensire</small></span></a>
 </div>
 
-<div class="two">
-	<div class="acard">
+<div class="two ov-two">
+	<div class="acard ov-orders">
 		<div class="acc__head" style="margin-bottom:6px"><div><h3>Ordini recenti</h3><p class="sub">Tutto sotto controllo.</p></div><a class="link" style="font-size:13px" href="/account/ordini">Vedi tutti ›</a></div>
 		{#if data.orders.length === 0}
 			<p class="empty">Nessun ordine ancora. <a class="link" href="/prodotti">Crea il primo →</a></p>
@@ -51,7 +51,7 @@
 			{#each data.orders as o (o.id)}<OrderRow {o} onreorder={(x) => (reorder = x)} />{/each}
 		{/if}
 	</div>
-	<div class="acard">
+	<div class="acard ov-tx">
 		<div class="acc__head" style="margin-bottom:6px"><div><h3>Ultimi movimenti</h3><p class="sub">Il tuo credito Stickerprint.</p></div><a class="link" style="font-size:13px" href="/account/credito">Dettagli ›</a></div>
 		{#if data.tx.length === 0}
 			<p class="empty">Ancora nessun movimento.</p>

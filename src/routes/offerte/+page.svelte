@@ -200,7 +200,9 @@
 		<h2>Consigliati da <span class="hl hl--green">persone come te.</span></h2>
 		<p class="lead">Il <strong>100%</strong> di chi ha lasciato una recensione ha detto che ordinerebbe di nuovo.</p>
 		<div class="stats">
-			<div class="stat stat--yellow"><b>{(data.stats?.average ?? 4.9).toLocaleString('it-IT', { minimumFractionDigits: 1 })} su 5</b><span>recensioni verificate</span></div>
+			<div class="stat stat--blue"><b>3K+</b><span>Ordini spediti</span></div>
+			<div class="stat stat--yellow"><b>{(data.stats?.average ?? 4.9).toLocaleString('it-IT', { minimumFractionDigits: 1 })} ★</b><span>Valutazione media</span></div>
+			<div class="stat stat--pink"><b>5 gg</b><span>Media di produzione</span></div>
 		</div>
 		<ReviewsCarousel reviews={data.reviews} />
 	</div>

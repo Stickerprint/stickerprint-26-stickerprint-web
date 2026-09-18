@@ -5,10 +5,10 @@
 	const REEL = '';
 	import '$lib/styles/pages.css';
 	import Stars from '$lib/components/Stars.svelte';
+	import BrandMarquee from '$lib/components/BrandMarquee.svelte';
 	import { track } from '$lib/tracking';
 	import { enhance } from '$app/forms';
 	import Carousel from '$lib/components/Carousel.svelte';
-	import { BRANDS } from '$lib/brands';
 	let { form, data } = $props();
 	$effect(() => { if (form?.ok) track.generateLead('aziende'); });
 	/* Reel dei clienti: per ognuno il logo dell'azienda (in alto), il link YouTube
@@ -154,11 +154,7 @@
 <section class="section--tight logos container center">
 	<h2><span class="hl hl--purple">Produzioni realizzate per</span></h2>
 	<p class="lead" style="margin-top:14px;max-width:720px;margin-inline:auto">Dai brand internazionali alle realtà emergenti: ogni progetto riceve la stessa attenzione.</p>
-	<div class="marquee" aria-hidden="true">
-		<div class="marquee__track">
-			{#each [...BRANDS, ...BRANDS] as b, k (k)}{#if b.img}<img src="/images/brands/{b.img}" alt={b.name} title={b.name} onerror={(e) => { const el = e.currentTarget as HTMLImageElement; const s = document.createElement('span'); s.textContent = b.name; el.replaceWith(s); }} />{:else}<span>{b.name}</span>{/if}{/each}
-		</div>
-	</div>
+	<BrandMarquee />
 </section>
 
 <section class="section container" id="contatto">

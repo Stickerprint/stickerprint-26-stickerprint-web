@@ -135,27 +135,110 @@
 .reorder-cta .alt { font-weight: 800; text-decoration: none; color: var(--ink); }
 .reorder-credit { display: flex; align-items: center; gap: 12px; padding-top: 14px; border-top: 1px solid var(--line); font-size: 14px; }
 .reorder-credit img { width: 40px; height: auto; filter: drop-shadow(0 3px 5px rgba(0,0,0,.2)); }
+/* varianti al posto degli stili in linea (in linea vincevano sulle regole del telefono e la pagina usciva dallo schermo) */
+.credit-hero--row { grid-template-columns: auto 1fr auto; }
+.two--half { grid-template-columns: 1fr 1fr; }
+.orow--act { grid-template-columns: 1fr auto; }
+.orow--one { grid-template-columns: 1fr; }
+.acc__lbl-s, .acc__out-m, .loy__more { display: none; }
 @media (max-width: 900px) {
-	.acc { grid-template-columns: 1fr; }
-	.acc__side { position: static; height: auto; overflow: visible; padding: 14px 16px; gap: 10px; }
-	.acc__who { grid-template-columns: 52px 1fr; }
-	/* menu dell'area personale: chiuso di default, si apre col bottone */
-	.acc__toggle { display: flex; align-items: center; justify-content: space-between; width: 100%; background: rgba(255,255,255,.08); color: #fff; border: 1px solid rgba(255,255,255,.18); border-radius: 12px; padding: 12px 14px; font-family: var(--font-display); font-weight: 800; font-size: 15px; cursor: pointer; }
-	.acc__toggle svg { width: 18px; height: 18px; transition: transform .15s ease; }
-	.acc__side.is-open .acc__toggle svg { transform: rotate(180deg); }
-	.acc__nav, .acc__side form { display: none; }
-	.acc__side.is-open .acc__nav { display: grid; }
-	.acc__side.is-open form { display: block; }
-	/* livelli fedelta': una riga per livello, leggibile */
-	.loy { padding: 16px; }
-	.loy__name { font-size: 20px; }
-	.loy__lv { grid-template-columns: 44px 1fr; justify-items: start; text-align: left; column-gap: 12px; }
-	.loy__lv img { grid-row: 1 / span 3; margin: 0; }
-	.credit-hero { grid-template-columns: 1fr; }
-	.credit-hero .side { border-left: 0; padding-left: 0; border-top: 1px solid rgba(255,255,255,.18); padding-top: 14px; }
-	.stat3, .two, .modal__row, .loy, .loy__levels { grid-template-columns: 1fr; }
-	.orow { grid-template-columns: 56px 1fr; }
-	.orow__track { justify-content: flex-start; }
-	.orow__track { grid-column: 1 / -1; }
-	.orow__right { grid-column: 1 / -1; justify-items: start; }
+	/* ---------- struttura: niente colonna laterale; identita' compatta, poi le schede che scorrono ---------- */
+	.acc { display: block; min-height: 0; overflow-x: clip; }
+	.acc__side { position: static; height: auto; overflow: visible; padding: 0; display: block; }
+	/* il logo dell'header sporge sotto la barra: l'identita' parte piu' giu' e resta ai lati */
+	.acc__who { grid-template-columns: 44px minmax(0, 1fr) auto; gap: 10px; padding: 34px 16px 10px; border-bottom: 0; }
+	.acc__avatar, .acc__avatar img { width: 44px; height: 44px; }
+	.acc__avatar .avatar { width: 44px !important; height: 44px !important; font-size: 14px !important; }
+	.acc__who b { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+	.acc__who small { display: none; }
+	.acc__level { font-size: 12px; margin: 1px 0 0; }
+	.acc__level img { width: 18px; height: 18px; }
+	.acc__out-m { display: block; }
+	.acc__out-m button { width: 38px; height: 38px; border-radius: 12px; border: 1px solid rgba(255,255,255,.2); background: rgba(255,255,255,.08); color: #fff; display: grid; place-items: center; cursor: pointer; padding: 0; }
+	.acc__out-m svg { width: 18px; height: 18px; }
+	.acc__out { display: none; }
+	/* schede: una riga che scorre col dito, quella attiva piena */
+	.acc__nav { display: flex; gap: 8px; overflow-x: auto; padding: 4px 16px 14px; scrollbar-width: none; -webkit-overflow-scrolling: touch; scroll-padding-inline: 16px; }
+	.acc__nav::-webkit-scrollbar { display: none; }
+	.acc__nav a { flex: 0 0 auto; padding: 9px 14px; border-radius: 999px; background: rgba(255,255,255,.09); font-size: 13.5px; white-space: nowrap; gap: 7px; }
+	.acc__nav a svg { width: 16px; height: 16px; }
+	.acc__nav .cnt { margin-left: 2px; min-width: 18px; height: 18px; font-size: 10.5px; }
+	.acc__lbl { display: none; } .acc__lbl-s { display: inline; }
+
+	/* ---------- contenuto ---------- */
+	.acc__main { padding: 18px 14px 48px; }
+	.acc__inner { gap: 14px; grid-template-columns: minmax(0, 1fr); }
+	.acc__inner > * { min-width: 0; }
+	.acc__head { align-items: center; gap: 8px; }
+	.acc__head h1 { font-size: 26px; line-height: 1.1; }
+	.acc__head .eyebrow { display: none; }
+	.acc__head .lead { font-size: 14px; margin-top: 2px; color: var(--muted); }
+	.acard { padding: 16px; border-radius: 16px; }
+
+	/* panoramica: prima gli ordini (quello che si viene a guardare), poi credito, livello, numeri, movimenti */
+	.ov-head .lead { display: none; }
+	.ov-two { display: contents; }
+	.ov-head { order: 0; } .ov-orders { order: 1; } .ov-credit { order: 2; } .acc__inner > .loy { order: 3; } .ov-stats { order: 4; } .ov-tx { order: 5; }
+
+	/* credito: importo a sinistra, moneta piccola a destra, i due totali in riga sotto */
+	.credit-hero { grid-template-columns: minmax(0, 1fr) auto; gap: 12px 14px; padding: 18px; border-radius: 18px; }
+	.credit-hero::after { width: 160px; height: 160px; right: -60px; top: -60px; }
+	.credit-hero img { width: 58px; }
+	.credit-hero .big { font-size: 36px; margin: 2px 0 4px; }
+	.credit-hero .side { grid-column: 1 / -1; grid-template-columns: 1fr 1fr; gap: 12px; border-left: 0; padding-left: 0; border-top: 1px solid rgba(255,255,255,.18); padding-top: 12px; }
+	.credit-hero .side b { font-size: 17px; }
+	.credit-hero .side br + small { display: none; }
+	.credit-hero--row { grid-template-columns: 52px minmax(0, 1fr); }
+	.credit-hero--row img { width: 52px; }
+	.credit-hero--row .btn { grid-column: 1 / -1; width: 100%; }
+
+	/* livello: adesivo piccolo accanto al nome, mai a tutto schermo; l'elenco dei livelli si apre a richiesta */
+	.loy, .loy--compact { grid-template-columns: 60px minmax(0, 1fr); gap: 14px; align-items: start; padding: 16px; border-radius: 16px; }
+	.loy__badge { width: 60px; }
+	.loy__name { font-size: 19px; margin: 0 0 8px; }
+	.loy__name small { display: block; font-size: 12.5px; margin-top: 2px; }
+	.loy__bar { height: 10px; }
+	.loy__msg { font-size: 13.5px; margin-top: 8px; }
+	.loy__more { display: inline-flex; align-items: center; gap: 6px; margin-top: 10px; padding: 0; border: 0; background: none; font: inherit; font-weight: 800; font-size: 13px; color: var(--blue); cursor: pointer; }
+	.loy__levels { display: none; grid-template-columns: 1fr; gap: 8px; margin-top: 10px; margin-left: -74px; }
+	.loy__levels.is-open { display: grid; }
+	.loy__lv { grid-template-columns: 40px 1fr; justify-items: start; text-align: left; column-gap: 12px; padding: 10px 12px; }
+	.loy__lv img { grid-row: 1 / span 3; margin: 0; width: 40px; height: 40px; }
+
+	/* numeri: tre riquadri in riga */
+	.stat3 { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+	.stat3 .stat { flex-direction: column; align-items: flex-start; gap: 8px; padding: 12px; }
+	.stat3 .stat .ico { width: 34px; height: 34px; font-size: 16px; border-radius: 10px; }
+	.stat3 .stat b { font-size: 18px; }
+	.stat3 .stat small { font-size: 11px; line-height: 1.25; display: block; }
+	.two, .two--half, .modal__row { grid-template-columns: minmax(0, 1fr); }
+
+	/* riga ordine: miniatura e dati, poi avanzamento, poi prezzo e bottoni sulla stessa riga */
+	.orow { grid-template-columns: 52px minmax(0, 1fr); gap: 10px 12px; padding: 14px 0; }
+	.orow__thumb { width: 52px; height: 52px; border-radius: 12px; }
+	.orow__title { font-size: 14.5px; }
+	.orow__track { grid-column: 1 / -1; justify-content: space-between; gap: 0; padding: 2px 4px 18px; }
+	.orow__track .tk { flex: 1 1 0; }
+	.orow__track .tk:first-child { justify-items: start; } .orow__track .tk:last-child { justify-items: end; }
+	.orow__right { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+	.orow__right .orow__price { margin-right: auto; text-align: left; font-size: 17px; }
+	.orow__right .btn { width: auto; flex: 0 0 auto; padding: 10px 12px; font-size: 12.5px; }
+	.orow--act { grid-template-columns: minmax(0, 1fr) auto; align-items: start; }
+	.orow--act > .btn { grid-column: 1 / -1; width: 100%; }
+	.orow--one { grid-template-columns: minmax(0, 1fr); }
+	.orow__spec, .orow__meta, .mrow span { overflow-wrap: anywhere; }
+	.mrow { font-size: 13px; gap: 10px; }
+	.atabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-inline: -4px; padding-inline: 4px; }
+	.atabs::-webkit-scrollbar { display: none; }
+	.atabs button { flex: 0 0 auto; }
+	/* moduli: un campo per riga, a 16px cosi' Safari non ingrandisce la pagina quando si tocca un campo */
+	.aform { grid-template-columns: minmax(0, 1fr); }
+	.aform input, .aform select, .aform textarea { font-size: 16px; width: 100%; min-width: 0; }
+	.aform .btn { width: 100%; }
+	.empty { padding: 24px 10px; }
+	/* popup riordino */
+	.modal { padding: 18px 16px; border-radius: 20px; max-height: calc(100dvh - 24px); }
+	.modal__preview { height: min(30vh, 240px); }
+	.rbox__big { font-size: 28px; }
+	.rbtn { font-size: 16px; padding: 16px 14px; }
 }

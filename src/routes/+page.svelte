@@ -9,6 +9,7 @@
 		return { destroy: () => io.disconnect() };
 	}
 	import Stars from '$lib/components/Stars.svelte';
+	import BrandMarquee from '$lib/components/BrandMarquee.svelte';
 	import ReviewsCarousel from '$lib/components/ReviewsCarousel.svelte';
 	import SamplesBlock from '$lib/components/SamplesBlock.svelte';
 	import FinalCta from '$lib/components/FinalCta.svelte';
@@ -27,7 +28,6 @@
 	];
 	const eur0 = (v: number) => v.toLocaleString('it-IT', { maximumFractionDigits: 0 }) + ' €';
 
-	import { BRANDS as brands } from '$lib/brands';
 	import { untrack } from 'svelte';
 	const IG_URL = 'https://www.instagram.com/stickerprint.it/';
 	// feed e follower live: dal server, poi riletti ogni minuto dal browser (contatore che si aggiorna da solo)
@@ -88,11 +88,7 @@
 <!-- LOGHI -->
 <section class="section--tight logos container center">
 	<h2><span class="hl hl--purple">Abbiamo stampato per</span></h2>
-	<div class="marquee" aria-hidden="true">
-		<div class="marquee__track">
-			{#each [...brands, ...brands] as b, k (k)}{#if b.img}<img src="/images/brands/{b.img}" alt={b.name} title={b.name} onerror={(e) => { const el = e.currentTarget as HTMLImageElement; const s = document.createElement('span'); s.textContent = b.name; el.replaceWith(s); }} />{:else}<span>{b.name}</span>{/if}{/each}
-		</div>
-	</div>
+	<BrandMarquee />
 </section>
 
 <!-- PRODOTTI -->
@@ -142,7 +138,9 @@
 			Il <strong>100%</strong> di chi ordina su <strong>Stickerprint</strong> sa esattamente cosa riceverà.<br />E torna a stampare con noi.
 		</p>
 		<div class="stats">
-			<div class="stat stat--yellow"><b>{data.stats.average.toLocaleString('it-IT', { minimumFractionDigits: 1 })} su 5</b><span>recensioni verificate</span></div>
+			<div class="stat stat--blue"><b>3K+</b><span>Ordini spediti</span></div>
+			<div class="stat stat--yellow"><b>{data.stats.average.toLocaleString('it-IT', { minimumFractionDigits: 1 })} ★</b><span>Valutazione media</span></div>
+			<div class="stat stat--pink"><b>5 gg</b><span>Media di produzione</span></div>
 		</div>
 		<ReviewsCarousel reviews={data.reviews} />
 	</div>

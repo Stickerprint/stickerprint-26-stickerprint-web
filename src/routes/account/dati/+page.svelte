@@ -51,7 +51,7 @@
 		<p class="empty">Nessun indirizzo salvato.</p>
 	{:else}
 		{#each data.addresses as a (a.id)}
-			<div class="orow" style="grid-template-columns:1fr auto">
+			<div class="orow orow--act">
 				<div>
 					<div class="orow__meta">{a.kind === 'billing' ? 'Fatturazione' : 'Spedizione'}{#if a.is_default} · predefinito{/if}{#if a.label} · {a.label}{/if}</div>
 					<div class="orow__title">{a.first_name} {a.last_name}{#if a.company} · {a.company}{/if}</div>

@@ -3,7 +3,8 @@
 	 * Stelle disegnate dalla media: arrotondata al mezzo punto (4,7 → 4 stelle e mezza), accanto il
 	 * numero esatto con una cifra decimale. Stessa resa ovunque: home, pagine prodotto, aziende.
 	 */
-	let { value, size = 20, count, label = true, countLabel = 'recensioni' }: { value: number; size?: number; count?: number | null; label?: boolean; countLabel?: string } = $props();
+	/* showCount: il numero totale delle recensioni resta nascosto finche' non e' abbastanza alto da fare effetto */
+	let { value, size = 20, count, label = true, countLabel = 'recensioni verificate', showCount = false }: { value: number; size?: number; count?: number | null; label?: boolean; countLabel?: string; showCount?: boolean } = $props();
 	const half = $derived(Math.max(0, Math.min(5, Math.round(value * 2) / 2)));
 	const fmt = $derived(value.toLocaleString('it-IT', { minimumFractionDigits: 1, maximumFractionDigits: 1 }));
 	const kind = (i: number) => (half >= i ? 'full' : half >= i - 0.5 ? 'half' : 'empty');
@@ -19,7 +20,7 @@
 			</svg>
 		{/each}
 	</span>
-	{#if label}<b class="rating__n">{fmt}</b><span class="rating__sub"> su 5{#if count} · {count.toLocaleString('it-IT')} {count === 1 ? countLabel.replace(/i$/, 'e').replace(/e verificate$/, 'e verificata') : countLabel}{/if}</span>{/if}
+	{#if label}<b class="rating__n">{fmt}</b><span class="rating__sub"> su 5{#if count}{` · ${showCount ? count.toLocaleString('it-IT') + ' ' : ''}${countLabel}`}{/if}</span>{/if}
 </span>
 
 <style>

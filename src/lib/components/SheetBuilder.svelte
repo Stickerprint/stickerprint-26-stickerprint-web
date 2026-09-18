@@ -248,6 +248,16 @@
 	const PAD = 22; // mm di aria attorno al foglio (dove gli adesivi possono sporgere)
 	const scale = $derived(stageW / (sheetW + 2 * PAD));
 	const px = (mm: number) => mm * scale;
+	/* barra con rotazione e misura: resta sempre dentro l'anteprima. Vicino ai bordi laterali si ferma al margine,
+	   vicino al bordo alto passa sotto il design (prima usciva dalla pagina e spariva, soprattutto su telefono) */
+	let toolsW = $state(290);
+	function toolsPos(s: Slot) {
+		const half = toolsW / 2 + 4;
+		const left = stageW <= half * 2 ? stageW / 2 : Math.min(Math.max(px(PAD + s.x), half), stageW - half);
+		const above = px(PAD + s.y - bbox(s).h / 2) - 46;
+		const top = above < 4 ? px(PAD + s.y + bbox(s).h / 2) + 10 : above;
+		return { left, top };
+	}
 	let drag: { i: number; sx: number; sy: number; x0: number; y0: number } | null = null;
 	let top = $state(10);
 	function down(e: PointerEvent, i: number) {
@@ -347,7 +357,7 @@
 					{#if s.png}
 						<img class="sheet__stk" class:is-out={overhang(s)} class:is-sel={selected === i} class:busy={s.busy} src={s.png} alt="Design {i + 1}" draggable="false" style="left:{px(PAD + s.x - s.w / 2)}px;top:{px(PAD + s.y - s.h / 2)}px;width:{px(s.w)}px;height:{px(s.h)}px;transform:rotate({s.rot}deg)" onpointerdown={(e) => down(e, i)} />
 						{#if selected === i}
-							<div class="sheet__tools" style="left:{px(PAD + s.x)}px;top:{px(PAD + s.y - bbox(s).h / 2) - 46}px">
+							<div class="sheet__tools" bind:clientWidth={toolsW} style="left:{toolsPos(s).left}px;top:{toolsPos(s).top}px">
 								<button type="button" title="Ruota a sinistra" onclick={() => rotate(i, -15)}>↺</button>
 								<button type="button" title="Ruota a destra" onclick={() => rotate(i, 15)}>↻</button>
 								<span class="sheet__tools-sep"></span>

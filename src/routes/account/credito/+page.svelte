@@ -8,7 +8,7 @@
 
 <div class="acc__head"><div><p class="eyebrow">Area personale</p><h1>Credito Stickerprint</h1><p class="lead">Ogni ordine ti lascia qualcosa per il prossimo.</p></div></div>
 
-<div class="credit-hero" style="grid-template-columns:auto 1fr auto">
+<div class="credit-hero credit-hero--row">
 	<img src="/images/coin-sp.png" alt="" />
 	<div><small>Credito disponibile</small><div class="big">{eur(data.balance)}</div>{#if data.nextExpiry}<small>Il primo accredito scade il {dateIt(data.nextExpiry, true)}</small>{/if}</div>
 	<a class="btn btn--green" href="/prodotti">Usa il credito ›</a>
@@ -16,7 +16,7 @@
 
 {#if data.loyalty}<LoyaltyCard l={data.loyalty} compact />{/if}
 
-<div class="two" style="grid-template-columns:1fr 1fr">
+<div class="two two--half">
 	<div class="acard stat"><span class="ico" style="background:#e1f3e8;font-family:var(--font-display);font-weight:800;color:#1d7a46">{data.loyalty ? pct(data.loyalty.credit_rate) : '2%'}</span><span><b style="font-size:16px">Guadagni a ogni ordine</b><small>Il {data.loyalty ? pct(data.loyalty.credit_rate) : '2%'} dell’imponibile (campioni esclusi) torna nel tuo portafoglio Stickerprint. Vale 6 mesi. Sali di livello per guadagnare di più: Creator 2%, Partner 4%, Ambassador 6%.</small></span></div>
 	<div class="acard stat"><span class="ico">✨</span><span><b style="font-size:16px">Lo usi quando vuoi</b><small>Puoi applicarlo direttamente al carrello del prossimo acquisto.</small></span></div>
 </div>

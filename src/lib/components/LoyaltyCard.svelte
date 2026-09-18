@@ -5,6 +5,8 @@
 	const target = $derived(l.next ? l.next.points : l.keep_points);
 	const progress = $derived(target > 0 ? Math.min(100, Math.round((l.period_points / target) * 100)) : 100);
 	const missing = $derived(Math.max(0, target - l.period_points));
+	/* telefono: l'elenco dei livelli resta chiuso finche' non lo si chiede */
+	let showLevels = $state(false);
 </script>
 
 <div class="loy" class:loy--compact={compact}>
@@ -24,7 +26,8 @@
 			<small>{l.period_points.toLocaleString('it-IT')} SP in questo periodo · 1 SP per ogni euro netto speso (campioni esclusi)</small>
 		</p>
 		{#if !compact}
-			<div class="loy__levels">
+			<button type="button" class="loy__more" aria-expanded={showLevels} onclick={() => (showLevels = !showLevels)}>{showLevels ? 'Nascondi i livelli' : 'Vedi tutti i livelli'} <span aria-hidden="true">{showLevels ? '▴' : '▾'}</span></button>
+			<div class="loy__levels" class:is-open={showLevels}>
 				{#each l.levels as lv (lv.level)}
 					<div class="loy__lv" class:is-current={lv.level === l.level}><img src={lv.img} alt="" /><b>{lv.name}</b><small>{pct(lv.credit_rate)} di credito</small>{#if lv.rank > 1}<small>{(l.levels[lv.rank - 2]?.next_points ?? 0).toLocaleString('it-IT')} SP per arrivarci · {lv.keep_points.toLocaleString('it-IT')} SP l’anno per restare</small>{:else}<small>livello di partenza</small>{/if}</div>
 				{/each}

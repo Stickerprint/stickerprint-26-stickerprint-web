@@ -3,6 +3,9 @@
 	import { page } from '$app/state';
 
 	let { user, avatar = null }: { user: User | null; avatar?: string | null } = $props();
+	/* foto profilo illeggibile o rimossa: si mostrano le iniziali invece dell'icona rotta */
+	let avatarKo = $state(false);
+	$effect(() => { avatar; avatarKo = false; });
 	let open = $state(false);
 	let cart = $state(0);
 	$effect(() => {
@@ -106,7 +109,7 @@
 				<!-- passando col mouse sull'iniziale (o sulla foto) si apre il menu dell'area personale -->
 				<div class="nav__item has-menu header__user">
 					<a class="nav" href="/account" style="text-decoration:none" title="Il tuo account" aria-haspopup="true">
-						{#if avatar}<img class="avatar avatar--img" src={avatar} alt="" width="34" height="34" />{:else}<span class="avatar">{initials}</span>{/if}
+						{#if avatar && !avatarKo}<img class="avatar avatar--img" src={avatar} alt="" width="34" height="34" onerror={() => (avatarKo = true)} />{:else}<span class="avatar">{initials}</span>{/if}
 					</a>
 					<div class="dropdown dropdown--right dropdown--user">
 						<a class="dropdown__link" href="/account">Panoramica</a>

@@ -653,6 +653,9 @@ body { overflow-x: clip; }
 .up-strip b { font-family: var(--font-display); font-weight: 800; font-size: 14px; }
 .up-strip span { font-size: 12.5px; color: var(--ink-soft); }
 @media (max-width: 900px) { .up { grid-template-columns: 1fr; } .up-strip { grid-template-columns: 1fr 1fr; } .up__mats { grid-template-columns: repeat(3, 1fr); } }
+.up__mats[data-n="4"] { grid-template-columns: repeat(4, 1fr); }
+/* telefono: nelle sagome restano solo le icone (il nome della sagoma scelta e' gia' accanto a "Che sagoma?") */
+@media (max-width: 700px) { .up__shape span { display: none; } .up__shape { padding: 8px 4px; } .up__shape img { height: 44px; } }
 @media (max-width: 560px) { .up__tiles { grid-template-columns: 1fr; } .up__tile { grid-template-columns: 72px 1fr; align-items: center; column-gap: 10px; } .up__tile img { aspect-ratio: 1; grid-row: 1 / 3; } .up-strip { grid-template-columns: 1fr; } }
 
 /* ==== Credito Stickerprint: pannello blu, esempio a sinistra, i tre livelli come un percorso a destra ==== */
@@ -736,6 +739,17 @@ body { overflow-x: clip; }
   .rating { flex-wrap: wrap; row-gap: 2px; justify-content: inherit; font-size: 14px; gap: 6px; }
   .rating .star { width: 17px; height: 17px; }   /* stelle un po' piu' piccole: stanno su una riga */
   .offer__stars, .ph__stars { flex-wrap: wrap; }
+  /* accesso e registrazione: il modulo parte subito sotto l'header, non a meta' schermo */
+  .auth { min-height: 0; grid-template-columns: 1fr; }
+  .auth__form { align-content: start; padding: 56px 20px 40px; }
+  /* bottoni: su telefono il testo puo' andare a capo, non esce mai dal bottone */
+  .btn { white-space: normal; text-align: center; line-height: 1.15; max-width: 100%; min-width: 0; }
+  .btn--lg, .btn--xl { padding-inline: 20px; font-size: 16px; }
+  /* popup: bottoni uno sotto l'altro a tutta larghezza, l'azione principale sopra */
+  .modal-backdrop, .modal-bg, .added-bg { padding: 12px; }
+  .modal { padding: 22px 18px; max-height: calc(100dvh - 24px); overflow-y: auto; }
+  .kit__modal-actions { flex-direction: column-reverse; align-items: stretch; gap: 8px; }
+  .kit__modal-actions .btn, .modal .btn, .added .btn { width: 100%; }
   .hero__ctas { margin-top: 26px; justify-content: center; }
   .hero__ctas .btn { width: 100%; }
   /* regola generale: su telefono tutto centrato (titoli, testi, bottoni, pillole, stelle) */
