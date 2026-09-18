@@ -164,7 +164,7 @@ export interface SheetStripOptions {
 	stripH: number;
 	/** margine fra il bordo della striscia e i fogli */
 	margin: number;
-	/** spazio fra un foglio e l'altro sulla striscia */
+	/** spazio fra un foglio e l'altro sulla striscia (almeno 10 mm) */
 	sheetGap: number;
 	/** 0 = riempi le strisce; altrimenti quanti fogli servono */
 	sheets: number;

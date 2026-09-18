@@ -149,7 +149,10 @@
 	let qty = $state<number | ''>('');
 	let margin = $state(5);
 	let gap = $state(8);
-	let sheetGap = $state(5);
+	/* fra un foglio e l'altro almeno 1 cm (resinati, etichette, fogli di adesivi) */
+	const MIN_SHEET_GAP = 10;
+	let sheetGap = $state(MIN_SHEET_GAP);
+	const sGap = $derived(Math.max(MIN_SHEET_GAP, +sheetGap || 0));
 	$effect(() => { if (!stripH || stripH > maxH) stripH = maxH; });
 
 	const cutW = $derived(cavallotto ? KIT_CAVALLOTTO.w : w);
@@ -159,10 +162,10 @@
 		const H = Math.min(stripH || maxH, maxH);
 		if (P.mode === 'fogli') {
 			const rules = SHEET_RULES[P.sheetRules ?? 'etichette'];
-			const probe = layoutSheets(cutW, cutH, rules, { stripW: mat.width, stripH: H, margin, sheetGap, sheets: 0 });
+			const probe = layoutSheets(cutW, cutH, rules, { stripW: mat.width, stripH: H, margin, sheetGap: sGap, sheets: 0 });
 			if (!probe.ok || !probe.sheet) return { kind: 'fogli' as const, r: probe, sheets: 0 };
 			const want = typeof qty === 'number' && qty > 0 ? Math.ceil(qty / probe.sheet.grid.n) : 0;
-			return { kind: 'fogli' as const, r: want ? layoutSheets(cutW, cutH, rules, { stripW: mat.width, stripH: H, margin, sheetGap, sheets: want }) : probe, sheets: want };
+			return { kind: 'fogli' as const, r: want ? layoutSheets(cutW, cutH, rules, { stripW: mat.width, stripH: H, margin, sheetGap: sGap, sheets: want }) : probe, sheets: want };
 		}
 		return { kind: 'sciolti' as const, r: layoutLoose(cutW, cutH, { stripW: mat.width, stripH: H, margin, gap, qty: typeof qty === 'number' && qty > 0 ? qty : 0 }) };
 	});
@@ -177,10 +180,10 @@
 		let pages: Strip[];
 		if (P.mode === 'fogli') {
 			const rules = SHEET_RULES[P.sheetRules ?? 'etichette'];
-			const probe = layoutSheets(art.cutW, art.cutH, rules, { stripW: mat.width, stripH: H, margin, sheetGap, sheets: 0 });
+			const probe = layoutSheets(art.cutW, art.cutH, rules, { stripW: mat.width, stripH: H, margin, sheetGap: sGap, sheets: 0 });
 			if (!probe.ok || !probe.sheet) throw new Error(probe.error ?? 'Impaginazione non possibile');
 			const want = typeof qty === 'number' && qty > 0 ? Math.ceil(qty / probe.sheet.grid.n) : 0;
-			pages = (want ? layoutSheets(art.cutW, art.cutH, rules, { stripW: mat.width, stripH: H, margin, sheetGap, sheets: want }) : probe).strips;
+			pages = (want ? layoutSheets(art.cutW, art.cutH, rules, { stripW: mat.width, stripH: H, margin, sheetGap: sGap, sheets: want }) : probe).strips;
 		} else {
 			const r = layoutLoose(art.cutW, art.cutH, { stripW: mat.width, stripH: H, margin, gap, qty: typeof qty === 'number' && qty > 0 ? qty : 0 });
 			if (!r.ok) throw new Error(r.error ?? 'Impaginazione non possibile');
@@ -341,7 +344,7 @@
 						<summary>Margini e spazi</summary>
 						<label class="st-field"><span>Margine dal bordo della striscia (mm)</span><input class="input" type="number" min="0" step="0.5" bind:value={margin} /></label>
 						{#if P.mode === 'fogli'}
-							<label class="st-field"><span>Spazio fra i fogli (mm)</span><input class="input" type="number" min="0" step="0.5" bind:value={sheetGap} /></label>
+							<label class="st-field"><span>Spazio fra i fogli (mm, minimo {MIN_SHEET_GAP})</span><input class="input" type="number" min={MIN_SHEET_GAP} step="0.5" bind:value={sheetGap} /></label>
 							<p class="st-note">Foglio: bordo {SHEET_RULES[P.sheetRules ?? 'etichette'].margin} mm, {SHEET_RULES[P.sheetRules ?? 'etichette'].gap} mm fra le etichette{SHEET_RULES[P.sheetRules ?? 'etichette'].mod5 ? ', multipli di 5 (resinatrice a 10 aghi)' : ''}.</p>
 						{:else}
 							<label class="st-field"><span>Spazio fra i pezzi, da taglio a taglio (mm)</span><input class="input" type="number" min="0" step="0.5" bind:value={gap} /></label>
