@@ -50,8 +50,8 @@
 		const f = g.items[0], m = mode(g);
 		if (m === 'direct') return { how: 'Consegna diretta Stickerprint', sub: 'consegnato da noi', state: 'consegnato', detail: null as string | null };
 		if (m === 'customer') return { how: 'Corriere del cliente', sub: 'ritirato dal corriere del cliente', state: g.status === 'consegnato' ? 'consegnato' : 'spedito', detail: null as string | null };
-		const waiting = g.status === 'in_spedizione';
-		return { how: f.shipping_courier || (f.courier === 'Qapla' ? 'Qapla' : (f.courier ?? 'Corriere')), sub: f.tracking_number ? `tracking ${f.tracking_number}` : 'etichetta ancora da creare nel pannello Qapla', state: g.status, detail: f.shipping_status ? [f.shipping_status, f.shipping_place].filter(Boolean).join(' · ') : (waiting ? 'In attesa del ritiro del corriere' : null) };
+		const waiting = g.status === 'in_spedizione' && f.courier === 'Qapla';
+		return { how: f.shipping_courier || (f.courier === 'Qapla' ? 'Qapla' : (f.courier ?? 'Corriere')), sub: f.tracking_number ? `tracking ${f.tracking_number}` : f.courier === 'Qapla' ? 'etichetta ancora da creare nel pannello Qapla' : f.legacy_id ? 'spedito dal vecchio sito' : '', state: g.status, detail: f.shipping_status ? [f.shipping_status, f.shipping_place].filter(Boolean).join(' · ') : (waiting ? 'In attesa del ritiro del corriere' : null) };
 	}
 	const problem = (g: G) => [5, 6, 8, 95].includes(Number(g.items[0].shipping_status_id));
 </script>
