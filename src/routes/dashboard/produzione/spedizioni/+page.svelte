@@ -12,6 +12,18 @@
 	let ddtWeight = $state<number | null>(null);
 	let ddtQty = $state<Record<string, number>>({});
 	let openMenu = $state<string | null>(null);
+	/* la tendina si apre "sopra a tutto" (position: fixed, ancorata al bottone): dentro il riquadro della tabella, che ha lo
+	   scorrimento interno, veniva tagliata e bisognava scendere per vederla. Se sotto non c'e' spazio si apre verso l'alto. */
+	let menuPos = $state({ left: 0, top: 0 });
+	/* scorrendo (pagina o riquadri interni) la tendina si chiude: e' ancorata allo schermo, non al bottone */
+	$effect(() => { if (!openMenu) return; const close = () => (openMenu = null); document.addEventListener('scroll', close, true); return () => document.removeEventListener('scroll', close, true); });
+	function toggleMenu(e: MouseEvent, key: string) {
+		if (openMenu === key) { openMenu = null; return; }
+		const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+		const H = 230, W = 270;
+		menuPos = { left: Math.max(8, Math.min(r.left, window.innerWidth - W - 8)), top: r.bottom + 4 + H > window.innerHeight ? Math.max(8, r.top - H - 4) : r.bottom + 4 };
+		openMenu = key;
+	}
 	let sending = $state<string | null>(null);
 	let expanded = $state<Set<string>>(new Set());
 	const ddtGroup = $derived(data.groups.find((g) => g.key === ddtPopup) ?? null);
@@ -56,6 +68,7 @@
 	const problem = (g: G) => [5, 6, 8, 95].includes(Number(g.items[0].shipping_status_id));
 </script>
 
+<svelte:window onresize={() => (openMenu = null)} onclick={(e) => { if (openMenu && !(e.target as HTMLElement).closest('.cmenu')) openMenu = null; }} />
 <svelte:head><title>Spedizioni | Dashboard</title></svelte:head>
 
 <div class="ship-head">
@@ -93,11 +106,11 @@
 							<div class="cmenu">
 								<form method="POST" action="?/mode" use:enhance={() => async ({ update }) => { openMenu = null; await update(); }}>
 									<input type="hidden" name="group" value={g.key} />
-									<button type="button" class="cmenu__btn" class:is-set={!!c} onclick={() => (openMenu = openMenu === g.key ? null : g.key)} title="Scegli come spedire">
+									<button type="button" class="cmenu__btn" class:is-set={!!c} onclick={(e) => toggleMenu(e, g.key)} title="Scegli come spedire">
 										{#if c === 'qapla'}<img src={COURIERS.Qapla.logo} alt="Qapla" />{:else if c}<span>{CHOICES.find((x) => x.id === c)?.label}</span>{:else}<span>Scegli spedizione</span>{/if}<i>▾</i>
 									</button>
 									{#if openMenu === g.key}
-										<div class="cmenu__list">
+										<div class="cmenu__list cmenu__list--fixed" style="left:{menuPos.left}px;top:{menuPos.top}px">
 											{#each CHOICES as x (x.id)}<button type="submit" name="mode" value={x.id} class:is-on={c === x.id} class="cmenu__opt">{#if x.logo}<img src={x.logo} alt="" />{/if}<span class="cmenu__txt"><b>{x.label}</b><small>{x.sub}</small></span></button>{/each}
 										</div>
 									{/if}

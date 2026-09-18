@@ -184,6 +184,7 @@
 .cmenu__list button:hover, .cmenu__list button.is-on { background: #eef2ff; }
 .cmenu__list img { height: 28px; flex: 0 0 auto; }
 .cmenu__list { min-width: 260px; }
+.cmenu__list--fixed { position: fixed; z-index: 200; width: 270px; min-width: 0; }
 .cmenu__opt { white-space: normal; }
 .cmenu__txt { display: flex; flex-direction: column; gap: 2px; text-align: left; }
 .cmenu__txt b { font-weight: 800; white-space: nowrap; }
