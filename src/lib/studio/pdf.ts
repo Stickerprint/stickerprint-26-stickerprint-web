@@ -85,41 +85,46 @@ function setupResources(pdf: PDFDocument, imgRef: PDFRef): Res {
 	return { img: imgRef, cs, gs };
 }
 
+/*
+ * Ogni pagina ha due soli oggetti: il GRUPPO della grafica e il GRUPPO del taglio (due Form XObject:
+ * Illustrator e gli altri programmi li aprono come due gruppi, da selezionare o separare con un clic).
+ */
 function drawPage(page: PDFPage, job: PdfJob, strip: Strip, res: Res) {
 	const { art } = job;
-	const node = page.node;
-	const imName = node.newXObject('Im', res.img);
-	const gsName = node.newExtGState('GS', res.gs);
-	const { Resources } = node.normalizedEntries();
-	const csDict = page.doc.context.obj({}) as PDFDict;
-	for (const n of Object.keys(res.cs) as CutSpot[]) csDict.set(PDFName.of(n), res.cs[n]);
-	Resources.set(PDFName.of('ColorSpace'), csDict);
-
+	const ctx = page.doc.context;
+	const W = strip.w * PT, H = strip.h * PT;
 	const tw = art.cutW + 2 * art.bleed, th = art.cutH + 2 * art.bleed, b = art.bleed;
 	const segs = parsePath(art.pathD);
-	const ops: PDFOperator[] = [];
 	// sistema di riferimento in millimetri con la y verso il basso
-	ops.push(op(Op.PushGraphicsState), op(Op.ConcatTransformationMatrix, PT, 0, 0, -PT, 0, strip.h * PT));
+	const mm = () => op(Op.ConcatTransformationMatrix, PT, 0, 0, -PT, 0, H);
 
-	// 1. grafica
+	// 1. gruppo GRAFICA
+	const artOps: PDFOperator[] = [mm()];
 	for (const p of strip.pieces) {
-		ops.push(op(Op.PushGraphicsState), op(Op.ConcatTransformationMatrix, ...pieceMatrix(p, art.cutW, art.cutH)));
-		ops.push(op(Op.ConcatTransformationMatrix, tw, 0, 0, -th, -b, -b + th), op(Op.DrawObject, imName), op(Op.PopGraphicsState));
+		artOps.push(op(Op.PushGraphicsState), op(Op.ConcatTransformationMatrix, ...pieceMatrix(p, art.cutW, art.cutH)));
+		artOps.push(op(Op.ConcatTransformationMatrix, tw, 0, 0, -th, -b, -b + th), op(Op.DrawObject, PDFName.of('Im')), op(Op.PopGraphicsState));
 	}
+	const artForm = ctx.register(ctx.formXObject(artOps, { BBox: [0, 0, W, H], Resources: { XObject: { Im: res.img } } }));
 
-	// 2. tagli, in sovrastampa
-	ops.push(op(Op.PushGraphicsState), op(Op.SetGraphicsStateParams, gsName), op(Op.SetLineWidth, CUT_LINE), op(Op.SetLineJoinStyle, 1));
-	ops.push(op(Op.StrokingColorspace, PDFName.of(job.pieceCut)), op(Op.StrokingColorN, 1));
+	// 2. gruppo TAGLIO, in sovrastampa
+	const cs: Record<string, PDFRef> = {};
+	for (const n of Object.keys(res.cs) as CutSpot[]) cs[n] = res.cs[n];
+	const cutOps: PDFOperator[] = [mm(), op(Op.SetGraphicsStateParams, PDFName.of('GS')), op(Op.SetLineWidth, CUT_LINE), op(Op.SetLineJoinStyle, 1)];
+	cutOps.push(op(Op.StrokingColorspace, PDFName.of(job.pieceCut)), op(Op.StrokingColorN, 1));
 	for (const p of strip.pieces) {
-		ops.push(op(Op.PushGraphicsState), op(Op.ConcatTransformationMatrix, ...pieceMatrix(p, art.cutW, art.cutH)));
-		ops.push(...pathOps(segs), op(Op.StrokePath), op(Op.PopGraphicsState));
+		cutOps.push(op(Op.PushGraphicsState), op(Op.ConcatTransformationMatrix, ...pieceMatrix(p, art.cutW, art.cutH)));
+		cutOps.push(...pathOps(segs), op(Op.StrokePath), op(Op.PopGraphicsState));
 	}
 	if (job.sheetCut && strip.sheets?.length) {
-		ops.push(op(Op.StrokingColorspace, PDFName.of(job.sheetCut)), op(Op.StrokingColorN, 1));
-		for (const s of strip.sheets) ops.push(op(Op.AppendRectangle, s.x, s.y, s.w, s.h), op(Op.StrokePath));
+		cutOps.push(op(Op.StrokingColorspace, PDFName.of(job.sheetCut)), op(Op.StrokingColorN, 1));
+		for (const s of strip.sheets) cutOps.push(op(Op.AppendRectangle, s.x, s.y, s.w, s.h), op(Op.StrokePath));
 	}
-	ops.push(op(Op.PopGraphicsState), op(Op.PopGraphicsState));
-	page.pushOperators(...ops);
+	const cutForm = ctx.register(ctx.formXObject(cutOps, { BBox: [0, 0, W, H], Resources: { ColorSpace: cs, ExtGState: { GS: res.gs } } }));
+
+	const node = page.node;
+	const nArt = node.newXObject('Grafica', artForm);
+	const nCut = node.newXObject('Taglio', cutForm);
+	page.pushOperators(op(Op.PushGraphicsState), op(Op.DrawObject, nArt), op(Op.PopGraphicsState), op(Op.PushGraphicsState), op(Op.DrawObject, nCut), op(Op.PopGraphicsState));
 }
 
 export async function buildPdf(job: PdfJob): Promise<Uint8Array> {
