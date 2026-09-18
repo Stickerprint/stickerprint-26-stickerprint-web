@@ -344,6 +344,27 @@ export function sizeProposals(cfg: EngineConfig, forma: string, ratio: number, p
 	return [out[0], ...out.slice(1).sort((a, b) => a[0] - b[0])].slice(0, 4);
 }
 
+/**
+ * Misura a proporzione bloccata (sagomato, tondo, quadrato): dato il lato scritto dal cliente,
+ * l'altro segue la proporzione del disegno e NESSUN lato scende sotto il minimo della sagoma.
+ * Se il lato corto finirebbe sotto il minimo, si ingrandisce tutto finche' il lato corto e' il minimo
+ * (file 50x70, minimo 30: niente 40x25, si va a 30x42). Il massimo taglia solo se resta sopra il minimo.
+ */
+export function proportionalSize(cfg: EngineConfig, forma: string, wWanted: number, ratio: number): [number, number] {
+	const min = minForShape(cfg, forma), max = cfg.size.maxMm;
+	const r = ratio > 0 ? ratio : 1;
+	let W = wWanted > 0 ? wWanted : min, H = W / r;
+	const short = Math.min(W, H);
+	if (short < min) { const k = min / short; W *= k; H *= k; }
+	const long = Math.max(W, H);
+	if (long > max) { const k = max / long; if (Math.min(W, H) * k >= min) { W *= k; H *= k; } }
+	W = roundHalf(W); H = roundHalf(H);
+	// mezzo millimetro di arrotondamento non deve portare sotto il minimo
+	if (W < min) W = min;
+	if (H < min) H = min;
+	return [W, H];
+}
+
 /** Misura consigliata dalla proporzione del file */
 export function suggestedSize(ratio: number): [number, number] {
 	const nearSquare = ratio > 0.85 && ratio < 1.18;

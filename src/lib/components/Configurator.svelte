@@ -15,7 +15,7 @@
 	import EnginePreview from './EnginePreview.svelte';
 	import { loadDraft, saveDraft, saveCartFile, saveCartPreview } from '$lib/utils/draftStore';
 	import { addToCart } from '$lib/cart';
-	import { quoteWith, minForShape, startSize, sizeProposals, roundHalf, eur0, eur2, showFinishStep, showMaterialStep, type EngineConfig } from '$lib/pricing/engine';
+	import { quoteWith, minForShape, startSize, sizeProposals, roundHalf, proportionalSize, eur0, eur2, showFinishStep, showMaterialStep, type EngineConfig } from '$lib/pricing/engine';
 
 	/* totale prodotti gia' nel carrello (per la barra della spedizione gratuita) */
 	let cartGross = $state(0);
@@ -229,13 +229,15 @@
 		fileUrl = URL.createObjectURL(f);
 		saveDraft({ product, forma, materiale, file: f, savedAt: Date.now() }).catch(() => {});
 	}
+	/* rettangolo e ovale: lati liberi (ognuno fra minimo e massimo); le altre sagome restano in
+	   proporzione col disegno e nessun lato scende mai sotto il minimo (vedi proportionalSize) */
 	function setW(v: number) {
-		w = clamp(v);
-		if (!freeSize) h = clamp(w / ratio);
+		if (freeSize) { w = clamp(v); return; }
+		[w, h] = proportionalSize(cfg, forma, v, ratio);
 	}
 	function setH(v: number) {
-		h = clamp(v);
-		if (!freeSize) w = clamp(h * ratio);
+		if (freeSize) { h = clamp(v); return; }
+		[w, h] = proportionalSize(cfg, forma, v * ratio, ratio);
 	}
 	function next(id: string) {
 		const i = steps.indexOf(id);
@@ -421,9 +423,9 @@
 						{/each}
 					</div>
 					<div class="size-inputs">
-						<label><span>Larghezza</span><input type="number" min={MIN_MM} max={MAX_MM} step="0.5" value={w} onchange={(e) => setW(+(e.currentTarget as HTMLInputElement).value)} /><em>mm</em></label>
+						<label><span>Larghezza</span><input type="number" min={MIN_MM} max={MAX_MM} step="0.5" value={w} onchange={(e) => { const el = e.currentTarget as HTMLInputElement; setW(+el.value); el.value = String(w); }} /><em>mm</em></label>
 						<span class="size-x">×</span>
-						<label><span>Altezza</span><input type="number" min={MIN_MM} max={MAX_MM} step="0.5" value={h} onchange={(e) => setH(+(e.currentTarget as HTMLInputElement).value)} /><em>mm</em></label>
+						<label><span>Altezza</span><input type="number" min={MIN_MM} max={MAX_MM} step="0.5" value={h} onchange={(e) => { const el = e.currentTarget as HTMLInputElement; setH(+el.value); el.value = String(h); }} /><em>mm</em></label>
 					</div>
 				</div>
 			{/if}
