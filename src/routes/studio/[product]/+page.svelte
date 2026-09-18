@@ -120,9 +120,13 @@
 	}
 
 	let renders = $state(0);
+	/* misura VERA del taglio come la calcola il motore (sul sagomato l'altezza la decide il contorno,
+	   non il campo misura): e' quella che conta per impaginare la striscia */
+	let engCut = $state<{ w: number; h: number } | null>(null);
 	function onRender(s: { w: number; h: number; palette?: { hex: string; img?: string }[]; palIdx?: number; rimuovi?: boolean; shape?: string | null }) {
 		rendered = true;
 		renders++;
+		if (s.w > 0 && s.h > 0) engCut = { w: s.w, h: s.h };
 		if (s.palette) palette = s.palette;
 		palIdx = s.palIdx ?? 0;
 		rimuovi = !!s.rimuovi;
@@ -158,7 +162,7 @@
 	let traceInfo = $state('');
 
 	const safe = (s: string) => (s || 'lavoro').replace(/[^\w\-]+/g, '_').replace(/_+/g, '_').slice(0, 60);
-	const sizeTag = () => `${(cavallotto ? KIT_CAVALLOTTO.w : w).toFixed(0)}x${(cavallotto ? KIT_CAVALLOTTO.h : h).toFixed(0)}mm`;
+	const sizeTag = () => `${(engCut?.w ?? (cavallotto ? KIT_CAVALLOTTO.w : w)).toFixed(0)}x${(engCut?.h ?? (cavallotto ? KIT_CAVALLOTTO.h : h)).toFixed(0)}mm`;
 	const baseName = () => `${safe(jobName)}_${P.id}${cavallotto ? '_cavallotto' : ''}_${sizeTag()}`;
 
 	function download(blob: Blob, name: string) {
@@ -243,8 +247,8 @@
 	const sGap = $derived(Math.max(MIN_SHEET_GAP, +sheetGap || 0));
 	$effect(() => { if (!stripH || stripH > maxH) stripH = maxH; });
 
-	const cutW = $derived(cavallotto ? KIT_CAVALLOTTO.w : w);
-	const cutH = $derived(cavallotto ? KIT_CAVALLOTTO.h : h);
+	const cutW = $derived(engCut?.w ?? (cavallotto ? KIT_CAVALLOTTO.w : w));
+	const cutH = $derived(engCut?.h ?? (cavallotto ? KIT_CAVALLOTTO.h : h));
 	const plan = $derived.by(() => {
 		if (!(cutW > 0 && cutH > 0)) return null;
 		const H = Math.min(stripH || maxH, maxH);
@@ -396,6 +400,7 @@
 							{/each}
 						</div>
 						<p class="st-note">Stesse misure del sito: minimo {MIN_MM} mm, massimo {MAX_MM} mm{freeSize ? ', lati indipendenti' : ', proporzioni bloccate'}.</p>
+						{#if engCut && (Math.abs(engCut.w - w) > 0.6 || Math.abs(engCut.h - h) > 0.6)}<p class="st-note st-real">Taglio reale del motore: <b>{engCut.w.toFixed(1)} × {engCut.h.toFixed(1)} mm</b> (sul sagomato l’altezza la decide il contorno del disegno). Impaginazione e file usano questa.</p>{/if}
 					</div>
 				{/if}
 
