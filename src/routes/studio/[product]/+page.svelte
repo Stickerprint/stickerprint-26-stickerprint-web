@@ -19,7 +19,7 @@
 	let dragging = $state(false);
 	let fileInput = $state<HTMLInputElement | undefined>();
 	let colInput = $state<HTMLInputElement | undefined>();
-	let engine = $state<{ post: (type: string, detail?: Record<string, unknown>) => void; studio: (what: 'mockup' | 'print', opts?: Record<string, unknown>) => Promise<{ blob: Blob; cutW?: number; cutH?: number; bleed?: number; pathD?: string; polys?: [number, number][][] | null; shape?: string; dpi?: number }> }>();
+	let engine = $state<{ post: (type: string, detail?: Record<string, unknown>) => void; studio: (what: 'mockup' | 'print' | 'geom', opts?: Record<string, unknown>) => Promise<{ blob?: Blob; cutW?: number; cutH?: number; bleed?: number; pathD?: string; polys?: [number, number][][] | null; shape?: string; dpi?: number }> }>();
 
 	/* kit: si lavora un adesivo del kit oppure il cavallotto */
 	let pezzo = $state<'adesivo' | 'cavallotto'>('adesivo');
@@ -135,17 +135,29 @@
 		return { d, nodes: (d.match(/[MLHVCAZmlhvcaz]/g) ?? []).filter((c) => !/[Zz]/.test(c)).length };
 	}
 
-	async function artwork() {
-		const r = await engine!.studio('print', { dpi });
-		if (!r.pathD || !r.cutW || !r.cutH) throw new Error('Il motore non ha restituito il tracciato di taglio.');
-		const t = await tracciato(r);
+	/* il tracciato leggero si ricava PRIMA e si ripassa al motore: mockup, grafica di stampa e
+	   taglio usano lo stesso contorno liscio (niente bordo frastagliato nell'anteprima) */
+	async function traccia() {
+		const g = await engine!.studio('geom');
+		if (!g.pathD) throw new Error('Il motore non ha restituito il tracciato di taglio.');
+		const t = await tracciato(g);
 		lastPath = t.d;
+		return t;
+	}
+
+	async function artwork() {
+		const t = await traccia();
+		const r = await engine!.studio('print', { dpi, pathD: t.d });
+		if (!r.cutW || !r.cutH) throw new Error('Il motore non ha restituito le misure del taglio.');
 		traceInfo = `Tracciato: ${t.nodes} punti di ancoraggio · grafica a ${r.dpi ?? '?'} dpi`;
+		if (!r.blob) throw new Error('Il motore non ha restituito la grafica.');
 		return { png: new Uint8Array(await r.blob.arrayBuffer()), cutW: r.cutW, cutH: r.cutH, bleed: r.bleed ?? 0, pathD: t.d };
 	}
 
 	const scaricaAnteprima = () => run('mockup', async () => {
-		const r = await engine!.studio('mockup', { px: 5000 });
+		const t = await traccia();
+		const r = await engine!.studio('mockup', { px: 5000, pathD: t.d });
+		if (!r.blob) throw new Error('Il motore non ha restituito l’anteprima.');
 		download(r.blob, `${baseName()}_anteprima.png`);
 	});
 
@@ -217,7 +229,7 @@
 		if (!go) return;
 		clearTimeout(pathTimer);
 		pathTimer = setTimeout(async () => {
-			try { const r = await engine?.studio('print', { dpi: 20 }); if (r?.pathD) lastPath = (await tracciato(r)).d; } catch { /* resta il rettangolo */ }
+			try { const r = await engine?.studio('geom'); if (r?.pathD) lastPath = (await tracciato(r)).d; } catch { /* resta il rettangolo */ }
 		}, 250);
 	});
 

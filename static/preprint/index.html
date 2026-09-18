@@ -5624,6 +5624,12 @@ function ppGeoUI(){
     if(d.type==='studio'){ (async()=>{
       try{
         if(!S.src||!S.pathD)throw new Error('Nessun file caricato');
+        /* 'geom' = solo il contorno (per ricavarne il tracciato leggero dello studio) */
+        if(d.what==='geom'){ send('studio',{id:d.id,ok:true,pathD:S.pathD,polys:S.polys||null,shape:CL.shape,cutW:S.cutW,cutH:S.cutH,bleed:S.bleed||0}); return; }
+        /* lo studio puo' passare il SUO tracciato (liscio, pochi nodi): mockup e grafica di stampa
+           vengono disegnati su quello, cosi' bordo bianco, stampa e taglio coincidono */
+        const pathSito=S.pathD; if(d.pathD)S.pathD=String(d.pathD);
+        try{
         if(d.what==='mockup'){ send('studio',{id:d.id,ok:true,blob:await mockupBlob(+d.px||6000)}); return; }
         /* risoluzione: quella chiesta, oppure 'auto' = la piu' alta fra 600 dpi e quella vera
            del file del cliente (la grafica non si ricampiona mai verso il basso), con un tetto
@@ -5637,6 +5643,7 @@ function ppGeoUI(){
         const blob=await new Promise(r=>cv.toBlob(r,'image/png'));
         send('studio',{id:d.id,ok:true,blob,cutW:S.cutW,cutH:S.cutH,bleed:S.bleed||0,pathD:S.pathD,
           polys:S.polys||null,name:S.name||null,shape:CL.shape,pxW:cv.width,pxH:cv.height,dpi:Math.round(ppm*MM)});
+        } finally { S.pathD=pathSito; }
       }catch(e){ console.error('[studio]',e); send('studio',{id:d.id,ok:false,error:String(e&&e.message||e)}); }
     })(); }
     /* regolazioni a mano rimesse dal sito (zoom, spostamento) dopo un nuovo rendering */
