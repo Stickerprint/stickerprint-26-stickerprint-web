@@ -21,6 +21,8 @@ export interface CartItem {
 	previewUrl?: string | null; // anteprima generata dal sistema già pubblicata (riordino)
 	reorderOf?: string | null;
 	note?: string;
+	/** regolazioni del motore approvate dal cliente (bordo, zoom, sfondo, tracciato): lo studio le rimette uguali */
+	engineState?: Record<string, unknown> | null;
 	addedAt: number;
 }
 

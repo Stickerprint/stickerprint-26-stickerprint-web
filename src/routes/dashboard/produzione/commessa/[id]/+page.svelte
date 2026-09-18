@@ -3,6 +3,7 @@
 	import { CATS, ORDER_STATUS, itemMeta, dmy, thumbOf } from '$lib/dashboard/orders';
 	import { COLOURS, fmtAgo, fmtDay, fmtMin, fmtWhen, STAGES, TASK_STATUS } from '$lib/dashboard/produzione';
 	import TaskActions from '$lib/components/dashboard/TaskActions.svelte';
+	import { studioOrderHref } from '$lib/studio/products';
 	let { data, form } = $props();
 	const o = $derived(data.order);
 	const thumb = $derived(thumbOf(o));
@@ -100,6 +101,7 @@
 			<h3>File e anteprima</h3>
 			{#if thumb}<img class="pr-preview" src={thumb} alt="" />{/if}
 			<div class="ofiles">
+				{#if data.file && studioOrderHref(o.product_slug, o.id)}<a class="btn btn--blue btn--xs" href={studioOrderHref(o.product_slug, o.id)} target="_blank" rel="noopener">Passa il file su Stickerprint Studio</a>{/if}
 				{#if data.file}<a class="btn btn--ghost btn--xs" href={data.file} target="_blank" rel="noopener" download>File del cliente</a>{/if}
 				{#if o.proof_url ?? o.preview_url}<a class="btn btn--ghost btn--xs" href={o.proof_url ?? o.preview_url} target="_blank" rel="noopener">File di stampa</a>{/if}
 				{#if o.imposition_url}<a class="btn btn--ghost btn--xs" href={o.imposition_url} target="_blank" rel="noopener">Imposizione</a>{/if}

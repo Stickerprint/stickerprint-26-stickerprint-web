@@ -5,6 +5,7 @@
 	import { ORDER_STATUS, ACTIVE_STATUSES, PROD_STAGES, CATS, COUNTRIES, money, dmy, itemMeta, thumbOf, DEVICE_ICON, CHANNEL_ICON } from '$lib/dashboard/orders';
 	const statusOptions = (cur: string) => (ACTIVE_STATUSES.includes(cur) ? ACTIVE_STATUSES : [cur, ...ACTIVE_STATUSES]);
 	import { draftFromGroup } from '$lib/dashboard/orderDraft';
+	import { studioOrderHref } from '$lib/studio/products';
 	import { paymentLabel, paymentIcon } from '$lib/dashboard/payments';
 	let { data, form } = $props();
 	const g = $derived(data.group);
@@ -115,6 +116,7 @@
 						<div class="sumrow"><span>Prezzo unitario</span><b>{money(Number(it.unit_net ?? Number(it.total_net) / it.qty))}</b></div>
 						<div class="sumrow"><span>Imponibile</span><b>{money(Number(it.total_net))}</b></div>
 						<div class="ofiles">
+							{#if data.files[it.id] && studioOrderHref(it.product_slug, it.id)}<a class="btn btn--blue btn--xs" href={studioOrderHref(it.product_slug, it.id)} target="_blank" rel="noopener">Passa il file su Stickerprint Studio</a>{/if}
 							{#if data.fileLists[it.id]?.length}
 								{#each data.fileLists[it.id] as f, k (f.name)}<a class="btn btn--ghost btn--xs" href={f.url} target="_blank" rel="noopener" download={f.name}>1.{k + 1} · {f.name.startsWith('cavallotto') ? 'Cavallotto' : 'Adesivo ' + f.name.replace(/\D/g, '')} ({f.name.split('.').pop()?.toUpperCase()})</a>{/each}
 							{:else if data.files[it.id]}<a class="btn btn--ghost btn--xs" href={data.files[it.id]} target="_blank" rel="noopener">1 · File originale del cliente</a>{:else}<span class="btn btn--ghost btn--xs is-off">1 · File originale: non presente</span>{/if}

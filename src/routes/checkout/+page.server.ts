@@ -52,7 +52,7 @@ export const load: PageServerLoad = async ({ url, locals: { supabase, user } }) 
 	return { ...base, profile, addresses: addresses ?? [], credit: Number(credit ?? 0), loyalty, orderCount: groups.size, lifetimeValue, savedCards, canSaveCard: savedCardsOn() };
 };
 
-interface Line { id: string; product: string; forma: string; materiale: string; finitura?: string; w: number; h: number; qty: number; filePath: string | null; fileName: string | null; previewUrl?: string | null; note?: string; reorderOf?: string | null }
+interface Line { id: string; product: string; forma: string; materiale: string; finitura?: string; w: number; h: number; qty: number; filePath: string | null; fileName: string | null; previewUrl?: string | null; note?: string; reorderOf?: string | null; engineState?: Record<string, unknown> | null }
 /** Tutti i prodotti hanno l'anteprima automatica: il file generato dal configuratore e' quello confermato dal cliente, si va dritti in produzione */
 const AUTO_PROOF = new Set(['adesivi_personalizzati', 'adesivi_resinati', 'etichette', 'campioni', 'adesivi_rilievo', 'fogli', 'vetrofanie', 'kit_adesivi']);
 function deviceFrom(ua: string): 'mobile' | 'tablet' | 'desktop' {
@@ -188,9 +188,17 @@ export const actions: Actions = {
 				payment_method: payment === 'card' ? 'stripe' : payment, payment_status: online ? 'pending' : 'test',
 				discount_code: discountCode, discount_amount: r2(discount * share),
 				credit_used: r2(creditUsed * share), express, checkout_group: group,
-				total_paid: r2(toPay * share)
+				total_paid: r2(toPay * share),
+				// regolazioni del motore approvate (per Stickerprint Studio); scartate se anomale
+				engine_state: l.engineState && typeof l.engineState === 'object' && JSON.stringify(l.engineState).length < 300_000 ? l.engineState : null
 			};
 			let { error } = await db.from('orders').insert(row);
+			/* colonna engine_state non ancora creata (migrazione 0046 in arrivo): l'ordine passa senza */
+			if (error && /engine_state/.test(error.message)) {
+				const { engine_state: _skip, ...senza } = row;
+				void _skip;
+				({ error } = await db.from('orders').insert(senza));
+			}
 			/* finche' il vincolo di unicita' sul numero non e' tolto (migrazione 0031) la seconda riga
 			   riceve un numero suo: l'ordine passa comunque */
 			if (error && error.code === '23505') {

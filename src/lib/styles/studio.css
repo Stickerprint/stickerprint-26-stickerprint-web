@@ -93,3 +93,13 @@
 .st-stage .engine-panel .stage__busy { left: 50%; transform: translate(-50%, -50%); }
 .st-stage .engine-panel .stage__busy--soft { left: 12px; top: 12px !important; transform: none; font-size: 12px; padding: 6px 12px; box-shadow: 0 4px 12px rgba(11,11,59,.12); }
 .st-trace { text-align: center; font-weight: 600; color: #3d3f63; }
+
+/* ordine aperto dalla dashboard */
+.st-ord { display: flex; align-items: center; gap: 16px; background: #fff; border-radius: 18px; padding: 12px 16px; margin-bottom: 18px; box-shadow: 0 6px 20px rgba(11, 11, 59, .06); border-left: 6px solid #c7cbe0; }
+.st-ord.is-ok { border-left-color: #3fae4a; }
+.st-ord.is-warn { border-left-color: var(--yellow); }
+.st-ord.is-err { border-left-color: #c62828; }
+.st-ord__img { flex: 0 0 auto; width: 96px; height: 96px; border-radius: 12px; background: #eceef7; display: grid; place-items: center; overflow: hidden; }
+.st-ord__img img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.st-ord__t { margin: 0 0 4px; font-size: 15px; }
+.st-ord__s { margin: 0; font-size: 13.5px; color: #3d3f63; line-height: 1.45; }
