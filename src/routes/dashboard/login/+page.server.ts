@@ -1,13 +1,19 @@
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ locals: { session } }) => {
-	if (session) redirect(303, '/dashboard');
+/** dopo il login si torna dove si era partiti, solo dentro l'area interna (dashboard o studio) */
+const safeNext = (v: unknown) => {
+	const s = String(v ?? '');
+	return /^\/(dashboard|studio)(\/|$|\?)/.test(s) && !s.startsWith('//') ? s : '/dashboard';
+};
+
+export const load: PageServerLoad = async ({ locals: { session }, url }) => {
+	if (session) redirect(303, safeNext(url.searchParams.get('next')));
 	return {};
 };
 
 export const actions: Actions = {
-	default: async ({ request, locals: { supabase } }) => {
+	default: async ({ request, url, locals: { supabase } }) => {
 		const form = await request.formData();
 		const email = String(form.get('email') ?? '').trim().toLowerCase();
 		const password = String(form.get('password') ?? '');
@@ -22,6 +28,6 @@ export const actions: Actions = {
 			await supabase.auth.signOut();
 			return fail(403, { email, error: 'Questo account non ha accesso all’area amministratore.' });
 		}
-		redirect(303, '/dashboard');
+		redirect(303, safeNext(url.searchParams.get('next')));
 	}
 };

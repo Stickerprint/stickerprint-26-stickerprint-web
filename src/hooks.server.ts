@@ -1,3 +1,5 @@
+import { dev } from '$app/environment';
+import { env as privateEnv } from '$env/dynamic/private';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { redirect, type Handle } from '@sveltejs/kit';
 import { isPrivatePath, isProductionHost } from '$lib/seo';
@@ -76,6 +78,10 @@ const authGuard: Handle = async ({ event, resolve }) => {
 	// area amministratore: login dedicato
 	if (!session && path.startsWith('/dashboard') && path !== DASHBOARD_LOGIN) {
 		redirect(303, DASHBOARD_LOGIN);
+	}
+	// Stickerprint Studio: stesso login dell'area amministratore, poi si torna nello studio
+	if (!session && path.startsWith('/studio') && !(dev && privateEnv.STUDIO_DEV_OPEN === '1')) {
+		redirect(303, `${DASHBOARD_LOGIN}?next=${encodeURIComponent(path + event.url.search)}`);
 	}
 	if (session && GUEST_ONLY.includes(path)) {
 		redirect(303, '/account');

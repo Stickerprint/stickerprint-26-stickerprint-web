@@ -4190,12 +4190,11 @@ function proposeSize(){
 /* ==========================================================================
    EXPORT (invariati dalla v2.0)
    ========================================================================== */
-$('bMock').onclick=async()=>{
-  busy(true,'Genero il mockup…');await nextFrame();
-  try{
+/* mockup in alta definizione, SENZA linea di taglio (usato anche da Stickerprint Studio) */
+async function mockupBlob(maxPx){
     const pad=Math.max(8,S.cutW*.10,S.cutH*.10);
     const totW=S.cutW+pad*2,totH=S.cutH+pad*2;
-    const ppm=Math.min(2600/Math.max(totW,totH),16);
+    const ppm=Math.min((maxPx||2600)/Math.max(totW,totH),maxPx?40:16);
     const core=renderCore(ppm,true);
     const cv=document.createElement('canvas');
     cv.width=Math.round(totW*ppm);cv.height=Math.round(totH*ppm);
@@ -4224,7 +4223,11 @@ $('bMock').onclick=async()=>{
       gr.addColorStop(0,'rgba(255,255,255,0.28)');gr.addColorStop(.38,'rgba(255,255,255,0.06)');
       gr.addColorStop(.52,'rgba(255,255,255,0)');gr.addColorStop(1,'rgba(255,255,255,0)');
       g.fillStyle=gr;g.fillRect(-5,-5,S.cutW+10,S.cutH+10);g.restore();}
-    const blob=await new Promise(r=>cv.toBlob(r,'image/png'));
+    return await new Promise(r=>cv.toBlob(r,'image/png'));}
+$('bMock').onclick=async()=>{
+  busy(true,'Genero il mockup…');await nextFrame();
+  try{
+    const blob=await mockupBlob();
     await deliver([{name:jobName()+'_MOCKUP.png',blob}]);
   }catch(e){console.error(e);toast('Errore mockup: '+e.message,1);}
   busy(false);};
@@ -5611,6 +5614,19 @@ function ppGeoUI(){
         e=>{(window.__msgs||[]).push({t:Date.now(),error:String(e&&e.message||e)});});
     }
     if(d.type==='snapshot')snapshot();
+    /* [studio] Stickerprint Studio chiede i file di produzione:
+       'mockup' = PNG in alta definizione senza linea di taglio;
+       'print'  = grafica di stampa (senza materiale ne' effetti) con abbondanza + tracciato in mm */
+    if(d.type==='studio'){ (async()=>{
+      try{
+        if(!S.src||!S.pathD)throw new Error('Nessun file caricato');
+        if(d.what==='mockup'){ send('studio',{id:d.id,ok:true,blob:await mockupBlob(+d.px||6000)}); return; }
+        const ppm=(+d.dpi||300)/MM, cv=renderTile(ppm,false);
+        const blob=await new Promise(r=>cv.toBlob(r,'image/png'));
+        send('studio',{id:d.id,ok:true,blob,cutW:S.cutW,cutH:S.cutH,bleed:S.bleed||0,pathD:S.pathD,
+          name:S.name||null,shape:CL.shape,pxW:cv.width,pxH:cv.height});
+      }catch(e){ console.error('[studio]',e); send('studio',{id:d.id,ok:false,error:String(e&&e.message||e)}); }
+    })(); }
     /* regolazioni a mano rimesse dal sito (zoom, spostamento) dopo un nuovo rendering */
     if(d.type==='view'&&S.src){ try{ const z=$('lvZoom'); if(z&&d.zoom){z.value=String(Math.max(+z.min,Math.min(+z.max,Math.round(+d.zoom)))); $('zoomV').textContent=z.value+'%'; $('gsc').value=z.value; $('gscV').textContent=z.value;}
       if(d.dx!==undefined)$('gdx').value=(+d.dx||0).toFixed(2); if(d.dy!==undefined)$('gdy').value=(+d.dy||0).toFixed(2); }catch(e){} redo(0); }
@@ -5668,6 +5684,9 @@ function ppGeoUI(){
             setTimeout(()=>{try{computeLayout();if(mat)paintPalette();}catch(e){}},250);
           },0);
         } else if(geom||mat){try{uSummary();}catch(e){}}
+        /* niente da rifare (stessa misura, stessa sagoma): si risponde lo stesso, cosi' chi
+           ha mandato la configurazione non resta ad aspettare un'anteprima che non arriva */
+        else if(S.src&&S.bbox){ window.__busyOff=performance.now(); snapshot(); }
       }catch(e){}
     }
   });
