@@ -14,6 +14,7 @@ import { createCheckoutSession, createPaymentIntent, stripeConfigured } from '$l
 import { env as pub } from '$env/dynamic/public';
 import { createPayPalOrder, paypalConfigured } from '$lib/server/paypal';
 import { cancelPendingCheckout, expireStaleCheckouts, finalizeCheckout, savePendingCheckout, setCheckoutSession, type CheckoutItem, type CheckoutPayload } from '$lib/server/checkout';
+import { ensureCustomer, ownsCard, savedCardsFor, savedCardsOn } from '$lib/server/saved-cards';
 import type { Actions, PageServerLoad } from './$types';
 
 /** Produzione express: +30% sui prodotti (concorre al credito) */
@@ -35,7 +36,7 @@ export const load: PageServerLoad = async ({ url, locals: { supabase, user } }) 
 	if (cancelledGroup && /^[0-9a-f-]{36}$/.test(cancelledGroup)) { const a = adminClient(); if (a) await cancelPendingCheckout(a, cancelledGroup); }
 	{ const a = adminClient(); if (a) expireStaleCheckouts(a).catch(() => {}); }
 	const base = { shipDate: formatItDate(ship), expressDate: formatItDate(estimatedShipDate(3)), expressRate: EXPRESS_RATE, guestAllowed: !!env.SUPABASE_SERVICE_ROLE_KEY, online: stripeConfigured(), stripeKey: stripeConfigured() ? (pub.PUBLIC_STRIPE_PUBLISHABLE_KEY ?? '') : '', paypal: paypalConfigured(), cancelled: !!cancelledGroup };
-	if (!user) return { ...base, profile: null, addresses: [], credit: 0, loyalty: null, orderCount: 0, lifetimeValue: 0 };
+	if (!user) return { ...base, profile: null, addresses: [], credit: 0, loyalty: null, orderCount: 0, lifetimeValue: 0, savedCards: [], canSaveCard: false };
 	const [{ data: profile }, { data: addresses }, { data: credit }, { data: loyalty }] = await Promise.all([
 		supabase.from('profiles').select('full_name, email, phone, company_name, vat_number, fiscal_code, sdi_code').eq('id', user.id).maybeSingle(),
 		supabase.from('addresses').select('*').eq('user_id', user.id).order('is_default', { ascending: false }),
@@ -46,7 +47,9 @@ export const load: PageServerLoad = async ({ url, locals: { supabase, user } }) 
 	const { data: prev } = await supabase.from('orders').select('checkout_group, total_paid, total_gross').eq('user_id', user.id);
 	const groups = new Set((prev ?? []).map((o) => o.checkout_group ?? Math.random()));
 	const lifetimeValue = Math.round((prev ?? []).reduce((a, o) => a + Number(o.total_paid ?? o.total_gross ?? 0), 0) * 100) / 100;
-	return { ...base, profile, addresses: addresses ?? [], credit: Number(credit ?? 0), loyalty, orderCount: groups.size, lifetimeValue };
+	/* carte salvate dell'account (solo marca, ultime 4 cifre e scadenza: il resto sta su Stripe) */
+	const savedCards = savedCardsOn() ? await savedCardsFor(user.id) : [];
+	return { ...base, profile, addresses: addresses ?? [], credit: Number(credit ?? 0), loyalty, orderCount: groups.size, lifetimeValue, savedCards, canSaveCard: savedCardsOn() };
 };
 
 interface Line { id: string; product: string; forma: string; materiale: string; finitura?: string; w: number; h: number; qty: number; filePath: string | null; fileName: string | null; previewUrl?: string | null; note?: string; reorderOf?: string | null }
@@ -221,7 +224,19 @@ export const actions: Actions = {
 		if (inline) {
 			// carta o wallet direttamente nella pagina: il browser conferma il PaymentIntent, la pagina Grazie (o il webhook) chiude l'ordine
 			try {
-				const pi = await createPaymentIntent({ amountCents: Math.round(toPay * 100), description: `Ordine ${numbers.join(', ')} · Stickerprint`, email, orderNumber: numbers[0], group, seq: 1 });
+				/* cliente registrato che paga con carta: carta gia' salvata (verificata: deve essere sua) oppure carta nuova da salvare */
+				let customer: string | null = null, paymentMethod: string | null = null;
+				const savedPm = s('saved_pm'), saveCard = f.get('save_card') === 'on';
+				if (user && payment === 'card' && savedCardsOn()) {
+					if (savedPm) {
+						customer = await ownsCard(user.id, savedPm);
+						if (!customer) { await cancelPendingCheckout(fdb, group); return fail(400, { error: 'La carta salvata non è più disponibile: inseriscine una nuova.' }); }
+						paymentMethod = savedPm;
+					} else if (saveCard) {
+						customer = await ensureCustomer({ id: user.id, email, name: `${ship.first_name} ${ship.last_name}`.trim() });
+					}
+				}
+				const pi = await createPaymentIntent({ amountCents: Math.round(toPay * 100), description: `Ordine ${numbers.join(', ')} · Stickerprint`, email, orderNumber: numbers[0], group, seq: 1, customer, saveCard: saveCard && !paymentMethod, paymentMethod });
 				await setCheckoutSession(fdb, group, pi.id);
 				return { ok: true, clientSecret: pi.clientSecret, group, numbers, toPay };
 			} catch (e) {

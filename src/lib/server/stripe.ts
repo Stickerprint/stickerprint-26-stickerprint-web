@@ -65,8 +65,13 @@ export async function expireCheckoutSession(id: string): Promise<void> {
 }
 
 /** PaymentIntent per la carta inserita sul sito (Card Element) o per i wallet (Express Checkout): niente cassa esterna */
-export async function createPaymentIntent(o: { amountCents: number; description: string; email: string | null; orderNumber: string; group: string; seq: number }): Promise<{ id: string; clientSecret: string }> {
+export async function createPaymentIntent(o: { amountCents: number; description: string; email: string | null; orderNumber: string; group: string; seq: number; customer?: string | null; saveCard?: boolean; paymentMethod?: string | null }): Promise<{ id: string; clientSecret: string }> {
 	const s = await call('/payment_intents', {
+		/* carta salvata: il pagamento e' legato al cliente Stripe; con saveCard la carta nuova resta agganciata al cliente
+		   dopo il pagamento riuscito (uso futuro con il cliente presente: 3D Secure quando la banca lo chiede) */
+		customer: o.customer ?? undefined,
+		setup_future_usage: o.customer && o.saveCard && !o.paymentMethod ? 'on_session' : undefined,
+		payment_method: o.customer && o.paymentMethod ? o.paymentMethod : undefined,
 		amount: o.amountCents, currency: 'eur', description: o.description, receipt_email: undefined,
 		'automatic_payment_methods[enabled]': 'true', 'automatic_payment_methods[allow_redirects]': 'never',
 		'metadata[group]': o.group, 'metadata[seq]': o.seq, 'metadata[order]': o.orderNumber, 'metadata[checkout]': '1', 'metadata[email]': o.email ?? undefined
@@ -80,4 +85,20 @@ export async function retrievePaymentIntent(id: string): Promise<{ paid: boolean
 }
 export async function cancelPaymentIntent(id: string): Promise<void> {
 	try { await call(`/payment_intents/${encodeURIComponent(id)}/cancel`, {}); } catch { /* gia' pagato o annullato */ }
+}
+
+/* ---------- carte salvate: cliente Stripe dell'account, elenco e rimozione ---------- */
+export type SavedCard = { id: string; brand: string; last4: string; expMonth: number; expYear: number };
+export async function createCustomer(o: { email: string | null; name?: string | null; userId: string }): Promise<string> {
+	const c = await call('/customers', { email: o.email ?? undefined, name: o.name ?? undefined, 'metadata[user_id]': o.userId });
+	return String(c.id);
+}
+/** tutte le carte del cliente, comprese le doppie (stessa carta salvata due volte): fp e' l'impronta della carta */
+export async function listCardsRaw(customerId: string): Promise<(SavedCard & { fp: string })[]> {
+	const r = await call(`/payment_methods?customer=${encodeURIComponent(customerId)}&type=card&limit=30`);
+	const rows = (r.data ?? []) as { id: string; card?: { brand?: string; last4?: string; exp_month?: number; exp_year?: number; fingerprint?: string } }[];
+	return rows.map((m) => ({ id: m.id, fp: m.card?.fingerprint ?? m.id, brand: m.card?.brand ?? 'card', last4: m.card?.last4 ?? '', expMonth: m.card?.exp_month ?? 0, expYear: m.card?.exp_year ?? 0 }));
+}
+export async function detachCard(paymentMethodId: string): Promise<void> {
+	await call(`/payment_methods/${encodeURIComponent(paymentMethodId)}/detach`, {});
 }

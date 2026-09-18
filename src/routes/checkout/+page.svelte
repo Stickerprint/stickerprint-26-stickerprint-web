@@ -124,7 +124,14 @@
 	/* ordine gia' creato in attesa del pagamento in pagina: si riusa se il carrello non e' cambiato (una carta rifiutata si puo' riprovare) */
 	let pending: { clientSecret: string; group: string; sig: string } | null = null;
 	const cents = (v: number) => Math.max(50, Math.round(v * 100));
-	const sig = () => JSON.stringify({ i: items.map((x) => [x.id, x.qty]), t: toPay, e: express, c: discount?.code ?? null, m: guestEmail, cr: useCredit });
+	/* carta salvata dell'account: si sceglie una di quelle gia' salvate oppure 'nuova' (con la casella per salvarla) */
+	// svelte-ignore state_referenced_locally
+	let cardPick = $state<string>(data.savedCards?.[0]?.id ?? 'new');
+	let saveCard = $state(true);
+	const BRAND: Record<string, string> = { visa: 'Visa', mastercard: 'Mastercard', amex: 'American Express', maestro: 'Maestro', diners: 'Diners', discover: 'Discover', jcb: 'JCB', unionpay: 'UnionPay' };
+	const brandName = (b: string) => BRAND[b] ?? 'Carta';
+	const two = (n: number) => String(n).padStart(2, '0');
+	const sig = () => JSON.stringify({ i: items.map((x) => [x.id, x.qty]), t: toPay, e: express, c: discount?.code ?? null, m: guestEmail, cr: useCredit, cp: cardPick, sc: saveCard });
 	async function loadStripe() {
 		if (!data.stripeKey || typeof window === 'undefined') return;
 		const w = window as unknown as { Stripe?: (k: string, o?: Record<string, unknown>) => StripeJs };
@@ -226,6 +233,9 @@
 			const fd = new FormData(formEl);
 			fd.set('items', JSON.stringify(lines));
 			fd.set('payment', paymentKind);
+			/* carta: quella salvata scelta, oppure la nuova da salvare (solo clienti registrati) */
+			fd.delete('saved_pm'); fd.delete('save_card');
+			if (paymentKind === 'card' && data.user && data.canSaveCard) { if (cardPick !== 'new') fd.set('saved_pm', cardPick); else if (saveCard) fd.set('save_card', 'on'); }
 			const res = await fetch('?/order', { method: 'POST', body: fd, headers: { 'x-sveltekit-action': 'true' } });
 			return deserialize(await res.text()) as { type: string; data?: Record<string, unknown> };
 	}
@@ -244,9 +254,18 @@
 		if (!canOrder) { err = data.user ? '' : data.guestAllowed ? 'Inserisci la tua email.' : 'Accedi o registrati per completare l’ordine.'; return; }
 		if (!allFiles) { err = 'Manca il file di un prodotto.'; return; }
 		if (!formEl) return;
-		if (payment === 'card' && (!cardReady || cardErr)) { err = cardErr || 'Inserisci i dati della carta.'; return; }
+		const useSaved = payment === 'card' && cardPick !== 'new';
+		if (payment === 'card' && !useSaved && (!cardReady || cardErr)) { err = cardErr || 'Inserisci i dati della carta.'; return; }
 		submitting = true;
 		try {
+			if (useSaved && stripe) {
+				/* carta salvata: il server prepara il pagamento con quella carta, il browser lo conferma (3D Secure se la banca lo chiede) */
+				const cs = await ensurePending('card');
+				const r = await stripe.confirmCardPayment(cs.clientSecret, { payment_method: cardPick });
+				if (r.error) { err = r.error.message ?? 'Pagamento non riuscito con la carta salvata: prova con un’altra carta.'; submitting = false; return; }
+				await goto(`/checkout/grazie?pi=${encodeURIComponent(r.paymentIntent?.id ?? '')}${express ? '&e=1' : ''}`);
+				return;
+			}
 			if (payment === 'card' && stripe && cardEl) {
 				/* carta inserita in pagina: ordine in attesa + conferma del pagamento nel browser (3D Secure compreso) */
 				const cs = await ensurePending('card');
@@ -351,10 +370,21 @@
 						</label>
 						{#if payment === 'card'}
 							<div class="co-card">
-								<p class="co-card__lead">Inserisci i dati della carta per questo ordine{#if !data.user} · <a class="link" href="/login?next=/checkout">Accedi</a> per ritrovare i tuoi dati la prossima volta{/if}</p>
-								<div class="co-card__box" bind:this={cardHost}>{#if !stripe}<span class="note">Caricamento del modulo carta…</span>{/if}</div>
-								{#if cardErr}<p class="error" style="margin:6px 0 0;font-size:13px">{cardErr}</p>{/if}
-								<p class="co-card__note">🔒 I dati della carta vanno direttamente a Stripe: non passano e non restano sui nostri sistemi.</p>
+								{#if data.savedCards?.length}
+									<div class="co-saved" role="radiogroup" aria-label="Carta da usare">
+										{#each data.savedCards as c (c.id)}
+											<label class="co-saved__opt" class:is-on={cardPick === c.id}><input type="radio" value={c.id} bind:group={cardPick} /><span><b>{brandName(c.brand)} •••• {c.last4}</b><small>scade {two(c.expMonth)}/{String(c.expYear).slice(-2)}</small></span></label>
+										{/each}
+										<label class="co-saved__opt" class:is-on={cardPick === 'new'}><input type="radio" value="new" bind:group={cardPick} /><span><b>Usa un’altra carta</b></span></label>
+									</div>
+								{/if}
+								<div hidden={cardPick !== 'new'} style="display:{cardPick === 'new' ? 'grid' : 'none'};gap:8px">
+									<p class="co-card__lead">Inserisci i dati della carta per questo ordine{#if !data.user} · <a class="link" href="/login?next=/checkout">Accedi</a> per salvare la carta e ritrovare i tuoi dati la prossima volta{/if}</p>
+									<div class="co-card__box" bind:this={cardHost}>{#if !stripe}<span class="note">Caricamento del modulo carta…</span>{/if}</div>
+									{#if cardErr}<p class="error" style="margin:6px 0 0;font-size:13px">{cardErr}</p>{/if}
+									{#if data.user && data.canSaveCard}<label class="co-save"><input type="checkbox" bind:checked={saveCard} /> Salva la carta nel mio account per i prossimi ordini</label>{/if}
+								</div>
+								<p class="co-card__note">🔒 I dati della carta vanno direttamente a Stripe: non passano e non restano sui nostri sistemi.{#if data.savedCards?.length} Gestisci le carte salvate in <a class="link" href="/account/pagamenti">Pagamenti</a>.{/if}</p>
 							</div>
 						{/if}
 					{:else if data.online}
