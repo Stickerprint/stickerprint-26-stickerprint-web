@@ -19,7 +19,7 @@
 	let dragging = $state(false);
 	let fileInput = $state<HTMLInputElement | undefined>();
 	let colInput = $state<HTMLInputElement | undefined>();
-	let engine = $state<{ post: (type: string, detail?: Record<string, unknown>) => void; studio: (what: 'mockup' | 'print', opts?: Record<string, unknown>) => Promise<{ blob: Blob; cutW?: number; cutH?: number; bleed?: number; pathD?: string }> }>();
+	let engine = $state<{ post: (type: string, detail?: Record<string, unknown>) => void; studio: (what: 'mockup' | 'print', opts?: Record<string, unknown>) => Promise<{ blob: Blob; cutW?: number; cutH?: number; bleed?: number; pathD?: string; polys?: [number, number][][] | null; shape?: string; dpi?: number }> }>();
 
 	/* kit: si lavora un adesivo del kit oppure il cavallotto */
 	let pezzo = $state<'adesivo' | 'cavallotto'>('adesivo');
@@ -97,7 +97,8 @@
 	/* ------------------------------------------------------------ esportazioni */
 	let busy = $state<'' | 'mockup' | 'print' | 'strip'>('');
 	let downloadErr = $state('');
-	let dpi = $state(300);
+	let dpi = $state<'auto' | number>('auto');
+	let traceInfo = $state('');
 
 	const safe = (s: string) => (s || 'lavoro').replace(/[^\w\-]+/g, '_').replace(/_+/g, '_').slice(0, 60);
 	const sizeTag = () => `${(cavallotto ? KIT_CAVALLOTTO.w : w).toFixed(0)}x${(cavallotto ? KIT_CAVALLOTTO.h : h).toFixed(0)}mm`;
@@ -121,11 +122,26 @@
 		try { await fn(); } catch (e) { downloadErr = e instanceof Error ? e.message : String(e); } finally { busy = ''; }
 	}
 
+	/* sagomato: il contorno del motore ha una curva per ogni punto (centinaia di nodi, il plotter
+	   rallenta su ognuno); si riadatta con poche curve entro 0,12 mm. Le forme geometriche hanno
+	   gia' il tracciato minimo (archi e lati). */
+	async function tracciato(r: { pathD?: string; polys?: [number, number][][] | null; shape?: string }) {
+		if (r.shape === 'diecut' && r.polys?.length) {
+			const { fitPathD } = await import('$lib/studio/fit');
+			const f = fitPathD(r.polys);
+			if (f.d) return { d: f.d, nodes: f.nodes };
+		}
+		const d = r.pathD ?? '';
+		return { d, nodes: (d.match(/[MLHVCAZmlhvcaz]/g) ?? []).filter((c) => !/[Zz]/.test(c)).length };
+	}
+
 	async function artwork() {
 		const r = await engine!.studio('print', { dpi });
 		if (!r.pathD || !r.cutW || !r.cutH) throw new Error('Il motore non ha restituito il tracciato di taglio.');
-		lastPath = r.pathD;
-		return { png: new Uint8Array(await r.blob.arrayBuffer()), cutW: r.cutW, cutH: r.cutH, bleed: r.bleed ?? 0, pathD: r.pathD };
+		const t = await tracciato(r);
+		lastPath = t.d;
+		traceInfo = `Tracciato: ${t.nodes} punti di ancoraggio · grafica a ${r.dpi ?? '?'} dpi`;
+		return { png: new Uint8Array(await r.blob.arrayBuffer()), cutW: r.cutW, cutH: r.cutH, bleed: r.bleed ?? 0, pathD: t.d };
 	}
 
 	const scaricaAnteprima = () => run('mockup', async () => {
@@ -201,7 +217,7 @@
 		if (!go) return;
 		clearTimeout(pathTimer);
 		pathTimer = setTimeout(async () => {
-			try { const r = await engine?.studio('print', { dpi: 20 }); if (r?.pathD) lastPath = r.pathD; } catch { /* resta il rettangolo */ }
+			try { const r = await engine?.studio('print', { dpi: 20 }); if (r?.pathD) lastPath = (await tracciato(r)).d; } catch { /* resta il rettangolo */ }
 		}, 250);
 	});
 
@@ -320,7 +336,8 @@
 					<button type="button" class="btn btn--green st-act" disabled={!rendered || !!busy} onclick={() => (stripOpen = !stripOpen)} aria-expanded={stripOpen}>
 						Genera file di stampa<small>{P.mode === 'fogli' ? 'fogli impaginati sulla striscia' : 'striscia piena di pezzi'}, taglio in sovrastampa</small>
 					</button>
-					<label class="st-dpi">Risoluzione <select bind:value={dpi}><option value={200}>200 dpi</option><option value={300}>300 dpi</option><option value={400}>400 dpi</option></select></label>
+					<label class="st-dpi">Risoluzione <select bind:value={dpi}><option value="auto">Massima (min. 600 dpi)</option><option value={300}>300 dpi</option><option value={600}>600 dpi</option><option value={1200}>1200 dpi</option></select></label>
+					{#if traceInfo}<p class="st-note st-trace">{traceInfo}</p>{/if}
 					{#if downloadErr}<p class="st-err">{downloadErr}</p>{/if}
 					{#if P.rilievo}<p class="st-note">Rilievo: il livello RDG_GLOSS vettoriale per la Roland arriva nel prossimo passaggio. Oggi il PDF contiene grafica e passante.</p>{/if}
 				</div>
