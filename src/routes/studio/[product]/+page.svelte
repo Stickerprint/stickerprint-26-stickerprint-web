@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import EnginePreview from '$lib/components/EnginePreview.svelte';
-	import { showFinishStep, showMaterialStep, minForShape, startSize, sizeProposals, roundHalf } from '$lib/pricing/engine';
+	import { showFinishStep, showMaterialStep, minForShape, startSize, sizeProposals, roundHalf, proportionalSize } from '$lib/pricing/engine';
 	import { KIT_CAVALLOTTO } from '$lib/studio/products';
 	import { STRIP_MATERIALS, SHEET_RULES, layoutLoose, layoutSheets, type Strip } from '$lib/studio/layout';
 	import { SPOTS } from '$lib/studio/spots';
@@ -144,15 +144,16 @@
 		const [w0, h0] = startSize(cfg, forma, r);
 		w = w0; h = h0;
 	}
+	// stessa regola del sito: proporzione bloccata e nessun lato sotto il minimo
 	function setW(v: number) {
 		if (!(v > 0)) return;
-		w = clamp(v);
-		if (!freeSize) h = clamp(w / ratio);
+		if (freeSize) { w = clamp(v); return; }
+		[w, h] = proportionalSize(cfg, forma, v, ratio);
 	}
 	function setH(v: number) {
 		if (!(v > 0)) return;
-		h = clamp(v);
-		if (!freeSize) w = clamp(h * ratio);
+		if (freeSize) { h = clamp(v); return; }
+		[w, h] = proportionalSize(cfg, forma, v * ratio, ratio);
 	}
 
 	/* ------------------------------------------------------------ esportazioni */
@@ -390,9 +391,9 @@
 					<div class="st-block">
 						<p class="st-label">Misura (mm)</p>
 						<div class="st-size">
-							<label><span>Larghezza</span><input class="input" type="number" min="5" max="1000" step="0.5" value={w || ''} onchange={(e) => setW(+(e.currentTarget as HTMLInputElement).value)} /></label>
+							<label><span>Larghezza</span><input class="input" type="number" min="5" max="1000" step="0.5" value={w || ''} onchange={(e) => { const el = e.currentTarget as HTMLInputElement; setW(+el.value); el.value = String(w); }} /></label>
 							<span class="st-x">×</span>
-							<label><span>Altezza</span><input class="input" type="number" min="5" max="1000" step="0.5" value={h || ''} onchange={(e) => setH(+(e.currentTarget as HTMLInputElement).value)} /></label>
+							<label><span>Altezza</span><input class="input" type="number" min="5" max="1000" step="0.5" value={h || ''} onchange={(e) => { const el = e.currentTarget as HTMLInputElement; setH(+el.value); el.value = String(h); }} /></label>
 						</div>
 						<div class="st-chips">
 							{#each presets as [pw, ph] (pw + 'x' + ph)}
