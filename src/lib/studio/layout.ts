@@ -91,8 +91,10 @@ export interface LooseOptions {
 	stripW: number;
 	/** altezza della striscia chiesta dall'operatore (gia' limitata al massimo del materiale) */
 	stripH: number;
-	/** margine fra il bordo della striscia e i pezzi */
+	/** margine fra il bordo della striscia e i pezzi (a destra e a sinistra) */
 	margin: number;
+	/** margine in alto e in basso (se diverso: crocini e codici a barre) */
+	marginY?: number;
 	/** spazio fra i pezzi, da taglio a taglio */
 	gap: number;
 	/** 0 = riempi le strisce; altrimenti quanti pezzi servono in tutto */
@@ -121,7 +123,8 @@ export interface LooseResult {
 
 /** Adesivi sciolti: si prova il pezzo dritto e girato, vince il verso che ne fa entrare di piu'. */
 export function layoutLoose(cutW: number, cutH: number, o: LooseOptions): LooseResult {
-	const aw = o.stripW - 2 * o.margin, ah = o.stripH - 2 * o.margin;
+	const my = o.marginY ?? o.margin;
+	const aw = o.stripW - 2 * o.margin, ah = o.stripH - 2 * my;
 	const opts = [false, true].map((rot) => {
 		const pw = rot ? cutH : cutW, ph = rot ? cutW : cutH;
 		return { pw, ph, g: grid(pw, ph, fit(aw, pw, o.gap), fit(ah, ph, o.gap), o.gap, rot) };
@@ -142,7 +145,7 @@ export function layoutLoose(cutW: number, cutH: number, o: LooseOptions): LooseR
 		// sempre centrato nella pagina: in larghezza sulla striscia, in altezza col margine uguale sopra e sotto
 		const cols = Math.min(k, best.g.cols);
 		const x0 = (o.stripW - (cols * best.pw + (cols - 1) * o.gap)) / 2;
-		strips.push({ w: o.stripW, h: Math.round((usedH + 2 * o.margin) * 10) / 10, pieces: place(g, best.pw, best.ph, o.gap, x0, o.margin, k) });
+		strips.push({ w: o.stripW, h: Math.round((usedH + 2 * my) * 10) / 10, pieces: place(g, best.pw, best.ph, o.gap, x0, my, k) });
 	}
 	return { ok: true, grid: best.g, perStrip: best.g.n, strips, pw: best.pw, ph: best.ph };
 }
@@ -165,8 +168,10 @@ export interface SheetLayout {
 export interface SheetStripOptions {
 	stripW: number;
 	stripH: number;
-	/** margine fra il bordo della striscia e i fogli */
+	/** margine fra il bordo della striscia e i fogli (a destra e a sinistra) */
 	margin: number;
+	/** margine in alto e in basso (se diverso: crocini e codici a barre) */
+	marginY?: number;
 	/** spazio fra un foglio e l'altro sulla striscia (almeno 10 mm) */
 	sheetGap: number;
 	/** 0 = riempi le strisce; altrimenti quanti fogli servono */
@@ -210,7 +215,8 @@ function a4Near(w: number, h: number, tol: number) {
  * sulla striscia, e lo si segnala.
  */
 export function layoutSheets(cutW: number, cutH: number, rules: SheetRules, o: SheetStripOptions): SheetResult {
-	const aw = o.stripW - 2 * o.margin, ah = o.stripH - 2 * o.margin;
+	const my = o.marginY ?? o.margin;
+	const aw = o.stripW - 2 * o.margin, ah = o.stripH - 2 * my;
 	const cands: Cand[] = [];
 	for (const rot of [false, true]) {
 		const pw = rot ? cutH : cutW, ph = rot ? cutW : cutH;
@@ -226,7 +232,7 @@ export function layoutSheets(cutW: number, cutH: number, rules: SheetRules, o: S
 					const W = sRot ? sh : sw, H = sRot ? sw : sh;
 					const across = fit(aw, W, o.sheetGap), down = fit(ah, H, o.sheetGap);
 					if (!across || !down) continue;
-					const usedH = down * H + (down - 1) * o.sheetGap + 2 * o.margin;
+					const usedH = down * H + (down - 1) * o.sheetGap + 2 * my;
 					cands.push({ sheet, across, down, sheetRot: sRot, usedH, density: (across * down * n) / (usedH + STRIP_OVERHEAD) });
 				}
 			}
@@ -260,7 +266,7 @@ export function layoutSheets(cutW: number, cutH: number, rules: SheetRules, o: S
 		const x0 = (o.stripW - (cols * W + (cols - 1) * o.sheetGap)) / 2;
 		for (let i = 0; i < k; i++) {
 			const c = i % best.across, r = Math.floor(i / best.across);
-			const sx = x0 + c * (W + o.sheetGap), sy = o.margin + r * (H + o.sheetGap);
+			const sx = x0 + c * (W + o.sheetGap), sy = my + r * (H + o.sheetGap);
 			sheets.push({ x: sx, y: sy, w: W, h: H, rot: best.sheetRot });
 			for (const p of best.sheet.pieces) {
 				if (!best.sheetRot) pieces.push({ x: sx + p.x, y: sy + p.y, rot: p.rot });
@@ -268,7 +274,7 @@ export function layoutSheets(cutW: number, cutH: number, rules: SheetRules, o: S
 				else pieces.push({ x: sx + (best.sheet.h - p.y - best.sheet.ph), y: sy + p.x, rot: !p.rot });
 			}
 		}
-		const usedH = down * H + (down - 1) * o.sheetGap + 2 * o.margin;
+		const usedH = down * H + (down - 1) * o.sheetGap + 2 * my;
 		strips.push({ w: o.stripW, h: Math.round(usedH * 10) / 10, pieces, sheets });
 	}
 	return {
