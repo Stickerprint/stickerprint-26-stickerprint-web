@@ -44,5 +44,11 @@ export const STUDIO_PRODUCTS: StudioProduct[] = [
 
 export const studioProduct = (id: string) => STUDIO_PRODUCTS.find((p) => p.id === id) ?? null;
 
+/** indirizzo dello studio per un ordine della dashboard (null se il prodotto non si lavora nello studio) */
+export function studioOrderHref(productSlug: string | null | undefined, orderId: string): string | null {
+	const p = productSlug === 'kit_adesivi' ? studioProduct('kit-adesivi') : STUDIO_PRODUCTS.find((x) => x.engineSlug === productSlug && !x.kit && !x.soon);
+	return p ? `/studio/${p.id}?ordine=${encodeURIComponent(orderId)}` : null;
+}
+
 /** cavallotto del kit: rettangolo 80×40 a spigoli vivi (come sul sito) */
 export const KIT_CAVALLOTTO = { w: 80, h: 40 };

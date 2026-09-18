@@ -190,7 +190,7 @@ export function fitClosed(poly: P[], o: FitOptions = {}): Bez[] {
 	const tol = o.tolerance ?? 0.2;
 	const L = polyLength(poly);
 	if (poly.length < 3 || L < 1) return [];
-	const step = Math.max(0.08, Math.min(0.25, L / 400));
+	const step = Math.max(0.05, Math.min(0.2, L / 2500));
 	// lisciatura su circa ±0,5 mm: toglie le ondine del contorno (angoli inutili) senza spostarlo
 	const pts = smoothClosed(resampleClosed(poly, step), Math.max(1, Math.round((o.smooth ?? 0.5) / step)), 2);
 	const n = pts.length;
@@ -219,6 +219,26 @@ export function fitClosed(poly: P[], o: FitOptions = {}): Bez[] {
 		if (seg.length < 2) continue;
 		fitCubic(seg, tangentAt(a, 1), tangentAt(b, -1), tol, out);
 	}
+	return out;
+}
+
+/** il tracciato SVG approvato (M/L/C/Z) -> spezzate fitte, una per sottotracciato (passo ~0,05 mm) */
+export function samplePath(segs: ([string, ...number[]])[], step = 0.05): P[][] {
+	const out: P[][] = [];
+	let cur: P = [0, 0], poly: P[] = [];
+	const flush = () => { if (poly.length > 2) out.push(poly); poly = []; };
+	for (const sg of segs) {
+		if (sg[0] === 'M') { flush(); cur = [sg[1] as number, sg[2] as number]; poly.push(cur); }
+		else if (sg[0] === 'L') { cur = [sg[1] as number, sg[2] as number]; poly.push(cur); }
+		else if (sg[0] === 'C') {
+			const [, x1, y1, x2, y2, x3, y3] = sg as [string, number, number, number, number, number, number];
+			const L = dist(cur, [x1, y1]) + dist([x1, y1], [x2, y2]) + dist([x2, y2], [x3, y3]);
+			const n = Math.max(2, Math.ceil(L / step));
+			for (let k = 1; k <= n; k++) poly.push(bezPt([cur, [x1, y1], [x2, y2], [x3, y3]], k / n));
+			cur = [x3, y3];
+		} else flush();
+	}
+	flush();
 	return out;
 }
 

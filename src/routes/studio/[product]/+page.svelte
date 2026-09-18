@@ -1,12 +1,14 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import EnginePreview from '$lib/components/EnginePreview.svelte';
-	import { showFinishStep, showMaterialStep } from '$lib/pricing/engine';
+	import { showFinishStep, showMaterialStep, minForShape, startSize, sizeProposals, roundHalf } from '$lib/pricing/engine';
 	import { KIT_CAVALLOTTO } from '$lib/studio/products';
 	import { STRIP_MATERIALS, SHEET_RULES, layoutLoose, layoutSheets, type Strip } from '$lib/studio/layout';
 	import { SPOTS } from '$lib/studio/spots';
 
 	let { data } = $props();
 	const P = $derived(data.product);
+	const ORD = $derived(data.order);
 	const cfg = $derived(data.cfg);
 
 	const SHAPES = $derived(cfg.shapes.filter((s) => s.visible));
@@ -19,7 +21,7 @@
 	let dragging = $state(false);
 	let fileInput = $state<HTMLInputElement | undefined>();
 	let colInput = $state<HTMLInputElement | undefined>();
-	let engine = $state<{ post: (type: string, detail?: Record<string, unknown>) => void; studio: (what: 'mockup' | 'print', opts?: Record<string, unknown>) => Promise<{ blob: Blob; cutW?: number; cutH?: number; bleed?: number; pathD?: string; polys?: [number, number][][] | null; shape?: string; dpi?: number }> }>();
+	let engine = $state<{ post: (type: string, detail?: Record<string, unknown>) => void; studio: (what: 'mockup' | 'print' | 'geom' | 'applica', opts?: Record<string, unknown>) => Promise<{ blob?: Blob; cutW?: number; cutH?: number; bleed?: number; pathD?: string; polys?: [number, number][][] | null; shape?: string; dpi?: number; border?: number }> }>();
 
 	/* kit: si lavora un adesivo del kit oppure il cavallotto */
 	let pezzo = $state<'adesivo' | 'cavallotto'>('adesivo');
@@ -28,10 +30,14 @@
 	let forma = $state('');
 	let materiale = $state('');
 	let finitura = $state('');
-	// misura: 0 = la propone il motore dal file, poi la si corregge qui
-	let w = $state(0);
-	let h = $state(0);
-	let ratio = $state(1);
+	/* misura: STESSE regole del configuratore del sito (partenza dal minimo della sagoma, proposte,
+	   minimi e massimi del listino, mezzo millimetro), cosi' lo stesso file da' lo stesso pezzo */
+	// svelte-ignore state_referenced_locally
+	let w = $state(data.cfg.size.defaultMm ?? 50);
+	// svelte-ignore state_referenced_locally
+	let h = $state(data.cfg.size.defaultMm ?? 50);
+	let cutRatio = $state<number | null>(null);
+	let sizeKey = '';
 	let showCut = $state(true);
 	let palette = $state<{ hex: string; img?: string }[]>([]);
 	let palIdx = $state(0);
@@ -47,8 +53,20 @@
 	});
 
 	const shape = $derived(SHAPES.find((s) => s.id === forma));
-	const equal = $derived(!cavallotto && (shape?.equal || forma === 'tondo' || forma === 'quadrato'));
+	// proporzione larghezza/altezza, come sul sito
+	const ratio = $derived(shape?.equal ? 1 : (shape?.ratio ?? cutRatio ?? 1));
 	const freeSize = $derived(cavallotto || forma === 'rettangolare' || forma === 'ovale');
+	const MIN_MM = $derived(minForShape(cfg, forma));
+	const MAX_MM = $derived(cfg.size.maxMm);
+	const presets = $derived(sizeProposals(cfg, forma, ratio, shape?.presets?.length ? shape.presets : [30, 50, 70, 100]));
+	const clamp = (v: number) => Math.min(MAX_MM, Math.max(MIN_MM, roundHalf(v || MIN_MM)));
+	// cambio sagoma: si riparte dalla misura minima, come sul sito (non su un ordine: la misura e' quella ordinata)
+	let lastForma = '';
+	$effect(() => {
+		if (forma === lastForma) return;
+		lastForma = forma;
+		if (!data.order) { const [pw, ph] = presets[0]; w = pw; h = ph; }
+	});
 	const eForma = $derived(cavallotto ? 'rettangolare' : forma);
 	const eW = $derived(cavallotto ? KIT_CAVALLOTTO.w : w);
 	const eH = $derived(cavallotto ? KIT_CAVALLOTTO.h : h);
@@ -57,7 +75,7 @@
 		if (!f) return;
 		file = f;
 		rendered = false;
-		w = 0; h = 0;
+		sizeKey = '';
 		jobName = f.name.replace(/\.[^.]+$/, '');
 		downloadErr = '';
 	}
@@ -67,6 +85,40 @@
 		pick(e.dataTransfer?.files?.[0]);
 	}
 
+	/* ------------------------------------------------------------ ordine dalla dashboard */
+	/* stato: carico il file -> rimetto le regolazioni approvate -> confronto il tracciato */
+	let ordStato = $state<'' | 'carico' | 'applico' | 'identico' | 'diverso' | 'senza' | 'errore'>('');
+	let ordErr = $state('');
+	onMount(async () => {
+		const o = data.order;
+		if (!o) return;
+		if (!o.fileUrl) { ordStato = 'errore'; ordErr = o.folder ? 'Questo ordine ha più file (kit o foglio): caricali uno alla volta.' : 'L’ordine non ha il file del cliente.'; return; }
+		ordStato = 'carico';
+		try {
+			const res = await fetch(o.fileUrl);
+			if (!res.ok) throw new Error(`file non scaricabile (${res.status})`);
+			const blob = await res.blob();
+			const f = new File([blob], o.fileName ?? 'file-cliente', { type: blob.type });
+			if (o.forma && SHAPES.some((x) => x.id === o.forma)) forma = o.forma;
+			if (o.materiale && MATERIALS.some((x) => x.id === o.materiale)) materiale = o.materiale;
+			if (o.finitura && FINISHES.some((x) => x.id === o.finitura)) finitura = o.finitura;
+			pick(f);
+			jobName = `${o.number}${o.fileName ? '_' + o.fileName.replace(/\.[^.]+$/, '') : ''}`;
+			w = o.w; h = o.h;
+			if (o.qty) qty = o.qty;
+		} catch (e) { ordStato = 'errore'; ordErr = e instanceof Error ? e.message : String(e); }
+	});
+	async function applicaOrdine() {
+		const st = data.order?.engineState;
+		if (!st) { ordStato = 'senza'; return; }
+		ordStato = 'applico';
+		try {
+			const r = await engine!.studio('applica', { stato: st });
+			if (r.cutW && r.cutH) { w = Math.round(r.cutW * 10) / 10; h = Math.round(r.cutH * 10) / 10; }
+			ordStato = r.pathD && r.pathD === st.pathD ? 'identico' : 'diverso';
+		} catch (e) { ordStato = 'errore'; ordErr = e instanceof Error ? e.message : String(e); }
+	}
+
 	let renders = $state(0);
 	function onRender(s: { w: number; h: number; palette?: { hex: string; img?: string }[]; palIdx?: number; rimuovi?: boolean; shape?: string | null }) {
 		rendered = true;
@@ -74,24 +126,29 @@
 		if (s.palette) palette = s.palette;
 		palIdx = s.palIdx ?? 0;
 		rimuovi = !!s.rimuovi;
+		// primo disegno di un ordine: prima si rimettono le regolazioni del cliente, poi si lavora
+		if (ordStato === 'carico') { applicaOrdine(); return; }
+		if (ordStato === 'applico') return;
 		if (cavallotto) return;
-		if (s.w > 0 && s.h > 0) {
-			ratio = s.h / s.w;
-			// sagomato: l'altezza la decide il contorno; alla prima anteprima la misura e' quella del motore
-			if (w <= 0 || forma === 'sagomato') { w = s.w; h = s.h; }
-		}
+		// primo disegno di un file (o di una sagoma): misura di partenza del sito
+		const key = `${file?.name ?? ''}|${file?.size ?? 0}|${forma}`;
+		if (key === sizeKey) return;
+		sizeKey = key;
+		const r = shape?.equal ? 1 : (shape?.ratio ?? (s.h > 0 ? s.w / s.h : 1));
+		cutRatio = r;
+		if (data.order) return; // ordine: resta la misura ordinata
+		const [w0, h0] = startSize(cfg, forma, r);
+		w = w0; h = h0;
 	}
 	function setW(v: number) {
 		if (!(v > 0)) return;
-		w = v;
-		if (equal) h = v;
-		else if (!freeSize) h = Math.round(v * ratio * 10) / 10;
+		w = clamp(v);
+		if (!freeSize) h = clamp(w / ratio);
 	}
 	function setH(v: number) {
 		if (!(v > 0)) return;
-		h = v;
-		if (equal) w = v;
-		else if (!freeSize) w = Math.round((v / ratio) * 10) / 10;
+		h = clamp(v);
+		if (!freeSize) w = clamp(h * ratio);
 	}
 
 	/* ------------------------------------------------------------ esportazioni */
@@ -125,27 +182,42 @@
 	/* sagomato: il contorno del motore ha una curva per ogni punto (centinaia di nodi, il plotter
 	   rallenta su ognuno); si riadatta con poche curve entro 0,12 mm. Le forme geometriche hanno
 	   gia' il tracciato minimo (archi e lati). */
-	async function tracciato(r: { pathD?: string; polys?: [number, number][][] | null; shape?: string }) {
-		if (r.shape === 'diecut' && r.polys?.length) {
-			const { fitPathD } = await import('$lib/studio/fit');
-			const f = fitPathD(r.polys);
+	async function tracciato(r: { pathD?: string; polys?: [number, number][][] | null; shape?: string; border?: number }) {
+		if (r.shape === 'diecut' && r.pathD) {
+			/* si parte dalla LINEA APPROVATA (quella che il cliente ha visto) e se ne scosta di circa un quarto del bordo (0,05–0,15 mm, misurato 0,14 mm su bordo piccolo): con il bordo piccolo il taglio non si avvicina al disegno */
+			const [{ fitPathD, samplePath }, { parsePath }] = await Promise.all([import('$lib/studio/fit'), import('$lib/studio/path')]);
+			const b = r.border && r.border > 0 ? r.border : 1;
+			const tol = Math.min(0.15, Math.max(0.05, b * 0.25));
+			const f = fitPathD(samplePath(parsePath(r.pathD)), { tolerance: tol, smooth: Math.min(0.15, Math.max(0.05, b * 0.12)) });
 			if (f.d) return { d: f.d, nodes: f.nodes };
 		}
 		const d = r.pathD ?? '';
 		return { d, nodes: (d.match(/[MLHVCAZmlhvcaz]/g) ?? []).filter((c) => !/[Zz]/.test(c)).length };
 	}
 
-	async function artwork() {
-		const r = await engine!.studio('print', { dpi });
-		if (!r.pathD || !r.cutW || !r.cutH) throw new Error('Il motore non ha restituito il tracciato di taglio.');
-		const t = await tracciato(r);
+	/* il tracciato leggero si ricava PRIMA e si ripassa al motore: mockup, grafica di stampa e
+	   taglio usano lo stesso contorno liscio (niente bordo frastagliato nell'anteprima) */
+	async function traccia() {
+		const g = await engine!.studio('geom');
+		if (!g.pathD) throw new Error('Il motore non ha restituito il tracciato di taglio.');
+		const t = await tracciato(g);
 		lastPath = t.d;
+		return t;
+	}
+
+	async function artwork() {
+		const t = await traccia();
+		const r = await engine!.studio('print', { dpi, pathD: t.d });
+		if (!r.cutW || !r.cutH) throw new Error('Il motore non ha restituito le misure del taglio.');
 		traceInfo = `Tracciato: ${t.nodes} punti di ancoraggio · grafica a ${r.dpi ?? '?'} dpi`;
+		if (!r.blob) throw new Error('Il motore non ha restituito la grafica.');
 		return { png: new Uint8Array(await r.blob.arrayBuffer()), cutW: r.cutW, cutH: r.cutH, bleed: r.bleed ?? 0, pathD: t.d };
 	}
 
 	const scaricaAnteprima = () => run('mockup', async () => {
-		const r = await engine!.studio('mockup', { px: 5000 });
+		const t = await traccia();
+		const r = await engine!.studio('mockup', { px: 5000, pathD: t.d });
+		if (!r.blob) throw new Error('Il motore non ha restituito l’anteprima.');
 		download(r.blob, `${baseName()}_anteprima.png`);
 	});
 
@@ -217,7 +289,7 @@
 		if (!go) return;
 		clearTimeout(pathTimer);
 		pathTimer = setTimeout(async () => {
-			try { const r = await engine?.studio('print', { dpi: 20 }); if (r?.pathD) lastPath = (await tracciato(r)).d; } catch { /* resta il rettangolo */ }
+			try { const r = await engine?.studio('geom'); if (r?.pathD) lastPath = (await tracciato(r)).d; } catch { /* resta il rettangolo */ }
 		}, 250);
 	});
 
@@ -239,6 +311,24 @@
 			{#if P.sheetCut}<span class="st-sep">+</span> foglio <span class="st-spot" style="--c:{cutColor(P.sheetCut)}">{P.sheetCut}</span>{/if}
 		</p>
 	</div>
+
+	{#if ORD}
+		<div class="st-ord" class:is-ok={ordStato === 'identico'} class:is-warn={ordStato === 'diverso' || ordStato === 'senza'} class:is-err={ordStato === 'errore'}>
+			{#if ORD.previewUrl}<a class="st-ord__img" href={ORD.previewUrl} target="_blank" rel="noopener" title="Anteprima approvata dal cliente"><img src={ORD.previewUrl} alt="Anteprima approvata" /></a>{/if}
+			<div class="st-ord__txt">
+				<p class="st-ord__t">Ordine <b>{ORD.number}</b> · {ORD.productName} · {ORD.qty} pz · {ORD.w}×{ORD.h} mm</p>
+				<p class="st-ord__s">
+					{#if ordStato === 'carico'}Carico il file del cliente…
+					{:else if ordStato === 'applico'}Rimetto le regolazioni approvate dal cliente…
+					{:else if ordStato === 'identico'}✓ Regolazioni del cliente applicate: il tracciato è <b>identico</b> a quello che ha approvato.
+					{:else if ordStato === 'diverso'}Regolazioni del cliente applicate, ma il tracciato non coincide al millesimo con quello approvato: confronta con l’anteprima qui a fianco prima di stampare.
+					{:else if ordStato === 'senza'}Ordine fatto prima del salvataggio delle regolazioni: imposta bordo, zoom e sfondo guardando l’anteprima approvata qui a fianco.
+					{:else if ordStato === 'errore'}Non riesco ad aprire l’ordine: {ordErr}
+					{/if}
+				</p>
+			</div>
+		</div>
+	{/if}
 
 	{#if !file}
 		<button type="button" class="st-drop" class:is-over={dragging} onclick={() => fileInput?.click()}>
@@ -300,7 +390,12 @@
 							<span class="st-x">×</span>
 							<label><span>Altezza</span><input class="input" type="number" min="5" max="1000" step="0.5" value={h || ''} onchange={(e) => setH(+(e.currentTarget as HTMLInputElement).value)} /></label>
 						</div>
-						<p class="st-note">{forma === 'sagomato' ? 'Sagomato: l’altezza segue il contorno del disegno.' : equal ? 'Lati uguali.' : 'Lati indipendenti.'}</p>
+						<div class="st-chips">
+							{#each presets as [pw, ph] (pw + 'x' + ph)}
+								<button type="button" class="st-chip" class:is-on={Math.abs(w - pw) < 0.3 && Math.abs(h - ph) < 0.3} onclick={() => { w = pw; h = ph; }}>{pw}×{ph}</button>
+							{/each}
+						</div>
+						<p class="st-note">Stesse misure del sito: minimo {MIN_MM} mm, massimo {MAX_MM} mm{freeSize ? ', lati indipendenti' : ', proporzioni bloccate'}.</p>
 					</div>
 				{/if}
 

@@ -78,7 +78,7 @@
 	let added = $state(false);
 	let fileInput = $state<HTMLInputElement | undefined>();
 	let lastPng: string | null = null; // ultima anteprima generata dal motore (con tracciato di taglio)
-	let engine = $state<{ post: (type: string, detail?: Record<string, unknown>) => void }>();
+	let engine = $state<{ post: (type: string, detail?: Record<string, unknown>) => void; studio: (what: 'stato', opts?: Record<string, unknown>) => Promise<{ stato?: Record<string, unknown> }> }>();
 	let palette = $state<{ hex: string; img?: string }[]>([]);
 	let palIdx = $state(0);
 	let rimuovi = $state(false);
@@ -248,7 +248,14 @@
 	// si può ordinare solo con un file caricato
 	async function addCart() {
 		if (!file) return;
-		const it = addToCart({ product, productName: productName.replace(/^(i tuoi|le tue) /, ''), engineProduct, forma, materiale, finitura: showFinish ? finitura : undefined, w, h, qty, net: q.net, gross: q.gross, promoId: promoOk && promo ? promo.id : undefined, fileName: file.name, note });
+		/* regolazioni del motore (bordo, zoom, sfondo, tracciato): con l'ordine arrivano allo studio,
+		   che rifa' ESATTAMENTE il pezzo approvato. Se il motore non risponde subito si va avanti senza. */
+		let engineState: Record<string, unknown> | null = null;
+		try {
+			const r = await Promise.race([engine?.studio('stato'), new Promise<null>((ok) => setTimeout(() => ok(null), 2500))]);
+			engineState = r?.stato ?? null;
+		} catch { /* si ordina lo stesso */ }
+		const it = addToCart({ engineState, product, productName: productName.replace(/^(i tuoi|le tue) /, ''), engineProduct, forma, materiale, finitura: showFinish ? finitura : undefined, w, h, qty, net: q.net, gross: q.gross, promoId: promoOk && promo ? promo.id : undefined, fileName: file.name, note });
 		track.addToCart(trackItem());
 		klaviyo.addedToCart({ productId: `${product}_${forma}`, productName: `${it.productName} ${forma}`, quantity: qty, dimension: `${w} x ${h} mm`, material: materiale, price: q.gross });
 		try {

@@ -5606,6 +5606,35 @@ function ppGeoUI(){
       try{console.debug('[motore] istantanea: attesa',Math.round(t0-(window.__busyOff||t0)),'ms · inquadratura',Math.round(t1-t0),'ms · png',Math.round(t2-t1),'ms ·',cv.width+'x'+cv.height);}catch(e){}
     }catch(e){}
   };
+  /* [studio] regolazioni del motore: quelle che, con lo stesso file, danno lo stesso identico pezzo */
+  const CAMPI=['shp','brd','bld','wmm','hmm','lev','sem','rie','rad','neck','gsc','gdx','gdy','lvZoom','mat','colMode'];
+  function statoMotore(){
+    const inp={}; CAMPI.forEach(k=>{const e=$(k); if(e)inp[k]=e.value;});
+    let custom=null; try{ if(S.palCustom!=null&&S.palette&&S.palette[S.palCustom]&&S.palIdx===S.palCustom)custom=hexOf(S.palette[S.palCustom]); }catch(e){}
+    return {v:1,prod:S.prod,shape:CL.shape,bord:CL.bord,corner:CL.corner,inp,lamina:S.lamina,palIdx:S.palIdx,custom,
+      rimuovi:!!S.rimuoviSfondo,senzaResina:!!S.senzaResina,autoBordFrac:S.autoBordFrac||null,
+      cutW:S.cutW,cutH:S.cutH,pathD:S.pathD};
+  }
+  function applicaStato(st){
+    if(!st||!st.inp||!S.src)return;
+    const rimuovi=!!st.rimuovi, cambiaScontorno=rimuovi!==!!S.rimuoviSfondo;
+    S.rimuoviSfondo=rimuovi; const rb=$('ppRimuovi'); if(rb)rb.classList.toggle('on',rimuovi);
+    if(st.shape)CL.shape=st.shape; if(st.bord!=null)CL.bord=+st.bord; if(st.corner!=null)CL.corner=+st.corner;
+    document.querySelectorAll('#cShape .chip').forEach(e=>e.classList.toggle('on',e.dataset.s===CL.shape));
+    try{syncBordChips();}catch(e){}
+    for(const k in st.inp){const e=$(k); if(e&&st.inp[k]!=null)e.value=st.inp[k];}
+    try{syncRatio();syncMatChips();}catch(e){}
+    try{$('brdV').textContent=(+$('brd').value/10).toFixed(1);}catch(e){}
+    if(st.lamina)S.lamina=st.lamina;
+    S.senzaResina=!!st.senzaResina;
+    if(st.autoBordFrac)S.autoBordFrac=st.autoBordFrac;
+    if(cambiaScontorno){buildWork();autoSegment();}
+    computeMask();
+    if(st.custom&&window.__ppColore)window.__ppColore(st.custom);
+    else if(st.palIdx!=null&&S.palette&&st.palIdx<S.palette.length){S.palIdx=+st.palIdx;try{paintPalette();paintSwatch();}catch(e){}}
+    try{ppGeoUI();}catch(e){}
+    buildCut();draw();try{computeLayout();}catch(e){}
+  }
   addEventListener('message',e=>{
     if(e.origin!==origin)return; const d=e.data||{}; if(d.source!=='sito')return;
     if(d.type==='file'&&d.file){ S.rilDettagli=false;
@@ -5624,6 +5653,17 @@ function ppGeoUI(){
     if(d.type==='studio'){ (async()=>{
       try{
         if(!S.src||!S.pathD)throw new Error('Nessun file caricato');
+        /* 'stato' = tutte le regolazioni che decidono sagoma e grafica (le salva l'ordine);
+           'applica' = le rimette com'erano, cosi' lo studio rifa' ESATTAMENTE il pezzo approvato */
+        if(d.what==='stato'){ send('studio',{id:d.id,ok:true,stato:statoMotore()}); return; }
+        if(d.what==='applica'){ applicaStato(d.stato||{}); window.__busyOff=performance.now(); snapshot();
+          send('studio',{id:d.id,ok:true,pathD:S.pathD,cutW:S.cutW,cutH:S.cutH}); return; }
+        /* 'geom' = solo il contorno (per ricavarne il tracciato leggero dello studio) */
+        if(d.what==='geom'){ send('studio',{id:d.id,ok:true,pathD:S.pathD,polys:S.polys||null,shape:CL.shape,cutW:S.cutW,cutH:S.cutH,bleed:S.bleed||0,border:borderMM()}); return; }
+        /* lo studio puo' passare il SUO tracciato (liscio, pochi nodi): mockup e grafica di stampa
+           vengono disegnati su quello, cosi' bordo bianco, stampa e taglio coincidono */
+        const pathSito=S.pathD; if(d.pathD)S.pathD=String(d.pathD);
+        try{
         if(d.what==='mockup'){ send('studio',{id:d.id,ok:true,blob:await mockupBlob(+d.px||6000)}); return; }
         /* risoluzione: quella chiesta, oppure 'auto' = la piu' alta fra 600 dpi e quella vera
            del file del cliente (la grafica non si ricampiona mai verso il basso), con un tetto
@@ -5637,6 +5677,7 @@ function ppGeoUI(){
         const blob=await new Promise(r=>cv.toBlob(r,'image/png'));
         send('studio',{id:d.id,ok:true,blob,cutW:S.cutW,cutH:S.cutH,bleed:S.bleed||0,pathD:S.pathD,
           polys:S.polys||null,name:S.name||null,shape:CL.shape,pxW:cv.width,pxH:cv.height,dpi:Math.round(ppm*MM)});
+        } finally { S.pathD=pathSito; }
       }catch(e){ console.error('[studio]',e); send('studio',{id:d.id,ok:false,error:String(e&&e.message||e)}); }
     })(); }
     /* regolazioni a mano rimesse dal sito (zoom, spostamento) dopo un nuovo rendering */
