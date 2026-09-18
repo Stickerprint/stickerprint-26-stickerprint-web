@@ -124,7 +124,8 @@ export const actions: Actions = {
 		if (!ORDER_STATUS[status]) return fail(400, { error: 'Stato non valido.' });
 		const stage = String(f.get('prod_stage') ?? '') || null;
 		const patch: Record<string, unknown> = { status, prod_stage: stage };
-		if (status === 'approvazione') patch.proof_sent_at = new Date().toISOString(); // da qui partono i tempi di attesa del cliente
+		if (status === 'consegnato') patch.delivered_at = new Date().toISOString();
+		if (status === 'spedito') patch.shipped_at = new Date().toISOString();
 		const q = f.get('item') ? supabase.from('orders').update(patch).eq('id', String(f.get('item'))) : supabase.from('orders').update(patch).eq('checkout_group', params.group);
 		const { error: e } = await q;
 		if (e) return fail(400, { error: e.message });

@@ -1,22 +1,41 @@
 /** Costanti e tipi della gestione ordini in dashboard (condivisi tra server e browser). */
+/*
+ * STATI DELL'ORDINE (regola del 18/09/2026, niente piu' prove da inviare o approvare):
+ *   pagamento acquisito (o preventivo confermato) → in_produzione → in_spedizione → spedito → in_consegna → consegnato
+ *   - in_produzione: avanza di reparto in reparto dalla dashboard produzione;
+ *   - in_spedizione: uscito dall'ultimo reparto, compare in Spedizioni → "Da spedire" finche' non viene inviato a Qapla o concluso;
+ *   - spedito / in_consegna / consegnato: li porta avanti Qapla (webhook e sincronizzazione), con gli stati intermedi in shipping_status;
+ *   - consegna diretta Stickerprint: con "Concludi" l'ordine e' subito consegnato;
+ *   - corriere del cliente: con "Concludi" l'ordine e' spedito e si ferma li' (non sappiamo quando consegna).
+ *   attesa_pagamento resta per gli anticipi degli ordini manuali; annullato per gli annulli.
+ * Le chiavi sotto "stati di prima" servono solo a leggere gli ordini vecchi (anche quelli importati dal vecchio sito).
+ */
 export const ORDER_STATUS: Record<string, { label: string; color: string; soft: string }> = {
-	in_attesa: { label: 'In attesa di prova', color: '#8b5cf6', soft: '#efe6ff' },
-	attesa_file: { label: 'In attesa di file', color: '#6b7280', soft: '#eceef3' },
-	attesa_prova: { label: 'In attesa di prova', color: '#8b5cf6', soft: '#efe6ff' },
-	modifiche_richieste: { label: 'Modifiche richieste', color: '#c2410c', soft: '#ffe4d5' },
-	approvazione: { label: 'In approvazione', color: '#c48a00', soft: '#fef6db' },
 	attesa_pagamento: { label: 'In attesa di pagamento', color: '#b45309', soft: '#fef3c7' },
 	in_produzione: { label: 'In produzione', color: '#3b82f6', soft: '#e5f0ff' },
-	pronto: { label: 'Preparazione spedizione', color: '#15803d', soft: '#dcfce7' },
 	in_spedizione: { label: 'In spedizione', color: '#0d9488', soft: '#dcf9f4' },
 	spedito: { label: 'Spedito', color: '#16803c', soft: '#e4f9ea' },
 	in_consegna: { label: 'In consegna', color: '#2563eb', soft: '#e5f0ff' },
 	consegnato: { label: 'Consegnato', color: '#15803d', soft: '#dcfce7' },
-	annullato: { label: 'Annullato', color: '#b3261e', soft: '#fbe3e1' }
+	annullato: { label: 'Annullato', color: '#b3261e', soft: '#fbe3e1' },
+	// stati di prima: non si assegnano piu'
+	pronto: { label: 'In spedizione', color: '#0d9488', soft: '#dcf9f4' },
+	in_attesa: { label: 'In attesa (vecchio flusso)', color: '#6b7280', soft: '#eceef3' },
+	attesa_file: { label: 'In attesa di file (vecchio flusso)', color: '#6b7280', soft: '#eceef3' },
+	attesa_prova: { label: 'In attesa di prova (vecchio flusso)', color: '#6b7280', soft: '#eceef3' },
+	modifiche_richieste: { label: 'Modifiche richieste (vecchio flusso)', color: '#6b7280', soft: '#eceef3' },
+	approvazione: { label: 'In approvazione (vecchio flusso)', color: '#6b7280', soft: '#eceef3' }
 };
+/** dal meno al piu' avanzato: lo stato di un ordine con piu' articoli e' quello dell'articolo piu' indietro */
+export const STATUS_RANK = ['in_attesa', 'attesa_file', 'attesa_prova', 'modifiche_richieste', 'approvazione', 'attesa_pagamento', 'in_produzione', 'pronto', 'in_spedizione', 'spedito', 'in_consegna', 'consegnato', 'annullato'];
+/** gli stati che si possono assegnare a mano dalla scheda ordine */
+export const ACTIVE_STATUSES = ['attesa_pagamento', 'in_produzione', 'in_spedizione', 'spedito', 'in_consegna', 'consegnato', 'annullato'];
+export const LEGACY_STATUSES = ['pronto', 'in_attesa', 'attesa_file', 'attesa_prova', 'modifiche_richieste', 'approvazione'];
 export const PROD_STAGES: Record<string, string> = { stampa: 'In stampa', plastifica: 'In plastifica', taglio: 'In taglio', resinatura: 'In resinatura', controllo: 'In controllo', confezionamento: 'In confezionamento' };
 export const PRODUCTION_STATUSES = ['in_produzione'];
 export const SHIPPING_STATUSES = ['pronto', 'in_spedizione', 'spedito', 'in_consegna'];
+/** ordine ancora da spedire: uscito dalla produzione ma non ancora inviato a Qapla ne' concluso con il DDT */
+export const toShip = (i: { status: string; transmitted_at?: string | null; ddt_id?: string | null }) => (i.status === 'pronto' || i.status === 'in_spedizione') && !i.transmitted_at && !i.ddt_id;
 
 export const CATS: Record<string, { name: string; color: string; soft: string; code: string }> = {
 	adesivi_resinati: { name: 'Adesivi Resinati', color: '#3b82f6', soft: '#e5f0ff', code: 'ADR' },
@@ -66,7 +85,7 @@ export interface OrderRow {
 	payment_terms: { due: string; amount: number; method: string; xml_code: string }[] | null;
 	courier: string | null; shipped_at: string | null; delivered_at: string | null; parcels: number | null; weight_kg: number | null; ddt_id: string | null;
 	contact_id?: string | null; transmitted_at?: string | null; labels_generated_at?: string | null; tracking_number?: string | null; courier_label_path?: string | null; manifest_id?: string | null;
-	shipping_status?: string | null; shipping_status_id?: number | null; shipping_detail?: string | null; shipping_place?: string | null; shipping_updated_at?: string | null; shipping_notified?: string[] | null;
+	shipping_courier?: string | null; shipping_status?: string | null; shipping_status_id?: number | null; shipping_detail?: string | null; shipping_place?: string | null; shipping_updated_at?: string | null; shipping_notified?: string[] | null;
 	lead_time?: string | null; ship_by?: string | null; proof_sent_at?: string | null; proof_reminded_at?: string | null; reprints?: number | null;
 }
 /** Un "ordine" in dashboard = tutte le righe con lo stesso checkout_group */
@@ -88,7 +107,7 @@ export function groupOrders(rows: OrderRow[]): OrderGroup[] {
 		const ship = f.shipping ?? {};
 		const customer = f.customer_name || [ship.first_name, ship.last_name].filter(Boolean).join(' ') || f.email || '—';
 		// stato dell'ordine: il meno avanzato tra gli articoli
-		const order = Object.keys(ORDER_STATUS);
+		const order = STATUS_RANK;
 		const status = items.map((i) => i.status).sort((a, b) => order.indexOf(a) - order.indexOf(b))[0];
 		return {
 			key, number: f.number, numbers: [...new Set(items.map((i) => i.number))], channel: f.channel, country: f.country ?? 'IT', customer, email: f.email ?? '',

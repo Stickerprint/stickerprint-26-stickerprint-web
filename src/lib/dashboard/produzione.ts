@@ -22,7 +22,8 @@ export const TASK_STATUS: Record<TaskStatus, string> = { da_fare: 'In arrivo', p
 export const OPEN_TASK = new Set<TaskStatus>(['pronto', 'in_corso', 'bloccato']);
 /** stati dell'ordine in cui la commessa aspetta il cliente (file o approvazione dell'anteprima) */
 export const APPROVAL_STATUSES = new Set(['in_attesa', 'attesa_file', 'attesa_prova', 'modifiche_richieste', 'approvazione']);
-export const PLANNABLE_STATUSES = [...APPROVAL_STATUSES, 'in_produzione'];
+/* dal 18/09/2026 non ci sono piu' prove da approvare: si pianifica solo cio' che e' in produzione */
+export const PLANNABLE_STATUSES = ['in_produzione'];
 
 /** Reparti: capacita' in minuti al giorno (420 = 7 ore per macchina o persona) e macchine disponibili */
 export const STAGES: Record<string, { label: string; icon: string; capacity: number; machines: string[] }> = {
@@ -30,7 +31,6 @@ export const STAGES: Record<string, { label: string; icon: string; capacity: num
 	plastifica: { label: 'Plastifica', icon: '🧴', capacity: 420, machines: ['Plastificatrice'] },
 	taglio: { label: 'Taglio', icon: '✂️', capacity: 840, machines: ['Graphtec', 'Summa'] },
 	resinatura: { label: 'Resinatura', icon: '💧', capacity: 420, machines: ['Banco resina'] },
-	controllo: { label: 'Controllo', icon: '🔍', capacity: 420, machines: ['Banco controllo'] },
 	confezionamento: { label: 'Confezionamento', icon: '📦', capacity: 420, machines: ['Banco imballaggio'] }
 };
 export const STAGE_KEYS = Object.keys(STAGES);
@@ -160,12 +160,12 @@ const hasLamina = (i: OrderRow) => (i.finitura && i.finitura !== 'nessuna') || (
 /** Il percorso di una commessa in base al prodotto (i progetti speciali seguono il percorso standard) */
 export function routeFor(i: OrderRow): Step[] {
 	switch (i.product_slug) {
-		case 'adesivi_resinati': return [STEP.stampa(), ...(hasLamina(i) ? [STEP.lamina()] : []), STEP.taglio(), STEP.colata(), STEP.maturazione(), STEP.controllo(), STEP.imballo()];
-		case 'adesivi_rilievo': return [STEP.stampaUV(), STEP.taglio('Taglio e finitura'), STEP.controllo(), STEP.imballo()];
-		case 'etichette': return [STEP.stampa('Imposizione e stampa'), STEP.taglio('Taglio fogli'), STEP.controllo(), STEP.imballo('Confezionamento')];
+		case 'adesivi_resinati': return [STEP.stampa(), ...(hasLamina(i) ? [STEP.lamina()] : []), STEP.taglio(), STEP.colata(), STEP.maturazione(), STEP.imballo()];
+		case 'adesivi_rilievo': return [STEP.stampaUV(), STEP.taglio('Taglio e finitura'), STEP.imballo()];
+		case 'etichette': return [STEP.stampa('Imposizione e stampa'), STEP.taglio('Taglio fogli'), STEP.imballo('Confezionamento')];
 		case 'campioni': return [{ stage: 'confezionamento', label: 'Preparazione campioni', machine: 'Banco imballaggio', work: () => 20 }];
-		case 'kit_adesivi': return [STEP.stampa(), STEP.taglio(), STEP.controllo(), STEP.imballo('Confezionamento kit')];
-		default: return [STEP.stampa(), ...(hasLamina(i) ? [STEP.lamina()] : []), STEP.taglio(), STEP.controllo(), STEP.imballo()];
+		case 'kit_adesivi': return [STEP.stampa(), STEP.taglio(), STEP.imballo('Confezionamento kit')];
+		default: return [STEP.stampa(), ...(hasLamina(i) ? [STEP.lamina()] : []), STEP.taglio(), STEP.imballo()];
 	}
 }
 /** Scadenze a ritroso: ogni fase deve finire prima che la successiva possa iniziare */

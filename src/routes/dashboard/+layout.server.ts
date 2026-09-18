@@ -20,18 +20,15 @@ export const load: LayoutServerLoad = async ({ locals: { supabase, session, user
 	}
 	// contatori del menù: lavorazioni aperte per reparto, problemi (bloccate o in ritardo), ordini in spedizione e in attesa di prova
 	const [{ data: rows }, { data: tasks }] = await Promise.all([
-		supabase.from('orders').select('prod_stage, status').in('status', ['pronto', 'in_spedizione', 'attesa_prova', 'in_attesa']),
+		supabase.from('orders').select('prod_stage, status, transmitted_at, ddt_id').in('status', ['pronto', 'in_spedizione']),
 		supabase.from('production_tasks').select('stage, status, due_at, order:orders!inner(status)').in('status', ['pronto', 'in_corso', 'bloccato']).eq('order.status', 'in_produzione')
 	]);
 	const counts: Record<string, number> = {};
-	const now = Date.now();
 	for (const t of tasks ?? []) {
 		counts[t.stage] = (counts[t.stage] ?? 0) + 1;
-		if (t.status === 'bloccato' || (t.due_at && new Date(t.due_at).getTime() < now)) counts.problemi = (counts.problemi ?? 0) + 1;
 	}
 	for (const r of rows ?? []) {
-		if (r.status === 'pronto' || r.status === 'in_spedizione') counts.spedizione = (counts.spedizione ?? 0) + 1;
-		if (r.status === 'attesa_prova' || r.status === 'in_attesa') counts.prove = (counts.prove ?? 0) + 1;
+		if (!r.transmitted_at && !r.ddt_id) counts.spedizione = (counts.spedizione ?? 0) + 1; // solo gli ordini ancora da spedire
 	}
 	// richieste aziendali nuove + preventivi da sollecitare; ticket nuovi o con risposta del cliente da leggere
 	const [az, sup, conf, invq, rev] = await Promise.all([aziendeCounts(supabase), supportoCounts(supabase), confirmCounts(supabase), invoiceCounts(supabase), pendingReviews(supabase)]);

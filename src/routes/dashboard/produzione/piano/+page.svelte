@@ -13,11 +13,11 @@
 	const legend = Object.entries(COLOURS) as [Colour, { label: string; hex: string }][];
 	// routine di giornata: cosa controllare in questo momento
 	const routine = $derived(hour < 9 * 60 + 30
-		? { when: 'Ore 8:30 · apertura', todo: [`${data.kpi.atRisk} lavorazioni rosse o arancioni da mettere in cima`, `${data.kpi.blocked} bloccate da sbloccare`, `${data.approvals.length} anteprime o file in attesa: solleciti`] }
+		? { when: 'Ore 8:30 · apertura', todo: [`${data.kpi.atRisk} lavorazioni rosse o arancioni da mettere in cima`, `${data.kpi.blocked} bloccate da sbloccare`] }
 		: hour < 16 * 60
 			? { when: 'Giornata', todo: [`${data.kpi.shipToday} commesse da chiudere entro le 16:00 per il ritiro delle 17:00`, 'segui la coda del reparto in ordine di priorità'] }
 			: hour < 17 * 60
-				? { when: 'Ore 15:30 · verso il ritiro', todo: [`${data.shipToday.filter((g) => g.status !== 'pronto').length} commesse di oggi non ancora pronte: vanno chiuse o va avvisato il cliente`, 'etichette e DDT dalla pagina Spedizioni'] }
+				? { when: 'Ore 15:30 · verso il ritiro', todo: [`${data.shipToday.filter((g) => g.status === 'in_produzione').length} commesse di oggi non ancora pronte: vanno chiuse o va avvisato il cliente`, 'etichette e DDT dalla pagina Spedizioni'] }
 				: { when: 'Fine giornata', todo: ['quello che non è partito oggi è già in cima alla lista di domani', 'lascia bloccato solo ciò che ha un motivo scritto'] });
 </script>
 
@@ -33,7 +33,6 @@
 	<div class="pr-kpi" class:is-hot={data.kpi.shipToday > 0}><b>{data.kpi.shipToday}</b><span>da spedire oggi</span></div>
 	<div class="pr-kpi"><b>{data.kpi.open}</b><span>lavorazioni aperte</span></div>
 	<div class="pr-kpi" class:is-hot={data.kpi.atRisk > 0}><b>{data.kpi.atRisk}</b><span>a rischio</span></div>
-	<div class="pr-kpi" class:is-warn={data.kpi.approvals > 0}><b>{data.kpi.approvals}</b><span>in attesa del cliente</span></div>
 	<div class="pr-kpi" class:is-hot={data.kpi.blocked > 0}><b>{data.kpi.blocked}</b><span>bloccate</span></div>
 </div>
 
@@ -88,43 +87,3 @@
 	{/if}
 </div>
 
-<div class="pr-two">
-	<div class="dcard">
-		<h3>In attesa del cliente <small class="osub">({data.approvals.length})</small></h3>
-		<p class="osub" style="margin-bottom:10px">Anteprime da inviare o da approvare, file mancanti. La scadenza è l'ultimo momento utile per mantenere la data di spedizione promessa.</p>
-		{#if data.approvals.length === 0}
-			<p class="osub">Nessuna commessa aspetta il cliente.</p>
-		{:else}
-			<ul class="pr-list">
-				{#each data.approvals as a (a.order.id)}
-					<li class:is-overdue={a.overdue}>
-						<a class="pr-num" href="/dashboard/fatturazione/ordini/{a.order.checkout_group ?? a.order.id}">{a.order.number}</a> · {a.order.qty} × {a.order.product_name}
-						<span class="pill" style="background:{ORDER_STATUS[a.order.status]?.soft};color:{ORDER_STATUS[a.order.status]?.color}">{ORDER_STATUS[a.order.status]?.label}</span>
-						<div class="osub">{itemMeta(a.order)}{#if a.order.customer_name} · {a.order.customer_name}{/if} · da {fmtAgo(a.since, now)} · spedizione {fmtDay(a.order.ship_by, now)}</div>
-						<div class="osub" class:is-late={a.overdue}>{a.overdue ? '⏰ termine superato: la data slitterà' : `entro ${fmtWhen(a.deadline, now)}`}</div>
-						{#if a.waitingCustomer}
-							<form method="POST" action="?/sollecita" use:enhance style="margin-top:6px"><input type="hidden" name="order" value={a.order.id} /><button class="btn btn--ghost btn--xs" type="submit">✉ Sollecita{#if a.order.proof_reminded_at} <small>(ultimo {fmtAgo(a.order.proof_reminded_at, now)})</small>{/if}</button></form>
-						{/if}
-					</li>
-				{/each}
-			</ul>
-		{/if}
-	</div>
-
-	<div class="dcard">
-		<h3>Problemi <small class="osub">({data.problems.length})</small> <a class="link" style="font-size:12px;float:right" href="/dashboard/produzione/problemi">Centro problemi ›</a></h3>
-		{#if data.problems.length === 0}
-			<p class="osub">Nessuna lavorazione bloccata o in ritardo.</p>
-		{:else}
-			<ul class="pr-list">
-				{#each data.problems.slice(0, 10) as p (p.task.id)}
-					<li>
-						<span class="pr-dot" style="--c:{COLOURS[p.risk.colour].hex}"></span>
-						<a class="pr-num" href="/dashboard/produzione/commessa/{p.task.order.id}">{p.task.order.number}</a> · {STAGES[p.task.stage]?.icon} {p.task.label}
-						<div class="osub">{p.task.status === 'bloccato' ? `⚠ ${p.task.block_reason ?? 'bloccata'}` : `⏰ scaduta ${fmtWhen(p.task.due_at, now)}`}</div>
-					</li>
-				{/each}
-			</ul>
-		{/if}
-	</div>
-</div>

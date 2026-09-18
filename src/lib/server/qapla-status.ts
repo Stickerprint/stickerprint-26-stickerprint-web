@@ -44,6 +44,7 @@ export async function applyQaplaUpdate(db: SupabaseClient, u: QaplaUpdate, origi
 	if (next) patch.status = next;
 	if (next === 'consegnato') patch.delivered_at = when;
 	if (!first.tracking_url) patch.tracking_url = trackingPageUrl(u.trackingNumber);
+	if (u.courier) patch.shipping_courier = u.courier; // il corriere vero (GLS, BRT...): si vede nel calendario degli ordini spediti
 	const keys = [...new Set(rows.map((r) => r.checkout_group ?? r.id))];
 	const col = first.checkout_group ? 'checkout_group' : 'id';
 	for (const k of keys) {

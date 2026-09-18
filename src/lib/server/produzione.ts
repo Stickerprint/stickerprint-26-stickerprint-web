@@ -161,8 +161,8 @@ export async function completeTask(db: DB, id: string, operator: string | null) 
 		await db.from('production_tasks').update({ ...patch, updated_at: now.toISOString() }).eq('id', next.id);
 		await db.from('orders').update({ prod_stage: next.stage, status: 'in_produzione' }).eq('id', c.order.id);
 	} else {
-		await db.from('orders').update({ prod_stage: null, status: 'pronto' }).eq('id', c.order.id);
-		await logEvent(db, { order_id: c.order.id, kind: 'pronta', detail: 'Commessa completata, pronta per la spedizione', operator });
+		await db.from('orders').update({ prod_stage: null, status: 'in_spedizione' }).eq('id', c.order.id);
+		await logEvent(db, { order_id: c.order.id, kind: 'pronta', detail: 'Commessa completata: passa in spedizione', operator });
 	}
 	return null;
 }

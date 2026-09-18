@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import { ORDER_STATUS, CATS, COUNTRIES, MONTHS, money, dmy, itemMeta, thumbOf, PRODUCTION_STATUSES, SHIPPING_STATUSES, DEVICE_ICON, CHANNEL_ICON, type OrderGroup } from '$lib/dashboard/orders';
+	import { ORDER_STATUS, ACTIVE_STATUSES, LEGACY_STATUSES, CATS, COUNTRIES, MONTHS, money, dmy, itemMeta, thumbOf, PRODUCTION_STATUSES, SHIPPING_STATUSES, DEVICE_ICON, CHANNEL_ICON, type OrderGroup } from '$lib/dashboard/orders';
 	import { paymentIcon, paymentLabel } from '$lib/dashboard/payments';
 	import ItemsCell from '$lib/components/dashboard/ItemsCell.svelte';
 	let { data } = $props();
@@ -27,7 +27,8 @@
 		if (q && !(g.number.toLowerCase().includes(q) || g.numbers.some((n) => n.toLowerCase().includes(q)) || g.customer.toLowerCase().includes(q) || g.email.toLowerCase().includes(q))) return false;
 		if (cat !== 'all' && !g.items.some((i) => i.product_slug === cat)) return false;
 		if (channel !== 'all' && g.channel !== channel) return false;
-		if (status !== 'all' && g.status !== status) return false;
+		if (status === 'vecchi') { if (!LEGACY_STATUSES.includes(g.status)) return false; }
+		else if (status !== 'all' && g.status !== status) return false;
 		if (star === 'starred' && !g.starred) return false;
 		if (star === 'unstarred' && g.starred) return false;
 		if (month !== null) {
@@ -93,7 +94,7 @@
 	<input type="text" placeholder="Cerca ordine, cliente o email…" bind:value={search} />
 	<select bind:value={cat}><option value="all">Tutte le categorie</option>{#each Object.entries(CATS) as [slug, c] (slug)}<option value={slug}>{c.name}</option>{/each}</select>
 	<select bind:value={channel}><option value="all">Tutti i canali</option><option value="ecommerce">🛒 E-commerce</option><option value="manuale">✍️ Manuale</option></select>
-	<select bind:value={status}><option value="all">Tutti gli stati</option>{#each Object.entries(ORDER_STATUS) as [k, v] (k)}<option value={k}>{v.label}</option>{/each}</select>
+	<select bind:value={status}><option value="all">Tutti gli stati</option>{#each ACTIVE_STATUSES as k (k)}<option value={k}>{ORDER_STATUS[k].label}</option>{/each}<option value="vecchi">Vecchio flusso (prove)</option></select>
 	<select bind:value={star}><option value="entrambi">⭐ Tutti</option><option value="starred">Segnati</option><option value="unstarred">Non segnati</option></select>
 </div>
 

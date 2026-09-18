@@ -2,7 +2,8 @@
 	import { enhance } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
 	import OrderEditor from '$lib/components/dashboard/OrderEditor.svelte';
-	import { ORDER_STATUS, PROD_STAGES, CATS, COUNTRIES, money, dmy, itemMeta, thumbOf, DEVICE_ICON, CHANNEL_ICON } from '$lib/dashboard/orders';
+	import { ORDER_STATUS, ACTIVE_STATUSES, PROD_STAGES, CATS, COUNTRIES, money, dmy, itemMeta, thumbOf, DEVICE_ICON, CHANNEL_ICON } from '$lib/dashboard/orders';
+	const statusOptions = (cur: string) => (ACTIVE_STATUSES.includes(cur) ? ACTIVE_STATUSES : [cur, ...ACTIVE_STATUSES]);
 	import { draftFromGroup } from '$lib/dashboard/orderDraft';
 	import { paymentLabel, paymentIcon } from '$lib/dashboard/payments';
 	let { data, form } = $props();
@@ -54,7 +55,7 @@
 		</div>
 		<div style="display:grid;gap:8px;justify-items:end">
 			<form method="POST" action="?/status" use:enhance class="dform" style="grid-template-columns:auto auto auto;gap:8px">
-				<label>Stato<select name="status" value={g.status} class="sel-sm">{#each Object.entries(ORDER_STATUS) as [k, v] (k)}<option value={k}>{v.label}</option>{/each}</select></label>
+				<label>Stato<select name="status" value={g.status} class="sel-sm">{#each statusOptions(g.status) as k (k)}<option value={k}>{ORDER_STATUS[k]?.label ?? k}</option>{/each}</select></label>
 				<label>Fase<select name="prod_stage" value={first.prod_stage ?? ''} class="sel-sm"><option value="">—</option>{#each Object.entries(PROD_STAGES) as [k, v] (k)}<option value={k}>{v}</option>{/each}</select></label>
 				<button class="btn btn--ghost btn--xs" type="submit">Aggiorna</button>
 			</form>
@@ -124,7 +125,7 @@
 						{#if g.items.length > 1}
 							<form method="POST" action="?/status" use:enhance class="oitem__status">
 								<input type="hidden" name="item" value={it.id} />
-								<label>Stato<select name="status" value={it.status} class="sel-sm">{#each Object.entries(ORDER_STATUS) as [k, v] (k)}<option value={k}>{v.label}</option>{/each}</select></label>
+								<label>Stato<select name="status" value={it.status} class="sel-sm">{#each statusOptions(it.status) as k (k)}<option value={k}>{ORDER_STATUS[k]?.label ?? k}</option>{/each}</select></label>
 								<label>Fase<select name="prod_stage" value={it.prod_stage ?? ''} class="sel-sm"><option value="">—</option>{#each Object.entries(PROD_STAGES) as [k, v] (k)}<option value={k}>{v}</option>{/each}</select></label>
 								<button class="btn btn--ghost btn--xs" type="submit">Salva</button>
 							</form>

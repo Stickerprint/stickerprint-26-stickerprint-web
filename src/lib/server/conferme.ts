@@ -147,8 +147,14 @@ export async function customerMessage(db: DB, token: string, body: string, kind:
 	await db.from('order_messages').insert({ checkout_group: c.group.key, direction: 'in', kind, author: c.group.customer, body: body.trim() });
 	await db.from('order_confirmations').update({ unread: true }).eq('checkout_group', c.group.key);
 	if (kind === 'errore') {
-		// la commessa si ferma finche' lo staff non sistema: torna "in attesa" senza fase
-		await db.from('orders').update({ status: 'modifiche_richieste', prod_stage: null }).eq('checkout_group', c.group.key).in('status', ['in_produzione', 'attesa_pagamento']);
+		// la commessa si ferma finche' lo staff non sistema: le lavorazioni aperte si bloccano con il motivo (lo stato dell'ordine non cambia)
+		const ids = c.group.items.map((i) => i.id);
+		const reason = `Il cliente segnala un errore: ${body.trim().slice(0, 200)}`;
+		const { data: openTasks } = await db.from('production_tasks').select('id, order_id, label').in('order_id', ids).in('status', ['pronto', 'in_corso']);
+		for (const t of openTasks ?? []) {
+			await db.from('production_tasks').update({ status: 'bloccato', block_reason: reason, updated_at: new Date().toISOString() }).eq('id', t.id);
+			await db.from('production_events').insert({ order_id: t.order_id, task_id: t.id, kind: 'bloccata', detail: `${t.label}: ${reason}`, operator: null });
+		}
 	}
 	const title = kind === 'errore' ? `⚠ ${c.group.customer} segnala un errore sull'ordine ${c.group.number}` : `${c.group.customer} ha scritto sull'ordine ${c.group.number}`;
 	await Promise.all([

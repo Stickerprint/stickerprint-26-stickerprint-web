@@ -27,19 +27,20 @@ export interface Invoice { id: string; order_id: string | null; number: string; 
 export interface CreditTx { id: string; amount: number; kind: 'earn' | 'spend' | 'expire' | 'adjust'; order_ref: string | null; note: string | null; expires_at: string | null; created_at: string }
 
 export const STATUS: Record<string, { label: string; cls: string }> = {
-	in_attesa: { label: 'Ricevuto', cls: 'st--wait' },
-	attesa_file: { label: 'In attesa del file', cls: 'st--wait' },
-	attesa_prova: { label: 'Controllo del file in corso', cls: 'st--wait' },
 	attesa_pagamento: { label: 'In attesa del pagamento', cls: 'st--wait' },
-	modifiche_richieste: { label: 'Modifiche in corso', cls: 'st--wait' },
-	approvazione: { label: 'In attesa della tua approvazione', cls: 'st--wait' },
 	in_produzione: { label: 'In produzione', cls: 'st--prod' },
-	pronto: { label: 'Pronto per il corriere', cls: 'st--ship' },
-	in_spedizione: { label: 'Affidato al corriere', cls: 'st--ship' },
-	spedito: { label: 'In transito', cls: 'st--ship' },
+	in_spedizione: { label: 'In spedizione', cls: 'st--ship' },
+	spedito: { label: 'Spedito', cls: 'st--ship' },
 	in_consegna: { label: 'In consegna', cls: 'st--ship' },
 	consegnato: { label: 'Consegnato', cls: 'st--done' },
-	annullato: { label: 'Annullato', cls: 'st--off' }
+	annullato: { label: 'Annullato', cls: 'st--off' },
+	// stati di prima (ordini vecchi)
+	pronto: { label: 'In spedizione', cls: 'st--ship' },
+	in_attesa: { label: 'Ricevuto', cls: 'st--wait' },
+	attesa_file: { label: 'Ricevuto', cls: 'st--wait' },
+	attesa_prova: { label: 'Ricevuto', cls: 'st--wait' },
+	modifiche_richieste: { label: 'Ricevuto', cls: 'st--wait' },
+	approvazione: { label: 'Ricevuto', cls: 'st--wait' }
 };
 export const STAGE_LABEL: Record<string, string> = { stampa: 'In stampa', plastifica: 'In plastifica', taglio: 'In taglio', resinatura: 'In resinatura', controllo: 'In controllo qualità', confezionamento: 'In confezionamento' };
 /** Etichetta vista dal cliente: durante la produzione mostra la fase del reparto */

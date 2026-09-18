@@ -17,7 +17,7 @@
 	let sending = $state(false);
 	const submit = () => { sending = true; return async ({ update }: { update: (o?: { reset?: boolean }) => Promise<void> }) => { await update({ reset: false }); sending = false; asking = false; reporting = false; }; };
 	const token = () => (typeof location !== 'undefined' ? location.pathname.split('/')[2] : '');
-	const STEP: Record<string, string> = { attesa_pagamento: 'In attesa del pagamento anticipato', modifiche_richieste: 'Fermo: stiamo controllando la tua segnalazione', in_produzione: 'In lavorazione', pronto: 'Pronto, in partenza', in_spedizione: 'In partenza', spedito: 'Spedito', in_consegna: 'In consegna', consegnato: 'Consegnato', annullato: 'Annullato' };
+	const STEP: Record<string, string> = { attesa_pagamento: 'In attesa del pagamento anticipato', modifiche_richieste: 'Fermo: stiamo controllando la tua segnalazione', in_produzione: 'In lavorazione', pronto: 'In spedizione', in_spedizione: 'In spedizione', spedito: 'Spedito', in_consegna: 'In consegna', consegnato: 'Consegnato', annullato: 'Annullato' };
 </script>
 
 <svelte:head><title>Conferma d'ordine {o.number} | Stickerprint</title><meta name="robots" content="noindex" /></svelte:head>

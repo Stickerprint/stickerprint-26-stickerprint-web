@@ -342,3 +342,22 @@
 
 .delay { margin: 8px 0; font-size: 13px; }
 .delay summary { cursor: pointer; font-weight: 700; color: var(--blue); }
+
+/* Spedizioni: le due viste e il calendario degli ordini spediti */
+.tabbtn { display: inline-flex; align-items: center; gap: 8px; background: #fff; border: 1px solid var(--line); border-radius: 999px; padding: 8px 14px; font-weight: 700; font-size: 13px; color: var(--ink); text-decoration: none; }
+.tabbtn.is-active { background: var(--navy); color: #fff; border-color: var(--navy); }
+.tabbtn__n { background: var(--yellow); color: var(--ink); border-radius: 999px; min-width: 20px; height: 20px; padding: 0 6px; display: inline-grid; place-items: center; font-size: 11px; font-weight: 800; }
+.shipcal { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 16px; align-items: start; margin-top: 14px; }
+.shipcal__nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; text-transform: capitalize; }
+.shipcal__grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.shipcal__grid--head { margin-bottom: 4px; font-size: 11px; font-weight: 800; color: var(--muted); text-align: center; text-transform: uppercase; }
+.shipcal__day { aspect-ratio: 1; border-radius: 10px; border: 1px solid transparent; display: grid; align-content: center; justify-items: center; gap: 1px; font-size: 13px; color: var(--muted); text-decoration: none; }
+.shipcal__day.has { background: var(--sky); color: var(--ink); font-weight: 700; }
+.shipcal__day.has b { font-size: 10.5px; background: var(--blue); color: #fff; border-radius: 999px; padding: 0 6px; line-height: 16px; }
+.shipcal__day.is-today { border-color: var(--blue); }
+.shipcal__day.is-on { background: var(--navy); color: #fff; }
+.shipcal__day.is-on b { background: var(--yellow); color: var(--ink); }
+.shipcal__day.is-empty { pointer-events: none; }
+a.shipcal__day:hover { border-color: var(--navy); }
+.osub.is-late { color: #b3261e; font-weight: 700; }
+@media (max-width: 1000px) { .shipcal { grid-template-columns: 1fr; } }

@@ -17,9 +17,7 @@
 			{ label: 'Plastifica', href: '/dashboard/produzione/plastifica', count: data.counts?.plastifica },
 			{ label: 'Taglio', href: '/dashboard/produzione/taglio', count: data.counts?.taglio },
 			{ label: 'Resinatura', href: '/dashboard/produzione/resinatura', count: data.counts?.resinatura },
-			{ label: 'Controllo', href: '/dashboard/produzione/controllo', count: data.counts?.controllo },
 			{ label: 'Confezionamento', href: '/dashboard/produzione/confezionamento', count: data.counts?.confezionamento },
-			{ label: 'Centro problemi', href: '/dashboard/produzione/problemi', count: data.counts?.problemi },
 			{ label: 'Spedizioni', href: '/dashboard/produzione/spedizioni', count: data.counts?.spedizione }
 		] },
 		{ id: 'aziende', title: 'Aziende', items: [

@@ -76,12 +76,11 @@ export async function finalizeCheckout(db: DB, group: string, o: { provider: str
 	}
 	const p = rows[0].payload as CheckoutPayload;
 	const paidAt = new Date().toISOString();
-	// ordini: pagati e avviati (prova automatica → subito in stampa, altrimenti in attesa della prova)
+	// ordini: pagamento acquisito → subito in produzione (non ci sono piu' prove da inviare o approvare)
 	const { data: orders } = await db.from('orders').select('*').eq('checkout_group', group).order('created_at');
 	for (const row of (orders ?? []) as OrderRow[]) {
 		if (row.status !== 'attesa_pagamento') continue;
-		const auto = !!row.auto_proof;
-		await db.from('orders').update({ status: auto ? 'in_produzione' : 'attesa_prova', prod_stage: auto && row.product_slug !== 'campioni' ? 'stampa' : null, payment_status: 'paid' }).eq('id', row.id);
+		await db.from('orders').update({ status: 'in_produzione', prod_stage: row.product_slug !== 'campioni' ? 'stampa' : null, payment_status: 'paid' }).eq('id', row.id);
 	}
 	await db.from('orders').update({ payment_status: 'paid' }).eq('checkout_group', group);
 	if (o.provider === 'stripe' || o.provider === 'paypal' || o.provider === 'test') await db.from('order_payments').update({ status: 'pagato', paid_at: paidAt, provider: o.provider, provider_ref: o.ref, note: o.provider === 'test' ? 'ordine di prova' : 'incassato online' }).eq('checkout_group', group).eq('seq', 1);
