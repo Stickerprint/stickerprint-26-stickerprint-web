@@ -139,7 +139,10 @@ export function layoutLoose(cutW: number, cutH: number, o: LooseOptions): LooseR
 		const rows = Math.ceil(k / best.g.cols);
 		const g = { ...best.g, rows };
 		const usedH = rows * best.ph + (rows - 1) * o.gap;
-		strips.push({ w: o.stripW, h: Math.round((usedH + 2 * o.margin) * 10) / 10, pieces: place(g, best.pw, best.ph, o.gap, o.margin, o.margin, k) });
+		// sempre centrato nella pagina: in larghezza sulla striscia, in altezza col margine uguale sopra e sotto
+		const cols = Math.min(k, best.g.cols);
+		const x0 = (o.stripW - (cols * best.pw + (cols - 1) * o.gap)) / 2;
+		strips.push({ w: o.stripW, h: Math.round((usedH + 2 * o.margin) * 10) / 10, pieces: place(g, best.pw, best.ph, o.gap, x0, o.margin, k) });
 	}
 	return { ok: true, grid: best.g, perStrip: best.g.n, strips, pw: best.pw, ph: best.ph };
 }
@@ -252,9 +255,12 @@ export function layoutSheets(cutW: number, cutH: number, rules: SheetRules, o: S
 		const down = Math.ceil(k / best.across);
 		const sheets: Strip['sheets'] = [];
 		const pieces: Placement[] = [];
+		// fogli sempre centrati nella larghezza della striscia
+		const cols = Math.min(k, best.across);
+		const x0 = (o.stripW - (cols * W + (cols - 1) * o.sheetGap)) / 2;
 		for (let i = 0; i < k; i++) {
 			const c = i % best.across, r = Math.floor(i / best.across);
-			const sx = o.margin + c * (W + o.sheetGap), sy = o.margin + r * (H + o.sheetGap);
+			const sx = x0 + c * (W + o.sheetGap), sy = o.margin + r * (H + o.sheetGap);
 			sheets.push({ x: sx, y: sy, w: W, h: H, rot: best.sheetRot });
 			for (const p of best.sheet.pieces) {
 				if (!best.sheetRot) pieces.push({ x: sx + p.x, y: sy + p.y, rot: p.rot });

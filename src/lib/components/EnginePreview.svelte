@@ -77,7 +77,7 @@
 		frame?.contentWindow?.postMessage({ source: 'sito', type, ...detail }, location.origin);
 	}
 	/** Stickerprint Studio: chiede al motore mockup ('mockup') o grafica di stampa + tracciato ('print') */
-	type StudioExport = { blob: Blob; cutW?: number; cutH?: number; bleed?: number; pathD?: string; name?: string | null; shape?: string };
+	type StudioExport = { blob: Blob; cutW?: number; cutH?: number; bleed?: number; pathD?: string; polys?: [number, number][][] | null; name?: string | null; shape?: string; dpi?: number };
 	const pending = new Map<string, { ok: (v: StudioExport) => void; ko: (e: Error) => void }>();
 	export function studio(what: 'mockup' | 'print', opts: Record<string, unknown> = {}): Promise<StudioExport> {
 		const id = Math.random().toString(36).slice(2);

@@ -92,3 +92,4 @@
 .st-stage .engine--panel.is-ready { opacity: 1; }
 .st-stage .engine-panel .stage__busy { left: 50%; transform: translate(-50%, -50%); }
 .st-stage .engine-panel .stage__busy--soft { left: 12px; top: 12px !important; transform: none; font-size: 12px; padding: 6px 12px; box-shadow: 0 4px 12px rgba(11,11,59,.12); }
+.st-trace { text-align: center; font-weight: 600; color: #3d3f63; }

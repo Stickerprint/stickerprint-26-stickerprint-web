@@ -3982,7 +3982,9 @@ function renderTile(ppm,withMat,bleedMM){
   const N=W*H, bin=new Uint8Array(N);
   for(let i=0,p=3;i<N;i++,p+=4)bin[i]=d[p]>8?1:0;
   /* 1. seconda traccia: la sagoma allargata di bp px, con raccordo circolare */
-  const g=edt2d(bin,W,H),r2=bp*bp;
+  /* [studio] il bordo esterno dell'abbondanza si sfuma su un pixel (prima era a gradini):
+     il colore arriva fino a bp+1 px e la copertura scende da 1 a 0 attorno a bp+0,5 */
+  const g=edt2d(bin,W,H),r2=(bp+1)*(bp+1);
   const col=hex2rgb(withMat?matRingColor():contourColor());
   const clear=withMat&&matKind()==='clear';
   /* 2. propagazione dei colori del bordo verso l'esterno, dentro la corona */
@@ -4010,15 +4012,17 @@ function renderTile(ppm,withMat,bleedMM){
   /* 3. composito finale: tappo col colore del corpo dove non è arrivato niente,
         e fusione corretta dei pixel di bordo semitrasparenti */
   for(let i=0,p=0;i<N;i++,p+=4){
-    if(g[i]>r2)continue;
+    if(g[i]>=r2)continue;
     if(d[p+3]>=250)continue;
+    const cov=Math.max(0,Math.min(1,bp+0.5-Math.sqrt(g[i])));
+    if(cov<=0)continue;
     if(S.vetro){ if(d[p+3]<8){d[p]=255;d[p+1]=255;d[p+2]=255;d[p+3]=34;} continue; }
     const a=d[p+3]/255;
     const br=seen[i]?d[p]:col[0], bg2=seen[i]?d[p+1]:col[1], bb2=seen[i]?d[p+2]:col[2];
     d[p]  = a>0 ? d[p]  *a+br *(1-a) : br;
     d[p+1]= a>0 ? d[p+1]*a+bg2*(1-a) : bg2;
     d[p+2]= a>0 ? d[p+2]*a+bb2*(1-a) : bb2;
-    d[p+3]=S.vetro?58:(clear?209:255);}
+    d[p+3]=Math.round((S.vetro?58:(clear?209:255))*(cov<1?Math.max(cov,a):1));}
   go.putImageData(id,0,0);return out;}
 function paintAlts(){
   const box=$('alts');box.innerHTML='';
@@ -5621,10 +5625,18 @@ function ppGeoUI(){
       try{
         if(!S.src||!S.pathD)throw new Error('Nessun file caricato');
         if(d.what==='mockup'){ send('studio',{id:d.id,ok:true,blob:await mockupBlob(+d.px||6000)}); return; }
-        const ppm=(+d.dpi||300)/MM, cv=renderTile(ppm,false);
+        /* risoluzione: quella chiesta, oppure 'auto' = la piu' alta fra 600 dpi e quella vera
+           del file del cliente (la grafica non si ricampiona mai verso il basso), con un tetto
+           di 12000 px sul lato lungo per non bloccare il browser */
+        let ppm;
+        if(d.dpi==='auto'||!d.dpi){ const A=artRect(), src=S.artHi||S.artCanvas;
+          const nat=(A&&src&&A.w>0)?src.width/A.w:0; ppm=Math.max(600/MM,nat); }
+        else ppm=(+d.dpi)/MM;
+        const lato=Math.max(S.cutW,S.cutH)+2*(S.bleed||0); if(!d.preview)ppm=Math.min(ppm,12000/lato);
+        const cv=renderTile(ppm,false);
         const blob=await new Promise(r=>cv.toBlob(r,'image/png'));
         send('studio',{id:d.id,ok:true,blob,cutW:S.cutW,cutH:S.cutH,bleed:S.bleed||0,pathD:S.pathD,
-          name:S.name||null,shape:CL.shape,pxW:cv.width,pxH:cv.height});
+          polys:S.polys||null,name:S.name||null,shape:CL.shape,pxW:cv.width,pxH:cv.height,dpi:Math.round(ppm*MM)});
       }catch(e){ console.error('[studio]',e); send('studio',{id:d.id,ok:false,error:String(e&&e.message||e)}); }
     })(); }
     /* regolazioni a mano rimesse dal sito (zoom, spostamento) dopo un nuovo rendering */
