@@ -16,7 +16,7 @@
 	let { session, supabase, user } = $derived(data);
 
 	// l'area amministratore ha la sua interfaccia: niente header e footer del sito
-	const isDashboard = $derived(page.url.pathname.startsWith('/dashboard') && page.url.pathname !== '/dashboard/login');
+	const isDashboard = $derived((page.url.pathname.startsWith('/dashboard') && page.url.pathname !== '/dashboard/login') || page.url.pathname.startsWith('/studio'));
 
 	/* tracciamento (GTM-PXKJS5J6 + Klaviyo): acceso solo su stickerprint.it con PUBLIC_TRACKING=on */
 	const tracking = $derived(trackingOn(page.url.hostname));

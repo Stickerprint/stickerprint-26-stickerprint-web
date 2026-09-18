@@ -35,6 +35,7 @@ progressivamente stickerprint.it (SvelteKit su Cloudflare Pages). Lingua del pro
 - `static/preprint/index.html` motore preprint (anteprima automatica): file unico, documentato in `docs/motore-preprint/`.
   Regola: il motore resta uno solo; nel sito è incluso in iframe con `?embed=1` e parla via postMessage (vedi il blocco "ponte per il sito" in fondo al file).
   La grafica del cliente non si butta via, mai.
+- `src/routes/studio/` **Stickerprint Studio**, app interna del team (login della dashboard, staff/admin): carichi il file del cliente, vedi l'anteprima del motore come sul sito e scarichi mockup PNG, PDF di stampa e taglio, PDF della striscia impaginata. Prodotti e tagli in `src/lib/studio/products.ts`, impaginazione (strisce 70/57 cm, fogli resinati a multipli di 5, etichette) in `layout.ts`, PDF per la Roland con tinte piatte `Passante`/`CutContour` in sovrastampa in `pdf.ts` (colori in `spots.ts`). Il motore risponde al messaggio `studio` del ponte. In locale: `STUDIO_DEV_OPEN=1 npm run dev` apre lo studio senza login (solo in sviluppo).
 - `preview/home.html` anteprima statica della home, utile per screenshot senza dev server
 - `static/images`, `static/icons` asset e favicon
 

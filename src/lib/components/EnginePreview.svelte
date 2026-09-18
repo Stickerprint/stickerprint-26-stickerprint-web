@@ -76,6 +76,18 @@
 	export function post(type: string, detail: Record<string, unknown> = {}) {
 		frame?.contentWindow?.postMessage({ source: 'sito', type, ...detail }, location.origin);
 	}
+	/** Stickerprint Studio: chiede al motore mockup ('mockup') o grafica di stampa + tracciato ('print') */
+	type StudioExport = { blob: Blob; cutW?: number; cutH?: number; bleed?: number; pathD?: string; name?: string | null; shape?: string };
+	const pending = new Map<string, { ok: (v: StudioExport) => void; ko: (e: Error) => void }>();
+	export function studio(what: 'mockup' | 'print', opts: Record<string, unknown> = {}): Promise<StudioExport> {
+		const id = Math.random().toString(36).slice(2);
+		return new Promise((ok, ko) => {
+			if (!frame?.contentWindow) return ko(new Error('Anteprima non pronta'));
+			pending.set(id, { ok, ko });
+			frame.contentWindow.postMessage({ source: 'sito', type: 'studio', what, id, ...opts }, location.origin);
+			setTimeout(() => { if (pending.delete(id)) ko(new Error('Il motore non ha risposto in tempo')); }, 120000);
+		});
+	}
 	// un file nuovo (Cambia file) si manda al motore gia' caricato, senza ricaricarlo
 	$effect(() => {
 		const f = file;
@@ -139,6 +151,10 @@
 		if (d.source !== 'preprint') return;
 		if (d.type === 'ready') send();
 		if (d.type === 'ricevuto') { acked = true; clearTimeout(retry); }
+		if (d.type === 'studio' && d.detail?.id) {
+			const p = pending.get(d.detail.id);
+			if (p) { pending.delete(d.detail.id); if (d.detail.ok) p.ok(d.detail); else p.ko(new Error(d.detail.error || 'Errore del motore')); }
+		}
 		if (d.type === 'size' && panel && d.detail?.h) contentH = d.detail.h;
 		if (d.type === 'render' && d.detail?.png) {
 			if (cfgSentAt) { console.debug('[anteprima] aggiornata in', Math.round(performance.now() - cfgSentAt), 'ms'); cfgSentAt = 0; }
