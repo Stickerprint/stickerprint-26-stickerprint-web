@@ -9,12 +9,14 @@
  * Striscia (coordinate pagina in mm, y verso il BASSO come nel resto dello studio):
  * - crocini a L, spessore 1 mm, bracci 20,5 mm, bordo esterno a 14,5 mm dal bordo alto/basso
  *   e sul bordo sinistro/destro della pagina;
- * - codice a barre Code 39 alto 9 mm sul bordo: in alto a destra quello "F" (dritto), in basso a
- *   sinistra quello "R" (girato di 180 gradi), ognuno con una barra nera piena di 50 mm;
+ * - codice a barre Code 39 alto 9 mm sul bordo: in BASSO a DESTRA quello "F" (dritto, il lettore
+ *   del plotter parte da li'), in ALTO a SINISTRA quello "R" (girato di 180 gradi, per la bobina
+ *   montata al contrario), ognuno con una barra nera piena di 50 mm verso il bordo;
+ *   (attenzione: gli EPS di Illustrator hanno la y verso il basso, "1 -1 scale" in testa alla pagina)
  * - contenuto "G1200" + codice del lavoro (4 cifre esadecimali) + F/R + cifra di controllo mod 43.
  * File di taglio (.xpf): intestazione con il codice del lavoro, miniatura RGB, comandi GP-GL in
- * decimi di mm con origine sull'angolo (linea centrale) del crocino in basso a sinistra, asse X lungo
- * l'altezza della pagina (verso l'alto) e asse Y lungo la larghezza.
+ * decimi di mm con origine sull'angolo (linea centrale) del crocino in ALTO a sinistra, asse X lungo
+ * l'altezza della pagina (verso il basso) e asse Y lungo la larghezza.
  */
 import type { Placement, Strip } from './layout';
 import { parsePath } from './path';
@@ -117,21 +119,21 @@ export function markRects(W: number, H: number): Rect[] {
 export function barcodeRects(W: number, H: number, id: string): { rects: Rect[]; labels: { text: string; x: number; y: number; rot180: boolean }[] } {
 	const rects: Rect[] = [];
 	const hB = MARK.barH;
-	// in alto a destra: "F", dritto, barra nera sul bordo destro
+	// in basso a destra: "F", dritto, barra nera sul bordo destro (il lettore parte da qui)
 	const f = code39Bars(`${id}F`);
 	const fx0 = W - MARK.blockW - MARK.blockGap - f.length;
-	for (const b of f.bars) rects.push({ x: fx0 + b.x, y: 0, w: b.w, h: hB });
-	rects.push({ x: W - MARK.blockW, y: 0, w: MARK.blockW, h: hB });
-	// in basso a sinistra: "R", girato di 180 gradi, barra nera sul bordo sinistro
+	for (const b of f.bars) rects.push({ x: fx0 + b.x, y: H - hB, w: b.w, h: hB });
+	rects.push({ x: W - MARK.blockW, y: H - hB, w: MARK.blockW, h: hB });
+	// in alto a sinistra: "R", girato di 180 gradi, barra nera sul bordo sinistro (bobina al contrario)
 	const r = code39Bars(`${id}R`);
-	const rx1 = MARK.blockW + MARK.blockGap + r.length; // il codice si legge da destra verso sinistra
-	for (const b of r.bars) rects.push({ x: rx1 - b.x - b.w, y: H - hB, w: b.w, h: hB });
-	rects.push({ x: 0, y: H - hB, w: MARK.blockW, h: hB });
+	const rx1 = MARK.blockW + MARK.blockGap + r.length; // girato: si legge da destra verso sinistra
+	for (const b of r.bars) rects.push({ x: rx1 - b.x - b.w, y: 0, w: b.w, h: hB });
+	rects.push({ x: 0, y: 0, w: MARK.blockW, h: hB });
 	return {
 		rects,
 		labels: [
-			{ text: `${id}-F`, x: fx0 - 3, y: hB / 2, rot180: false },
-			{ text: `${id}-R`, x: rx1 + 3, y: H - hB / 2, rot180: true }
+			{ text: `${id}-F`, x: fx0 - 3, y: H - hB / 2, rot180: false },
+			{ text: `${id}-R`, x: rx1 + 3, y: hB / 2, rot180: true }
 		]
 	};
 }
@@ -162,8 +164,9 @@ const enc = new TextEncoder();
 /** comandi GP-GL, ognuno chiuso da ETX (0x03) */
 export function xpfCommands(j: XpfJob): string {
 	const e = MARK.edge + MARK.thick / 2, cx = MARK.thick / 2;
-	// dalla pagina (mm, y in basso) al plotter (0,1 mm, origine sul crocino in basso a sinistra)
-	const P = (x: number, y: number) => `${Math.round((j.H - y - e) * 10)},${Math.round((x - cx) * 10)}`;
+	// dalla pagina (mm, y verso il basso) al plotter (0,1 mm): X dal crocino in ALTO verso il basso,
+	// Y da sinistra (come le coordinate degli EPS di Cutting Master, che hanno la y verso il basso)
+	const P = (x: number, y: number) => `${Math.round((y - e) * 10)},${Math.round((x - cx) * 10)}`;
 	const distX = Math.floor((j.H - 2 * e) * 10 + 1e-6), distY = Math.floor((j.W - 2 * cx) * 10 + 1e-6);
 	const out: string[] = ['\x1b.v:TC1007,4,20', 'TB99', 'TB57,1,1', 'TB59,1,1', 'TB50,0', 'TB51,200', 'TB52,2', 'TB54,0,0', 'TB55,1', 'TB44,0,0,0', `TB24,${distX},${distY}`, 'TB99'];
 	const segs = parsePath(j.pathD);
