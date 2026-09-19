@@ -40,6 +40,9 @@ export const MARK = {
 	wide: 1.0
 };
 
+/** colore di crocini e codici: il nero ricco usato da Cutting Master negli EPS */
+export const MARK_BLACK = [0.91, 0.79, 0.62, 0.97] as const;
+
 /** margini del contenuto dentro la striscia con i crocini (fuori dai bracci, con 5-6 mm di aria) */
 export const MARKED_MARGIN = { x: MARK.thick / 2 + MARK.arm + 5.5, y: MARK.edge + MARK.thick / 2 + 5 };
 

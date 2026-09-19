@@ -10,7 +10,7 @@
  * (valori presi dai file di produzione Roland dell'azienda)
  */
 import { PDFDocument, PDFName, PDFNumber, PDFOperator, PDFOperatorNames as Op, StandardFonts, degrees, type PDFFont, type PDFPage, type PDFRef, type PDFDict } from 'pdf-lib';
-import { markRects, barcodeRects } from './graphtec';
+import { markRects, barcodeRects, MARK_BLACK } from './graphtec';
 import type { Placement, Strip } from './layout';
 
 import { SPOTS, type CutSpot } from './spots';
@@ -138,7 +138,9 @@ function drawPage(page: PDFPage, job: PdfJob, strip: Strip, res: Res, pageIndex:
 	let nMarks: PDFName | null = null;
 	if (gid) {
 		const bc = barcodeRects(strip.w, strip.h, gid);
-		const mOps: PDFOperator[] = [mm(), op(Op.NonStrokingColorGray, 0)];
+		/* stesso nero ricco dei file di Cutting Master (C91 M79 Y62 K97): col grigio 0 VersaWorks
+		   stampava un nero che il sensore del Graphtec non leggeva */
+		const mOps: PDFOperator[] = [mm(), op(Op.NonStrokingColorCmyk, ...MARK_BLACK)];
 		for (const r of [...markRects(strip.w, strip.h), ...bc.rects]) mOps.push(op(Op.AppendRectangle, r.x, r.y, r.w, r.h));
 		mOps.push(op(Op.FillNonZero));
 		const marksForm = ctx.register(ctx.formXObject(mOps, { BBox: [0, 0, W, H], Resources: {} }));
