@@ -15,8 +15,8 @@
  *   (attenzione: gli EPS di Illustrator hanno la y verso il basso, "1 -1 scale" in testa alla pagina)
  * - contenuto "G1200" + codice del lavoro (4 cifre esadecimali) + F/R + cifra di controllo mod 43.
  * File di taglio (.xpf): intestazione con il codice del lavoro, miniatura RGB, comandi GP-GL in
- * decimi di mm con origine sull'angolo (linea centrale) del crocino in ALTO a sinistra, asse X lungo
- * l'altezza della pagina (verso il basso) e asse Y lungo la larghezza.
+ * decimi di mm con origine sull'angolo (linea centrale) del crocino in BASSO a destra, asse X lungo
+ * l'altezza della pagina (verso l'alto) e asse Y lungo la larghezza (verso sinistra).
  */
 import type { Placement, Strip } from './layout';
 import { parsePath } from './path';
@@ -167,9 +167,11 @@ const enc = new TextEncoder();
 /** comandi GP-GL, ognuno chiuso da ETX (0x03) */
 export function xpfCommands(j: XpfJob): string {
 	const e = MARK.edge + MARK.thick / 2, cx = MARK.thick / 2;
-	// dalla pagina (mm, y verso il basso) al plotter (0,1 mm): X dal crocino in ALTO verso il basso,
-	// Y da sinistra (come le coordinate degli EPS di Cutting Master, che hanno la y verso il basso)
-	const P = (x: number, y: number) => `${Math.round((y - e) * 10)},${Math.round((x - cx) * 10)}`;
+	// dalla pagina (mm, y verso il basso) al plotter (0,1 mm): origine sul crocino in BASSO a DESTRA
+	// (dove c'e' il codice F e parte il lettore), X verso l'alto e Y verso sinistra. Verificato sul lavoro
+	// LORENCIC di Cutting Master (cm523 contro il suo EPS): i punti coincidono entro 0,1 mm.
+	// Con l'origine in alto a sinistra il taglio usciva ruotato di 180 gradi (invisibile su forme simmetriche).
+	const P = (x: number, y: number) => `${Math.round((j.H - e - y) * 10)},${Math.round((j.W - cx - x) * 10)}`;
 	const distX = Math.floor((j.H - 2 * e) * 10 + 1e-6), distY = Math.floor((j.W - 2 * cx) * 10 + 1e-6);
 	const out: string[] = ['\x1b.v:TC1007,4,20', 'TB99', 'TB57,1,1', 'TB59,1,1', 'TB50,0', 'TB51,200', 'TB52,2', 'TB54,0,0', 'TB55,1', 'TB44,0,0,0', `TB24,${distX},${distY}`, 'TB99'];
 	const segs = parsePath(j.pathD);
