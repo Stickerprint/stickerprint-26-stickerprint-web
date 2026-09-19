@@ -41,7 +41,7 @@ export interface EngineConfig {
 	priceRange: RangeStep[]; // per quantità
 	quantities: number[]; // fasce mostrate al cliente
 	recommendedQty: number;
-	size: { minMm: number; maxMm: number; defaultMm?: number; minMmDiecut?: number; minByShape?: Record<string, number>; startByShape?: Record<string, [number, number]> }; // minByShape: minimo (lato corto) per sagoma; startByShape: misura di partenza proposta [w,h] per sagoma (altrimenti la minima)
+	size: { minMm: number; maxMm: number; defaultMm?: number; minMmDiecut?: number; minByShape?: Record<string, number>; startByShape?: Record<string, [number, number]>; minLongByShape?: Record<string, number> }; // minByShape: minimo (lato corto) per sagoma; startByShape: misura di partenza proposta [w,h] per sagoma (altrimenti la minima)
 	shapes: ShapeOption[]; // ogni sagoma ha le sue misure proposte (larghezze in mm)
 	materials: MaterialOption[];
 	finishes: FinishOption[];
@@ -141,6 +141,8 @@ const MAT_STICKER = ['bianco', 'olografico', 'glitterato', 'trasparente', 'argen
 /* Misure minime (lato corto, in mm) per sagoma: la misura di partenza proposta e' sempre la minima,
    per non spaventare il cliente con un prezzo alto calcolato sulla dimensione del file */
 const MIN_STICKER: Record<string, number> = { sagomato: 40, tondo: 20, quadrato: 20, ovale: 20, rettangolare: 20 };
+/* adesivi personalizzati e in rilievo, sagomato: basta che UNO dei due lati (il lungo) arrivi a 25 mm, l'altro segue il disegno (Mattia, 19/9/2026) */
+const MIN_LONG_STICKER: Record<string, number> = { sagomato: 25 };
 const MIN_RESIN: Record<string, number> = { sagomato: 50, tondo: 10, quadrato: 15, ovale: 10, rettangolare: 20 };
 /* Resinati: misura di partenza proposta (il cliente puo' scendere fino al minimo) */
 const START_RESIN: Record<string, [number, number]> = { tondo: [25, 25], quadrato: [25, 25], ovale: [40, 20], rettangolare: [40, 20] };
@@ -152,9 +154,9 @@ const MIN_VETR: Record<string, number> = { sagomato: 30, tondo: 30, quadrato: 30
 
 /** Listini iniziali, uno per prodotto e indipendenti tra loro (poi ognuno si modifica dalla dashboard) */
 export const DEFAULT_ENGINES: Record<string, EngineConfig> = {
-	adesivi_personalizzati: base({ materials: withMaterials(MAT_STICKER), quantities: QTY_STD, size: { minMm: 10, maxMm: 500, minByShape: MIN_STICKER, startByShape: START_STICKER } }),
+	adesivi_personalizzati: base({ materials: withMaterials(MAT_STICKER), quantities: QTY_STD, size: { minMm: 10, maxMm: 500, minByShape: MIN_STICKER, startByShape: START_STICKER, minLongByShape: MIN_LONG_STICKER } }),
 	adesivi_rilievo: base({
-		materials: withMaterials(MAT_STICKER), shapes: stdShapes(STICKER_IMGS, [50, 80, 100, 125]), quantities: QTY_SMALL, size: { minMm: 20, maxMm: 500, minByShape: MIN_STICKER, startByShape: START_STICKER },
+		materials: withMaterials(MAT_STICKER), shapes: stdShapes(STICKER_IMGS, [50, 80, 100, 125]), quantities: QTY_SMALL, size: { minMm: 20, maxMm: 500, minByShape: MIN_STICKER, startByShape: START_STICKER, minLongByShape: MIN_LONG_STICKER },
 		// niente lamina sul rilievo: la finitura e' una vernice UV, il rilievo resta sempre lucido
 		finishTitle: 'Stampa', finishNote: "L'effetto rilievo è sempre lucido.",
 		finishes: [
@@ -351,18 +353,33 @@ export function sizeProposals(cfg: EngineConfig, forma: string, ratio: number, p
  * (file 50x70, minimo 30: niente 40x25, si va a 30x42). Il massimo taglia solo se resta sopra il minimo.
  */
 export function proportionalSize(cfg: EngineConfig, forma: string, wWanted: number, ratio: number): [number, number] {
-	const min = minForShape(cfg, forma), max = cfg.size.maxMm;
+	const rule = sizeRule(cfg, forma), max = cfg.size.maxMm;
 	const r = ratio > 0 ? ratio : 1;
-	let W = wWanted > 0 ? wWanted : min, H = W / r;
+	let W = wWanted > 0 ? wWanted : rule.long, H = W / r;
 	const short = Math.min(W, H);
-	if (short < min) { const k = min / short; W *= k; H *= k; }
+	if (short < rule.short) { const k = rule.short / short; W *= k; H *= k; }
+	const long0 = Math.max(W, H);
+	if (long0 < rule.long) { const k = rule.long / long0; W *= k; H *= k; }
 	const long = Math.max(W, H);
-	if (long > max) { const k = max / long; if (Math.min(W, H) * k >= min) { W *= k; H *= k; } }
+	if (long > max) { const k = max / long; if (Math.min(W, H) * k >= rule.short) { W *= k; H *= k; } }
 	W = roundHalf(W); H = roundHalf(H);
-	// mezzo millimetro di arrotondamento non deve portare sotto il minimo
-	if (W < min) W = min;
-	if (H < min) H = min;
+	// mezzo millimetro di arrotondamento non deve portare sotto i minimi
+	if (Math.max(W, H) < rule.long) { if (W >= H) W = rule.long; else H = rule.long; }
+	if (W < rule.short) W = rule.short;
+	if (H < rule.short) H = rule.short;
 	return [W, H];
+}
+
+/**
+ * Minimi di una sagoma: `short` vale per il lato corto, `long` per il lato lungo.
+ * Di solito coincidono (minimo della sagoma su tutti e due i lati); con `minLongByShape` basta che il
+ * lato lungo arrivi al minimo e il corto segue la proporzione del disegno (resta solo il minimo tecnico di 1 mm).
+ */
+export function sizeRule(cfg: EngineConfig, forma: string): { short: number; long: number } {
+	const L = cfg.size.minLongByShape?.[forma];
+	if (L && L > 0) return { short: 1, long: L };
+	const m = minForShape(cfg, forma);
+	return { short: m, long: m };
 }
 
 /** Misura consigliata dalla proporzione del file */
