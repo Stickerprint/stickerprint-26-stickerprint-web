@@ -5,7 +5,7 @@
 	import { KIT_CAVALLOTTO } from '$lib/studio/products';
 	import { STRIP_MATERIALS, SHEET_RULES, layoutLoose, layoutSheets, type Strip } from '$lib/studio/layout';
 	import { MARKED_MARGIN, pageWidthFor, DEFAULT_COND, markRects, barcodeRects } from '$lib/studio/graphtec';
-	import { pickDataLink, savedDataLink, takenJobIds, writeXpf, type DataLinkDir } from '$lib/studio/datalink';
+	import { pickDataLink, savedDataLink, grantDataLink, takenJobIds, writeXpf, type DataLinkDir } from '$lib/studio/datalink';
 	import { SPOTS } from '$lib/studio/spots';
 
 	let { data } = $props();
@@ -362,7 +362,10 @@
 	const preview = $derived(strips[0] ?? null);
 	const previewMarks = $derived(preview ? [...markRects(preview.w, preview.h), ...barcodeRects(preview.w, preview.h, 'G1200PROV').rects] : []);
 
+	/* la striscia nasce insieme al suo taglio: PDF da stampare scaricato e file .xpf scritto nella
+	   cartella di Data Link Server (condivisa in rete, cut_jobs) nello stesso clic */
 	const generaStriscia = () => run('strip', async () => {
+		const dir = await cartellaPronta();
 		const { buildPdf } = await import('$lib/studio/pdf');
 		const art = await artwork();
 		// si rifa' l'impaginazione con le misure esatte del tracciato
@@ -380,7 +383,7 @@
 			pages = r.strips;
 		}
 		/* un codice del lavoro per ogni striscia DIVERSA (strisce uguali = stesso taglio = stesso codice) */
-		const taken = dlDir ? await takenJobIds(dlDir).catch(() => new Set<string>()) : new Set<string>();
+		const taken = dir ? await takenJobIds(dir).catch(() => new Set<string>()) : new Set<string>();
 		const { newJobId } = await import('$lib/studio/graphtec');
 		const bySig = new Map<string, string>();
 		const ids = pages.map((pg) => {
@@ -394,6 +397,7 @@
 		lastJob = { ids, pages, art: { pathD: art.pathD, cutW: art.cutW, cutH: art.cutH }, name: baseName() };
 		sent = '';
 		download(new Blob([bytes as BlobPart], { type: 'application/pdf' }), `${baseName()}_striscia-${mat.width / 10}cm_${n}pz${pages.length > 1 ? `_${pages.length}strisce` : ''}.pdf`);
+		await consegnaTaglio(dir);
 	});
 
 	/* ------------------------------------------------------------ Data Link Server */
@@ -421,14 +425,32 @@
 			return [{ id, W: pg.w, H: pg.h, pathD: lastJob!.art.pathD, cutW: lastJob!.art.cutW, cutH: lastJob!.art.cutH, pieces: pg.pieces, sheets: pg.sheets, pieceCond: onlyThrough ? null : cond(P.pieceCut), sheetCond: P.mode === 'fogli' && P.sheetCut ? cond(P.sheetCut) : null }];
 		});
 	}
-	const inviaDataLink = () => run('dls', async () => {
-		if (!lastJob) throw new Error('Genera prima il PDF della striscia: il taglio deve essere quello stampato.');
+	let sentErr = $state('');
+	/* cartella pronta con il permesso: si chiede per prima cosa, finche' vale il clic dell'operatore */
+	async function cartellaPronta(): Promise<DataLinkDir | null> {
 		if (!dlDir) await sceglieCartella();
-		if (!dlDir) return;
+		if (!dlDir) return null;
+		return (await grantDataLink(dlDir)) ? dlDir : null;
+	}
+	/* scrive il taglio in Data Link Server; se la cartella non c'e' scarica il file, cosi' non si perde */
+	async function consegnaTaglio(dir: DataLinkDir | null) {
+		sent = ''; sentErr = '';
 		const { buildXpf } = await import('$lib/studio/graphtec');
-		const done: string[] = [];
-		for (const j of xpfJobs()) { await writeXpf(dlDir, `SP_${j.id}.xpf`, buildXpf(j)); done.push(j.id); }
-		sent = `Inviato a Data Link Server: ${done.join(', ')}. Sul plotter fai leggere il codice a barre.`;
+		const jobs = xpfJobs();
+		if (dir) {
+			try {
+				for (const j of jobs) await writeXpf(dir, `SP_${j.id}.xpf`, buildXpf(j));
+				sent = `Taglio in Data Link Server: ${jobs.map((j) => j.id).join(', ')}. Stampa la striscia e fai leggere il codice a barre.`;
+				return;
+			} catch (e) { sentErr = `Non riesco a scrivere nella cartella di Data Link Server (${e instanceof Error ? e.message : e}).`; }
+		} else sentErr = 'Cartella di Data Link Server non collegata.';
+		for (const j of jobs) download(new Blob([buildXpf(j) as BlobPart], { type: 'application/octet-stream' }), `SP_${j.id}.xpf`);
+		sentErr += ' Ho scaricato il file di taglio: mettilo nella cartella cut_jobs.';
+	}
+	/* rimanda lo stesso taglio (es. cambiato mezzo taglio/passante): stesso codice, stessa striscia stampata */
+	const inviaDataLink = () => run('dls', async () => {
+		if (!lastJob) throw new Error('Genera prima la striscia: il taglio deve essere quello stampato.');
+		await consegnaTaglio(await cartellaPronta());
 	});
 	const scaricaXpf = () => run('dls', async () => {
 		if (!lastJob) throw new Error('Genera prima il PDF della striscia.');
@@ -692,24 +714,24 @@
 						{/if}
 						<li>{strips.length} {strips.length === 1 ? 'striscia' : 'strisce'}, {strips.reduce((a, s) => a + s.pieces.length, 0)} pezzi in tutto · prima striscia {pageW} × {strips[0]?.h} mm</li>
 					</ul>
-					<button type="button" class="btn btn--green" disabled={!!busy || !strips.length} onclick={generaStriscia}>{busy === 'strip' ? 'Genero il PDF…' : 'Scarica PDF striscia'}</button>
+					{#if P.mode === 'fogli'}
+						<p class="st-label">Taglio sul Graphtec</p>
+						<div class="st-chips">
+							<button type="button" class="st-chip" class:is-on={cutMode === 'tutto'} onclick={() => (cutMode = 'tutto')}>Mezzo taglio + passante</button>
+							<button type="button" class="st-chip" class:is-on={cutMode === 'passante'} onclick={() => (cutMode = 'passante')}>Solo passante (verde)</button>
+						</div>
+					{/if}
+					<button type="button" class="btn btn--green st-act" disabled={!!busy || !strips.length} onclick={generaStriscia}>{busy === 'strip' ? 'Genero striscia e taglio…' : 'Genera striscia e taglio'}<small>PDF da stampare + taglio in Data Link Server</small></button>
 
 					<div class="st-dls">
-						<p class="st-label">Taglio sul Graphtec</p>
-						{#if P.mode === 'fogli'}
-							<div class="st-chips">
-								<button type="button" class="st-chip" class:is-on={cutMode === 'tutto'} onclick={() => (cutMode = 'tutto')}>Mezzo taglio + passante</button>
-								<button type="button" class="st-chip" class:is-on={cutMode === 'passante'} onclick={() => (cutMode = 'passante')}>Solo passante (verde)</button>
-							</div>
-						{/if}
-						<button type="button" class="btn btn--blue" disabled={!!busy || !lastJob} onclick={inviaDataLink}>{busy === 'dls' ? 'Invio…' : 'Invia taglio a Data Link Server'}</button>
-						<p class="st-note">
-							{#if !lastJob}Prima scarica il PDF della striscia: il taglio inviato è quello di quel PDF (stesso codice a barre).
-							{:else}Codice{lastJob.ids.length > 1 && new Set(lastJob.ids).size > 1 ? 'i' : ''}: <b>{[...new Set(lastJob.ids)].join(', ')}</b>{/if}
-							· Cartella: {dlName ? dlName : 'da scegliere al primo invio'} <button type="button" class="st-link" onclick={sceglieCartella}>cambia</button>
-							· <button type="button" class="st-link" disabled={!lastJob} onclick={scaricaXpf}>scarica il file di taglio</button>
-						</p>
 						{#if sent}<p class="st-ok">✓ {sent}</p>{/if}
+						{#if sentErr}<p class="st-err">{sentErr}</p>{/if}
+						<p class="st-note">
+							{#if lastJob}Codice{new Set(lastJob.ids).size > 1 ? 'i' : ''}: <b>{[...new Set(lastJob.ids)].join(', ')}</b> · {/if}
+							Cartella Data Link Server: {dlName ? dlName : 'da scegliere alla prima striscia (cut_jobs in rete)'} <button type="button" class="st-link" onclick={sceglieCartella}>cambia</button>
+							{#if lastJob}· <button type="button" class="st-link" disabled={!!busy} onclick={inviaDataLink}>rimanda il taglio</button>
+							· <button type="button" class="st-link" disabled={!!busy} onclick={scaricaXpf}>scarica il file di taglio</button>{/if}
+						</p>
 					</div>
 				{/if}
 			</div>

@@ -47,6 +47,16 @@ export async function savedDataLink(): Promise<DataLinkDir | null> {
 	return (await get<DataLinkDir>()) ?? null;
 }
 
+/** permesso di scrittura: va chiesto SUBITO al clic (Chrome lo chiede solo con un gesto recente) */
+export async function grantDataLink(dir: DataLinkDir): Promise<boolean> {
+	const d = dir as PermDir;
+	try {
+		if (d.queryPermission && (await d.queryPermission({ mode: 'readwrite' })) === 'granted') return true;
+		if (d.requestPermission && (await d.requestPermission({ mode: 'readwrite' })) === 'granted') return true;
+	} catch { /* cartella non raggiungibile */ }
+	return false;
+}
+
 async function ensure(dir: DataLinkDir) {
 	const d = dir as PermDir;
 	if (d.queryPermission && (await d.queryPermission({ mode: 'readwrite' })) === 'granted') return;
