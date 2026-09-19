@@ -195,13 +195,62 @@ export function xpfCommands(j: XpfJob): string {
 	return out.map((c) => c + '\x03').join('');
 }
 
-/** file .xpf completo (intestazione Cutting Master 5 / FC9000, miniatura bianca, comandi) */
+/* colori della miniatura (quelli di Cutting Master): mezzo taglio viola, passante verde */
+const THUMB_COL: Record<number, [number, number, number]> = { 1: [0x90, 0x2e, 0xea], 3: [0x53, 0xbb, 0x5e] };
+
+/** miniatura RGB (larga 256 px, alta in proporzione, orientata come la striscia) con i tracciati */
+function thumbnail(j: XpfJob, tw: number, th: number): Uint8Array {
+	const px = new Uint8Array(tw * th * 3).fill(0xff);
+	const sx = tw / j.W, sy = th / j.H;
+	const dot = (x: number, y: number, c: [number, number, number]) => {
+		const X = Math.round(x * sx), Y = Math.round(y * sy);
+		if (X < 0 || Y < 0 || X >= tw || Y >= th) return;
+		const i = (Y * tw + X) * 3;
+		px[i] = c[0]; px[i + 1] = c[1]; px[i + 2] = c[2];
+	};
+	const line = (a: [number, number], b: [number, number], c: [number, number, number]) => {
+		const n = Math.max(1, Math.ceil(Math.hypot((b[0] - a[0]) * sx, (b[1] - a[1]) * sy) * 2));
+		for (let k = 0; k <= n; k++) dot(a[0] + ((b[0] - a[0]) * k) / n, a[1] + ((b[1] - a[1]) * k) / n, c);
+	};
+	const colOf = (cond: number) => THUMB_COL[cond] ?? [0x40, 0x40, 0x40];
+	if (j.pieceCond) {
+		const c = colOf(j.pieceCond), segs = parsePath(j.pathD);
+		const tf = (p: Placement, x: number, y: number): [number, number] => (p.rot ? [p.x + j.cutH - y, p.y + x] : [p.x + x, p.y + y]);
+		for (const p of j.pieces) {
+			let cur: [number, number] = [0, 0], start: [number, number] = [0, 0];
+			for (const s of segs) {
+				if (s[0] === 'M') cur = start = tf(p, s[1], s[2]);
+				else if (s[0] === 'L') { const b = tf(p, s[1], s[2]); line(cur, b, c); cur = b; }
+				else if (s[0] === 'C') {
+					const p0 = cur, p1 = tf(p, s[1], s[2]), p2 = tf(p, s[3], s[4]), p3 = tf(p, s[5], s[6]);
+					let prev = p0;
+					for (let k = 1; k <= 8; k++) {
+						const t = k / 8, u = 1 - t;
+						const q: [number, number] = [u * u * u * p0[0] + 3 * u * u * t * p1[0] + 3 * u * t * t * p2[0] + t * t * t * p3[0], u * u * u * p0[1] + 3 * u * u * t * p1[1] + 3 * u * t * t * p2[1] + t * t * t * p3[1]];
+						line(prev, q, c); prev = q;
+					}
+					cur = p3;
+				} else { line(cur, start, c); cur = start; }
+			}
+		}
+	}
+	if (j.sheetCond && j.sheets?.length) {
+		const c = colOf(j.sheetCond);
+		for (const r of j.sheets) {
+			line([r.x, r.y], [r.x + r.w, r.y], c); line([r.x + r.w, r.y], [r.x + r.w, r.y + r.h], c);
+			line([r.x + r.w, r.y + r.h], [r.x, r.y + r.h], c); line([r.x, r.y + r.h], [r.x, r.y], c);
+		}
+	}
+	return px;
+}
+
+/** file .xpf completo (intestazione Cutting Master 5 / FC9000, miniatura, comandi) */
 export function buildXpf(j: XpfJob): Uint8Array {
 	const cmd = enc.encode(xpfCommands(j));
-	const thumbH = 256;
-	const thumbW = Math.max(16, Math.min(1024, Math.round((thumbH * j.H) / j.W)));
-	const stride = thumbW * 3;
-	const thumbData = thumbH * stride;
+	// miniatura: 256 px di larghezza (lungo la striscia) e altezza in proporzione, RGB, righe da 768 byte
+	const thumbW = 256;
+	const thumbH = Math.max(16, Math.min(1024, Math.round((thumbW * j.H) / j.W)));
+	const thumbData = thumbW * thumbH * 3;
 	const cmdOffset = 256 + 128 + thumbData;
 	const out = new Uint8Array(cmdOffset + 128 + cmd.length);
 	const dv = new DataView(out.buffer);
@@ -218,13 +267,13 @@ export function buildXpf(j: XpfJob): Uint8Array {
 	dv.setUint32(80, cmdOffset, true);
 	dv.setInt32(96, -60, true);
 	dv.setInt32(100, 399, true);
-	// miniatura (intestazione 128 byte + RGB bianco)
+	// miniatura: intestazione 128 byte (come Cutting Master: altezza*3 a +19, larghezza, altezza, riga) + pixel
 	out.set(enc.encode('THUMBNAIL_PART'), 256);
-	dv.setUint16(256 + 19, stride, true);
-	dv.setUint32(256 + 24, thumbH, true);
-	dv.setUint32(256 + 28, thumbW, true);
-	dv.setUint32(256 + 32, 768, true);
-	out.fill(0xff, 384, 384 + thumbData);
+	dv.setUint16(256 + 19, thumbH * 3, true);
+	dv.setUint32(256 + 24, thumbW, true);
+	dv.setUint32(256 + 28, thumbH, true);
+	dv.setUint32(256 + 32, thumbW * 3, true);
+	out.set(thumbnail(j, thumbW, thumbH), 384);
 	// comandi
 	out.set(enc.encode('COMMAND_PART\r\n'), cmdOffset);
 	dv.setUint32(cmdOffset + 20, cmd.length, true);
