@@ -494,7 +494,7 @@
 						{busy === 'print' ? 'Preparo il file…' : 'Scarica file di stampa e taglio'}<small>PDF: grafica + tracciato vettoriale {P.pieceCut}</small>
 					</button>
 					<button type="button" class="btn btn--green st-act" disabled={!rendered || !!busy} onclick={() => (stripOpen = !stripOpen)} aria-expanded={stripOpen}>
-						Genera file di stampa<small>{P.mode === 'fogli' ? 'fogli impaginati sulla striscia' : 'striscia piena di pezzi'}, taglio in sovrastampa</small>
+						Genera file di stampa<small>{P.mode === 'fogli' ? 'fogli impaginati sulla striscia' : 'striscia piena di pezzi'}, crocini e codice a barre Graphtec</small>
 					</button>
 					<label class="st-dpi">Risoluzione <select bind:value={dpi}><option value="auto">Massima (min. 600 dpi)</option><option value={300}>300 dpi</option><option value={600}>600 dpi</option><option value={1200}>1200 dpi</option></select></label>
 					{#if traceInfo}<p class="st-note st-trace">{traceInfo}</p>{/if}
