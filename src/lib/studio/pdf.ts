@@ -146,7 +146,9 @@ function drawPage(page: PDFPage, job: PdfJob, strip: Strip, res: Res, pageIndex:
 	const nCut = node.newXObject('Taglio', cutForm);
 	page.pushOperators(op(Op.PushGraphicsState), op(Op.DrawObject, nArt), op(Op.PopGraphicsState));
 	if (nMarks) page.pushOperators(op(Op.PushGraphicsState), op(Op.DrawObject, nMarks), op(Op.PopGraphicsState));
-	page.pushOperators(op(Op.PushGraphicsState), op(Op.DrawObject, nCut), op(Op.PopGraphicsState));
+	/* striscia con crocini Graphtec: il taglio va al plotter da Data Link Server, nel PDF da stampare
+	   restano solo grafica, crocini e codici a barre */
+	if (!gid) page.pushOperators(op(Op.PushGraphicsState), op(Op.DrawObject, nCut), op(Op.PopGraphicsState));
 }
 
 export async function buildPdf(job: PdfJob): Promise<Uint8Array> {
