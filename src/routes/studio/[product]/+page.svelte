@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import EnginePreview from '$lib/components/EnginePreview.svelte';
-	import { showFinishStep, showMaterialStep, minForShape, startSize, sizeProposals, roundHalf, proportionalSize } from '$lib/pricing/engine';
+	import { showFinishStep, showMaterialStep, minForShape, startSize, sizeProposals, roundHalf, proportionalSize, sizeRule } from '$lib/pricing/engine';
 	import { KIT_CAVALLOTTO } from '$lib/studio/products';
 	import { STRIP_MATERIALS, SHEET_RULES, layoutLoose, layoutSheets, type Strip } from '$lib/studio/layout';
 	import { MARKED_MARGIN, pageWidthFor, DEFAULT_COND, markRects, barcodeRects } from '$lib/studio/graphtec';
@@ -58,7 +58,8 @@
 	// proporzione larghezza/altezza, come sul sito
 	const ratio = $derived(shape?.equal ? 1 : (shape?.ratio ?? cutRatio ?? 1));
 	const freeSize = $derived(cavallotto || forma === 'rettangolare' || forma === 'ovale');
-	const MIN_MM = $derived(minForShape(cfg, forma));
+	const MIN_MM = $derived(sizeRule(cfg, forma).short);
+	const MIN_LONG = $derived(sizeRule(cfg, forma).long);
 	const MAX_MM = $derived(cfg.size.maxMm);
 	const presets = $derived(sizeProposals(cfg, forma, ratio, shape?.presets?.length ? shape.presets : [30, 50, 70, 100]));
 	const clamp = (v: number) => Math.min(MAX_MM, Math.max(MIN_MM, roundHalf(v || MIN_MM)));
@@ -459,7 +460,7 @@
 								<button type="button" class="st-chip" class:is-on={Math.abs(w - pw) < 0.3 && Math.abs(h - ph) < 0.3} onclick={() => { w = pw; h = ph; }}>{pw}×{ph}</button>
 							{/each}
 						</div>
-						<p class="st-note">Stesse misure del sito: minimo {MIN_MM} mm, massimo {MAX_MM} mm{freeSize ? ', lati indipendenti' : ', proporzioni bloccate'}.</p>
+						<p class="st-note">Stesse misure del sito: {MIN_LONG !== MIN_MM ? `lato lungo almeno ${MIN_LONG} mm` : `minimo ${MIN_MM} mm`}, massimo {MAX_MM} mm{freeSize ? ', lati indipendenti' : ', proporzioni bloccate'}.</p>
 						{#if engCut && (Math.abs(engCut.w - w) > 0.6 || Math.abs(engCut.h - h) > 0.6)}<p class="st-note st-real">Taglio reale del motore: <b>{engCut.w.toFixed(1)} × {engCut.h.toFixed(1)} mm</b> (sul sagomato l’altezza la decide il contorno del disegno). Impaginazione e file usano questa.</p>{/if}
 					</div>
 				{/if}

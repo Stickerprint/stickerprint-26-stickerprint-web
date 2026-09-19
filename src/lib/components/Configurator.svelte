@@ -15,7 +15,7 @@
 	import EnginePreview from './EnginePreview.svelte';
 	import { loadDraft, saveDraft, saveCartFile, saveCartPreview } from '$lib/utils/draftStore';
 	import { addToCart } from '$lib/cart';
-	import { quoteWith, minForShape, startSize, sizeProposals, roundHalf, proportionalSize, eur0, eur2, showFinishStep, showMaterialStep, type EngineConfig } from '$lib/pricing/engine';
+	import { quoteWith, minForShape, startSize, sizeProposals, roundHalf, proportionalSize, sizeRule, eur0, eur2, showFinishStep, showMaterialStep, type EngineConfig } from '$lib/pricing/engine';
 
 	/* totale prodotti gia' nel carrello (per la barra della spedizione gratuita) */
 	let cartGross = $state(0);
@@ -54,7 +54,7 @@
 
 	let forma = $state(''); // la prima sagoma visibile del listino (resinati: tondo)
 	// sul sagomato puo' valere un minimo piu' alto (resinati: 40 mm)
-	const MIN_MM = $derived(minForShape(cfg, forma));
+	const MIN_MM = $derived(sizeRule(cfg, forma).short);
 	let materiale = $state('bianco');
 	let finitura = $state(''); // la prima scelta e' senza lamina (vedi effetto sotto)
 	// svelte-ignore state_referenced_locally
