@@ -85,7 +85,8 @@
 	function onDrop(e: DragEvent) {
 		e.preventDefault();
 		dragging = false;
-		pick(e.dataTransfer?.files?.[0]);
+		if (fonte === 'pronto') pickReady(e.dataTransfer?.files?.[0]);
+		else pick(e.dataTransfer?.files?.[0]);
 	}
 
 	/* ------------------------------------------------------------ ordine dalla dashboard */
@@ -181,7 +182,7 @@
 	}
 
 	async function run(kind: 'mockup' | 'print' | 'strip' | 'dls', fn: () => Promise<void>) {
-		if (busy || !engine) return;
+		if (busy || (!engine && !ready)) return;
 		busy = kind;
 		downloadErr = '';
 		try { await fn(); } catch (e) { downloadErr = e instanceof Error ? e.message : String(e); } finally { busy = ''; }
@@ -214,6 +215,12 @@
 	}
 
 	async function artwork() {
+		if (fonte === 'pronto') {
+			/* file pronto: grafica vettoriale del cliente 1:1, il suo tracciato diventa la tinta di taglio */
+			if (!ready) throw new Error('Carica prima il PDF pronto.');
+			traceInfo = `Tracciato del cliente: ${ready.paths} ${ready.paths === 1 ? 'tracciato' : 'tracciati'} · grafica vettoriale`;
+			return { pdfPage: { bytes: ready.cleaned, bboxPt: ready.bboxPt }, cutW: ready.cutW, cutH: ready.cutH, bleed: 1, pathD: ready.pathD };
+		}
 		const t = await traccia();
 		const r = await engine!.studio('print', { dpi, pathD: t.d });
 		if (!r.cutW || !r.cutH) throw new Error('Il motore non ha restituito le misure del taglio.');
@@ -234,6 +241,88 @@
 		const art = await artwork();
 		const bytes = await buildPdf({ title: `${jobName} — stampa e taglio`, art, pages: [singleStrip(art)], pieceCut: P.pieceCut });
 		download(new Blob([bytes as BlobPart], { type: 'application/pdf' }), `${baseName()}_stampa-taglio.pdf`);
+	});
+
+	/* ------------------------------------------------------------ file pronto dell'azienda */
+	/* solo etichette e resinati: PDF con il tracciato gia' definitivo, misure 1:1. Il tratto del
+	   cliente (di solito blu in sovrastampa) si toglie dalla grafica e rinasce CutContour */
+	const canReady = $derived(!!P.sheetRules && !P.soon);
+	let fonte = $state<'sito' | 'pronto'>('sito');
+	let readyInput = $state<HTMLInputElement | undefined>();
+	let readyBytes: Uint8Array | null = null;
+	let readyName = $state('');
+	let ready = $state<import('$lib/studio/readyPdf').ReadyResult | null>(null);
+	let readyChoice = $state<import('$lib/studio/readyPdf').CutCandidate[] | null>(null);
+	let readyBusy = $state(false);
+	let readyErr = $state('');
+	let readyPreview = $state('');
+
+	async function pickReady(f: File | null | undefined) {
+		if (!f) return;
+		if (!/\.pdf$/i.test(f.name) && f.type !== 'application/pdf') { readyErr = 'Serve un PDF con il tracciato di taglio.'; return; }
+		readyBytes = new Uint8Array(await f.arrayBuffer());
+		readyName = f.name;
+		jobName = f.name.replace(/\.[^.]+$/, '');
+		await analizza();
+	}
+	const chooseCut = (key: string) => analizza(key);
+
+	async function analizza(forced?: string) {
+		if (!readyBytes) return;
+		readyBusy = true; readyErr = ''; readyChoice = null; ready = null; readyPreview = ''; downloadErr = '';
+		try {
+			const { analyzeReadyPdf, NeedChoice } = await import('$lib/studio/readyPdf');
+			try {
+				ready = await analyzeReadyPdf(readyBytes, forced);
+			} catch (e) {
+				if (e instanceof NeedChoice) { readyChoice = e.candidates; readyErr = e.message; return; }
+				throw e;
+			}
+			engCut = { w: ready.cutW, h: ready.cutH };
+			lastPath = ready.pathD;
+			readyPreview = await anteprimaPdf(ready.cleaned, ready.bboxPt);
+		} catch (e) {
+			readyErr = e instanceof Error ? e.message : String(e);
+		} finally { readyBusy = false; }
+	}
+
+	/* anteprima: il PDF pulito (senza il tratto del cliente) ritagliato sul taglio + 1 mm */
+	const PDFJS = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
+	type PdfJs = { GlobalWorkerOptions: { workerSrc: string }; getDocument: (o: { data: Uint8Array }) => { promise: Promise<{ getPage: (n: number) => Promise<{ getViewport: (o: { scale: number }) => { width: number; height: number; transform: number[] }; render: (o: Record<string, unknown>) => { promise: Promise<void> } }> }> } };
+	function pdfjs(): Promise<PdfJs> {
+		const w = window as unknown as { pdfjsLib?: PdfJs };
+		if (w.pdfjsLib) return Promise.resolve(w.pdfjsLib);
+		return new Promise((res, rej) => {
+			const s = document.createElement('script');
+			s.src = PDFJS + 'pdf.min.js';
+			s.onload = () => { w.pdfjsLib!.GlobalWorkerOptions.workerSrc = PDFJS + 'pdf.worker.min.js'; res(w.pdfjsLib!); };
+			s.onerror = () => rej(new Error('Non riesco a caricare il lettore PDF per l’anteprima.'));
+			document.head.appendChild(s);
+		});
+	}
+	async function anteprimaPdf(bytes: Uint8Array, bb: [number, number, number, number]) {
+		const lib = await pdfjs();
+		const doc = await lib.getDocument({ data: bytes.slice() }).promise;
+		const page = await doc.getPage(1);
+		const pad = 72 / 25.4;
+		const x0 = bb[0] - pad, y0 = bb[1] - pad, wPt = bb[2] - bb[0] + 2 * pad, hPt = bb[3] - bb[1] + 2 * pad;
+		const scale = Math.min(8, 1400 / Math.max(wPt, hPt));
+		const vp = page.getViewport({ scale });
+		const c = document.createElement('canvas');
+		c.width = Math.round(wPt * scale); c.height = Math.round(hPt * scale);
+		const g = c.getContext('2d')!;
+		g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height);
+		/* il viewport ha y verso il basso: si sposta l'angolo alto-sinistro del riquadro in 0,0 */
+		const [a, b, cc, d, e, f] = vp.transform;
+		const tx = a * x0 + cc * (y0 + hPt) + e, ty = b * x0 + d * (y0 + hPt) + f;
+		await page.render({ canvasContext: g, viewport: vp, transform: [1, 0, 0, 1, -tx, -ty] }).promise;
+		return c.toDataURL('image/png');
+	}
+
+	$effect(() => {
+		/* cambiando fonte si riparte puliti */
+		if (fonte === 'sito') { ready = null; readyChoice = null; readyErr = ''; readyPreview = ''; readyBytes = null; }
+		else { engCut = null; }
 	});
 
 	/* ------------------------------------------------------------ striscia */
@@ -395,7 +484,64 @@
 		</div>
 	{/if}
 
-	{#if !file}
+	{#if canReady}
+		<div class="st-chips st-fonte">
+			<button type="button" class="st-chip" class:is-on={fonte === 'sito'} onclick={() => (fonte = 'sito')}>File del sito (anteprima automatica)</button>
+			<button type="button" class="st-chip" class:is-on={fonte === 'pronto'} onclick={() => (fonte = 'pronto')}>File pronto dell’azienda (PDF con tracciato)</button>
+		</div>
+	{/if}
+
+	{#if fonte === 'pronto'}
+		<input bind:this={readyInput} type="file" accept="application/pdf" hidden onchange={(e) => pickReady((e.currentTarget as HTMLInputElement).files?.[0])} />
+		{#if !ready}
+			<button type="button" class="st-drop" class:is-over={dragging} onclick={() => readyInput?.click()} disabled={readyBusy}>
+				<span class="st-drop__icon">⬆</span>
+				<span class="st-drop__t">{readyBusy ? 'Leggo il PDF…' : 'Trascina qui il PDF pronto del cliente'}</span>
+				<span class="st-drop__s">misure 1:1 · il tracciato di taglio del file diventa CutContour · solo etichette e resinati</span>
+			</button>
+			{#if readyErr}<p class="st-err">{readyErr}</p>{/if}
+			{#if readyChoice}
+				<div class="st-choice">
+					<p class="st-label">Quale di questi è il tracciato di taglio?</p>
+					{#if !readyChoice.length}<p class="st-note">Il PDF non ha tratti chiusi: senza tracciato non si può impaginare.</p>{/if}
+					{#each readyChoice as c (c.key)}
+						<button type="button" class="st-cand" onclick={() => chooseCut(c.key)}>
+							<span class="st-cand__sw" style="background:{c.css}"></span>
+							<span><b>{c.label}</b> · {c.wMm.toFixed(1)} × {c.hMm.toFixed(1)} mm · {c.count} {c.count === 1 ? 'tracciato' : 'tracciati'} · tratto {c.widthPt} pt</span>
+						</button>
+					{/each}
+				</div>
+			{/if}
+		{:else}
+			<div class="st-bench">
+				<div class="st-stage st-ready">
+					{#if readyPreview}
+						<div class="st-ready__art">
+							<img src={readyPreview} alt="Anteprima del file pronto" />
+							<svg viewBox="-1 -1 {ready.cutW + 2} {ready.cutH + 2}" preserveAspectRatio="xMidYMid meet"><path d={ready.pathD} fill="none" stroke={cutColor(P.pieceCut)} stroke-width={Math.max(ready.cutW, ready.cutH) / 250} /></svg>
+						</div>
+					{:else}<p class="st-note">Preparo l’anteprima…</p>{/if}
+					<div class="st-bar">
+						<button type="button" class="st-tool st-tool--blue" onclick={() => readyInput?.click()}>Cambia file</button>
+						<span class="st-note">{readyName}</span>
+					</div>
+				</div>
+				<aside class="st-side">
+					<label class="st-field"><span>Nome lavoro / n. ordine</span><input class="input" bind:value={jobName} /></label>
+					<div class="st-block">
+						<p class="st-label">Dal file del cliente</p>
+						<p class="st-note">Taglio <b>{ready.cutW.toFixed(2)} × {ready.cutH.toFixed(2)} mm</b> (1:1) · {ready.paths} {ready.paths === 1 ? 'tracciato' : 'tracciati'}</p>
+						<p class="st-note">Riconosciuto da: {ready.reason}. Nel file di stampa diventa <b>{P.pieceCut}</b>; il tratto originale è tolto dalla grafica.</p>
+					</div>
+					<div class="st-actions">
+						<button type="button" class="btn btn--pink st-act" disabled={!!busy} onclick={scaricaStampaTaglio}>{busy === 'print' ? 'Preparo il file…' : 'Scarica file di stampa e taglio'}<small>PDF vettoriale: grafica + tracciato {P.pieceCut}</small></button>
+						<button type="button" class="btn btn--green st-act" disabled={!!busy} onclick={() => (stripOpen = !stripOpen)} aria-expanded={stripOpen}>Genera file di stampa<small>fogli impaginati sulla striscia, crocini e codice a barre Graphtec</small></button>
+						{#if downloadErr}<p class="st-err">{downloadErr}</p>{/if}
+					</div>
+				</aside>
+			</div>
+		{/if}
+	{:else if !file}
 		<button type="button" class="st-drop" class:is-over={dragging} onclick={() => fileInput?.click()}>
 			<span class="st-drop__icon">⬆</span>
 			<span class="st-drop__t">Trascina qui il file del cliente</span>
@@ -505,89 +651,90 @@
 			</aside>
 		</div>
 
-		{#if stripOpen}
-			<section class="st-strip">
-				<div class="st-strip__opts">
-					<div class="st-block">
-						<p class="st-label">Materiale di stampa</p>
-						<div class="st-chips">
-							{#each STRIP_MATERIALS as m (m.id)}
-								<button type="button" class="st-chip" class:is-on={matId === m.id} onclick={() => { matId = m.id; stripH = 0; }}>{m.label}</button>
-							{/each}
-						</div>
+	{/if}
+
+	{#if stripOpen && (file || ready)}
+		<section class="st-strip">
+			<div class="st-strip__opts">
+				<div class="st-block">
+					<p class="st-label">Materiale di stampa</p>
+					<div class="st-chips">
+						{#each STRIP_MATERIALS as m (m.id)}
+							<button type="button" class="st-chip" class:is-on={matId === m.id} onclick={() => { matId = m.id; stripH = 0; }}>{m.label}</button>
+						{/each}
 					</div>
-					<label class="st-field"><span>Altezza striscia (mm, max {maxH})</span><input class="input" type="number" min="50" max={maxH} step="1" bind:value={stripH} /></label>
-					<label class="st-field"><span>{P.mode === 'fogli' ? 'Etichette da stampare' : 'Pezzi da stampare'} <em>(vuoto = una striscia piena)</em></span><input class="input" type="number" min="1" step="1" bind:value={qty} placeholder="riempi la striscia" /></label>
-					<details class="st-adv">
-						<summary>Margini e spazi</summary>
-						<p class="st-note">Crocini e codice a barre Graphtec sempre presenti: pagina {pageW} mm, pezzi a {margin} mm dai lati e {marginY} mm da sopra e sotto.</p>
-						<label class="st-field"><span>Condizione plotter mezzo taglio</span><input class="input" type="number" min="1" max="8" step="1" bind:value={condHalf} /></label>
-						<label class="st-field"><span>Condizione plotter passante</span><input class="input" type="number" min="1" max="8" step="1" bind:value={condThrough} /></label>
-						{#if P.mode === 'fogli'}
-							<label class="st-field"><span>Spazio fra i fogli (mm, minimo {MIN_SHEET_GAP})</span><input class="input" type="number" min={MIN_SHEET_GAP} step="0.5" bind:value={sheetGap} /></label>
-							<p class="st-note">Foglio: bordo {SHEET_RULES[P.sheetRules ?? 'etichette'].margin} mm, {SHEET_RULES[P.sheetRules ?? 'etichette'].gap} mm fra le etichette{SHEET_RULES[P.sheetRules ?? 'etichette'].mod5 ? ', multipli di 5 (resinatrice a 10 aghi)' : ''}.</p>
-						{:else}
-							<label class="st-field"><span>Spazio fra i pezzi, da taglio a taglio (mm)</span><input class="input" type="number" min="0" step="0.5" bind:value={gap} /></label>
-						{/if}
-					</details>
-
-					{#if plan && !plan.r.ok}
-						<p class="st-err">{plan.r.error}</p>
-					{:else if plan}
-						<ul class="st-sum">
-							{#if plan.kind === 'fogli' && plan.r.sheet}
-								<li>Foglio <b>{plan.r.sheet.w} × {plan.r.sheet.h} mm</b>: {plan.r.sheet.grid.cols} × {plan.r.sheet.grid.rows} = <b>{plan.r.sheet.grid.n} etichette</b></li>
-								<li>Striscia: {plan.r.across} × {plan.r.down} fogli = <b>{plan.r.piecesPerStrip} etichette</b></li>
-								{#if plan.r.warning}<li class="st-warn">{plan.r.warning}</li>{/if}
-							{:else if plan.kind === 'sciolti'}
-								<li>Striscia: {plan.r.grid.cols} × {plan.r.grid.rows} = <b>{plan.r.perStrip} pezzi</b>{plan.r.grid.rot ? ' (girati di 90°)' : ''}</li>
-							{/if}
-							<li>{strips.length} {strips.length === 1 ? 'striscia' : 'strisce'}, {strips.reduce((a, s) => a + s.pieces.length, 0)} pezzi in tutto · prima striscia {pageW} × {strips[0]?.h} mm</li>
-						</ul>
-						<button type="button" class="btn btn--green" disabled={!!busy || !strips.length} onclick={generaStriscia}>{busy === 'strip' ? 'Genero il PDF…' : 'Scarica PDF striscia'}</button>
-
-						<div class="st-dls">
-							<p class="st-label">Taglio sul Graphtec</p>
-							{#if P.mode === 'fogli'}
-								<div class="st-chips">
-									<button type="button" class="st-chip" class:is-on={cutMode === 'tutto'} onclick={() => (cutMode = 'tutto')}>Mezzo taglio + passante</button>
-									<button type="button" class="st-chip" class:is-on={cutMode === 'passante'} onclick={() => (cutMode = 'passante')}>Solo passante (verde)</button>
-								</div>
-							{/if}
-							<button type="button" class="btn btn--blue" disabled={!!busy || !lastJob} onclick={inviaDataLink}>{busy === 'dls' ? 'Invio…' : 'Invia taglio a Data Link Server'}</button>
-							<p class="st-note">
-								{#if !lastJob}Prima scarica il PDF della striscia: il taglio inviato è quello di quel PDF (stesso codice a barre).
-								{:else}Codice{lastJob.ids.length > 1 && new Set(lastJob.ids).size > 1 ? 'i' : ''}: <b>{[...new Set(lastJob.ids)].join(', ')}</b>{/if}
-								· Cartella: {dlName ? dlName : 'da scegliere al primo invio'} <button type="button" class="st-link" onclick={sceglieCartella}>cambia</button>
-								· <button type="button" class="st-link" disabled={!lastJob} onclick={scaricaXpf}>scarica il file di taglio</button>
-							</p>
-							{#if sent}<p class="st-ok">✓ {sent}</p>{/if}
-						</div>
-					{/if}
 				</div>
+				<label class="st-field"><span>Altezza striscia (mm, max {maxH})</span><input class="input" type="number" min="50" max={maxH} step="1" bind:value={stripH} /></label>
+				<label class="st-field"><span>{P.mode === 'fogli' ? 'Etichette da stampare' : 'Pezzi da stampare'} <em>(vuoto = una striscia piena)</em></span><input class="input" type="number" min="1" step="1" bind:value={qty} placeholder="riempi la striscia" /></label>
+				<details class="st-adv">
+					<summary>Margini e spazi</summary>
+					<p class="st-note">Crocini e codice a barre Graphtec sempre presenti: pagina {pageW} mm, pezzi a {margin} mm dai lati e {marginY} mm da sopra e sotto.</p>
+					<label class="st-field"><span>Condizione plotter mezzo taglio</span><input class="input" type="number" min="1" max="8" step="1" bind:value={condHalf} /></label>
+					<label class="st-field"><span>Condizione plotter passante</span><input class="input" type="number" min="1" max="8" step="1" bind:value={condThrough} /></label>
+					{#if P.mode === 'fogli'}
+						<label class="st-field"><span>Spazio fra i fogli (mm, minimo {MIN_SHEET_GAP})</span><input class="input" type="number" min={MIN_SHEET_GAP} step="0.5" bind:value={sheetGap} /></label>
+						<p class="st-note">Foglio: bordo {SHEET_RULES[P.sheetRules ?? 'etichette'].margin} mm, {SHEET_RULES[P.sheetRules ?? 'etichette'].gap} mm fra le etichette{SHEET_RULES[P.sheetRules ?? 'etichette'].mod5 ? ', multipli di 5 (resinatrice a 10 aghi)' : ''}.</p>
+					{:else}
+						<label class="st-field"><span>Spazio fra i pezzi, da taglio a taglio (mm)</span><input class="input" type="number" min="0" step="0.5" bind:value={gap} /></label>
+					{/if}
+				</details>
 
-				{#if preview}
-					<div class="st-strip__view">
-						<svg viewBox="-2 -2 {preview.w + 4} {preview.h + 4}" preserveAspectRatio="xMidYMin meet">
-							<rect x="0" y="0" width={preview.w} height={preview.h} fill="#fff" stroke="#c7cbe0" stroke-width="1" />
-							{#each previewMarks as r, i (i)}<rect x={r.x} y={r.y} width={r.w} height={r.h} fill="#111" />{/each}
-							{#if lastPath || forma}
-								{#each preview.pieces as p, i (i)}
-									{#if lastPath}
-										<path d={lastPath} transform={pieceTf(p)} fill="#eef0fb" stroke={cutColor(P.pieceCut)} stroke-width="0.6" />
-									{:else}
-										<rect x={p.x} y={p.y} width={p.rot ? cutH : cutW} height={p.rot ? cutW : cutH} rx="1.5" fill="#eef0fb" stroke={cutColor(P.pieceCut)} stroke-width="0.6" />
-									{/if}
-								{/each}
-							{/if}
-							{#each preview.sheets ?? [] as s, i (i)}
-								<rect x={s.x} y={s.y} width={s.w} height={s.h} fill="none" stroke={cutColor(P.sheetCut ?? 'Passante')} stroke-width="1" />
-							{/each}
-						</svg>
-						<p class="st-note">{mat.label}: pagina {pageW} mm con crocini e codice a barre · la prima striscia. {lastPath ? '' : 'Il contorno vero compare dopo il primo file generato.'}</p>
+				{#if plan && !plan.r.ok}
+					<p class="st-err">{plan.r.error}</p>
+				{:else if plan}
+					<ul class="st-sum">
+						{#if plan.kind === 'fogli' && plan.r.sheet}
+							<li>Foglio <b>{plan.r.sheet.w} × {plan.r.sheet.h} mm</b>: {plan.r.sheet.grid.cols} × {plan.r.sheet.grid.rows} = <b>{plan.r.sheet.grid.n} etichette</b></li>
+							<li>Striscia: {plan.r.across} × {plan.r.down} fogli = <b>{plan.r.piecesPerStrip} etichette</b></li>
+							{#if plan.r.warning}<li class="st-warn">{plan.r.warning}</li>{/if}
+						{:else if plan.kind === 'sciolti'}
+							<li>Striscia: {plan.r.grid.cols} × {plan.r.grid.rows} = <b>{plan.r.perStrip} pezzi</b>{plan.r.grid.rot ? ' (girati di 90°)' : ''}</li>
+						{/if}
+						<li>{strips.length} {strips.length === 1 ? 'striscia' : 'strisce'}, {strips.reduce((a, s) => a + s.pieces.length, 0)} pezzi in tutto · prima striscia {pageW} × {strips[0]?.h} mm</li>
+					</ul>
+					<button type="button" class="btn btn--green" disabled={!!busy || !strips.length} onclick={generaStriscia}>{busy === 'strip' ? 'Genero il PDF…' : 'Scarica PDF striscia'}</button>
+
+					<div class="st-dls">
+						<p class="st-label">Taglio sul Graphtec</p>
+						{#if P.mode === 'fogli'}
+							<div class="st-chips">
+								<button type="button" class="st-chip" class:is-on={cutMode === 'tutto'} onclick={() => (cutMode = 'tutto')}>Mezzo taglio + passante</button>
+								<button type="button" class="st-chip" class:is-on={cutMode === 'passante'} onclick={() => (cutMode = 'passante')}>Solo passante (verde)</button>
+							</div>
+						{/if}
+						<button type="button" class="btn btn--blue" disabled={!!busy || !lastJob} onclick={inviaDataLink}>{busy === 'dls' ? 'Invio…' : 'Invia taglio a Data Link Server'}</button>
+						<p class="st-note">
+							{#if !lastJob}Prima scarica il PDF della striscia: il taglio inviato è quello di quel PDF (stesso codice a barre).
+							{:else}Codice{lastJob.ids.length > 1 && new Set(lastJob.ids).size > 1 ? 'i' : ''}: <b>{[...new Set(lastJob.ids)].join(', ')}</b>{/if}
+							· Cartella: {dlName ? dlName : 'da scegliere al primo invio'} <button type="button" class="st-link" onclick={sceglieCartella}>cambia</button>
+							· <button type="button" class="st-link" disabled={!lastJob} onclick={scaricaXpf}>scarica il file di taglio</button>
+						</p>
+						{#if sent}<p class="st-ok">✓ {sent}</p>{/if}
 					</div>
 				{/if}
-			</section>
-		{/if}
+			</div>
+
+			{#if preview}
+				<div class="st-strip__view">
+					<svg viewBox="-2 -2 {preview.w + 4} {preview.h + 4}" preserveAspectRatio="xMidYMin meet">
+						<rect x="0" y="0" width={preview.w} height={preview.h} fill="#fff" stroke="#c7cbe0" stroke-width="1" />
+						{#each previewMarks as r, i (i)}<rect x={r.x} y={r.y} width={r.w} height={r.h} fill="#111" />{/each}
+						{#if lastPath || forma}
+							{#each preview.pieces as p, i (i)}
+								{#if lastPath}
+									<path d={lastPath} transform={pieceTf(p)} fill="#eef0fb" stroke={cutColor(P.pieceCut)} stroke-width="0.6" />
+								{:else}
+									<rect x={p.x} y={p.y} width={p.rot ? cutH : cutW} height={p.rot ? cutW : cutH} rx="1.5" fill="#eef0fb" stroke={cutColor(P.pieceCut)} stroke-width="0.6" />
+								{/if}
+							{/each}
+						{/if}
+						{#each preview.sheets ?? [] as s, i (i)}
+							<rect x={s.x} y={s.y} width={s.w} height={s.h} fill="none" stroke={cutColor(P.sheetCut ?? 'Passante')} stroke-width="1" />
+						{/each}
+					</svg>
+					<p class="st-note">{mat.label}: pagina {pageW} mm con crocini e codice a barre · la prima striscia. {lastPath ? '' : 'Il contorno vero compare dopo il primo file generato.'}</p>
+				</div>
+			{/if}
+		</section>
 	{/if}
 </section>

@@ -49,8 +49,11 @@ function pieceMatrix(p: Placement, cutW: number, cutH: number): [number, number,
 /* ------------------------------------------------------------ documento */
 
 export interface Artwork {
-	/** PNG della grafica di stampa, abbondanza compresa */
-	png: Uint8Array;
+	/** PNG della grafica di stampa, abbondanza compresa (file del sito) */
+	png?: Uint8Array;
+	/** oppure la pagina di un PDF pronto del cliente (vettoriale), gia' ripulita dal tracciato:
+	    `bboxPt` e' il riquadro del taglio sulla pagina (pt, y verso l'alto) */
+	pdfPage?: { bytes: Uint8Array; bboxPt: [number, number, number, number] };
 	cutW: number;
 	cutH: number;
 	bleed: number;
@@ -72,6 +75,8 @@ export interface PdfJob {
 
 interface Res {
 	img: PDFRef;
+	/** la grafica e' una pagina PDF vettoriale (non un'immagine) */
+	vector?: boolean;
 	cs: Record<CutSpot, PDFRef>;
 	gs: PDFRef;
 }
@@ -105,7 +110,10 @@ function drawPage(page: PDFPage, job: PdfJob, strip: Strip, res: Res, pageIndex:
 	const artOps: PDFOperator[] = [mm()];
 	for (const p of strip.pieces) {
 		artOps.push(op(Op.PushGraphicsState), op(Op.ConcatTransformationMatrix, ...pieceMatrix(p, art.cutW, art.cutH)));
-		artOps.push(op(Op.ConcatTransformationMatrix, tw, 0, 0, -th, -b, -b + th), op(Op.DrawObject, PDFName.of('Im')), op(Op.PopGraphicsState));
+		// immagine: quadrato unitario; pagina PDF del cliente: punti tipografici con la y verso l'alto
+		if (res.vector) artOps.push(op(Op.ConcatTransformationMatrix, 1 / PT, 0, 0, -1 / PT, -b, art.cutH + b));
+		else artOps.push(op(Op.ConcatTransformationMatrix, tw, 0, 0, -th, -b, -b + th));
+		artOps.push(op(Op.DrawObject, PDFName.of('Im')), op(Op.PopGraphicsState));
 	}
 	const artForm = ctx.register(ctx.formXObject(artOps, { BBox: [0, 0, W, H], Resources: { XObject: { Im: res.img } } }));
 
@@ -135,12 +143,8 @@ function drawPage(page: PDFPage, job: PdfJob, strip: Strip, res: Res, pageIndex:
 		mOps.push(op(Op.FillNonZero));
 		const marksForm = ctx.register(ctx.formXObject(mOps, { BBox: [0, 0, W, H], Resources: {} }));
 		nMarks = node.newXObject('Crocini', marksForm);
-		// codice leggibile accanto ai codici a barre
-		for (const l of bc.labels) {
-			const size = 6.5, tw = font.widthOfTextAtSize(l.text, size);
-			if (!l.rot180) page.drawText(l.text, { x: l.x * PT - tw, y: H - l.y * PT - size * 0.35, size, font });
-			else page.drawText(l.text, { x: l.x * PT + tw, y: H - l.y * PT + size * 0.35, size, font, rotate: degrees(180) });
-		}
+		/* niente scritte accanto ai codici: il Code 39 vuole almeno 10 moduli (4 mm) di bianco ai lati,
+		   una scritta a 3 mm ne impediva la lettura. Cutting Master non ne mette. */
 	}
 	const nArt = node.newXObject('Grafica', artForm);
 	const nCut = node.newXObject('Taglio', cutForm);
@@ -156,8 +160,18 @@ export async function buildPdf(job: PdfJob): Promise<Uint8Array> {
 	pdf.setTitle(job.title);
 	pdf.setCreator('Stickerprint Studio');
 	pdf.setProducer('Stickerprint Studio');
-	const img = await pdf.embedPng(job.art.png);
-	const res = setupResources(pdf, img.ref);
+	let res: Res;
+	if (job.art.pdfPage) {
+		// pagina del cliente ritagliata attorno al taglio, con l'abbondanza: resta vettoriale
+		const src = await PDFDocument.load(job.art.pdfPage.bytes, { ignoreEncryption: true });
+		const [x0, y0, x1, y1] = job.art.pdfPage.bboxPt, bp = job.art.bleed * PT;
+		const emb = await pdf.embedPage(src.getPage(0), { left: x0 - bp, bottom: y0 - bp, right: x1 + bp, top: y1 + bp });
+		res = { ...setupResources(pdf, emb.ref), vector: true };
+	} else {
+		if (!job.art.png) throw new Error('Manca la grafica da stampare.');
+		const img = await pdf.embedPng(job.art.png);
+		res = setupResources(pdf, img.ref);
+	}
 	const font = await pdf.embedFont(StandardFonts.Helvetica);
 	job.pages.forEach((strip, i) => {
 		const page = pdf.addPage([strip.w * PT, strip.h * PT]);
