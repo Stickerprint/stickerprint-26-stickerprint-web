@@ -19,7 +19,11 @@ export const GET: RequestHandler = async ({ request, url }) => {
 	if (!env.SUPABASE_SERVICE_ROLE_KEY) return json({ skipped: true });
 	const db = createClient(PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
 	const limit = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
-	const { data, error } = await db.from('orders').select('id, number, checkout_group, user_id, email, shipping, product_name, qty, delivered_at, preview_url, proof_url, mockup_url').eq('status', 'consegnato').is('review_asked_at', null).not('email', 'is', null).lte('delivered_at', limit).limit(100);
+	/* DUE PROTEZIONI (dopo l'errore del 19-20/09/2026, quando il cron appena attivato ha scritto a 176 ordini importati dal vecchio sito):
+	   1. mai gli ordini importati dal vecchio sito (legacy_id valorizzato): quei clienti hanno gia' avuto la loro richiesta a suo tempo;
+	   2. mai consegne piu' vecchie di 14 giorni: se il cron resta fermo per un periodo, alla ripresa non recupera l'arretrato. */
+	const oldest = new Date(Date.now() - 14 * 24 * 3600 * 1000).toISOString();
+	const { data, error } = await db.from('orders').select('id, number, checkout_group, user_id, email, shipping, product_name, qty, delivered_at, preview_url, proof_url, mockup_url').eq('status', 'consegnato').is('review_asked_at', null).is('legacy_id', null).not('email', 'is', null).lte('delivered_at', limit).gte('delivered_at', oldest).limit(100);
 	if (error) return json({ error: error.message }, { status: 500 });
 	const groups = new Map<string, typeof data>();
 	for (const o of data ?? []) { const k = o.checkout_group ?? o.id; if (!groups.has(k)) groups.set(k, []); groups.get(k)!.push(o); }
