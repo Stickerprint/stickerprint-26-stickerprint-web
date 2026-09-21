@@ -307,7 +307,15 @@ export async function analyzeReadyPdf(bytes: Uint8Array, forced?: string): Promi
 	interpret(ctx, pageSrc, [1, 0, 0, 1, 0, 0], sources, strokes);
 
 	const { cut, reason } = pickCut(strokes, forced);
-	if (!cut.length) throw new NeedChoice(candidates(strokes));
+	if (!cut.length) {
+		/* striscia gia' impaginata dallo studio: il taglio c'e' ma non e' disegnato sulla pagina
+		   (con i crocini va al plotter, non in stampa), quindi qui non si trova nulla */
+		const xo = look(ctx, node.Resources()?.get(PDFName.of('XObject')));
+		const nomi = xo instanceof PDFDict ? xo.keys().map((k) => k.asString()) : [];
+		if (nomi.some((n) => n.startsWith('/Taglio')) && nomi.some((n) => n.startsWith('/Crocini')))
+			throw new Error('Questo è un file già impaginato dallo studio (striscia con crocini), non il file del cliente. Carica il PDF originale del cliente, quello con un solo soggetto e la sua linea di taglio.');
+		throw new NeedChoice(candidates(strokes));
+	}
 
 	// riquadro e tracciato in mm
 	let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
