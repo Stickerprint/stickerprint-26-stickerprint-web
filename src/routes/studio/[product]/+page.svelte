@@ -332,6 +332,9 @@
 	const maxH = $derived(P.mode === 'fogli' ? mat.maxHSheets : mat.maxHLoose);
 	let stripH = $state(0);
 	let qty = $state<number | ''>('');
+	/* sugli ordini si stampa l'8% in piu' dei pezzi chiesti, per coprire gli scarti di produzione */
+	const SCARTO = 0.08;
+	const qtyDaFare = $derived(typeof qty === 'number' && qty > 0 ? Math.ceil(qty * (1 + SCARTO)) : 0);
 	/* crocini e codice a barre Graphtec, SEMPRE: la pagina e' larga quanto quella di Cutting Master
 	   (bobina meno 12 mm) e i pezzi stanno fuori dai bracci dei crocini e dalle fasce dei codici */
 	const pageW = $derived(pageWidthFor(mat.width));
@@ -353,10 +356,10 @@
 			const rules = SHEET_RULES[P.sheetRules ?? 'etichette'];
 			const probe = layoutSheets(cutW, cutH, rules, { stripW: pageW, stripH: H, margin, marginY, sheetGap: sGap, sheets: 0 });
 			if (!probe.ok || !probe.sheet) return { kind: 'fogli' as const, r: probe, sheets: 0 };
-			const want = typeof qty === 'number' && qty > 0 ? Math.ceil(qty / probe.sheet.grid.n) : 0;
+			const want = qtyDaFare ? Math.ceil(qtyDaFare / probe.sheet.grid.n) : 0;
 			return { kind: 'fogli' as const, r: want ? layoutSheets(cutW, cutH, rules, { stripW: pageW, stripH: H, margin, marginY, sheetGap: sGap, sheets: want }) : probe, sheets: want };
 		}
-		return { kind: 'sciolti' as const, r: layoutLoose(cutW, cutH, { stripW: pageW, stripH: H, margin, marginY, gap, qty: typeof qty === 'number' && qty > 0 ? qty : 0 }) };
+		return { kind: 'sciolti' as const, r: layoutLoose(cutW, cutH, { stripW: pageW, stripH: H, margin, marginY, gap, qty: qtyDaFare }) };
 	});
 	const strips = $derived<Strip[]>(plan?.r.ok ? plan.r.strips : []);
 	const preview = $derived(strips[0] ?? null);
@@ -375,10 +378,10 @@
 			const rules = SHEET_RULES[P.sheetRules ?? 'etichette'];
 			const probe = layoutSheets(art.cutW, art.cutH, rules, { stripW: pageW, stripH: H, margin, marginY, sheetGap: sGap, sheets: 0 });
 			if (!probe.ok || !probe.sheet) throw new Error(probe.error ?? 'Impaginazione non possibile');
-			const want = typeof qty === 'number' && qty > 0 ? Math.ceil(qty / probe.sheet.grid.n) : 0;
+			const want = qtyDaFare ? Math.ceil(qtyDaFare / probe.sheet.grid.n) : 0;
 			pages = (want ? layoutSheets(art.cutW, art.cutH, rules, { stripW: pageW, stripH: H, margin, marginY, sheetGap: sGap, sheets: want }) : probe).strips;
 		} else {
-			const r = layoutLoose(art.cutW, art.cutH, { stripW: pageW, stripH: H, margin, marginY, gap, qty: typeof qty === 'number' && qty > 0 ? qty : 0 });
+			const r = layoutLoose(art.cutW, art.cutH, { stripW: pageW, stripH: H, margin, marginY, gap, qty: qtyDaFare });
 			if (!r.ok) throw new Error(r.error ?? 'Impaginazione non possibile');
 			pages = r.strips;
 		}
@@ -687,7 +690,7 @@
 					</div>
 				</div>
 				<label class="st-field"><span>Altezza striscia (mm, max {maxH})</span><input class="input" type="number" min="50" max={maxH} step="1" bind:value={stripH} /></label>
-				<label class="st-field"><span>{P.mode === 'fogli' ? 'Etichette da stampare' : 'Pezzi da stampare'} <em>(vuoto = una striscia piena)</em></span><input class="input" type="number" min="1" step="1" bind:value={qty} placeholder="riempi la striscia" /></label>
+				<label class="st-field"><span>{P.mode === 'fogli' ? 'Etichette da stampare' : 'Pezzi da stampare'} <em>(vuoto = una striscia piena)</em></span><input class="input" type="number" min="1" step="1" bind:value={qty} placeholder="riempi la striscia" />{#if qtyDaFare}<em class="st-hint">ne preparo {qtyDaFare}: l’8% in piu&#39; per gli scarti</em>{/if}</label>
 				<details class="st-adv">
 					<summary>Margini e spazi</summary>
 					<p class="st-note">Crocini e codice a barre Graphtec sempre presenti: pagina {pageW} mm, pezzi a {margin} mm dai lati e {marginY} mm da sopra e sotto.</p>
