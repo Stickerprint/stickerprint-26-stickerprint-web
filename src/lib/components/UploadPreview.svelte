@@ -8,6 +8,7 @@
 	 */
 	import { goto } from '$app/navigation';
 	import { saveDraft } from '$lib/utils/draftStore';
+	import EnginePreview from '$lib/components/EnginePreview.svelte';
 
 	type Product = 'personalizzati' | 'resinati' | 'fogli';
 
@@ -44,7 +45,6 @@
 	const MAT_RESINATI = ['bianco', 'trasparente', 'oro', 'argento'];
 
 	let file = $state<File | null>(null);
-	let url = $state<string | null>(null);
 	let over = $state(false);
 	let widthMm = $state(80);
 	let heightMm = $state(0);
@@ -53,105 +53,49 @@
 	let forma = $state('sagomato');
 	let materiale = $state('bianco');
 
-	// motore preprint
-	let frame = $state<HTMLIFrameElement | undefined>();
-	let engineReady = $state(false);
+	/* motore preprint: lo stesso componente delle pagine prodotto (EnginePreview).
+	   - warm: il motore si carica appena questa sezione si avvicina allo schermo, PRIMA che il cliente scelga il file;
+	   - live: prodotto, sagoma e materiale cambiano con un messaggio al motore gia' caricato.
+	   Prima ogni clic ricaricava il motore (360 KB) e rianalizzava il file da capo: 3-4 secondi a cambio su telefono,
+	   e cliccando in fretta l'anteprima poteva restare ferma su "Genero l'anteprima". */
 	let engineBusy = $state(false);
-	let engineSrc = $state('');
 	let snapshot = $state<{ png: string | null; w: number; h: number } | null>(null);
 	let saving = $state(false);
+	let warm = $state(false);
+	let root = $state<HTMLDivElement | undefined>();
+	$effect(() => {
+		const el = root;
+		if (!el || warm) return;
+		if (typeof IntersectionObserver === 'undefined') { warm = true; return; }
+		const io = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) { warm = true; io.disconnect(); } }, { rootMargin: '900px 0px' });
+		io.observe(el);
+		return () => io.disconnect();
+	});
 
 	const current = $derived(PRODUCTS.find((p) => p.id === product)!);
 	const materiali = $derived(product === 'resinati' ? MATERIALI.filter((m) => MAT_RESINATI.includes(m.id)) : MATERIALI);
-	const usesEngine = true;
 	const ACCEPT = ['image/png', 'image/jpeg', 'image/svg+xml', 'application/pdf'];
 
 	function pick(f: File | undefined) {
 		error = '';
 		if (!f) return;
-		if (!ACCEPT.includes(f.type)) {
-			error = 'Formati accettati: PNG, JPG, SVG, PDF.';
-			return;
-		}
-		if (f.size > 25 * 1024 * 1024) {
-			error = 'Il file supera i 25 MB.';
-			return;
-		}
-		if (url) URL.revokeObjectURL(url);
+		if (!ACCEPT.includes(f.type)) { error = 'Formati accettati: PNG, JPG, SVG, PDF.'; return; }
+		if (f.size > 25 * 1024 * 1024) { error = 'Il file supera i 25 MB.'; return; }
+		warm = true;
+		snapshot = null;
 		file = f;
-		url = URL.createObjectURL(f);
-		snapshot = null;
-		if (usesEngine) loadEngine();
 	}
-
-	function reset() {
-		if (url) URL.revokeObjectURL(url);
-		file = null;
-		url = null;
-		snapshot = null;
-		engineSrc = '';
-		engineReady = false;
+	function reset() { file = null; snapshot = null; }
+	function onRender(r: { png: string | null; w: number; h: number }) {
+		snapshot = { png: r.png, w: r.w ?? 0, h: r.h ?? 0 };
+		if (r.w) { widthMm = r.w; heightMm = r.h; }
 	}
-
-	/** (Ri)carica il motore con la combinazione scelta; il file viene inviato quando risponde "ready". */
-	function loadEngine() {
-		engineReady = false;
-		engineBusy = true;
-		snapshot = null;
-		sentFor = null;
-		const q = new URLSearchParams({ embed: '1', forma, materiale, prodotto: product === 'resinati' ? 'resinati' : 'sticker' });
-		if (product === 'fogli') q.set('foglio', '1');
-		engineSrc = `/preprint/index.html?${q.toString()}`;
-	}
-
-	let sentFor: File | null = null;
-	let retryTimer: ReturnType<typeof setTimeout> | undefined;
-
-	/** Invia il file al motore (una volta per file caricato; riprova se non arriva l'anteprima). */
-	function sendFile(force = false) {
-		if (!file || !frame?.contentWindow) return;
-		if (sentFor === file && !force) return;
-		sentFor = file;
-		frame.contentWindow.postMessage({ source: 'sito', type: 'file', file }, location.origin);
-		clearTimeout(retryTimer);
-		retryTimer = setTimeout(() => {
-			if (engineBusy && sentFor === file) sendFile(true);
-		}, 5000);
-	}
-
-	function onMessage(e: MessageEvent) {
-		if (e.origin !== location.origin) return;
-		const d = e.data ?? {};
-		if (d.source !== 'preprint') return;
-		if (d.type === 'ready') {
-			engineReady = true;
-			sendFile();
-		}
-		if (d.type === 'render' && d.detail?.png) {
-			engineBusy = false;
-			clearTimeout(retryTimer);
-			snapshot = { png: d.detail.png, w: d.detail.w ?? 0, h: d.detail.h ?? 0 };
-			if (d.detail.w) {
-				widthMm = d.detail.w;
-				heightMm = d.detail.h;
-			}
-		}
-	}
-
-	// cambiando sagoma o materiale il motore viene ricaricato con la nuova combinazione
-	function setForma(id: string) {
-		forma = id;
-		if (file && usesEngine) loadEngine();
-	}
-	function setMateriale(id: string) {
-		materiale = id;
-		if (file && usesEngine) loadEngine();
-	}
+	// sagoma, materiale e prodotto: basta cambiare il valore, il componente lo dice al motore gia' caricato
+	function setForma(id: string) { forma = id; }
+	function setMateriale(id: string) { materiale = id; }
 	function setProduct(id: Product) {
 		product = id;
 		if (id === 'resinati' && !MAT_RESINATI.includes(materiale)) materiale = 'bianco';
-		snapshot = null;
-		if (file) loadEngine();
 	}
 
 	async function continua() {
@@ -160,15 +104,15 @@
 		try {
 			await saveDraft({
 				product: product === 'personalizzati' ? 'adesivi_personalizzati' : product === 'resinati' ? 'adesivi_resinati' : 'etichette',
-				forma: usesEngine ? forma : 'sagomato',
-				materiale: usesEngine ? materiale : 'bianco',
+				forma,
+				materiale,
 				file,
 				preview: snapshot?.png ?? null,
 				widthMm,
 				heightMm,
 				savedAt: Date.now()
 			});
-			const q = usesEngine ? `?forma=${forma}&materiale=${materiale}` : '';
+			const q = `?forma=${forma}&materiale=${materiale}`;
 			await goto(`${current.href}${q}#configura`);
 		} finally {
 			saving = false;
@@ -176,9 +120,7 @@
 	}
 </script>
 
-<svelte:window onmessage={onMessage} />
-
-<div class="up">
+<div class="up" bind:this={root}>
 	<!-- sinistra: le scelte, in ordine -->
 	<div class="up__choices">
 		<div class="up__step">
@@ -232,13 +174,14 @@
 					{#if error}<p class="error" style="margin-top:14px">{error}</p>{/if}
 				</div>
 			</label>
-		{:else}
-			<div class="stage up__stage">
-				<iframe bind:this={frame} class="engine engine--live" class:is-ready={!!snapshot} src={engineSrc} title={product === 'fogli' ? 'Anteprima del tuo foglio di etichette' : 'Anteprima del tuo adesivo'} tabindex="-1" onload={() => sendFile()}></iframe>
-				{#if engineBusy}<div class="stage__busy"><span class="spinner spinner--dark"></span> Genero l’anteprima…</div>{/if}
+		{/if}
+		{#if warm}
+			<!-- il motore e' gia' qui (invisibile) mentre il cliente sceglie il file: quando il file arriva parte subito -->
+			<div class="stage up__stage" class:is-warm={!file} aria-hidden={!file}>
+				<EnginePreview {file} {forma} {materiale} prodotto={product === 'resinati' ? 'resinati' : 'sticker'} foglio={product === 'fogli'} live warm bind:busy={engineBusy} onrender={onRender} />
 			</div>
 		{/if}
-		<button class="btn btn--blue btn--xl up__cta" type="button" disabled={!file || saving || (usesEngine && engineBusy)} onclick={continua}>
+		<button class="btn btn--blue btn--xl up__cta" type="button" disabled={!file || saving || engineBusy || !snapshot} onclick={continua}>
 			{saving ? 'Un attimo…' : file ? 'Continua la configurazione →' : 'Carica il file per continuare'}
 		</button>
 		<p class="up__note">Anteprima gratuita e senza impegno. Prima della stampa un umano controlla il file.</p>

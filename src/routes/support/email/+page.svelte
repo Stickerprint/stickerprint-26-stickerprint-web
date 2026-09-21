@@ -1,11 +1,12 @@
 <script lang="ts">
+	import Seo from '$lib/components/Seo.svelte';
 	import '$lib/styles/pages.css';
 	import { enhance } from '$app/forms';
 	let { form } = $props();
 	let sending = $state(false);
 </script>
 
-<svelte:head><title>Scrivi al servizio clienti | Stickerprint</title></svelte:head>
+<Seo title="Scrivi al servizio clienti | Stickerprint" description="Hai una domanda su un ordine, un file o una spedizione? Scrivi al servizio clienti Stickerprint: ti rispondiamo per email in giornata, dal lunedì al venerdì." />
 
 <section class="section container" style="max-width:720px">
 	<h1 style="font-size:clamp(30px,4vw,46px)">Scrivi al servizio clienti</h1>

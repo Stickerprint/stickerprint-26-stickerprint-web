@@ -1297,6 +1297,10 @@ async function loadFile(f){
   const isPdf=f.type==='application/pdf'||/\.pdf$/i.test(f.name);
   if(!isPdf&&!/^image\//.test(f.type)&&!/\.(svg|png|jpe?g|webp)$/i.test(f.name)){
     toast('Formato non supportato. PDF, JPG, PNG, SVG.',1);return;}
+  /* [sito] mentre il file si apre e si analizza NON si mandano istantanee al sito: quella che partiva a meta' lavoro
+     (tela ancora vuota) faceva credere al sito che l'anteprima fosse pronta, e le scelte cliccate nel frattempo
+     venivano spedite e messe in fila una dopo l'altra. L'istantanea giusta parte alla fine (ponte: loadFile().then). */
+  window.__loading=true;
   busy(true,isPdf?'Rasterizzo il PDF…':'Apro il file…');await nextFrame();
   try{
     const r=isPdf?await rasterPDF(f):await rasterImage(f);
@@ -1307,7 +1311,8 @@ async function loadFile(f){
     $('fileinfo').innerHTML='<b style="color:#e6edf3">'+f.name+'</b> · '+S.srcW+'×'+S.srcH+' px'+
       (r.mm?' · <span style="color:#3ddc97">PDF '+r.mm.w.toFixed(1)+'×'+r.mm.h.toFixed(1)+' mm</span>':'');
     busy(false);await rebuild(true);
-  }catch(e){busy(false);console.error(e);toast(e.message,1);}}
+  }catch(e){busy(false);console.error(e);toast(e.message,1);}
+  finally{window.__loading=false;}}
 
 /* ==========================================================================
    PIPELINE
@@ -5723,6 +5728,10 @@ function ppGeoUI(){
                piccolo/medio/grande faceva un salto */
             try{applyBorderLevel();}catch(e){}}}
         if((geom||mat)&&S.src&&S.bbox){
+          /* [sito] il cambio di prodotto (setProd) e di materiale mettono gia' in coda un loro ricalcolo (redo):
+             sommato a quello qui sotto, taglio e disegno si facevano DUE volte di fila (su telefono oltre un secondo
+             buttato a ogni cambio). Il ricalcolo in coda si annulla: quello che segue fa gia' tutto, istantanea compresa. */
+          try{deb(()=>{},0);}catch(e){}
           busy(true,'Aggiorno…');
           setTimeout(()=>{
             const t0=performance.now(); let t1=t0,t2=t0;
@@ -5748,7 +5757,7 @@ function ppGeoUI(){
   /* ogni volta che il motore finisce un lavoro (busy(false)) manda l'istantanea */
   try{
     const _busy=busy;
-    busy=function(on){const r=_busy.apply(this,arguments); if(on===false&&S.src){window.__busyOff=performance.now();setTimeout(snapshot,30);} return r;};
+    busy=function(on){const r=_busy.apply(this,arguments); if(on===false&&S.src&&!window.__loading){window.__busyOff=performance.now();setTimeout(snapshot,30);} return r;};
   }catch(e){}
   window.__snap=snapshot;
   send('ready');
