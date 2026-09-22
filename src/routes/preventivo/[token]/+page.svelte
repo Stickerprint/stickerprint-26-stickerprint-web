@@ -76,8 +76,8 @@
 				<ul class="qp__perks">
 					<li>🇮🇹 Stampato in Italia, nel nostro laboratorio</li>
 					<li>🖨️ Materiali premium e taglio di precisione</li>
-					<li>📦 Spedizione gratuita da 50 €</li>
 				</ul>
+				{#if data.shipDate}<p class="qp__ship"><span class="qp__rocket" aria-hidden="true">🚀</span><span>Spedizione stimata<b>{it(data.shipDate)}</b></span></p>{/if}
 				{#if data.stats}<div class="qp__stars"><Stars value={data.stats.average ?? 4.9} count={data.stats.total ?? null} size={18} countLabel="recensioni verificate" /></div>{/if}
 			</aside>
 		</div>
