@@ -561,7 +561,10 @@ body { overflow-x: clip; }
 
 /* Auth pages */
 .auth { min-height: calc(100vh - var(--header-h)); display: grid; grid-template-columns: 1fr 1fr; }
-.auth__side { background: var(--navy); color: #fff; padding: clamp(28px, 5vw, 72px); display: flex; flex-direction: column; justify-content: center; gap: 18px; }
+.auth__side { background: var(--navy); color: #fff; padding: clamp(28px, 5vw, 72px); padding-bottom: 24%; display: flex; flex-direction: column; justify-content: center; gap: 18px; position: relative; overflow: hidden; }
+.auth__side > .tag { align-self: flex-start; }
+/* pila di adesivi appoggiata sul fondo della parte blu: fa da separatore col footer */
+.auth__side::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; aspect-ratio: 2000 / 315; background: url('/images/auth-pila-adesivi.webp') center bottom / 100% auto no-repeat; pointer-events: none; }
 .auth__side h1 { font-size: clamp(36px, 4vw, 56px); }
 .auth__form { padding: clamp(28px, 5vw, 72px); display: grid; align-content: center; gap: 18px; max-width: 520px; width: 100%; margin: 0 auto; }
 .auth__form h2 { font-size: 30px; }
