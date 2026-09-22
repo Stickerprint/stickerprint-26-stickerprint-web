@@ -9,20 +9,6 @@
 	import LiteYouTube from '$lib/components/LiteYouTube.svelte';
 	const REELS: string[] = [];
 	const ytId = (u: string) => u.match(/(?:v=|youtu\.be\/|shorts\/|embed\/)([\w-]{6,})/)?.[1] ?? u;
-	const ITEMS: { img: string; title: string; lines: string[] }[] = [
-		{ img: 'camp1', title: '2x Adesivo Bianco', lines: ['Con protezione lucida e opaca'] },
-		{ img: 'camp2', title: '2x Adesivo Trasparente', lines: ['Con protezione lucida e opaca', 'Con base di bianco e senza base di bianco'] },
-		{ img: 'camp3', title: '2x Adesivo Glitterato', lines: ['Con protezione lucida', 'Con base di bianco e senza base di bianco'] },
-		{ img: 'camp4', title: '2x Adesivo Argento Cromo', lines: ['Con protezione lucida e opaca', 'Con base di bianco e senza base di bianco'] },
-		{ img: 'camp5', title: '2x Adesivo Oro Cromo', lines: ['Con protezione lucida e opaca', 'Con base di bianco e senza base di bianco'] },
-		{ img: 'camp6', title: '2x Adesivo Olografico', lines: ['Con protezione lucida', 'Con base di bianco e senza base di bianco'] },
-		{ img: 'camp7', title: '1x Adesivo Resinato Bianco', lines: [] },
-		{ img: 'camp8', title: '1x Adesivo Resinato Oro Cromo', lines: ['Con base di bianco e senza base di bianco'] },
-		{ img: 'camp9', title: '1x Adesivo Resinato Argento Cromo', lines: ['Con base di bianco e senza base di bianco'] },
-		{ img: 'camp10', title: '1x Adesivo Resinato Bianco Super Adesivo', lines: [] },
-		{ img: 'camp11', title: '1x Adesivo Resinato Trasparente', lines: ['Con base di bianco e senza base di bianco'] },
-		{ img: 'camp12', title: '2x Adesivo Bianco in Rilievo', lines: ['Con finitura lucida e opaca'] }
-	];
 	function add() {
 		addToCart({ product: 'campioni', productName: 'Kit campioni', forma: 'kit', materiale: 'misto', w: 0, h: 0, qty: 1, net: Math.round((10 / 1.22) * 100) / 100, gross: 10, fileName: null, filePath: 'campioni', note: '' });
 		added = true;
@@ -56,19 +42,6 @@
 	</div>
 </section>
 
-<section class="section container">
-	<h2 class="center"><span class="hl hl--yellow">Cosa c’è dentro</span></h2>
-	<p class="lead center" style="margin-top:14px;max-width:760px;margin-inline:auto">In questo pacchetto di adesivi troverai una selezione dei nostri prodotti: adesivi fustellati, adesivi in rilievo e adesivi resinati realizzati con materiali e finiture diverse, perfetti per toccare con mano la nostra qualità e scegliere lo stile più adatto ai tuoi progetti.</p>
-	<div class="kit-grid">
-		{#each ITEMS as it (it.img)}
-			<div class="kit-item">
-				<img src="/images/campioni/{it.img}.webp" alt={it.title} loading="lazy" />
-				<b>{it.title}</b>
-				{#each it.lines as l (l)}<small>{l}</small>{/each}
-			</div>
-		{/each}
-	</div>
-</section>
 
 {#if added}
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -91,10 +64,4 @@
 	.kit-buy__price { font-family: var(--font-display); font-weight: 800; font-size: 60px; letter-spacing: -0.03em; color: var(--ink); line-height: 1; }
 	.reels--kit { grid-template-columns: minmax(0, 300px); justify-content: end; margin-top: 0; }
 	@media (max-width: 900px) { .reels--kit { justify-content: center; } }
-	.kit-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 30px; }
-	.kit-item { display: grid; justify-items: center; text-align: center; gap: 4px; padding: 14px; background: #fff; border: 1px solid var(--line); border-radius: 18px; }
-	.kit-item img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 12px; margin-bottom: 6px; }
-	.kit-item b { font-size: 14px; }
-	.kit-item small { font-size: 12px; color: var(--muted); }
-	@media (max-width: 900px) { .kit-grid { grid-template-columns: repeat(2, 1fr); } }
 </style>
