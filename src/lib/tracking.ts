@@ -16,6 +16,7 @@ const HOSTS = new Set(['stickerprint.it', 'www.stickerprint.it']);
 
 /** vero solo in produzione con l'interruttore acceso */
 export function trackingOn(hostname?: string): boolean {
+	if (env.PUBLIC_TRACKING === 'dev') return true; // solo per provare in locale banner cookie e tag
 	if (env.PUBLIC_TRACKING !== 'on') return false;
 	const h = hostname ?? (browser ? location.hostname : '');
 	return HOSTS.has(h);
