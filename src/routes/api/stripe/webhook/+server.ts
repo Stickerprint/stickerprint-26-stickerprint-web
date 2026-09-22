@@ -24,7 +24,9 @@ export const POST: RequestHandler = async ({ request }) => {
 	if (s.payment_status !== 'paid') return json({ ignored: 'non pagato' });
 	const md = (s.metadata ?? {}) as Record<string, string>;
 	const db = adminClient();
-	if (!db || !md.seq || (!md.group && !md.invoice)) return json({ error: 'dati mancanti' }, { status: 400 });
+	if (!db) return json({ error: 'database non configurato' }, { status: 500 });
+	// sessioni create da altri sistemi sullo stesso account Stripe (es. il vecchio sito): non sono nostre, 200 e via
+	if (!md.seq || (!md.group && !md.invoice)) return json({ ignored: 'non del nuovo sito' });
 	const ref = typeof s.payment_intent === 'string' ? s.payment_intent : String(s.id);
 	if (md.checkout === '1' && md.group) { await finalizeCheckout(db, md.group, { provider: 'stripe', ref }); return json({ ok: true }); }
 	const e = md.invoice ? await setInvoicePaymentStatus(db, md.invoice, Number(md.seq), 'pagato', null, ref, 'stripe') : await setPaymentStatus(db, md.group, Number(md.seq), 'pagato', null, ref, 'stripe');
