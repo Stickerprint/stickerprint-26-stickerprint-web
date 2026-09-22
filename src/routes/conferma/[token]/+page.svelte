@@ -104,6 +104,8 @@
 					<li>🖨️ Materiali premium e taglio di precisione</li>
 					<li>📦 Spedizione gratuita da 50 €</li>
 				</ul>
+				<!-- la data pattuita all'ordine (quella scritta in conferma, o la data di spedizione fissata dalla produzione) -->
+				{#if o.delivery_date || o.ship_by}<p class="qp__ship"><span class="qp__rocket" aria-hidden="true">🚀</span><span>Spedizione stimata<b>{it(o.delivery_date ?? o.ship_by)}</b></span></p>{/if}
 				{#if data.stats}<div class="qp__stars"><Stars value={data.stats.average ?? 4.9} count={data.stats.total ?? null} size={18} countLabel="recensioni verificate" /></div>{/if}
 			</aside>
 		</div>
@@ -115,9 +117,9 @@
 
 		<div class="qp__cta" style="border-color:var(--line)">
 			<div class="qp__more">
-				<a class="btn btn--ghost" href="/conferma/{token()}/pdf">📄 Scarica il PDF</a>
-				<button class="btn btn--ghost" type="button" onclick={() => { asking = !asking; reporting = false; }}>💬 Ho una domanda</button>
-				<button class="btn btn--ghost" type="button" onclick={() => { reporting = !reporting; asking = false; }}>⚠ Segnala un errore</button>
+				<a class="btn btn--blue" href="/conferma/{token()}/pdf">📄 Scarica il PDF</a>
+				<button class="btn btn--yellow" type="button" onclick={() => { asking = !asking; reporting = false; }}>💬 Ho una domanda</button>
+				<button class="btn btn--pink" type="button" onclick={() => { reporting = !reporting; asking = false; }}>⚠ Segnala un errore</button>
 			</div>
 			{#if asking}
 				<form method="POST" action="?/domanda" use:enhance={submit} class="qp__ask">

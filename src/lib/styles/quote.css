@@ -32,6 +32,11 @@
 .qp__avatar { width: 48px; height: 48px; border-radius: 50%; background: var(--yellow); color: var(--navy); display: grid; place-items: center; font-family: var(--font-display); font-weight: 800; font-size: 17px; }
 .qp__perks { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; font-size: 14px; font-weight: 600; }
 .qp__stars { padding-top: 4px; }
+/* data di spedizione pattuita: razzo e data, come in home */
+.qp__ship { display: flex; align-items: center; gap: 12px; margin: 12px 0 0; background: var(--sky); border-radius: 14px; padding: 10px 16px 10px 12px; font-size: 14px; font-weight: 700; }
+.qp__ship .qp__rocket { font-size: 28px; line-height: 1; }
+.qp__ship span:last-child { display: grid; line-height: 1.2; }
+.qp__ship b { color: var(--blue-text); font-family: var(--font-display); font-weight: 800; font-size: 17px; }
 .qp__cta { display: grid; gap: 12px; background: #fff; border: 2px solid var(--green); border-radius: 20px; padding: 22px 24px; }
 .qp__accept { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 .qp__accept input { flex: 1; min-width: 240px; padding: 14px 16px; border: 1.5px solid var(--line); border-radius: 14px; font: inherit; font-size: 15px; }
