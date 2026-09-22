@@ -233,12 +233,18 @@ body { overflow-x: clip; }
 .hero__perks ul { padding: 0; margin: 0; }
 .hero__visual { position: relative; aspect-ratio: 1 / 1; border-radius: 28px; background: var(--peach); overflow: hidden; }
 .hero__visual img { width: 100%; height: 100%; object-fit: cover; }
+/* variante "pila di adesivi": niente riquadro, la pila appoggia sul fondo blu e sporge un po' */
+.hero__visual--pile { aspect-ratio: auto; border-radius: 0; background: none; overflow: visible; display: flex; align-items: center; }
+.hero__visual--pile img { height: auto; object-fit: contain; filter: drop-shadow(0 30px 40px rgba(0,0,0,.45)); transform: scale(1.32) translateY(4%); transform-origin: center; -webkit-mask-image: linear-gradient(to bottom, #000 82%, transparent 100%); mask-image: linear-gradient(to bottom, #000 82%, transparent 100%); }
+.hero__visual--pile .hero__sticker { display: none; }
+.hero-band .hero__visual--pile { box-shadow: none; }
+@media (max-width: 700px) { .hero__visual--pile { max-width: none; margin: 8px -16px 0; } .hero__visual--pile img { transform: scale(1.02); -webkit-mask-image: linear-gradient(to bottom, #000 88%, transparent 100%); mask-image: linear-gradient(to bottom, #000 88%, transparent 100%); } }
 .hero__sticker {
   position: absolute; background: #fff; border-radius: 16px; padding: 10px 14px; font-weight: 800; font-size: 13px;
   box-shadow: 0 12px 30px rgba(11,11,59,.15); display: flex; gap: 8px; align-items: center;
 }
 /* Home: hero su fondo blu scuro, stesso colore dell'header (continua senza stacco) */
-.hero-band { background: var(--navy); color: #fff; }
+.hero-band { background: var(--navy); color: #fff; overflow: hidden; }
 .hero-band .hero { padding-top: clamp(40px, 4vw, 56px); padding-bottom: clamp(36px, 4vw, 60px); }
 .hero-band h1 { color: #fff; }
 .hero-band .lead { color: rgba(255,255,255,.86); }
