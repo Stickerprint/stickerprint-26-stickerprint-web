@@ -1,271 +1,425 @@
 /**
- * Produzione a lavorazioni: pianificazione delle commesse e azioni dei reparti (solo server).
- * Le regole (percorsi, tempi, calendario, colori) stanno in $lib/dashboard/produzione.ts.
+ * Produzione v2 (solo server): commesse, fasi, macchinari, calendario e cronologia.
+ * Le regole stanno nei moduli puri di $lib/production (routing, calendar, scheduler): qui si legge e si scrive il database.
+ *
+ * Fonte di verita' degli ordini: la tabella `orders` (stato, prod_stage). La commessa (`production_jobs`) e' UNA per
+ * ordine (checkout_group): la creazione e' idempotente (vincolo univoco), quindi webhook o conferme ripetute non
+ * creano doppioni. La data promessa e' uno snapshot: la produzione non la modifica.
  */
 import { fail } from '@sveltejs/kit';
 import type { SupabaseClient, User } from '@supabase/supabase-js';
 import type { OrderRow } from '$lib/dashboard/orders';
-import { addWork, APPROVAL_STATUSES, approveBy, defaultShipBy, dueDates, isoDay, lastDue, metricsOf, PICKUP_MIN, MARGIN_MIN, PLANNABLE_STATUSES, rome, routeFor, shipCutoff, STAGES, totalWork, type ProdEvent, type Task, type TaskWithOrder } from '$lib/dashboard/produzione';
-import { sendEmail } from '$lib/server/email';
-import { proofReminderEmail } from '$lib/server/email-templates';
+import { groupOrders } from '$lib/dashboard/orders';
+import { defaultPromise, todayIso } from '$lib/production/calendar';
+import { areaOf, machineMinutes, routeOrder, routingInputFrom } from '$lib/production/routing';
+import { forecastForward, planBackward, sortQueue, type Busy, type PlanPhase } from '$lib/production/scheduler';
+import { DEFAULT_CALENDAR, MACHINE_TYPES, type Calendar, type Job, type JobStatus, type Machine, type MachineProfile, type Phase } from '$lib/production/types';
 
 type DB = SupabaseClient;
+export interface Setup { machines: Machine[]; profiles: MachineProfile[]; calendar: Calendar }
+export interface JobFull { job: Job; group: ReturnType<typeof groupOrders>[number]; phases: Phase[] }
 
-/** nome dell'operatore che sta usando la dashboard */
+/* ---------- utenti e cronologia ---------- */
 export async function operatorName(db: DB, user: User | null): Promise<string | null> {
 	if (!user) return null;
 	const { data } = await db.from('profiles').select('full_name').eq('id', user.id).maybeSingle();
 	return (data?.full_name as string | null) || user.email || null;
 }
-export async function logEvent(db: DB, e: { order_id: string; task_id?: string | null; kind: string; detail?: string | null; operator?: string | null }) {
-	await db.from('production_events').insert({ order_id: e.order_id, task_id: e.task_id ?? null, kind: e.kind, detail: e.detail ?? null, operator: e.operator ?? null });
+export async function isAdmin(db: DB, user: User | null): Promise<boolean> {
+	if (!user) return false;
+	const { data } = await db.from('profiles').select('role').eq('id', user.id).maybeSingle();
+	return data?.role === 'admin';
+}
+export interface EventIn { order_id: string; job_id?: string | null; task_id?: string | null; machine_id?: string | null; kind: string; detail?: string | null; operator?: string | null; from_status?: string | null; to_status?: string | null; est_minutes?: number | null; actual_minutes?: number | null; packaging_eta?: string | null; slack_minutes?: number | null }
+export async function logEvent(db: DB, e: EventIn) {
+	await db.from('production_events').insert({ order_id: e.order_id, job_id: e.job_id ?? null, task_id: e.task_id ?? null, machine_id: e.machine_id ?? null, kind: e.kind, detail: e.detail ?? null, operator: e.operator ?? null, from_status: e.from_status ?? null, to_status: e.to_status ?? null, est_minutes: e.est_minutes ?? null, actual_minutes: e.actual_minutes ?? null, packaging_eta: e.packaging_eta ?? null, slack_minutes: e.slack_minutes ?? null });
+}
+export async function loadEvents(db: DB, jobId: string, limit = 100) {
+	const { data } = await db.from('production_events').select('*').eq('job_id', jobId).order('created_at', { ascending: false }).limit(limit);
+	return data ?? [];
 }
 
-/** Lavorazioni con la loro commessa, per gli ordini negli stati indicati */
-export async function loadTasks(db: DB, statuses: string[] = PLANNABLE_STATUSES): Promise<TaskWithOrder[]> {
-	const { data } = await db.from('production_tasks').select('*, order:orders!inner(*)').in('order.status', statuses).order('seq');
-	return ((data ?? []) as unknown as TaskWithOrder[]).filter((t) => t.order);
+/* ---------- setup ---------- */
+export async function loadSetup(db: DB): Promise<Setup> {
+	const [{ data: m }, { data: p }, { data: c }] = await Promise.all([
+		db.from('production_machines').select('*').order('sort').order('name'),
+		db.from('production_machine_profiles').select('*'),
+		db.from('production_calendar').select('*').eq('id', 1).maybeSingle()
+	]);
+	const calendar: Calendar = c ? { ...DEFAULT_CALENDAR, ...c, open_time: String(c.open_time).slice(0, 5), close_time: String(c.close_time).slice(0, 5), ship_cutoff: String(c.ship_cutoff).slice(0, 5), break_start: c.break_start ? String(c.break_start).slice(0, 5) : null, break_end: c.break_end ? String(c.break_end).slice(0, 5) : null, holidays: (c.holidays ?? []) as string[], closures: (c.closures ?? []) as Calendar['closures'], working_days: (c.working_days ?? [1, 2, 3, 4, 5]) as number[] } : DEFAULT_CALENDAR;
+	return { machines: ((m ?? []) as Machine[]).map(numMachine), profiles: ((p ?? []) as MachineProfile[]).map(numProfile), calendar };
+}
+const num = (v: unknown) => (v == null || v === '' ? null : Number(v));
+const numMachine = (m: Machine): Machine => ({ ...m, setup_minutes: num(m.setup_minutes), sqm_per_hour: num(m.sqm_per_hour), minutes_per_sqm: num(m.minutes_per_sqm), pieces_per_hour: num(m.pieces_per_hour), minutes_per_piece: num(m.minutes_per_piece), cleanup_minutes: num(m.cleanup_minutes), passive_minutes: num(m.passive_minutes), waste_coefficient: num(m.waste_coefficient), usable_width_mm: num(m.usable_width_mm), capabilities: m.capabilities ?? [] });
+const numProfile = (p: MachineProfile): MachineProfile => ({ ...p, sqm_per_hour: num(p.sqm_per_hour), minutes_per_sqm: num(p.minutes_per_sqm), minutes_per_piece: num(p.minutes_per_piece), setup_minutes: num(p.setup_minutes), coefficient: num(p.coefficient) });
+
+/** i campi del macchinario dal form di Setup → Macchinari */
+export function machineFromForm(f: FormData): Partial<Machine> & { code: string; name: string; machine_type: string } {
+	const s = (k: string) => String(f.get(k) ?? '').trim();
+	const n = (k: string) => (s(k) === '' ? null : Number(s(k).replace(',', '.')));
+	const type = s('machine_type') || 'stampante_ecosolvente';
+	const caps = f.getAll('capabilities').map(String).filter(Boolean) as Machine['capabilities'];
+	return {
+		code: s('code').toUpperCase(), name: s('name'), brand: s('brand') || null, model: s('model') || null, machine_type: type,
+		department: (s('department') || MACHINE_TYPES[type]?.department || 'stampa') as Machine['department'],
+		usable_width_mm: n('usable_width_mm'), is_active: f.get('is_active') === 'on' || f.get('is_active') === 'true',
+		setup_minutes: n('setup_minutes'), sqm_per_hour: n('sqm_per_hour'), minutes_per_sqm: n('minutes_per_sqm'), pieces_per_hour: n('pieces_per_hour'), minutes_per_piece: n('minutes_per_piece'),
+		cleanup_minutes: n('cleanup_minutes'), passive_minutes: n('passive_minutes'), waste_coefficient: n('waste_coefficient'),
+		capabilities: caps.length ? caps : (MACHINE_TYPES[type]?.capabilities ?? []), notes: s('notes') || null, sort: n('sort') ?? 0
+	};
+}
+export async function saveMachine(db: DB, id: string | null, m: ReturnType<typeof machineFromForm>): Promise<{ id: string | null; error?: string }> {
+	if (!m.code || !m.name) return { id: null, error: 'Codice e nome sono obbligatori.' };
+	const patch = { ...m, updated_at: new Date().toISOString() };
+	if (id) { const { error } = await db.from('production_machines').update(patch).eq('id', id); return { id, error: error?.message }; }
+	const { data, error } = await db.from('production_machines').insert(patch).select('id').single();
+	return { id: data?.id ?? null, error: error?.code === '23505' ? 'Esiste già un macchinario con questo codice.' : error?.message };
+}
+/** copia con codice e nome nuovi (i profili di velocita' vengono copiati) */
+export async function duplicateMachine(db: DB, id: string): Promise<{ id: string | null; error?: string }> {
+	const { data: m } = await db.from('production_machines').select('*').eq('id', id).maybeSingle();
+	if (!m) return { id: null, error: 'Macchinario non trovato.' };
+	const { id: _id, created_at: _c, updated_at: _u, archived_at: _a, ...rest } = m;
+	let code = `${m.code}-COPIA`, name = `${m.name} (copia)`;
+	for (let k = 2; k < 20; k++) { const { data: ex } = await db.from('production_machines').select('id').eq('code', code).maybeSingle(); if (!ex) break; code = `${m.code}-COPIA${k}`; name = `${m.name} (copia ${k})`; }
+	const { data, error } = await db.from('production_machines').insert({ ...rest, code, name, is_active: false, sort: (m.sort ?? 0) + 1 }).select('id').single();
+	if (error || !data) return { id: null, error: error?.message };
+	const { data: prof } = await db.from('production_machine_profiles').select('*').eq('machine_id', id);
+	for (const p of prof ?? []) { const { id: _p, created_at: _pc, ...pr } = p; await db.from('production_machine_profiles').insert({ ...pr, machine_id: data.id }); }
+	return { id: data.id };
+}
+/** mai usato in una commessa → eliminato; altrimenti archiviato (le commesse vecchie continuano a mostrarlo) */
+export async function removeMachine(db: DB, id: string): Promise<{ archived: boolean; error?: string }> {
+	const { count } = await db.from('production_tasks').select('id', { count: 'exact', head: true }).eq('machine_id', id);
+	if (!count) { const { error } = await db.from('production_machines').delete().eq('id', id); return { archived: false, error: error?.message }; }
+	const { error } = await db.from('production_machines').update({ archived_at: new Date().toISOString(), is_active: false, updated_at: new Date().toISOString() }).eq('id', id);
+	return { archived: true, error: error?.message };
+}
+export async function setMachineActive(db: DB, id: string, on: boolean) {
+	const { error } = await db.from('production_machines').update({ is_active: on, archived_at: on ? null : undefined, updated_at: new Date().toISOString() }).eq('id', id);
+	return error?.message ?? null;
+}
+export async function saveProfile(db: DB, machineId: string, id: string | null, f: FormData) {
+	const s = (k: string) => String(f.get(k) ?? '').trim();
+	const n = (k: string) => (s(k) === '' ? null : Number(s(k).replace(',', '.')));
+	const row = { machine_id: machineId, name: s('name') || 'Profilo', product_slug: s('product_slug') || null, quality: s('quality') || null, material: s('material') || null, capability: s('capability') || null, sqm_per_hour: n('sqm_per_hour'), minutes_per_sqm: n('minutes_per_sqm'), minutes_per_piece: n('minutes_per_piece'), setup_minutes: n('setup_minutes'), coefficient: n('coefficient'), is_active: f.get('is_active') !== 'off' };
+	const { error } = id ? await db.from('production_machine_profiles').update(row).eq('id', id) : await db.from('production_machine_profiles').insert(row);
+	return error?.message ?? null;
+}
+export async function saveCalendar(db: DB, f: FormData) {
+	const s = (k: string) => String(f.get(k) ?? '').trim();
+	const days = f.getAll('working_days').map(Number).filter((d) => d >= 1 && d <= 7);
+	const holidays = s('holidays').split(/[\n,;]+/).map((x) => x.trim()).filter((x) => /^\d{4}-\d{2}-\d{2}$/.test(x));
+	let closures: Calendar['closures'] = [];
+	try { closures = JSON.parse(s('closures') || '[]'); } catch { return 'Chiusure non leggibili.'; }
+	closures = closures.filter((c) => /^\d{4}-\d{2}-\d{2}$/.test(c.from) && /^\d{4}-\d{2}-\d{2}$/.test(c.to));
+	const row = { timezone: s('timezone') || 'Europe/Rome', working_days: days.length ? days : [1, 2, 3, 4, 5], open_time: s('open_time') || '08:30', close_time: s('close_time') || '17:30', break_start: s('break_start') || null, break_end: s('break_end') || null, ship_cutoff: s('ship_cutoff') || '17:00', ship_margin_minutes: Number(s('ship_margin_minutes')) || 60, orange_threshold_minutes: Number(s('orange_threshold_minutes')) || 240, holidays, closures, updated_at: new Date().toISOString() };
+	const { error } = await db.from('production_calendar').upsert({ id: 1, ...row });
+	return error?.message ?? null;
 }
 
-/** carico aperto delle due Roland: la stampa nuova va sulla meno carica (il carico si aggiorna mentre si pianifica un lotto) */
-async function rolandLoad(db: DB): Promise<Record<string, number>> {
-	const { data } = await db.from('production_tasks').select('machine, minutes').eq('stage', 'stampa').in('status', ['da_fare', 'pronto', 'in_corso', 'bloccato']);
-	const load: Record<string, number> = { 'Roland SG3-300 #1': 0, 'Roland SG3-300 #2': 0 };
-	for (const t of data ?? []) if (t.machine && t.machine in load) load[t.machine] += t.minutes;
-	return load;
-}
-const pickRoland = (load: Record<string, number>) => (load['Roland SG3-300 #1'] <= load['Roland SG3-300 #2'] ? 'Roland SG3-300 #1' : 'Roland SG3-300 #2');
+/* ---------- commesse ---------- */
+const OPEN_JOB: JobStatus[] = ['READY_TO_START', 'IN_PROGRESS', 'WAITING_PASSIVE_TIME', 'READY_FOR_PACKAGING', 'PACKAGING'];
+const isOpen = (p: Phase) => p.status !== 'completato' && p.status !== 'saltata';
 
-/** Costruisce le lavorazioni di una commessa (senza salvarle) */
-export function buildPlan(o: OrderRow, shipBy: string, roland: string) {
-	const m = metricsOf(o);
-	const steps = routeFor(o).map((s) => ({ stage: s.stage, label: s.label, machine: s.machine === 'Roland SG3-300' ? roland : s.machine, minutes: s.wait ? 0 : s.work(m), wait_minutes: s.wait ?? 0 }));
-	const dues = dueDates(steps, shipBy);
-	return steps.map((s, i) => ({ ...s, order_id: o.id, seq: i + 1, due_at: dues[i].toISOString(), status: 'da_fare' as const }));
-}
-
-/** Se partendo adesso non si arriva al ritiro del corriere, la data promessa slitta al primo giorno utile */
-function shiftedShipBy(tasks: { minutes: number; wait_minutes: number; status?: string; started_at?: string | null }[], shipBy: string, now: Date): string | null {
-	let cur = new Date(now);
-	for (const t of tasks) { if (t.status === 'completato') continue; cur = t.wait_minutes ? new Date(cur.getTime() + t.wait_minutes * 60000) : addWork(cur, t.minutes); }
-	if (cur <= lastDue(shipBy)) return null;
-	// giorno in cui si finisce; se si finisce dopo l'ora utile per il ritiro, il giorno lavorativo dopo
-	const withMargin = new Date(cur.getTime() + MARGIN_MIN * 60000);
-	const p = rome(withMargin);
-	let day = isoDay(withMargin);
-	if (p.h * 60 + p.min > PICKUP_MIN || p.wd === 0 || p.wd === 6) day = isoDay(addWork(withMargin, 1));
-	return day;
+/** l'ordine e' davvero da produrre: pagato (o manuale senza anticipo in sospeso), in produzione, non annullato */
+function producible(o: OrderRow): boolean {
+	if (o.status !== 'in_produzione') return false;
+	if (['failed', 'refunded', 'cancelled'].includes(String(o.payment_status ?? ''))) return false;
+	if (o.channel !== 'manuale' && o.payment_status !== 'paid' && o.payment_status !== 'test') return false;
+	return true;
 }
 
 /**
- * Crea le lavorazioni mancanti per le commesse aperte e attiva la prima lavorazione
- * delle commesse appena entrate in produzione (con la data che slitta se l'approvazione e' arrivata tardi).
- * Si chiama all'apertura delle pagine di produzione, alla conferma del checkout e al cambio di stato in dashboard.
+ * ensurePlan: per ogni ordine da produrre crea la commessa (una sola, idempotente) e le sue fasi, poi ripianifica.
+ * Chiamata dal checkout (pagamento riuscito), dalla conferma d'ordine (anticipo incassato), dal preventivo accettato,
+ * da "Inizia produzione" e all'apertura delle pagine di produzione.
  */
 export async function ensurePlan(db: DB, rows: OrderRow[], operator: string | null = null): Promise<void> {
-	const open = rows.filter((r) => PLANNABLE_STATUSES.includes(r.status));
-	if (!open.length) return;
-	const { data: existing } = await db.from('production_tasks').select('*').in('order_id', open.map((r) => r.id)).order('seq');
-	const byOrder = new Map<string, Task[]>();
-	for (const t of (existing ?? []) as Task[]) { if (!byOrder.has(t.order_id)) byOrder.set(t.order_id, []); byOrder.get(t.order_id)!.push(t); }
-	let load: Record<string, number> | null = null;
-	const now = new Date();
-	for (const o of open) {
-		const ts = byOrder.get(o.id) ?? [];
-		if (!ts.length) {
-			load ??= await rolandLoad(db);
-			const roland = pickRoland(load);
-			const shipBy = o.ship_by ?? o.delivery_date ?? defaultShipBy(o.created_at, o.express);
-			const plan = buildPlan(o, shipBy, roland);
-			for (const p of plan) if (p.machine === roland) load[roland] += p.minutes;
-			if (o.status === 'in_produzione') {
-				// commessa gia' in lavorazione (fase manuale): le fasi precedenti risultano fatte
-				const stages = plan.map((p) => p.stage);
-				let cur = o.prod_stage ? stages.indexOf(o.prod_stage) : 0;
-				if (cur < 0) cur = 0;
-				plan.forEach((p, i) => { if (i < cur) Object.assign(p, { status: 'completato', completed_at: now.toISOString() }); else if (i === cur) Object.assign(p, { status: p.wait_minutes && !p.minutes ? 'in_corso' : 'pronto', started_at: p.wait_minutes ? now.toISOString() : null }); });
-			}
-			const { data: ins } = await db.from('production_tasks').insert(plan).select('*');
-			const patch: Record<string, unknown> = {};
-			if (!o.ship_by) patch.ship_by = shipBy;
-			if (o.status === 'in_produzione') patch.prod_stage = ((ins ?? []) as Task[]).find((t) => t.status !== 'completato')?.stage ?? null;
-			if (Object.keys(patch).length) await db.from('orders').update(patch).eq('id', o.id);
-			await logEvent(db, { order_id: o.id, kind: 'pianificata', detail: `${plan.length} lavorazioni, spedizione ${shipBy}`, operator });
-			continue;
+	const rowsOk = rows.filter(producible);
+	if (!rowsOk.length) return;
+	const setup = await loadSetup(db);
+	const groups = groupOrders(rowsOk);
+	let touched = false;
+	for (const g of groups) {
+		const f = g.items[0];
+		// snapshot della data promessa: quella scritta al cliente (ship_by / delivery_date), altrimenti quella di default del checkout
+		const promised = f.ship_by ?? g.delivery_date ?? defaultPromise(g.created_at, g.express, setup.calendar);
+		const { data: ins } = await db.from('production_jobs').upsert({ checkout_group: g.key, order_number: g.number, promised_ship_date: promised, paid_at: f.payment_status === 'paid' ? (f.updated_at ?? g.created_at) : null }, { onConflict: 'checkout_group', ignoreDuplicates: true }).select('id');
+		const { data: jobRow } = await db.from('production_jobs').select('*').eq('checkout_group', g.key).maybeSingle();
+		if (!jobRow) continue;
+		const job = jobRow as Job;
+		if (job.status === 'CANCELLED') continue;
+		if (!f.ship_by) await db.from('orders').update({ ship_by: promised }).eq('checkout_group', g.key);
+		const { count } = await db.from('production_tasks').select('id', { count: 'exact', head: true }).eq('job_id', job.id);
+		if (count) continue;
+		// fasi: percorso per ogni riga dell'ordine (in fila), dal servizio di routing
+		const rowsToInsert: Record<string, unknown>[] = [];
+		let seq = 0;
+		for (const it of g.items) {
+			const r = routeOrder(routingInputFrom(it), setup.machines, setup.profiles);
+			for (const p of r.phases) rowsToInsert.push({ job_id: job.id, order_id: it.id, seq: ++seq, stage: p.stage, label: p.label, capability: p.capability, machine_type: p.machine_types[0] ?? null, machine_id: p.machine_id, machine: setup.machines.find((m) => m.id === p.machine_id)?.name ?? null, minutes: p.minutes, wait_minutes: p.wait_minutes, passive: p.passive, complexity: p.complexity ?? null, status: 'da_fare' });
 		}
-		// commessa approvata: entra in produzione → prima lavorazione pronta, data verificata
-		if (o.status === 'in_produzione' && !ts.some((t) => t.status === 'pronto' || t.status === 'in_corso' || t.status === 'bloccato') && ts.some((t) => t.status === 'da_fare')) {
-			await activate(db, o, ts, operator);
+		if (rowsToInsert.length) {
+			// la prima fase reale e' subito pronta (LOCKED → READY)
+			rowsToInsert[0].status = 'pronto';
+			const { error } = await db.from('production_tasks').insert(rowsToInsert);
+			if (error) { console.error('[produzione] fasi', error.message); continue; }
+		}
+		await db.from('orders').update({ prod_stage: rowsToInsert[0]?.stage ?? null }).eq('checkout_group', g.key);
+		await logEvent(db, { order_id: f.id, job_id: job.id, kind: 'pianificata', detail: `${rowsToInsert.length} fasi, spedizione promessa ${promised}${ins?.length ? '' : ' (commessa già esistente)'}`, operator, to_status: 'READY_TO_START' });
+		touched = true;
+	}
+	if (touched) await recalcAll(db);
+}
+
+/** commessa completa (per id commessa, gruppo o id di una riga d'ordine) */
+export async function loadJob(db: DB, key: string): Promise<JobFull | null> {
+	let { data: j } = await db.from('production_jobs').select('*').eq('id', key).maybeSingle();
+	if (!j) ({ data: j } = await db.from('production_jobs').select('*').eq('checkout_group', key).maybeSingle());
+	if (!j) { const { data: o } = await db.from('orders').select('checkout_group, id').eq('id', key).maybeSingle(); if (o) ({ data: j } = await db.from('production_jobs').select('*').eq('checkout_group', o.checkout_group ?? o.id).maybeSingle()); }
+	if (!j) return null;
+	const [{ data: orders }, { data: phases }] = await Promise.all([db.from('orders').select('*').eq('checkout_group', j.checkout_group), db.from('production_tasks').select('*').eq('job_id', j.id).order('seq')]);
+	let rows = (orders ?? []) as OrderRow[];
+	if (!rows.length) { const { data: one } = await db.from('orders').select('*').eq('id', j.checkout_group); rows = (one ?? []) as OrderRow[]; }
+	if (!rows.length) return null;
+	return { job: j as Job, group: groupOrders(rows)[0], phases: (phases ?? []) as Phase[] };
+}
+export async function loadOpenJobs(db: DB): Promise<JobFull[]> {
+	const { data: jobs } = await db.from('production_jobs').select('*').in('status', OPEN_JOB);
+	if (!jobs?.length) return [];
+	const keys = jobs.map((j) => j.checkout_group);
+	const [{ data: orders }, { data: phases }] = await Promise.all([db.from('orders').select('*').in('checkout_group', keys), db.from('production_tasks').select('*').in('job_id', jobs.map((j) => j.id)).order('seq')]);
+	const byGroup = new Map<string, OrderRow[]>();
+	for (const o of (orders ?? []) as OrderRow[]) { const k = o.checkout_group ?? o.id; if (!byGroup.has(k)) byGroup.set(k, []); byGroup.get(k)!.push(o); }
+	return (jobs as Job[]).map((job) => { const rows = byGroup.get(job.checkout_group); return rows?.length ? { job, group: groupOrders(rows)[0], phases: ((phases ?? []) as Phase[]).filter((p) => p.job_id === job.id) } : null; }).filter((x): x is JobFull => !!x);
+}
+
+/* ---------- pianificazione ---------- */
+const toPlan = (p: Phase): PlanPhase => ({ id: p.id, seq: p.seq, capability: p.capability, machine_types: p.machine_type ? [p.machine_type] : [], machine_id: p.machine_id, minutes: p.minutes, wait_minutes: p.wait_minutes, passive: p.passive, status: p.status, started_at: p.started_at, completed_at: p.completed_at, machine_locked: p.machine_locked });
+function jobStatusOf(phases: Phase[], cur: JobStatus): JobStatus {
+	if (cur === 'CANCELLED') return cur;
+	if (!phases.length) return cur;
+	if (phases.every((p) => !isOpen(p))) return 'COMPLETED';
+	const running = phases.find((p) => p.status === 'in_corso');
+	if (running) return running.stage === 'confezionamento' ? 'PACKAGING' : 'IN_PROGRESS';
+	if (phases.some((p) => p.status === 'in_attesa')) return 'WAITING_PASSIVE_TIME';
+	const next = phases.find(isOpen);
+	if (next?.stage === 'confezionamento' && next.status === 'pronto') return 'READY_FOR_PACKAGING';
+	if (!phases.some((p) => p.started_at || p.status === 'completato')) return 'READY_TO_START';
+	return 'IN_PROGRESS';
+}
+/** i tempi passivi scaduti si chiudono da soli e sbloccano la fase dopo */
+async function settlePassive(db: DB, phases: Phase[], now: Date, operator: string | null = null) {
+	for (let k = 0; k < phases.length; k++) {
+		const p = phases[k];
+		if (p.status !== 'in_attesa' || !p.started_at) continue;
+		if (new Date(p.started_at).getTime() + p.wait_minutes * 60000 > now.getTime()) continue;
+		await db.from('production_tasks').update({ status: 'completato', completed_at: now.toISOString(), updated_at: now.toISOString() }).eq('id', p.id);
+		p.status = 'completato'; p.completed_at = now.toISOString();
+		await logEvent(db, { order_id: p.order_id, job_id: p.job_id, task_id: p.id, kind: 'completata', detail: `${p.label} (tempo passivo trascorso)`, operator, from_status: 'in_attesa', to_status: 'completato' });
+		const next = phases[k + 1];
+		if (next && next.status === 'da_fare') { await db.from('production_tasks').update({ status: 'pronto', updated_at: now.toISOString() }).eq('id', next.id); next.status = 'pronto'; }
+	}
+}
+/**
+ * Ripianifica TUTTE le commesse aperte in ordine di priorita', condividendo le macchine: ogni commessa vede
+ * come occupate le fasi di quelle prima di lei. Aggiorna fasi e campi calcolati delle commesse.
+ */
+export async function recalcAll(db: DB, now = new Date()): Promise<void> {
+	const setup = await loadSetup(db);
+	const jobs = await loadOpenJobs(db);
+	// prima passata: date a ritroso e chiusura dei tempi passivi scaduti
+	for (const jf of jobs) await settlePassive(db, jf.phases, now);
+	const ranked = sortQueue(jobs.map((jf) => ({ ...jf, risk_status: jf.job.risk_status, latest_start_at: jf.job.latest_start_at, promised_ship_date: jf.job.promised_ship_date, paid_at: jf.job.paid_at, created_at: jf.job.created_at })));
+	let busy: Busy[] = [];
+	for (const jf of ranked) {
+		/* le durate seguono i parametri ATTUALI dei macchinari (cambiare una velocita' ricalcola le stime);
+		   le durate corrette a mano e le fasi gia' avviate non si toccano */
+		for (const p of jf.phases) {
+			if (!isOpen(p) || p.passive || p.manual_minutes || p.status === 'in_corso' || !p.capability || !p.machine_id) continue;
+			const m = setup.machines.find((x) => x.id === p.machine_id); const it = jf.group.items.find((i) => i.id === p.order_id);
+			if (!m || !it) continue;
+			const inp = { ...routingInputFrom(it), complexity: (p.complexity as 'semplice' | 'standard' | 'complesso' | null) ?? null };
+			const est = machineMinutes(m, p.capability, areaOf(inp), inp, setup.profiles);
+			if (est != null && est !== p.minutes) { await db.from('production_tasks').update({ minutes: est }).eq('id', p.id); p.minutes = est; }
+		}
+		const plan = jf.phases.map(toPlan);
+		const back = planBackward(plan, jf.job.promised_ship_date, setup.calendar);
+		const fwd = forecastForward(plan, jf.job.promised_ship_date, setup.calendar, setup.machines, busy, now, jf.job.id, false);
+		busy = fwd.busy;
+		for (let k = 0; k < jf.phases.length; k++) {
+			const p = jf.phases[k];
+			const mid = isOpen(p) && !p.machine_locked && p.status !== 'in_corso' ? fwd.machine_id[k] : p.machine_id;
+			const patch = { latest_start_at: back.latest_start[k].toISOString(), due_at: back.latest_end[k].toISOString(), planned_start_at: fwd.planned_start[k].toISOString(), planned_end_at: fwd.planned_end[k].toISOString(), machine_id: mid, machine: setup.machines.find((m) => m.id === mid)?.name ?? p.machine };
+			if (patch.latest_start_at !== p.latest_start_at || patch.planned_start_at !== p.planned_start_at || patch.planned_end_at !== p.planned_end_at || mid !== p.machine_id) await db.from('production_tasks').update(patch).eq('id', p.id);
+		}
+		const status = jobStatusOf(jf.phases, jf.job.status);
+		const patch = { latest_start_at: back.job_latest_start.toISOString(), estimated_packaging_at: fwd.estimated_packaging_at.toISOString(), total_minutes: jf.phases.filter(isOpen).reduce((s, p) => s + p.minutes, 0), slack_minutes: fwd.slack_minutes, predicted_delay_minutes: fwd.predicted_delay_minutes, risk_status: status === 'COMPLETED' ? 'ON_TRACK' : fwd.risk, status, completed_at: status === 'COMPLETED' ? (jf.job.completed_at ?? now.toISOString()) : jf.job.completed_at, updated_at: now.toISOString() };
+		await db.from('production_jobs').update(patch).eq('id', jf.job.id);
+		if (status === 'COMPLETED' && jf.job.status !== 'COMPLETED') {
+			await db.from('orders').update({ prod_stage: null, status: 'in_spedizione' }).eq('checkout_group', jf.job.checkout_group).eq('status', 'in_produzione');
+			await logEvent(db, { order_id: jf.group.items[0].id, job_id: jf.job.id, kind: 'completata', detail: 'Commessa completata: passa in spedizione', from_status: jf.job.status, to_status: 'COMPLETED' });
 		}
 	}
 }
+let lastRecalc = 0;
+/** ricalcolo all'apertura delle pagine, al massimo una volta al minuto */
+export async function recalcIfStale(db: DB) { if (Date.now() - lastRecalc > 60000) { lastRecalc = Date.now(); await recalcAll(db); } }
 
-async function activate(db: DB, o: OrderRow, ts: Task[], operator: string | null) {
-	const now = new Date();
-	let shipBy = o.ship_by ?? o.delivery_date ?? defaultShipBy(o.created_at, o.express);
-	const shifted = shiftedShipBy(ts, shipBy, now);
-	if (shifted && shifted > shipBy) {
-		await logEvent(db, { order_id: o.id, kind: 'data_spostata', detail: `Spedizione da ${shipBy} a ${shifted}: approvazione arrivata oltre il termine utile`, operator });
-		shipBy = shifted;
-		await db.from('orders').update({ ship_by: shipBy }).eq('id', o.id);
-		await replanDates(db, ts, shipBy);
-	}
-	const first = ts.find((t) => t.status === 'da_fare');
-	if (!first) return;
-	const patch = first.wait_minutes && !first.minutes ? { status: 'in_corso', started_at: now.toISOString() } : { status: 'pronto' };
-	await db.from('production_tasks').update({ ...patch, updated_at: now.toISOString() }).eq('id', first.id);
-	await db.from('orders').update({ prod_stage: first.stage }).eq('id', o.id);
-	await logEvent(db, { order_id: o.id, task_id: first.id, kind: 'in_produzione', detail: `Prima lavorazione: ${first.label}`, operator });
+/* ---------- azioni sulle fasi (transazionali: ogni update e' condizionato allo stato di partenza → niente doppi click) ---------- */
+async function phaseAndJob(db: DB, phaseId: string): Promise<JobFull & { phase: Phase } | null> {
+	const { data: p } = await db.from('production_tasks').select('*').eq('id', phaseId).maybeSingle();
+	if (!p?.job_id) return null;
+	const jf = await loadJob(db, p.job_id);
+	return jf ? { ...jf, phase: p as Phase } : null;
 }
-
-/** ricalcola le scadenze delle lavorazioni non ancora completate */
-export async function replanDates(db: DB, ts: Task[], shipBy: string) {
-	const sorted = [...ts].sort((a, b) => a.seq - b.seq);
-	const dues = dueDates(sorted, shipBy);
-	for (let i = 0; i < sorted.length; i++) if (sorted[i].status !== 'completato') await db.from('production_tasks').update({ due_at: dues[i].toISOString() }).eq('id', sorted[i].id);
+const nowIso = () => new Date().toISOString();
+async function afterAction(db: DB, jf: JobFull, kind: string, phase: Phase | null, operator: string | null, extra: Partial<EventIn> = {}) {
+	await recalcAll(db);
+	const { data: j } = await db.from('production_jobs').select('estimated_packaging_at, slack_minutes').eq('id', jf.job.id).maybeSingle();
+	await logEvent(db, { order_id: phase?.order_id ?? jf.group.items[0].id, job_id: jf.job.id, task_id: phase?.id ?? null, machine_id: phase?.machine_id ?? null, kind, operator, packaging_eta: j?.estimated_packaging_at ?? null, slack_minutes: j?.slack_minutes ?? null, ...extra });
 }
-
-async function taskAndSiblings(db: DB, id: string): Promise<{ task: Task; all: Task[]; order: OrderRow } | null> {
-	const { data: task } = await db.from('production_tasks').select('*').eq('id', id).maybeSingle();
-	if (!task) return null;
-	const [{ data: all }, { data: order }] = await Promise.all([
-		db.from('production_tasks').select('*').eq('order_id', task.order_id).order('seq'),
-		db.from('orders').select('*').eq('id', task.order_id).maybeSingle()
-	]);
-	if (!order) return null;
-	return { task: task as Task, all: (all ?? []) as Task[], order: order as OrderRow };
+/** "Avvia produzione": la commessa parte con la sua prima fase pronta */
+export async function startJob(db: DB, jobId: string, operator: string | null): Promise<string | null> {
+	const jf = await loadJob(db, jobId);
+	if (!jf) return 'Commessa non trovata.';
+	if (jf.job.status === 'CANCELLED') return 'La commessa è annullata.';
+	const first = jf.phases.find((p) => p.status === 'pronto');
+	if (!first) return jf.phases.some((p) => p.status === 'in_corso') ? 'La commessa è già in corso.' : 'Nessuna fase pronta da avviare.';
+	return startPhase(db, first.id, operator);
 }
-
-export async function startTask(db: DB, id: string, operator: string | null) {
-	const c = await taskAndSiblings(db, id);
-	if (!c) return 'Lavorazione non trovata.';
-	if (c.task.status === 'completato') return 'Lavorazione già completata.';
-	const now = new Date().toISOString();
-	await db.from('production_tasks').update({ status: 'in_corso', started_at: c.task.started_at ?? now, operator, block_reason: null, updated_at: now }).eq('id', id);
-	await db.from('orders').update({ prod_stage: c.task.stage, status: 'in_produzione' }).eq('id', c.order.id);
-	await logEvent(db, { order_id: c.order.id, task_id: id, kind: 'iniziata', detail: c.task.label, operator });
+export async function startPhase(db: DB, phaseId: string, operator: string | null): Promise<string | null> {
+	const c = await phaseAndJob(db, phaseId);
+	if (!c) return 'Fase non trovata.';
+	if (c.phase.status !== 'pronto' && c.phase.status !== 'bloccato') return 'La fase non è pronta.';
+	if (c.phase.machine_id) { const m = await db.from('production_machines').select('is_active, archived_at').eq('id', c.phase.machine_id).maybeSingle(); if (m.data && (!m.data.is_active || m.data.archived_at)) return 'Il macchinario assegnato è disattivato: cambia macchinario prima di avviare.'; }
+	const { data: upd } = await db.from('production_tasks').update({ status: 'in_corso', started_at: c.phase.started_at ?? nowIso(), operator, block_reason: null, updated_at: nowIso() }).eq('id', phaseId).in('status', ['pronto', 'bloccato']).select('id');
+	if (!upd?.length) return 'La fase è già stata avviata.';
+	await db.from('orders').update({ prod_stage: c.phase.stage, status: 'in_produzione' }).eq('id', c.phase.order_id);
+	if (!c.job.started_at) await db.from('production_jobs').update({ started_at: nowIso() }).eq('id', c.job.id);
+	await afterAction(db, c, 'iniziata', c.phase, operator, { detail: c.phase.label, from_status: c.phase.status, to_status: 'in_corso', est_minutes: c.phase.minutes });
 	return null;
 }
-
-/** Completa la lavorazione: la successiva diventa pronta (la maturazione parte da sola); l'ultima manda l'ordine in spedizione */
-export async function completeTask(db: DB, id: string, operator: string | null) {
-	const c = await taskAndSiblings(db, id);
-	if (!c) return 'Lavorazione non trovata.';
+/** Termina fase: registra l'ora reale, sblocca la successiva (o fa partire il tempo passivo) e ricalcola */
+export async function completePhase(db: DB, phaseId: string, operator: string | null): Promise<string | null> {
+	const c = await phaseAndJob(db, phaseId);
+	if (!c) return 'Fase non trovata.';
+	if (c.phase.status !== 'in_corso' && c.phase.status !== 'pronto') return 'La fase non è in corso.';
 	const now = new Date();
-	const early = c.task.wait_minutes && c.task.started_at && new Date(c.task.started_at).getTime() + c.task.wait_minutes * 60000 > now.getTime();
-	await db.from('production_tasks').update({ status: 'completato', completed_at: now.toISOString(), started_at: c.task.started_at ?? now.toISOString(), operator: c.task.operator ?? operator, block_reason: null, updated_at: now.toISOString() }).eq('id', id);
-	await logEvent(db, { order_id: c.order.id, task_id: id, kind: 'completata', detail: c.task.label + (early ? ' (chiusa prima del tempo di maturazione)' : ''), operator });
-	const next = c.all.filter((t) => t.seq > c.task.seq && t.status !== 'completato').sort((a, b) => a.seq - b.seq)[0];
+	const started = c.phase.started_at ? new Date(c.phase.started_at) : now;
+	const { data: upd } = await db.from('production_tasks').update({ status: 'completato', completed_at: now.toISOString(), started_at: started.toISOString(), operator: c.phase.operator ?? operator, updated_at: now.toISOString() }).eq('id', phaseId).in('status', ['in_corso', 'pronto']).select('id');
+	if (!upd?.length) return 'La fase è già stata chiusa.';
+	const next = c.phases.filter((p) => p.seq > c.phase.seq && isOpen(p)).sort((a, b) => a.seq - b.seq)[0];
 	if (next) {
-		const patch = next.wait_minutes && !next.minutes ? { status: 'in_corso', started_at: now.toISOString() } : { status: 'pronto' };
-		await db.from('production_tasks').update({ ...patch, updated_at: now.toISOString() }).eq('id', next.id);
-		await db.from('orders').update({ prod_stage: next.stage, status: 'in_produzione' }).eq('id', c.order.id);
-	} else {
-		await db.from('orders').update({ prod_stage: null, status: 'in_spedizione' }).eq('id', c.order.id);
-		await logEvent(db, { order_id: c.order.id, kind: 'pronta', detail: 'Commessa completata: passa in spedizione', operator });
+		if (next.passive) {
+			await db.from('production_tasks').update({ status: 'in_attesa', started_at: now.toISOString(), updated_at: now.toISOString() }).eq('id', next.id);
+			// se il tempo passivo e' gia' trascorso (durata 0) la fase dopo e' subito pronta: se ne occupa il ricalcolo
+		} else await db.from('production_tasks').update({ status: 'pronto', updated_at: now.toISOString() }).eq('id', next.id);
+		await db.from('orders').update({ prod_stage: next.stage }).eq('id', next.order_id);
 	}
+	await afterAction(db, c, 'completata', c.phase, operator, { detail: c.phase.label, from_status: c.phase.status, to_status: 'completato', est_minutes: c.phase.minutes, actual_minutes: Math.round((now.getTime() - started.getTime()) / 60000) });
 	return null;
 }
-
-export async function blockTask(db: DB, id: string, reason: string, operator: string | null) {
-	const c = await taskAndSiblings(db, id);
-	if (!c) return 'Lavorazione non trovata.';
+export async function blockPhase(db: DB, phaseId: string, reason: string, operator: string | null): Promise<string | null> {
+	const c = await phaseAndJob(db, phaseId);
+	if (!c) return 'Fase non trovata.';
 	if (!reason.trim()) return 'Scrivi il motivo del blocco.';
-	await db.from('production_tasks').update({ status: 'bloccato', block_reason: reason.trim(), updated_at: new Date().toISOString() }).eq('id', id);
-	await logEvent(db, { order_id: c.order.id, task_id: id, kind: 'bloccata', detail: `${c.task.label}: ${reason.trim()}`, operator });
+	await db.from('production_tasks').update({ status: 'bloccato', block_reason: reason.trim(), updated_at: nowIso() }).eq('id', phaseId).in('status', ['pronto', 'in_corso']);
+	await afterAction(db, c, 'bloccata', c.phase, operator, { detail: `${c.phase.label}: ${reason.trim()}`, from_status: c.phase.status, to_status: 'bloccato' });
 	return null;
 }
-export async function unblockTask(db: DB, id: string, operator: string | null) {
-	const c = await taskAndSiblings(db, id);
-	if (!c) return 'Lavorazione non trovata.';
-	await db.from('production_tasks').update({ status: c.task.started_at ? 'in_corso' : 'pronto', block_reason: null, updated_at: new Date().toISOString() }).eq('id', id);
-	await logEvent(db, { order_id: c.order.id, task_id: id, kind: 'sbloccata', detail: c.task.label, operator });
+export async function unblockPhase(db: DB, phaseId: string, operator: string | null): Promise<string | null> {
+	const c = await phaseAndJob(db, phaseId);
+	if (!c) return 'Fase non trovata.';
+	await db.from('production_tasks').update({ status: c.phase.started_at ? 'in_corso' : 'pronto', block_reason: null, updated_at: nowIso() }).eq('id', phaseId).eq('status', 'bloccato');
+	await afterAction(db, c, 'sbloccata', c.phase, operator, { detail: c.phase.label, from_status: 'bloccato', to_status: c.phase.started_at ? 'in_corso' : 'pronto' });
 	return null;
 }
-export async function setMachine(db: DB, id: string, machine: string, operator: string | null) {
-	const c = await taskAndSiblings(db, id);
-	if (!c) return 'Lavorazione non trovata.';
-	if (!STAGES[c.task.stage]?.machines.includes(machine)) return 'Macchina non valida per questo reparto.';
-	await db.from('production_tasks').update({ machine, updated_at: new Date().toISOString() }).eq('id', id);
-	await logEvent(db, { order_id: c.order.id, task_id: id, kind: 'macchina', detail: `${c.task.label} → ${machine}`, operator });
+/** Modifica stima: durata a mano (il ricalcolo non la tocca) */
+export async function setEstimate(db: DB, phaseId: string, minutes: number, operator: string | null): Promise<string | null> {
+	const c = await phaseAndJob(db, phaseId);
+	if (!c) return 'Fase non trovata.';
+	if (!(minutes >= 0) || minutes > 24 * 60 * 30) return 'Durata non valida.';
+	const field = c.phase.passive ? { wait_minutes: Math.round(minutes) } : { minutes: Math.round(minutes) };
+	await db.from('production_tasks').update({ ...field, manual_minutes: true, updated_at: nowIso() }).eq('id', phaseId);
+	await afterAction(db, c, 'stima', c.phase, operator, { detail: `${c.phase.label}: da ${c.phase.passive ? c.phase.wait_minutes : c.phase.minutes} a ${Math.round(minutes)} min`, est_minutes: Math.round(minutes) });
 	return null;
 }
-
-/** Ristampa: si riparte dalla stampa, le fasi seguenti tornano da fare; le scadenze restano (la commessa risulta in ritardo se lo e') */
-export async function reprint(db: DB, orderId: string, reason: string, operator: string | null) {
-	const { data: all } = await db.from('production_tasks').select('*').eq('order_id', orderId).order('seq');
-	const ts = (all ?? []) as Task[];
-	const from = ts.find((t) => t.stage === 'stampa') ?? ts[0];
-	if (!from) return 'Nessuna lavorazione da ripetere.';
-	const now = new Date().toISOString();
-	for (const t of ts) if (t.seq >= from.seq) await db.from('production_tasks').update({ status: t.id === from.id ? 'pronto' : 'da_fare', started_at: null, completed_at: null, operator: null, block_reason: null, updated_at: now }).eq('id', t.id);
-	const { data: o } = await db.from('orders').select('reprints').eq('id', orderId).maybeSingle();
-	await db.from('orders').update({ status: 'in_produzione', prod_stage: from.stage, reprints: (Number(o?.reprints) || 0) + 1 }).eq('id', orderId);
-	await logEvent(db, { order_id: orderId, task_id: from.id, kind: 'ristampa', detail: reason.trim() || 'Ristampa', operator });
+/** Cambia macchinario: solo tra quelli compatibili e usabili; la scelta resta fissa */
+export async function setMachine(db: DB, phaseId: string, machineId: string, operator: string | null): Promise<string | null> {
+	const c = await phaseAndJob(db, phaseId);
+	if (!c) return 'Fase non trovata.';
+	const { machines } = await loadSetup(db);
+	const m = machines.find((x) => x.id === machineId);
+	if (!m) return 'Macchinario non trovato.';
+	if (!m.is_active || m.archived_at) return 'Il macchinario è disattivato o archiviato.';
+	if (c.phase.capability && !m.capabilities.includes(c.phase.capability)) return `${m.name} non può fare "${c.phase.label}".`;
+	await db.from('production_tasks').update({ machine_id: m.id, machine: m.name, machine_locked: true, updated_at: nowIso() }).eq('id', phaseId);
+	await afterAction(db, c, 'macchina', { ...c.phase, machine_id: m.id }, operator, { detail: `${c.phase.label} → ${m.name}` });
 	return null;
 }
-
-export async function setShipBy(db: DB, orderId: string, day: string, operator: string | null) {
-	if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return 'Data non valida.';
-	const { data: o } = await db.from('orders').select('ship_by').eq('id', orderId).maybeSingle();
-	await db.from('orders').update({ ship_by: day }).eq('id', orderId);
-	const { data: all } = await db.from('production_tasks').select('*').eq('order_id', orderId);
-	await replanDates(db, (all ?? []) as Task[], day);
-	await logEvent(db, { order_id: orderId, kind: 'data_spostata', detail: `Spedizione da ${o?.ship_by ?? '—'} a ${day} (manuale)`, operator });
+/** Annulla commessa (solo amministratore): le fasi aperte si chiudono come saltate, l'ordine risulta annullato */
+export async function cancelJob(db: DB, jobId: string, reason: string, operator: string | null): Promise<string | null> {
+	const jf = await loadJob(db, jobId);
+	if (!jf) return 'Commessa non trovata.';
+	if (jf.job.status === 'CANCELLED') return 'Già annullata.';
+	const { data: upd } = await db.from('production_jobs').update({ status: 'CANCELLED', cancelled_at: nowIso(), cancel_reason: reason.trim() || null, risk_status: 'ON_TRACK', updated_at: nowIso() }).eq('id', jobId).neq('status', 'CANCELLED').select('id');
+	if (!upd?.length) return 'Già annullata.';
+	await db.from('production_tasks').update({ status: 'saltata', updated_at: nowIso() }).eq('job_id', jobId).in('status', ['da_fare', 'pronto', 'in_corso', 'bloccato', 'in_attesa']);
+	await db.from('orders').update({ status: 'annullato', prod_stage: null }).eq('checkout_group', jf.job.checkout_group);
+	await logEvent(db, { order_id: jf.group.items[0].id, job_id: jf.job.id, kind: 'annullata', detail: reason.trim() || null, operator, from_status: jf.job.status, to_status: 'CANCELLED' });
+	await recalcAll(db);
 	return null;
 }
-export async function addNote(db: DB, orderId: string, text: string, operator: string | null) {
+export async function addNote(db: DB, jobId: string, text: string, operator: string | null): Promise<string | null> {
+	const jf = await loadJob(db, jobId);
+	if (!jf) return 'Commessa non trovata.';
 	if (!text.trim()) return 'Nota vuota.';
-	await logEvent(db, { order_id: orderId, kind: 'nota', detail: text.trim(), operator });
+	await logEvent(db, { order_id: jf.group.items[0].id, job_id: jf.job.id, kind: 'nota', detail: text.trim(), operator });
 	return null;
 }
 
-/** Sollecito di approvazione al cliente, con la data entro cui approvare per mantenere la spedizione */
-export async function remindApproval(db: DB, orderId: string, origin: string, operator: string | null) {
-	const { data: o } = await db.from('orders').select('*').eq('id', orderId).maybeSingle();
-	if (!o) return 'Ordine non trovato.';
-	const order = o as OrderRow;
-	if (!APPROVAL_STATUSES.has(order.status)) return 'La commessa non aspetta il cliente.';
-	if (!order.email) return 'Nessuna email del cliente.';
-	const { data: all } = await db.from('production_tasks').select('*').eq('order_id', orderId);
-	const by = approveBy((all ?? []) as Task[]);
-	const mail = proofReminderEmail({ name: order.shipping?.first_name ?? order.customer_name, number: order.number, missingFile: order.status === 'attesa_file', approveBy: by, shipBy: order.ship_by ?? null, href: `${origin}/account/ordini` });
-	const r = await sendEmail({ to: order.email, ...mail });
-	if (!r.ok) return r.error ?? 'Invio non riuscito.';
-	await db.from('orders').update({ proof_reminded_at: new Date().toISOString() }).eq('id', orderId);
-	await logEvent(db, { order_id: orderId, kind: 'sollecito', detail: `Email a ${order.email}`, operator });
-	return null;
-}
-
-export async function loadEvents(db: DB, orderId: string): Promise<ProdEvent[]> {
-	const { data } = await db.from('production_events').select('*').eq('order_id', orderId).order('created_at', { ascending: false }).limit(100);
-	return (data ?? []) as ProdEvent[];
-}
-
-/** Azioni dei reparti, condivise da tutte le pagine di produzione (i form usano ?/inizia, ?/completa, ...) */
+/** azioni condivise da tutte le pagine di produzione (?/avvia, ?/inizia, ?/completa, ?/stima, ?/macchina, ?/annulla, ...) */
 export const taskActions = {
-	inizia: async ({ request, locals }: { request: Request; locals: App.Locals }) => run(locals, async (db, op) => startTask(db, String((await request.formData()).get('task')), op)),
-	completa: async ({ request, locals }: { request: Request; locals: App.Locals }) => run(locals, async (db, op) => completeTask(db, String((await request.formData()).get('task')), op)),
-	blocca: async ({ request, locals }: { request: Request; locals: App.Locals }) => run(locals, async (db, op) => { const f = await request.formData(); return blockTask(db, String(f.get('task')), String(f.get('motivo') ?? ''), op); }),
-	sblocca: async ({ request, locals }: { request: Request; locals: App.Locals }) => run(locals, async (db, op) => unblockTask(db, String((await request.formData()).get('task')), op)),
-	macchina: async ({ request, locals }: { request: Request; locals: App.Locals }) => run(locals, async (db, op) => { const f = await request.formData(); return setMachine(db, String(f.get('task')), String(f.get('machine') ?? ''), op); }),
-	ristampa: async ({ request, locals }: { request: Request; locals: App.Locals }) => run(locals, async (db, op) => { const f = await request.formData(); return reprint(db, String(f.get('order')), String(f.get('motivo') ?? ''), op); }),
-	data: async ({ request, locals }: { request: Request; locals: App.Locals }) => run(locals, async (db, op) => { const f = await request.formData(); return setShipBy(db, String(f.get('order')), String(f.get('ship_by') ?? ''), op); }),
-	nota: async ({ request, locals }: { request: Request; locals: App.Locals }) => run(locals, async (db, op) => { const f = await request.formData(); return addNote(db, String(f.get('order')), String(f.get('testo') ?? ''), op); }),
-	sollecita: async ({ request, url, locals }: { request: Request; url: URL; locals: App.Locals }) => run(locals, async (db, op) => remindApproval(db, String((await request.formData()).get('order')), url.origin, op))
+	avvia: async ({ request, locals }: { request: Request; locals: App.Locals }) => run(locals, async (db, op) => startJob(db, String((await request.formData()).get('job')), op)),
+	inizia: async ({ request, locals }: { request: Request; locals: App.Locals }) => run(locals, async (db, op) => startPhase(db, String((await request.formData()).get('task')), op)),
+	completa: async ({ request, locals }: { request: Request; locals: App.Locals }) => run(locals, async (db, op) => completePhase(db, String((await request.formData()).get('task')), op)),
+	blocca: async ({ request, locals }: { request: Request; locals: App.Locals }) => run(locals, async (db, op) => { const f = await request.formData(); return blockPhase(db, String(f.get('task')), String(f.get('motivo') ?? ''), op); }),
+	sblocca: async ({ request, locals }: { request: Request; locals: App.Locals }) => run(locals, async (db, op) => unblockPhase(db, String((await request.formData()).get('task')), op)),
+	stima: async ({ request, locals }: { request: Request; locals: App.Locals }) => run(locals, async (db, op) => { const f = await request.formData(); return setEstimate(db, String(f.get('task')), Number(f.get('minuti')), op); }, true),
+	macchina: async ({ request, locals }: { request: Request; locals: App.Locals }) => run(locals, async (db, op) => { const f = await request.formData(); return setMachine(db, String(f.get('task')), String(f.get('machine') ?? ''), op); }, true),
+	annulla: async ({ request, locals }: { request: Request; locals: App.Locals }) => run(locals, async (db, op) => { const f = await request.formData(); return cancelJob(db, String(f.get('job')), String(f.get('motivo') ?? ''), op); }, true),
+	nota: async ({ request, locals }: { request: Request; locals: App.Locals }) => run(locals, async (db, op) => { const f = await request.formData(); return addNote(db, String(f.get('job')), String(f.get('testo') ?? ''), op); })
 };
-async function run(locals: App.Locals, fn: (db: DB, op: string | null) => Promise<string | null>) {
+async function run(locals: App.Locals, fn: (db: DB, op: string | null) => Promise<string | null>, adminOnly = false) {
+	if (adminOnly && !(await isAdmin(locals.supabase, locals.user))) return fail(403, { error: 'Questa azione è riservata all’amministratore.' });
 	const op = await operatorName(locals.supabase, locals.user);
 	const err = await fn(locals.supabase, op);
 	if (err) return fail(400, { error: err });
 	return { ok: true };
 }
 
-/** scadenza dell'anteprima: entro un giorno lavorativo dall'ordine, o entro quando serve per la produzione */
-export function proofDeadline(o: OrderRow, tasks: Task[]): Date | null {
-	const by = approveBy(tasks);
-	const cut = o.ship_by ? shipCutoff(o.ship_by) : null;
-	if (by && cut) return by < cut ? by : cut;
-	return by ?? cut;
+/* ---------- viste ---------- */
+export interface QueueRow { job: Job; group: JobFull['group']; phases: Phase[]; next: Phase | null; current: Phase | null; laminated: boolean; protection: string; machines: string[] }
+export async function loadQueue(db: DB): Promise<QueueRow[]> {
+	const { machines } = await loadSetup(db);
+	const jobs = await loadOpenJobs(db);
+	const rows = jobs.map((jf) => {
+		const f = jf.group.items[0];
+		const inp = routingInputFrom(f);
+		const used = [...new Set(jf.phases.map((p) => p.machine_id).filter(Boolean))].map((id) => machines.find((m) => m.id === id)?.name ?? '').filter(Boolean);
+		return { ...jf, next: jf.phases.find((p) => p.status === 'pronto') ?? jf.phases.find(isOpen) ?? null, current: jf.phases.find((p) => p.status === 'in_corso' || p.status === 'in_attesa') ?? null, laminated: inp.laminated, protection: inp.protection ?? 'nessuna', machines: used };
+	});
+	return sortQueue(rows.map((r) => ({ ...r, risk_status: r.job.risk_status, latest_start_at: r.job.latest_start_at, promised_ship_date: r.job.promised_ship_date, paid_at: r.job.paid_at, created_at: r.job.created_at })));
 }
-export { totalWork };
+/** commesse completate (per la coda con filtro "completati") */
+export async function loadCompletedJobs(db: DB, limit = 100): Promise<JobFull[]> {
+	const { data: jobs } = await db.from('production_jobs').select('*').in('status', ['COMPLETED', 'CANCELLED']).order('completed_at', { ascending: false, nullsFirst: false }).limit(limit);
+	if (!jobs?.length) return [];
+	const { data: orders } = await db.from('orders').select('*').in('checkout_group', jobs.map((j) => j.checkout_group));
+	const byGroup = new Map<string, OrderRow[]>();
+	for (const o of (orders ?? []) as OrderRow[]) { const k = o.checkout_group ?? o.id; if (!byGroup.has(k)) byGroup.set(k, []); byGroup.get(k)!.push(o); }
+	return (jobs as Job[]).map((job) => { const rows = byGroup.get(job.checkout_group); return rows?.length ? { job, group: groupOrders(rows)[0], phases: [] as Phase[] } : null; }).filter((x): x is JobFull => !!x);
+}
+export { todayIso };

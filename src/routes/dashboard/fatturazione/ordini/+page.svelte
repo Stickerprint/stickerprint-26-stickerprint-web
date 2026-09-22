@@ -67,7 +67,7 @@
 
 <svelte:head><title>Ordini | Dashboard Stickerprint</title></svelte:head>
 {#if form?.error}<p class="error">{form.error}</p>{/if}
-{#if form?.ok && form.started}<p class="success">Ordine {form.started} in produzione: lo trovi in <a class="link" href="/dashboard/produzione/stampa">Produzione › Stampa</a>.</p>{/if}
+{#if form?.ok && form.started}<p class="success">Ordine {form.started} in produzione: lo trovi in <a class="link" href="/dashboard/produzione/coda">Produzione › Coda ordini</a>.</p>{/if}
 
 <div class="toolbar" style="justify-content:space-between">
 	<div><h1>Ordini {data.year}</h1><p class="lead">E-commerce e manuali, in un'unica vista · {list.length} risultati{#if pages > 1} · pagina {page} di {pages}{/if}</p></div>

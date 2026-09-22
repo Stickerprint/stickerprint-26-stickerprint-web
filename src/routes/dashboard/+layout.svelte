@@ -6,18 +6,23 @@
 	import LiveClock from '$lib/components/LiveClock.svelte';
 
 	let { data, children } = $props();
-	const isLogin = $derived(page.url.pathname === '/dashboard/login');
+	/* la pagina di login e la modalita' TV non hanno il menu' */
+	const isLogin = $derived(page.url.pathname === '/dashboard/login' || page.url.pathname === '/dashboard/produzione/tv');
 	const path = $derived(page.url.pathname);
 
 	// Menù dal documento del gestionale: PRODUZIONE e DOCUMENTI (qui "Fatturazione"), più le altre sezioni
 	const menu = $derived([
 		{ id: 'produzione', title: 'Produzione', items: [
-			{ label: 'Produzione di oggi', href: '/dashboard/produzione/piano' },
-			{ label: 'Stampa', href: '/dashboard/produzione/stampa', count: data.counts?.stampa },
-			{ label: 'Plastifica', href: '/dashboard/produzione/plastifica', count: data.counts?.plastifica },
-			{ label: 'Taglio', href: '/dashboard/produzione/taglio', count: data.counts?.taglio },
-			{ label: 'Resinatura', href: '/dashboard/produzione/resinatura', count: data.counts?.resinatura },
-			{ label: 'Confezionamento', href: '/dashboard/produzione/confezionamento', count: data.counts?.confezionamento },
+			{ label: 'Riepilogo', href: '/dashboard/produzione', exact: true },
+			{ label: 'Coda ordini', href: '/dashboard/produzione/coda', count: data.counts?.daAvviare },
+			{ label: 'Stampa', href: '/dashboard/produzione/reparto/stampa', count: data.counts?.stampa },
+			{ label: 'Laminazione', href: '/dashboard/produzione/reparto/laminazione', count: data.counts?.laminazione },
+			{ label: 'Taglio', href: '/dashboard/produzione/reparto/taglio', count: data.counts?.taglio },
+			{ label: 'Resinatura', href: '/dashboard/produzione/reparto/resinatura', count: data.counts?.resinatura },
+			{ label: 'Controllo qualità', href: '/dashboard/produzione/reparto/controllo', count: data.counts?.controllo },
+			{ label: 'Confezionamento', href: '/dashboard/produzione/reparto/confezionamento', count: data.counts?.confezionamento },
+			{ label: 'Macchinari', href: '/dashboard/produzione/macchinari' },
+			{ label: 'Modalità TV', href: '/dashboard/produzione/tv' },
 			{ label: 'Spedizioni', href: '/dashboard/produzione/spedizioni', count: data.counts?.spedizione }
 		] },
 		{ id: 'aziende', title: 'Aziende', items: [
@@ -58,7 +63,9 @@
 			{ label: 'Domande frequenti', href: '/dashboard/setup/faq' },
 			{ label: 'Codici sconto', href: '/dashboard/setup/codici-sconto' },
 			{ label: 'Codici prodotto', href: '/dashboard/setup/codici-prodotto' },
-			{ label: 'Corrieri', href: '/dashboard/setup/corrieri' }
+			{ label: 'Corrieri', href: '/dashboard/setup/corrieri' },
+			{ label: 'Macchinari', href: '/dashboard/setup/macchinari' },
+			{ label: 'Calendario di lavoro', href: '/dashboard/setup/calendario' }
 		] }
 	]);
 	const active = (href: string, exact = false) => path === href || (!exact && path.startsWith(href + '/'));

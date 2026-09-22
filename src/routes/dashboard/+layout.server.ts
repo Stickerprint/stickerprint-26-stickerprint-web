@@ -21,12 +21,11 @@ export const load: LayoutServerLoad = async ({ locals: { supabase, session, user
 	// contatori del menù: lavorazioni aperte per reparto, problemi (bloccate o in ritardo), ordini in spedizione e in attesa di prova
 	const [{ data: rows }, { data: tasks }] = await Promise.all([
 		supabase.from('orders').select('prod_stage, status, transmitted_at, ddt_id').in('status', ['pronto', 'in_spedizione']),
-		supabase.from('production_tasks').select('stage, status, due_at, order:orders!inner(status)').in('status', ['pronto', 'in_corso', 'bloccato']).eq('order.status', 'in_produzione')
+		supabase.from('production_tasks').select('stage, status, job:production_jobs!inner(status)').in('status', ['pronto', 'in_corso', 'bloccato']).in('job.status', ['READY_TO_START', 'IN_PROGRESS', 'WAITING_PASSIVE_TIME', 'READY_FOR_PACKAGING', 'PACKAGING'])
 	]);
 	const counts: Record<string, number> = {};
-	for (const t of tasks ?? []) {
-		counts[t.stage] = (counts[t.stage] ?? 0) + 1;
-	}
+	for (const t of tasks ?? []) counts[t.stage] = (counts[t.stage] ?? 0) + 1;
+	{ const { count } = await supabase.from('production_jobs').select('id', { count: 'exact', head: true }).eq('status', 'READY_TO_START'); if (count) counts.daAvviare = count; }
 	for (const r of rows ?? []) {
 		if (!r.transmitted_at && !r.ddt_id) counts.spedizione = (counts.spedizione ?? 0) + 1; // solo gli ordini ancora da spedire
 	}

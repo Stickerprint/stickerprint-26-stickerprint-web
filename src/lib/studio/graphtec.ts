@@ -143,6 +143,15 @@ export function barcodeRects(W: number, H: number, id: string): { rects: Rect[];
 
 /* ------------------------------------------------------------------ file di taglio .xpf */
 
+/** un gruppo di pezzi con la stessa forma di taglio */
+export interface XpfGroup {
+	/** tracciato del pezzo (mm, origine nell'angolo del taglio) */
+	pathD: string;
+	cutW: number;
+	cutH: number;
+	pieces: Placement[];
+}
+
 export interface XpfJob {
 	id: string;
 	/** pagina della striscia (mm) */
@@ -160,7 +169,14 @@ export interface XpfJob {
 	sheetCond?: number | null;
 	/** avanzamento dopo il taglio (mm) */
 	feed?: number;
+	/** forme di taglio diverse sulla stessa striscia (es. un foglio tondo e uno rettangolare);
+	    se c'e', sostituisce pathD/cutW/cutH/pieces */
+	groups?: XpfGroup[];
 }
+
+/** i gruppi del lavoro: quelli espliciti, oppure l'unico gruppo dei campi storici */
+const gruppi = (j: XpfJob): XpfGroup[] =>
+	j.groups ?? [{ pathD: j.pathD, cutW: j.cutW, cutH: j.cutH, pieces: j.pieces }];
 
 const enc = new TextEncoder();
 
@@ -174,22 +190,24 @@ export function xpfCommands(j: XpfJob): string {
 	const P = (x: number, y: number) => `${Math.round((j.H - e - y) * 10)},${Math.round((j.W - cx - x) * 10)}`;
 	const distX = Math.floor((j.H - 2 * e) * 10 + 1e-6), distY = Math.floor((j.W - 2 * cx) * 10 + 1e-6);
 	const out: string[] = ['\x1b.v:TC1007,4,20', 'TB99', 'TB57,1,1', 'TB59,1,1', 'TB50,0', 'TB51,200', 'TB52,2', 'TB54,0,0', 'TB55,1', 'TB44,0,0,0', `TB24,${distX},${distY}`, 'TB99'];
-	const segs = parsePath(j.pathD);
-	const tf = (p: Placement, x: number, y: number): [number, number] => (p.rot ? [p.x + j.cutH - y, p.y + x] : [p.x + x, p.y + y]);
 	let first = true;
 	if (j.pieceCond) {
 		out.push(`&100,100,100,^0,0,\\0,0,J${j.pieceCond}`, 'L0,B0');
 		first = false;
-		for (const p of j.pieces) {
-			let cur: [number, number] = [0, 0], start: [number, number] = [0, 0];
-			for (const s of segs) {
-				if (s[0] === 'M') { cur = start = tf(p, s[1], s[2]); out.push(`M${P(...cur)}`); }
-				else if (s[0] === 'L') { cur = tf(p, s[1], s[2]); out.push(`D${P(...cur)}`); }
-				else if (s[0] === 'C') {
-					const a = tf(p, s[1], s[2]), b = tf(p, s[3], s[4]), c = tf(p, s[5], s[6]);
-					out.push(`BZ1,${P(...cur)},${P(...a)},${P(...b)},${P(...c)},`);
-					cur = c;
-				} else if (cur[0] !== start[0] || cur[1] !== start[1]) { out.push(`D${P(...start)}`); cur = start; }
+		for (const g of gruppi(j)) {
+			const segs = parsePath(g.pathD);
+			const tf = (p: Placement, x: number, y: number): [number, number] => (p.rot ? [p.x + g.cutH - y, p.y + x] : [p.x + x, p.y + y]);
+			for (const p of g.pieces) {
+				let cur: [number, number] = [0, 0], start: [number, number] = [0, 0];
+				for (const s of segs) {
+					if (s[0] === 'M') { cur = start = tf(p, s[1], s[2]); out.push(`M${P(...cur)}`); }
+					else if (s[0] === 'L') { cur = tf(p, s[1], s[2]); out.push(`D${P(...cur)}`); }
+					else if (s[0] === 'C') {
+						const a = tf(p, s[1], s[2]), b = tf(p, s[3], s[4]), c = tf(p, s[5], s[6]);
+						out.push(`BZ1,${P(...cur)},${P(...a)},${P(...b)},${P(...c)},`);
+						cur = c;
+					} else if (cur[0] !== start[0] || cur[1] !== start[1]) { out.push(`D${P(...start)}`); cur = start; }
+				}
 			}
 		}
 	}
@@ -222,9 +240,11 @@ function thumbnail(j: XpfJob, tw: number, th: number): Uint8Array {
 	};
 	const colOf = (cond: number) => THUMB_COL[cond] ?? [0x40, 0x40, 0x40];
 	if (j.pieceCond) {
-		const c = colOf(j.pieceCond), segs = parsePath(j.pathD);
-		const tf = (p: Placement, x: number, y: number): [number, number] => (p.rot ? [p.x + j.cutH - y, p.y + x] : [p.x + x, p.y + y]);
-		for (const p of j.pieces) {
+		const c = colOf(j.pieceCond);
+		for (const g of gruppi(j)) {
+		const segs = parsePath(g.pathD);
+		const tf = (p: Placement, x: number, y: number): [number, number] => (p.rot ? [p.x + g.cutH - y, p.y + x] : [p.x + x, p.y + y]);
+		for (const p of g.pieces) {
 			let cur: [number, number] = [0, 0], start: [number, number] = [0, 0];
 			for (const s of segs) {
 				if (s[0] === 'M') cur = start = tf(p, s[1], s[2]);
@@ -240,6 +260,7 @@ function thumbnail(j: XpfJob, tw: number, th: number): Uint8Array {
 					cur = p3;
 				} else { line(cur, start, c); cur = start; }
 			}
+		}
 		}
 	}
 	if (j.sheetCond && j.sheets?.length) {

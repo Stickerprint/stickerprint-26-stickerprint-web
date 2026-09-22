@@ -1,35 +1,26 @@
 import { error } from '@sveltejs/kit';
-import type { OrderRow } from '$lib/dashboard/orders';
-import { approveBy, projectedFinish, riskOf, type Task } from '$lib/dashboard/produzione';
-import { ensurePlan, loadEvents, operatorName, taskActions } from '$lib/server/produzione';
+import { isAdmin, loadEvents, loadJob, loadSetup, recalcIfStale, taskActions } from '$lib/server/produzione';
+import { splitByDays } from '$lib/production/scheduler';
 import type { Actions, PageServerLoad } from './$types';
 
-/** Dettaglio commessa: timeline delle lavorazioni, file e anteprima, note, ristampe, cronologia */
+/** Dettaglio commessa: fasi con macchine e orari, piano per giorno, file e anteprima, cronologia */
 export const load: PageServerLoad = async ({ params, locals: { supabase, user } }) => {
-	const { data: o } = await supabase.from('orders').select('*').eq('id', params.id).maybeSingle();
-	if (!o) error(404, 'Commessa non trovata');
-	const order = o as OrderRow;
-	await ensurePlan(supabase, [order], await operatorName(supabase, user));
-	const [{ data: t }, events] = await Promise.all([
-		supabase.from('production_tasks').select('*').eq('order_id', order.id).order('seq'),
-		loadEvents(supabase, order.id)
-	]);
-	const tasks = (t ?? []) as Task[];
-	const now = new Date();
-	const timeline = tasks.map((task) => ({ task, risk: riskOf(task, tasks, order, now) }));
-	let file: string | null = null;
-	if (order.file_path && !order.file_path.endsWith('/')) {
-		const { data: s } = await supabase.storage.from('order-files').createSignedUrl(order.file_path, 3600);
-		file = s?.signedUrl ?? null;
+	await recalcIfStale(supabase);
+	const jf = await loadJob(supabase, params.id);
+	if (!jf) error(404, 'Commessa non trovata');
+	const [setup, events, admin] = await Promise.all([loadSetup(supabase), loadEvents(supabase, jf.job.id), isAdmin(supabase, user)]);
+	// file del cliente: link firmati (1 ora)
+	const files: Record<string, string> = {};
+	for (const it of jf.group.items) {
+		if (it.file_path && !it.file_path.endsWith('/')) { const { data: s } = await supabase.storage.from('order-files').createSignedUrl(it.file_path, 3600); if (s) files[it.id] = s.signedUrl; }
+		if (it.proof_url && !/^https?:\/\//.test(it.proof_url)) { const { data: s } = await supabase.storage.from('order-files').createSignedUrl(it.proof_url, 3600); it.proof_url = s?.signedUrl ?? null; }
 	}
-	const siblings = order.checkout_group ? ((await supabase.from('orders').select('id, number, product_name, qty, status').eq('checkout_group', order.checkout_group).neq('id', order.id)).data ?? []) : [];
-	return {
-		order, timeline, events, file, siblings,
-		projected: tasks.some((x) => x.status !== 'completato') ? projectedFinish(tasks, now).toISOString() : null,
-		approveBy: approveBy(tasks)?.toISOString() ?? null,
-		totalMinutes: tasks.reduce((a, x) => a + x.minutes, 0),
-		doneMinutes: tasks.filter((x) => x.status === 'completato').reduce((a, x) => a + x.minutes, 0)
-	};
+	// piano giornaliero: ogni fase spalmata sui giorni che attraversa
+	const days: Record<string, { phase: typeof jf.phases[number]; start: string; end: string; minutes: number }[]> = {};
+	for (const p of jf.phases) {
+		if (!p.planned_start_at || !p.planned_end_at || p.status === 'completato' || p.status === 'saltata') continue;
+		for (const s of splitByDays(new Date(p.planned_start_at), new Date(p.planned_end_at), setup.calendar, p.passive)) { (days[s.day] ??= []).push({ phase: p, start: s.start.toISOString(), end: s.end.toISOString(), minutes: s.minutes }); }
+	}
+	return { ...jf, setup, events, admin, files, days, now: new Date().toISOString() };
 };
-
 export const actions: Actions = { ...taskActions };

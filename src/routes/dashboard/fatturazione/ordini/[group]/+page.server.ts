@@ -124,7 +124,7 @@ export const actions: Actions = {
 		if (e) return fail(400, { error: e.message });
 		const { data: rows } = await supabase.from('orders').select('*').eq('checkout_group', params.group);
 		await ensurePlan(supabase, (rows ?? []) as OrderRow[], await operatorName(supabase, locals.user));
-		return { ok: true, message: 'Ordine in produzione: prima lavorazione in Produzione › Stampa.' };
+		return { ok: true, message: 'Ordine in produzione: la trovi in Produzione › Coda ordini.' };
 	},
 	status: async ({ request, params, locals }) => {
 		const { supabase } = locals;
