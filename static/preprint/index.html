@@ -5664,7 +5664,7 @@ function ppGeoUI(){
   const send=(type,detail)=>{try{parent.postMessage({source:'preprint',type,detail:detail||null},origin);}catch(e){}};
   /* Il canvas ha un margine trasparente attorno alla sagoma (pad): si adatta la
      scala in modo che sia la SAGOMA a riempire il palco, mai tagliata. */
-  const PANEL=panel;
+  const PANEL=panel, PALCO=Math.max(160,+q.get('palco')||560);
   const fitEmbed=()=>{
     try{
       const a=S._an; if(!a||!a.cv||!a.tile)return;
@@ -5680,7 +5680,9 @@ function ppGeoUI(){
          del pezzo: cosi' e' stabile e non c'e' piu' nessun rimbalzo. */
       if(PANEL){
         const aw=a.sheet?a.cv.width:(a.tile.width+2*m0), ah=a.sheet?a.cv.height:(a.tile.height+2*m0);
-        const alto=Math.round(Math.max(220,Math.min(W*1.25,W*(ah/Math.max(1,aw)))));
+        /* il tetto e' l'altezza che il sito ha previsto per il palco: senza, un pezzo alto
+           faceva crescere l'anteprima fino a riempire tutta la larghezza */
+        const alto=Math.round(Math.max(220,Math.min(PALCO,W*1.25,W*(ah/Math.max(1,aw)))));
         if(st.style.height!==alto+'px')st.style.height=alto+'px';
         H=alto;
       }
