@@ -523,7 +523,7 @@ body { overflow-x: clip; }
 .final__date b { color: var(--green); }
 
 /* Footer (identico al sito attuale, font aggiornati) */
-.footer { background: #040140; color: #fff; padding: 36px 0 22px; margin-top: clamp(16px, 2.5vw, 30px); font-size: 14px; }
+.footer { background: #040140; color: #fff; padding: 36px 0 22px; margin-top: 0; font-size: 14px; }
 .footer a { color: #fff; }
 .footer__grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 28px; align-items: start; }
 .footer__block { display: grid; gap: 16px; justify-items: center; text-align: center; width: fit-content; min-width: 380px; }
