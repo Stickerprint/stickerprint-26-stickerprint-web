@@ -38,13 +38,12 @@
 				<p class="qp__lead">Questa proposta non è più attiva. Se ti serve ancora, chiedici un aggiornamento: te lo rifacciamo con prezzi e tempi di oggi.</p>
 			{:else}
 				<h1>Ciao {first}, ecco il preventivo per <span class="hl">{data.customer.name}</span></h1>
-				<p class="qp__lead">Guarda cosa ricevi, controlla il totale e conferma con un clic: la commessa entra subito in lavorazione. {#if daysLeft !== null}<b class="qp__valid" class:is-soon={daysLeft <= 5}>{daysLeft > 0 ? `Valido ancora ${daysLeft} ${daysLeft === 1 ? 'giorno' : 'giorni'}` : 'Scade oggi'}</b> (fino al {it(q.valid_until)}).{/if}</p>
+				<p class="qp__lead">Ecco cosa riceverai: controlla il totale e conferma con un clic: la commessa entra subito in lavorazione. {#if daysLeft !== null}<b class="qp__valid" class:is-soon={daysLeft <= 5}>{daysLeft > 0 ? `Valido ancora ${daysLeft} ${daysLeft === 1 ? 'giorno' : 'giorni'}` : 'Scade oggi'}</b> (fino al {it(q.valid_until)}).{/if}</p>
 			{/if}
 			{#if form?.error}<p class="error">{form.error}</p>{/if}
 			{#if form?.message && !form?.accepted}<p class="ok">{form.message}</p>{/if}
 		</header>
 
-		<h2 class="qp__h2">Cosa ricevi</h2>
 		<div class="qp__items">
 			{#each data.items as i, k (k)}
 				<article class="qp__item">
@@ -66,7 +65,7 @@
 				<div class="qp__row"><span>IVA 22%</span><b>{money(q.total_gross - q.total_net)}</b></div>
 				<div class="qp__row qp__row--tot"><span>Totale</span><b>{money(q.total_gross)}</b></div>
 				<ul class="qp__terms">
-					{#if data.leadTime}<li>⏱ {data.leadTime}{#if data.shipDate} · spedizione prevista {it(data.shipDate)}{/if}.</li>{:else if data.shipDate}<li>⏱ Spedizione prevista {it(data.shipDate)}.</li>{/if}
+					{#if data.leadTime}<li>⏱ {data.leadTime}.</li>{/if}
 					<li>🚚 {data.shipMethod === 'Consegna diretta Stickerprint' ? 'Consegna diretta' : data.shipMethod?.includes('destinatario') ? 'Ritiro con il tuo corriere' : 'Spedizione con corriere espresso, tracking via email'}.</li>
 					{#if data.terms.length}<li>💳 Pagamento: {data.terms.join(' + ')}.</li>{/if}
 				</ul>
@@ -89,13 +88,13 @@
 					<button class="btn btn--green btn--lg" type="submit" disabled={sending}>✓ Confermo il preventivo</button>
 				</form>
 				<div class="qp__more">
-					<a class="btn btn--ghost" href="/preventivo/{data.q ? '' : ''}{location_token()}/pdf">📄 Scarica il PDF</a>
-					<button class="btn btn--ghost" type="button" onclick={() => { asking = !asking; rejecting = false; }}>💬 Ho una domanda</button>
+					<a class="btn btn--blue" href="/preventivo/{location_token()}/pdf">📄 Scarica il PDF</a>
+					<button class="btn btn--yellow" type="button" onclick={() => { asking = !asking; rejecting = false; }}>💬 Ho una domanda</button>
 					<button class="link-btn" type="button" onclick={() => { rejecting = !rejecting; asking = false; }}>Non fa per me</button>
 				</div>
 				<p class="note">Confermando accetti la proposta alle condizioni indicate. Nessun pagamento adesso: ricevi la conferma d'ordine con i dettagli.</p>
 			{:else if done}
-				<div class="qp__more"><a class="btn btn--ghost" href="/preventivo/{location_token()}/pdf">📄 Scarica il PDF</a><button class="btn btn--ghost" type="button" onclick={() => (asking = !asking)}>💬 Scrivici</button></div>
+				<div class="qp__more"><a class="btn btn--blue" href="/preventivo/{location_token()}/pdf">📄 Scarica il PDF</a><button class="btn btn--yellow" type="button" onclick={() => (asking = !asking)}>💬 Scrivici</button></div>
 			{:else}
 				<form method="POST" action="?/aggiorna" use:enhance={submit} class="qp__ask">
 					<textarea name="testo" rows="2" placeholder="Se qualcosa è cambiato (quantità, misura, materiale) scrivilo qui."></textarea>
