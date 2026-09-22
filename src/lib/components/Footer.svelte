@@ -88,6 +88,8 @@
 			</nav>
 			<p class="footer__copy">© {new Date().getFullYear()} Stickerprint Srl</p>
 			<div class="footer__meta">
+				<!-- selettore lingua: nascosto finche' il sito e' solo in italiano (struttura in i18n.ts) -->
+				{#if false}
 				<details class="footer__lang">
 					<summary>
 						{@render flag(current.flag)}
@@ -100,6 +102,7 @@
 						{/each}
 					</div>
 				</details>
+				{/if}
 				<div class="footer__social">
 					<a href="https://www.facebook.com/stickerprint.it" target="_blank" rel="noopener" aria-label="Facebook"><img src="/icons/footer/facebook.webp" alt="" /></a>
 					<a href="https://www.instagram.com/stickerprint.it" target="_blank" rel="noopener" aria-label="Instagram"><img src="/icons/footer/instagram.webp" alt="" /></a>

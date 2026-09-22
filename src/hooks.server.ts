@@ -72,6 +72,9 @@ const authGuard: Handle = async ({ event, resolve }) => {
 
 	const path = event.url.pathname;
 
+	// prove di stampa del vecchio sito: i link /proof/<token> gia' inviati continuano a funzionare la'
+	if (path.startsWith('/proof/')) redirect(302, `https://stickerprint.pages.dev${path}${event.url.search}`);
+
 	if (!session && PROTECTED_PREFIXES.some((p) => path.startsWith(p))) {
 		redirect(303, `/login?next=${encodeURIComponent(path)}`);
 	}

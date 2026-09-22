@@ -1,3 +1,4 @@
+import { renewedEndsAt, normalizePromo } from '$lib/server/promos';
 import { fail } from '@sveltejs/kit';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { shippingGrossFor, isRemote } from '$lib/shipping-rules';
@@ -124,7 +125,9 @@ export const actions: Actions = {
 			const promoId = String((l as { promoId?: string }).promoId ?? '');
 			if (promoId) {
 				const { data: pr } = await supabase.from('promos').select('*').eq('id', promoId).eq('active', true).maybeSingle();
-				if (pr && pr.product_slug === l.product && Number(pr.qty) === Number(l.qty) && (!pr.ends_at || new Date(pr.ends_at).getTime() > Date.now())) {
+				// un'offerta a ciclo scaduta conta come rinnovata (stessa regola della pagina /offerte)
+				const valida = !!pr && (!pr.ends_at || new Date(pr.ends_at).getTime() > Date.now() || !!renewedEndsAt(normalizePromo(pr)));
+				if (pr && valida && pr.product_slug === l.product && Number(pr.qty) === Number(l.qty)) {
 					const sizes = Array.isArray(pr.sizes) ? (pr.sizes as { w: number; h?: number; price: number }[]) : [];
 					const hit = sizes.find((s) => Math.abs(Number(s.w) - Number(l.w)) < 0.6 && Math.abs(Number(s.h ?? s.w) - Number(l.h)) < 0.6);
 					const gross = hit ? Number(hit.price) : sizes.length ? NaN : Number(pr.price);

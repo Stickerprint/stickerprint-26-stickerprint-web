@@ -7,6 +7,7 @@ export interface Promo {
 	id: string; active: boolean; sort: number;
 	qty: number; product_slug: string; product_label: string;
 	price: number; price_normal: number | null; subtitle: string | null; ends_at: string | null;
+	cycle_days: number; // >0: alla scadenza riparte da sola di tanti giorni
 	forma: string; materiale: string; finitura: string | null;
 	chips: string[]; includes: PromoInclude[]; perks: PromoPerk[]; save_text: string | null; sizes: PromoSize[]; cta: string;
 	w: number; h: number; // misura unica dell'offerta (mm)
@@ -23,7 +24,7 @@ export function normalizePromo(r: Record<string, unknown>): Promo {
 		id: String(r.id), active: !!r.active, sort: Number(r.sort ?? 0),
 		qty: Number(r.qty ?? 0), product_slug: String(r.product_slug ?? 'adesivi_personalizzati'), product_label: String(r.product_label ?? 'adesivi personalizzati'),
 		price: Number(r.price ?? 0), price_normal: r.price_normal == null ? null : Number(r.price_normal),
-		subtitle: (r.subtitle as string) ?? null, ends_at: (r.ends_at as string) ?? null,
+		subtitle: (r.subtitle as string) ?? null, ends_at: (r.ends_at as string) ?? null, cycle_days: Math.max(0, Math.round(Number(r.cycle_days ?? 0))) || 0,
 		forma: String(r.forma ?? 'sagomato'), materiale: String(r.materiale ?? 'bianco'), finitura: (r.finitura as string) ?? null,
 		chips: arr<string>(r.chips).map(String), includes: arr<PromoInclude>(r.includes), perks: arr<PromoPerk>(r.perks), save_text: (r.save_text as string) ?? null,
 		sizes: arr<PromoSize>(r.sizes).map((s) => ({ label: String(s.label), w: Number(s.w), h: Number(s.h ?? s.w), price: Number(s.price) })),
@@ -49,8 +50,26 @@ async function loadPromosFresh(supabase: SupabaseClient, all: boolean): Promise<
 		let q = supabase.from('promos').select('*').order('sort', { ascending: true }).order('created_at', { ascending: false });
 		if (!all) q = q.eq('active', true);
 		const { data } = await q;
-		return (data ?? []).map((r) => normalizePromo(r as Record<string, unknown>));
+		const promos = (data ?? []).map((r) => normalizePromo(r as Record<string, unknown>));
+		// regola del ciclo: se e' scaduta e ha una durata, riparte da zero (scritto anche nel database)
+		for (const p of promos) {
+			const next = renewedEndsAt(p);
+			if (next) { p.ends_at = next; supabase.from('promos').update({ ends_at: next, updated_at: new Date().toISOString() }).eq('id', p.id).then(() => {}, () => {}); }
+		}
+		return promos;
 	} catch (e) { console.warn('[promos] non disponibili', e); return []; }
+}
+
+/** Nuova scadenza di un'offerta a ciclo gia' scaduta: avanza di cycle_days finche' non e' nel futuro
+ *  (stessa ora del giorno, cosi' resta la fine giornata). null se non c'e' niente da rinnovare. */
+export function renewedEndsAt(p: { ends_at: string | null; cycle_days: number }, now = Date.now()): string | null {
+	if (!p.ends_at || !(p.cycle_days > 0)) return null;
+	let t = new Date(p.ends_at).getTime();
+	if (!Number.isFinite(t) || t > now) return null;
+	const step = p.cycle_days * 86400000;
+	t += Math.ceil((now - t) / step) * step;
+	if (t <= now) t += step;
+	return new Date(t).toISOString();
 }
 
 /** Righe "Etichetta | valore" da una textarea della dashboard */

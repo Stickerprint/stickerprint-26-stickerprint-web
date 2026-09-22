@@ -32,6 +32,7 @@ function leggi(f: FormData) {
 			subtitle: s('subtitle') || null,
 			// fine giornata in Italia (21:59 UTC = 23:59 ora legale), cosi' la data non slitta al giorno dopo
 			ends_at: ends ? new Date(ends + 'T21:59:59Z').toISOString() : null,
+			cycle_days: Math.max(0, Math.round(num('cycle_days') ?? 0)),
 			forma: s('forma') || 'sagomato', materiale: s('materiale') || 'bianco', finitura: s('finitura') || null,
 			chips: s('chips').split('\n').map((c) => c.trim()).filter(Boolean),
 			includes: parseLines(s('includes'), ['label', 'normally']),

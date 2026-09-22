@@ -5,7 +5,7 @@
 	import { PROMO_ENGINES } from '$lib/pricing/promoEngines';
 	let { data, form } = $props();
 	let editing = $state<string | 'new' | null>(null);
-	const vuota: Promo = { id: '', active: true, sort: 0, qty: 250, product_slug: 'adesivi_personalizzati', product_label: 'adesivi personalizzati', price: 79, price_normal: null, subtitle: '', ends_at: null, forma: 'sagomato', materiale: 'bianco', finitura: 'lucida', chips: [], includes: [], perks: [], save_text: '', sizes: [], cta: 'Carica il file per continuare', w: 50, h: 50 };
+	const vuota: Promo = { id: '', active: true, sort: 0, qty: 250, product_slug: 'adesivi_personalizzati', product_label: 'adesivi personalizzati', price: 79, price_normal: null, subtitle: '', ends_at: null, cycle_days: 7, forma: 'sagomato', materiale: 'bianco', finitura: 'lucida', chips: [], includes: [], perks: [], save_text: '', sizes: [], cta: 'Carica il file per continuare', w: 50, h: 50 };
 	let prodSel = $state('adesivi_personalizzati');
 	const opz = $derived(data.opzioni[prodSel] ?? { materials: [], finishes: [] });
 	const lines = (l: object[], a: string, b: string) => l.map((i) => { const r = i as Record<string, unknown>; return `${r[a] ?? ''} | ${r[b] ?? ''}`; }).join('\n');
@@ -31,6 +31,7 @@
 		<label>Prezzo offerta (€, IVA inclusa)<input name="price" type="number" step="0.01" min="0.01" required value={p.price} /></label>
 		<label>Prezzo di listino (€)<input name="price_normal" type="number" step="0.01" min="0" value={p.price_normal ?? ''} /></label>
 		<label>Scade il<input name="ends_at" type="date" value={dateInput(p.ends_at)} /></label>
+		<label>Si riattiva da sola ogni (giorni)<input name="cycle_days" type="number" min="0" step="1" value={p.cycle_days} /><small>Alla scadenza il conto alla rovescia riparte da zero per altrettanti giorni. 0 = scade e basta.</small></label>
 		<label>Prodotto (motore <b>{PROMO_ENGINES[prodSel] ?? '—'}</b>)<select name="product_slug" bind:value={prodSel}>{#each PRODUCT_ENGINES as e (e.slug)}<option value={e.slug}>{e.name}</option>{/each}</select></label>
 		<label>Nome nel titolo<input name="product_label" value={p.product_label} placeholder="adesivi personalizzati" /></label>
 		<label>Sagoma<select name="forma">{#each ['sagomato', 'tondo', 'quadrato', 'ovale', 'rettangolo'] as s (s)}<option value={s} selected={s === p.forma}>{s}</option>{/each}</select></label>
