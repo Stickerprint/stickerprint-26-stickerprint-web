@@ -1,3 +1,4 @@
+// @ts-nocheck: file usato solo dai test (vitest gira in Node; il check del sito non ha i tipi di Node)
 /**
  * Solo per i test: Postgres embedded (pglite) con le migrazioni VERE del progetto e un client minimo
  * che imita la parte di supabase-js usata dal modulo di produzione (select/insert/update/upsert/delete + filtri).

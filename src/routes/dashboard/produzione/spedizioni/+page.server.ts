@@ -124,9 +124,9 @@ export const actions: Actions = {
 		if (hard.length) return fail(400, { error: hard.join(' · ') });
 		const now = new Date().toISOString();
 		await supabase.from('orders').update({ status: 'in_spedizione', courier: 'Qapla', shipped_at: now, transmitted_at: now }).eq('checkout_group', group);
-		/* ordine manuale: serve il DDT (da fatturare) con le quantita' davvero consegnate */
+		/* il DDT si fa SEMPRE (Qapla, consegna diretta, corriere del cliente): qui con le quantita' davvero spedite */
 		let ddtInfo: { id: string; number: string } | null = null;
-		if (g.channel === 'manuale' && !g.items[0].ddt_id) {
+		if (!g.items[0].ddt_id) {
 			const d = await makeDdt(supabase, group, f, 'ours');
 			if ('error' in d) return fail(400, { error: `Ordine inviato a Qapla, ma ${d.error}` });
 			ddtInfo = { id: d.id, number: d.number };

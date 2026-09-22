@@ -6,7 +6,7 @@
 	const st = (s: string) => ORDER_STATUS[s] ?? { label: s, color: '#6b7280', soft: '#eceef3' };
 	type G = (typeof data.groups)[number];
 	let ddtPopup = $state<string | null>(null);
-	/* il popup serve a "Concludi" (consegna diretta, corriere cliente) e a "Invia a Qapla" per gli ordini manuali (serve il DDT) */
+	/* il popup serve a "Concludi" (consegna diretta, corriere cliente) e a "Invia a Qapla": il DDT si fa sempre */
 	let popupKind = $state<'ddt' | 'qapla'>('ddt');
 	let ddtParcels = $state(1);
 	let ddtWeight = $state<number | null>(null);
@@ -78,7 +78,7 @@
 			<a class="tabbtn" class:is-active={data.view === 'spediti'} href="/dashboard/produzione/spedizioni?vista=spediti">Ordini spediti</a>
 		</div>
 		{#if data.view === 'da-spedire'}
-			<p class="lead" style="margin-top:12px">Qui arrivano gli ordini usciti dall'ultimo reparto. Per ognuno scegli dalla tendina: <b>Invia a Qapla</b> (nostro corriere: etichetta dal pannello Qapla, il cliente riceve l'email "in attesa di ritiro", poi spedito, in consegna e consegnato arrivano da soli), <b>Consegna diretta</b> (con Concludi l'ordine è <b>consegnato</b>) o <b>Corriere cliente</b> (con Concludi l'ordine è <b>spedito</b> e si chiude lì). Appena inviato o concluso, l'ordine esce da questa lista e lo ritrovi in <b>Ordini spediti</b>.</p>
+			<p class="lead" style="margin-top:12px">Qui arrivano gli ordini usciti dall'ultimo reparto. Per ognuno scegli dalla tendina: <b>Invia a Qapla</b> (nostro corriere: etichetta dal pannello Qapla, il cliente riceve l'email "in attesa di ritiro", poi spedito, in consegna e consegnato arrivano da soli), <b>Consegna diretta</b> (l'ordine è <b>consegnato</b>) o <b>Corriere cliente</b> (l'ordine è <b>spedito</b> e si chiude lì). In tutti e tre i casi si compila il <b>DDT</b> con colli, peso e quantità spedite. Poi l'ordine esce da questa lista e lo ritrovi in <b>Ordini spediti</b>.</p>
 		{:else}
 			<p class="lead" style="margin-top:12px">Il calendario degli ordini partiti: clicca un giorno per vedere cosa è stato spedito, con quale corriere e a che punto è. Gli stati delle spedizioni Qapla si aggiornano da soli.</p>
 		{/if}
@@ -119,8 +119,8 @@
 					</td>
 					<td style="white-space:nowrap">
 						{#if c === 'qapla'}
-							{#if g.channel === 'manuale' && !f.ddt_id}
-								<button type="button" class="btn btn--blue btn--xs" title="Colli, peso e quantità consegnate, poi DDT e invio a Qapla" onclick={() => openDdt(g, 'qapla')}>📦 Invia a Qapla</button>
+							{#if !f.ddt_id}
+								<button type="button" class="btn btn--blue btn--xs" title="Colli, peso e quantità spedite, poi DDT e invio a Qapla" onclick={() => openDdt(g, 'qapla')}>📦 Invia a Qapla</button>
 							{:else}
 								<form method="POST" action="?/qapla" use:enhance={() => { sending = g.key; return async ({ update }) => { sending = null; await update(); }; }}><input type="hidden" name="group" value={g.key} /><button class="btn btn--blue btn--xs" type="submit" disabled={sending === g.key} title="Trasmette l'ordine a Qapla e avvisa il cliente">{sending === g.key ? '…' : '📦 Invia a Qapla'}</button></form>
 							{/if}
