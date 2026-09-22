@@ -75,6 +75,8 @@
 		if (h > 0) q.set('h', String(h));
 		if (panel) {
 			q.set('panel', '1');
+			/* altezza massima del palco: il motore la usa come tetto, cosi' l'anteprima non diventa gigante */
+			q.set('palco', String(Math.max(160, Math.round(stage))));
 			q.set('stage', String(stage));
 		}
 		return `/preprint/index.html?${q.toString()}`;
