@@ -28,6 +28,8 @@ export interface StudioProduct {
 	sheetCut?: CutSpot;
 	/** regole del foglio (solo modo fogli) */
 	sheetRules?: 'resinati' | 'etichette';
+	/** foglio con piu' soggetti diversi nello stesso file del cliente */
+	multi?: boolean;
 	/** non ancora pronto nello studio */
 	soon?: string;
 }
@@ -39,7 +41,7 @@ export const STUDIO_PRODUCTS: StudioProduct[] = [
 	{ id: 'etichette', engineSlug: 'etichette', name: 'Etichette in fogli', img: '/images/prodotti/etichette/1.webp', hint: 'Mezzo taglio · fogli circa A4', engineProduct: 'sticker', foglio: true, mode: 'fogli', pieceCut: 'CutContour', sheetCut: 'Passante', sheetRules: 'etichette' },
 	{ id: 'vetrofanie', engineSlug: 'vetrofanie', name: 'Vetrofanie', img: '/images/prodotti/vetrofanie/1.webp', hint: 'Passante · pezzi sciolti', engineProduct: 'sticker', vetro: true, mode: 'sciolti', pieceCut: 'Passante' },
 	{ id: 'kit-adesivi', engineSlug: 'adesivi_personalizzati', name: 'Kit di adesivi', img: '/images/prodotti/kit/1.webp', hint: 'Adesivi e cavallotto · passante', engineProduct: 'sticker', kit: true, mode: 'sciolti', pieceCut: 'Passante' },
-	{ id: 'fogli-adesivi', engineSlug: 'fogli_adesivi', name: 'Fogli di adesivi', img: '/images/prodotti/fogli/1.webp', hint: 'Mezzo taglio · foglio con passante', engineProduct: 'sticker', mode: 'fogli', pieceCut: 'CutContour', sheetCut: 'Passante', soon: 'Il foglio con più design arriva nel prossimo passaggio.' }
+	{ id: 'fogli-adesivi', engineSlug: 'fogli_adesivi', name: 'Fogli di adesivi', img: '/images/prodotti/fogli/1.webp', hint: 'Mezzo taglio · foglio con passante', engineProduct: 'sticker', mode: 'fogli', pieceCut: 'CutContour', sheetCut: 'Passante', sheetRules: 'etichette', multi: true }
 ];
 
 export const studioProduct = (id: string) => STUDIO_PRODUCTS.find((p) => p.id === id) ?? null;

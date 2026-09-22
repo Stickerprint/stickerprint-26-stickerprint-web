@@ -23,7 +23,7 @@
 	let dragging = $state(false);
 	let fileInput = $state<HTMLInputElement | undefined>();
 	let colInput = $state<HTMLInputElement | undefined>();
-	let engine = $state<{ post: (type: string, detail?: Record<string, unknown>) => void; studio: (what: 'mockup' | 'print' | 'geom' | 'applica', opts?: Record<string, unknown>) => Promise<{ blob?: Blob; cutW?: number; cutH?: number; bleed?: number; pathD?: string; polys?: [number, number][][] | null; shape?: string; dpi?: number; border?: number }> }>();
+	let engine = $state<{ post: (type: string, detail?: Record<string, unknown>) => void; studio: (what: 'mockup' | 'print' | 'geom' | 'applica' | 'stato' | 'soggetti', opts?: Record<string, unknown>) => Promise<{ blob?: Blob; soggetti?: { pathD: string; x: number; y: number; w: number; h: number; nodi: number }[]; foglio?: { w: number; h: number }; unione?: number; cutW?: number; cutH?: number; bleed?: number; pathD?: string; polys?: [number, number][][] | null; shape?: string; dpi?: number; border?: number }> }>();
 
 	/* kit: si lavora un adesivo del kit oppure il cavallotto */
 	let pezzo = $state<'adesivo' | 'cavallotto'>('adesivo');
@@ -161,6 +161,82 @@
 	}
 
 	/* ------------------------------------------------------------ esportazioni */
+	/* ------------------------------------------------------------ foglio con piu' soggetti */
+	/* il file del cliente contiene tutti gli adesivi del foglio: il motore li divide e ricava
+	   il tracciato di ognuno, il file si usa 1:1 (misure del foglio) */
+	const MULTI = $derived(!!P.multi);
+	let foglioW = $state(210);
+	let foglioH = $state(297);
+	let bordoF = $state(2);
+	let unioneF = $state<number | ''>('');
+	let unioneUsata = $state(0);
+	let sogg = $state<{ pathD: string; x: number; y: number; w: number; h: number; nodi: number }[]>([]);
+	let soggBusy = $state(false);
+	let soggErr = $state('');
+	let fileUrl = $state('');
+	let nodiF = $state(0);
+	$effect(() => {
+		if (!file) { fileUrl = ''; return; }
+		const u = URL.createObjectURL(file);
+		fileUrl = u;
+		return () => URL.revokeObjectURL(u);
+	});
+
+	async function rilevaSoggetti() {
+		if (!engine || !file) return;
+		soggBusy = true; soggErr = ''; downloadErr = '';
+		try {
+			const r = await engine.studio('soggetti', { foglioW, bordo: bordoF, unione: typeof unioneF === 'number' && unioneF > 0 ? unioneF : 0 });
+			const list = r.soggetti ?? [];
+			if (!list.length) throw new Error('Nel file non trovo nessun adesivo.');
+			/* stesso alleggerimento degli adesivi sagomati: pochi nodi, il plotter non rallenta */
+			const [{ fitPathD, samplePath }, { parsePath }] = await Promise.all([import('$lib/studio/fit'), import('$lib/studio/path')]);
+			const tol = Math.min(0.15, Math.max(0.05, bordoF * 0.25));
+			let nodi = 0;
+			sogg = list.map((x) => {
+				const f = fitPathD(samplePath(parsePath(x.pathD)), { tolerance: tol, smooth: Math.min(0.15, Math.max(0.05, bordoF * 0.12)) });
+				nodi += f.d ? f.nodes : x.nodi;
+				return { ...x, pathD: f.d || x.pathD };
+			});
+			nodiF = nodi;
+			if (r.foglio) foglioH = Math.round(r.foglio.h * 10) / 10;
+			unioneUsata = r.unione ?? 0;
+			engCut = { w: foglioW, h: foglioH };
+			rendered = true;
+		} catch (e) {
+			soggErr = e instanceof Error ? e.message : String(e);
+			sogg = [];
+		} finally { soggBusy = false; }
+	}
+
+	let soggTimer: ReturnType<typeof setTimeout> | undefined;
+	$effect(() => {
+		if (!MULTI || !file || renders < 1) return;
+		const key = `${foglioW}|${bordoF}|${unioneF}|${renders}`;
+		clearTimeout(soggTimer);
+		soggTimer = setTimeout(() => { void key; void rilevaSoggetti(); }, 250);
+	});
+
+	/* il foglio intero come grafica di stampa: il file del cliente 1:1, senza ritocchi */
+	async function artworkFoglio() {
+		if (!file) throw new Error('Carica il file del cliente.');
+		if (!sogg.length) throw new Error('Nessun adesivo riconosciuto nel foglio.');
+		const img = await new Promise<HTMLImageElement>((ok, ko) => {
+			const i = new Image(); i.onload = () => ok(i); i.onerror = () => ko(new Error('Non riesco a leggere il file.')); i.src = fileUrl;
+		});
+		const cv = document.createElement('canvas');
+		cv.width = img.naturalWidth; cv.height = img.naturalHeight;
+		const g = cv.getContext('2d')!;
+		g.fillStyle = '#fff'; g.fillRect(0, 0, cv.width, cv.height);
+		g.drawImage(img, 0, 0);
+		const blob = await new Promise<Blob | null>((r) => cv.toBlob(r, 'image/png'));
+		if (!blob) throw new Error('Non riesco a preparare la grafica.');
+		const { spostaPath } = await import('$lib/studio/path');
+		const pathD = sogg.map((x) => spostaPath(x.pathD, x.x, x.y)).join(' ');
+		traceInfo = `${sogg.length} adesivi · ${nodiF} punti di ancoraggio in tutto · grafica a ${Math.round((cv.width / foglioW) * 25.4)} dpi`;
+		return { png: new Uint8Array(await blob.arrayBuffer()), cutW: foglioW, cutH: foglioH, bleed: 0, pathD };
+	}
+
 	let busy = $state<'' | 'mockup' | 'print' | 'strip' | 'dls'>('');
 	let downloadErr = $state('');
 	let dpi = $state<'auto' | number>('auto');
@@ -215,6 +291,7 @@
 	}
 
 	async function artwork() {
+		if (MULTI) return artworkFoglio();
 		if (fonte === 'pronto') {
 			/* file pronto: grafica vettoriale del cliente 1:1, il suo tracciato diventa la tinta di taglio */
 			if (!ready) throw new Error('Carica prima il PDF pronto.');
@@ -239,7 +316,10 @@
 	const scaricaStampaTaglio = () => run('print', async () => {
 		const { buildPdf, singleStrip } = await import('$lib/studio/pdf');
 		const art = await artwork();
-		const bytes = await buildPdf({ title: `${jobName} — stampa e taglio`, art, pages: [singleStrip(art)], pieceCut: P.pieceCut });
+		const pagina = singleStrip(art);
+		/* foglio di adesivi: attorno al foglio ci va il passante */
+		if (MULTI) pagina.sheets = [{ x: art.bleed, y: art.bleed, w: art.cutW, h: art.cutH, rot: false }];
+		const bytes = await buildPdf({ title: `${jobName} — stampa e taglio`, art, pages: [pagina], pieceCut: P.pieceCut, sheetCut: MULTI ? P.sheetCut : undefined });
 		download(new Blob([bytes as BlobPart], { type: 'application/pdf' }), `${baseName()}_stampa-taglio.pdf`);
 	});
 
@@ -352,6 +432,10 @@
 	const plan = $derived.by(() => {
 		if (!(cutW > 0 && cutH > 0)) return null;
 		const H = Math.min(stripH || maxH, maxH);
+		if (MULTI) {
+			/* il foglio e' gia' impaginato dal cliente: sulla striscia ci vanno i fogli interi */
+			return { kind: 'multi' as const, r: layoutLoose(cutW, cutH, { stripW: pageW, stripH: H, margin, marginY, gap: sGap, qty: qtyDaFare }) };
+		}
 		if (P.mode === 'fogli') {
 			const rules = SHEET_RULES[P.sheetRules ?? 'etichette'];
 			const probe = layoutSheets(cutW, cutH, rules, { stripW: pageW, stripH: H, margin, marginY, sheetGap: sGap, sheets: 0 });
@@ -374,7 +458,12 @@
 		// si rifa' l'impaginazione con le misure esatte del tracciato
 		const H = Math.min(stripH || maxH, maxH);
 		let pages: Strip[];
-		if (P.mode === 'fogli') {
+		if (MULTI) {
+			const r = layoutLoose(art.cutW, art.cutH, { stripW: pageW, stripH: H, margin, marginY, gap: sGap, qty: qtyDaFare });
+			if (!r.ok) throw new Error(r.error ?? 'Impaginazione non possibile');
+			/* ogni foglio porta il suo passante attorno */
+			pages = r.strips.map((pg) => ({ ...pg, sheets: pg.pieces.map((q) => ({ x: q.x, y: q.y, w: q.rot ? art.cutH : art.cutW, h: q.rot ? art.cutW : art.cutH, rot: q.rot })) }));
+		} else if (P.mode === 'fogli') {
 			const rules = SHEET_RULES[P.sheetRules ?? 'etichette'];
 			const probe = layoutSheets(art.cutW, art.cutH, rules, { stripW: pageW, stripH: H, margin, marginY, sheetGap: sGap, sheets: 0 });
 			if (!probe.ok || !probe.sheet) throw new Error(probe.error ?? 'Impaginazione non possibile');
@@ -572,6 +661,56 @@
 			<span class="st-drop__t">Trascina qui il file del cliente</span>
 			<span class="st-drop__s">oppure clicca per sceglierlo · PNG, JPG, SVG, PDF</span>
 		</button>
+	{:else if MULTI}
+		<div class="st-bench">
+			<div class="st-stage st-foglio">
+				<div class="st-foglio__art">
+					{#if fileUrl}<img src={fileUrl} alt="Foglio del cliente" />{/if}
+					<svg viewBox="0 0 {foglioW} {foglioH}" preserveAspectRatio="xMidYMid meet">
+						<rect x="0" y="0" width={foglioW} height={foglioH} fill="none" stroke={cutColor(P.sheetCut ?? 'Passante')} stroke-width="0.4" />
+						{#each sogg as sg, i (i)}
+							<path d={sg.pathD} transform="translate({sg.x} {sg.y})" fill="none" stroke={cutColor(P.pieceCut)} stroke-width="0.35" />
+						{/each}
+					</svg>
+					{#if soggBusy}<span class="st-foglio__wait">Cerco gli adesivi…</span>{/if}
+				</div>
+				<div class="st-bar">
+					<span class="st-note">{sogg.length ? `${sogg.length} adesivi riconosciuti · ${nodiF} punti di ancoraggio` : 'Nessun adesivo riconosciuto'}</span>
+				</div>
+				<!-- il motore serve per riconoscere gli adesivi: resta fuori vista -->
+				<div class="st-hidden"><EnginePreview bind:this={engine} {file} forma="sagomato" {materiale} finitura="lucida" prodotto={P.engineProduct} w={0} h={0} showCut={false} stage={120} onrender={onRender} /></div>
+			</div>
+			<aside class="st-side">
+				<label class="st-field"><span>Nome lavoro / n. ordine</span><input class="input" bind:value={jobName} /></label>
+				<div class="st-block">
+					<p class="st-label">Foglio del cliente</p>
+					<div class="st-row2">
+						<label class="st-field"><span>Larghezza foglio (mm)</span><input class="input" type="number" min="50" max="500" step="1" bind:value={foglioW} /></label>
+						<label class="st-field"><span>Altezza (dal file)</span><input class="input" value={foglioH.toFixed(1)} readonly /></label>
+					</div>
+					<div class="st-chips">
+						<button type="button" class="st-chip" class:is-on={foglioW === 210} onclick={() => (foglioW = 210)}>A4 (210 mm)</button>
+						<button type="button" class="st-chip" class:is-on={foglioW === 297} onclick={() => (foglioW = 297)}>A3 (297 mm)</button>
+					</div>
+					<p class="st-note">Il file si stampa 1:1: dalla larghezza del foglio nascono tutte le misure.</p>
+				</div>
+				<div class="st-block">
+					<p class="st-label">Taglio degli adesivi</p>
+					<label class="st-field"><span>Bordo attorno al disegno (mm)</span><input class="input" type="number" min="0" max="8" step="0.1" bind:value={bordoF} /></label>
+					<label class="st-field"><span>Unione delle parti (mm, vuoto = automatica)</span><input class="input" type="number" min="0" max="30" step="0.5" bind:value={unioneF} placeholder={unioneUsata ? `automatica: ${unioneUsata} mm` : 'automatica'} /></label>
+					<p class="st-note">Il bordo si allarga o si stringe finché il taglio non cade sul bordo bianco del file. L’unione tiene insieme le parti staccate di uno stesso adesivo: alzala se un adesivo esce spezzato, abbassala se due adesivi vicini si uniscono.</p>
+					<button type="button" class="st-tool st-tool--blue" disabled={soggBusy} onclick={rilevaSoggetti}>{soggBusy ? 'Cerco…' : 'Rileggi il foglio'}</button>
+					{#if soggErr}<p class="st-err">{soggErr}</p>{/if}
+				</div>
+				<div class="st-actions">
+					<button type="button" class="btn btn--pink st-act" disabled={!sogg.length || !!busy} onclick={scaricaStampaTaglio}>{busy === 'print' ? 'Preparo il file…' : 'Scarica file di stampa e taglio'}<small>PDF del foglio: grafica + {P.pieceCut} su ogni adesivo + {P.sheetCut} sul foglio</small></button>
+					<button type="button" class="btn btn--green st-act" disabled={!sogg.length || !!busy} onclick={() => (stripOpen = !stripOpen)} aria-expanded={stripOpen}>Genera file di stampa<small>fogli interi sulla striscia, crocini e codice a barre Graphtec</small></button>
+					{#if traceInfo}<p class="st-note st-trace">{traceInfo}</p>{/if}
+					{#if downloadErr}<p class="st-err">{downloadErr}</p>{/if}
+				</div>
+			</aside>
+		</div>
+
 	{:else}
 		<div class="st-bench">
 			<div class="st-stage">
@@ -690,7 +829,7 @@
 					</div>
 				</div>
 				<label class="st-field"><span>Altezza striscia (mm, max {maxH})</span><input class="input" type="number" min="50" max={maxH} step="1" bind:value={stripH} /></label>
-				<label class="st-field"><span>{P.mode === 'fogli' ? 'Etichette da stampare' : 'Pezzi da stampare'} <em>(vuoto = una striscia piena)</em></span><input class="input" type="number" min="1" step="1" bind:value={qty} placeholder="riempi la striscia" />{#if qtyDaFare}<em class="st-hint">ne preparo {qtyDaFare}: l’8% in piu&#39; per gli scarti</em>{/if}</label>
+				<label class="st-field"><span>{MULTI ? 'Fogli da stampare' : P.mode === 'fogli' ? 'Etichette da stampare' : 'Pezzi da stampare'} <em>(vuoto = una striscia piena)</em></span><input class="input" type="number" min="1" step="1" bind:value={qty} placeholder="riempi la striscia" />{#if qtyDaFare}<em class="st-hint">ne preparo {qtyDaFare}: l’8% in piu&#39; per gli scarti</em>{/if}</label>
 				<details class="st-adv">
 					<summary>Margini e spazi</summary>
 					<p class="st-note">Crocini e codice a barre Graphtec sempre presenti: pagina {pageW} mm, pezzi a {margin} mm dai lati e {marginY} mm da sopra e sotto.</p>
@@ -712,10 +851,13 @@
 							<li>Foglio <b>{plan.r.sheet.w} × {plan.r.sheet.h} mm</b>: {plan.r.sheet.grid.cols} × {plan.r.sheet.grid.rows} = <b>{plan.r.sheet.grid.n} etichette</b></li>
 							<li>Striscia: {plan.r.across} × {plan.r.down} fogli = <b>{plan.r.piecesPerStrip} etichette</b></li>
 							{#if plan.r.warning}<li class="st-warn">{plan.r.warning}</li>{/if}
+						{:else if plan.kind === 'multi'}
+							<li>Foglio <b>{foglioW} × {foglioH.toFixed(0)} mm</b> con <b>{sogg.length} adesivi</b></li>
+							<li>Striscia: {plan.r.grid.cols} × {plan.r.grid.rows} = <b>{plan.r.perStrip} fogli</b>{plan.r.grid.rot ? ' (girati di 90°)' : ''} = {plan.r.perStrip * sogg.length} adesivi</li>
 						{:else if plan.kind === 'sciolti'}
 							<li>Striscia: {plan.r.grid.cols} × {plan.r.grid.rows} = <b>{plan.r.perStrip} pezzi</b>{plan.r.grid.rot ? ' (girati di 90°)' : ''}</li>
 						{/if}
-						<li>{strips.length} {strips.length === 1 ? 'striscia' : 'strisce'}, {strips.reduce((a, s) => a + s.pieces.length, 0)} pezzi in tutto · prima striscia {pageW} × {strips[0]?.h} mm</li>
+						<li>{strips.length} {strips.length === 1 ? 'striscia' : 'strisce'}, {strips.reduce((a, s) => a + s.pieces.length, 0)} {MULTI ? 'fogli' : 'pezzi'} in tutto · prima striscia {pageW} × {strips[0]?.h} mm</li>
 					</ul>
 					{#if P.mode === 'fogli'}
 						<p class="st-label">Taglio sul Graphtec</p>

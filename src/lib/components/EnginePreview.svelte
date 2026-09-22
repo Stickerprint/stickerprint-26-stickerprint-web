@@ -85,9 +85,9 @@
 		frame?.contentWindow?.postMessage({ source: 'sito', type, ...detail }, location.origin);
 	}
 	/** Stickerprint Studio: chiede al motore mockup ('mockup') o grafica di stampa + tracciato ('print') */
-	type StudioExport = { blob?: Blob; cutW?: number; cutH?: number; bleed?: number; pathD?: string; polys?: [number, number][][] | null; name?: string | null; shape?: string; dpi?: number; border?: number; stato?: Record<string, unknown> };
+	type StudioExport = { blob?: Blob; soggetti?: { pathD: string; x: number; y: number; w: number; h: number; nodi: number }[]; foglio?: { w: number; h: number }; unione?: number; cutW?: number; cutH?: number; bleed?: number; pathD?: string; polys?: [number, number][][] | null; name?: string | null; shape?: string; dpi?: number; border?: number; stato?: Record<string, unknown> };
 	const pending = new Map<string, { ok: (v: StudioExport) => void; ko: (e: Error) => void }>();
-	export function studio(what: 'mockup' | 'print' | 'geom' | 'stato' | 'applica', opts: Record<string, unknown> = {}): Promise<StudioExport> {
+	export function studio(what: 'mockup' | 'print' | 'geom' | 'stato' | 'applica' | 'soggetti', opts: Record<string, unknown> = {}): Promise<StudioExport> {
 		const id = Math.random().toString(36).slice(2);
 		return new Promise((ok, ko) => {
 			if (!frame?.contentWindow) return ko(new Error('Anteprima non pronta'));
