@@ -1,5 +1,6 @@
 import { fail } from '@sveltejs/kit';
 import { groupOrders, type OrderRow } from '$lib/dashboard/orders';
+import { ensurePlan, operatorName } from '$lib/server/produzione';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ url, locals: { supabase } }) => {
@@ -12,6 +13,18 @@ export const load: PageServerLoad = async ({ url, locals: { supabase } }) => {
 };
 
 export const actions: Actions = {
+	/** "Inizia produzione": l'ordine entra nella coda (stato in produzione, prima lavorazione stampa, piano delle lavorazioni creato) */
+	produzione: async ({ request, locals: { supabase, user } }) => {
+		const f = await request.formData();
+		const group = String(f.get('group') ?? '');
+		const { data } = await supabase.from('orders').select('*').eq('checkout_group', group);
+		if (!data?.length) return fail(404, { error: 'Ordine non trovato.' });
+		const { error } = await supabase.from('orders').update({ status: 'in_produzione', prod_stage: 'stampa' }).eq('checkout_group', group).neq('status', 'annullato');
+		if (error) return fail(400, { error: error.message });
+		const { data: rows } = await supabase.from('orders').select('*').eq('checkout_group', group);
+		await ensurePlan(supabase, (rows ?? []) as OrderRow[], await operatorName(supabase, user));
+		return { ok: true, started: groupOrders(data as OrderRow[])[0].number };
+	},
 	star: async ({ request, locals: { supabase } }) => {
 		const f = await request.formData();
 		const { error } = await supabase.from('orders').update({ starred: f.get('on') === '1' }).eq('checkout_group', String(f.get('group')));

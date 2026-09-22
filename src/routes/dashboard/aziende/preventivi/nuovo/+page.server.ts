@@ -1,9 +1,20 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { loadEditorData, parseDraft, upsertContact } from '$lib/server/orders';
-import { saveQuote } from '$lib/server/richieste';
+import { getQuote, saveQuote } from '$lib/server/richieste';
+import { today, type OrderDraft } from '$lib/dashboard/orderDraft';
 import type { Actions, PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ locals: { supabase } }) => loadEditorData(supabase);
+/** Duplica: ?da=<id> apre l'editor con la bozza di quel preventivo; si salva come preventivo NUOVO (numero nuovo) */
+export const load: PageServerLoad = async ({ url, locals: { supabase } }) => {
+	const ed = await loadEditorData(supabase);
+	const da = url.searchParams.get('da');
+	let draft: OrderDraft | null = null, from: string | null = null;
+	if (da && /^[0-9a-f-]{36}$/.test(da)) {
+		const q = await getQuote(supabase, da);
+		if (q) { draft = { ...(q.draft as OrderDraft), date: today() }; draft.items = (draft.items ?? []).map((i) => ({ ...i, id: null, number: null })); from = q.number + (q.version > 1 ? ` rev. ${q.version}` : ''); }
+	}
+	return { ...ed, draft, from };
+};
 
 export const actions: Actions = {
 	save: async ({ request, locals: { supabase } }) => {

@@ -59,7 +59,7 @@
 						<td><span class="pill" style="background:{st.soft};color:{st.color}">{st.label}</span>{#if q.order_group}<div><a class="link" style="font-size:12px" href="/dashboard/fatturazione/ordini/{q.order_group}">ordine ›</a></div>{/if}</td>
 						<td>{dmy(q.valid_until)}</td>
 						<td>{#if q.sent_at}{fmtAgo(q.sent_at)}<div class="osub">{q.opened_count ? `👁 aperto ${q.opened_count}×, ${fmtAgo(q.opened_at ?? null)}` : 'mai aperto'}{#if q.pdf_downloaded_at} · 📄 PDF{/if}</div>{#if q.reminded_at}<div class="osub">sollecitato {fmtAgo(q.reminded_at)}</div>{/if}{:else}—{/if}</td>
-						<td>{#if toRemind(q)}<form method="POST" action="?/sollecita" use:enhance><input type="hidden" name="id" value={q.id} /><button class="btn btn--ghost btn--xs" type="submit">✉ Sollecita</button></form>{/if}</td>
+						<td style="white-space:nowrap"><a class="ibtn" href="/dashboard/aziende/preventivi/nuovo?da={q.id}" title="Duplica">⧉</a> {#if toRemind(q)}<form method="POST" action="?/sollecita" use:enhance style="display:inline"><input type="hidden" name="id" value={q.id} /><button class="btn btn--ghost btn--xs" type="submit">✉ Sollecita</button></form>{/if}</td>
 					</tr>
 				{/each}
 			</tbody>

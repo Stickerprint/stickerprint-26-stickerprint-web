@@ -1,15 +1,19 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import { ORDER_STATUS, ACTIVE_STATUSES, LEGACY_STATUSES, CATS, COUNTRIES, MONTHS, money, dmy, itemMeta, thumbOf, PRODUCTION_STATUSES, SHIPPING_STATUSES, DEVICE_ICON, CHANNEL_ICON, type OrderGroup } from '$lib/dashboard/orders';
+	import { ORDER_STATUS, ACTIVE_STATUSES, LEGACY_STATUSES, PROD_STAGES, CATS, COUNTRIES, MONTHS, money, dmy, itemMeta, thumbOf, PRODUCTION_STATUSES, SHIPPING_STATUSES, DEVICE_ICON, CHANNEL_ICON, type OrderGroup } from '$lib/dashboard/orders';
 	import { paymentIcon, paymentLabel } from '$lib/dashboard/payments';
 	import ItemsCell from '$lib/components/dashboard/ItemsCell.svelte';
-	let { data } = $props();
+	let { data, form } = $props();
 	let search = $state('');
 	let cat = $state('all');
 	let channel = $state('all');
 	let status = $state('all');
 	let star = $state('entrambi');
 	let month = $state<string | null>(null);
+	/* "Inizia produzione": ordini appena creati (manuali, o in attesa di prova del vecchio flusso) che non hanno ancora una coda di lavorazioni.
+	   Gli e-commerce pagati entrano da soli; quelli in attesa dell'anticipo si possono forzare (es. pagato a voce). */
+	let starting = $state<string | null>(null);
+	const canStart = (g: (typeof data.groups)[number]) => ['attesa_pagamento', 'in_attesa', 'attesa_file', 'attesa_prova', 'modifiche_richieste', 'approvazione'].includes(g.status) || (g.status === 'in_produzione' && !g.items[0].prod_stage);
 	let expanded = $state<Set<string>>(new Set());
 	const year = $derived(data.year);
 	const buckets = $derived.by(() => {
@@ -62,6 +66,8 @@
 </script>
 
 <svelte:head><title>Ordini | Dashboard Stickerprint</title></svelte:head>
+{#if form?.error}<p class="error">{form.error}</p>{/if}
+{#if form?.ok && form.started}<p class="success">Ordine {form.started} in produzione: lo trovi in <a class="link" href="/dashboard/produzione/stampa">Produzione › Stampa</a>.</p>{/if}
 
 <div class="toolbar" style="justify-content:space-between">
 	<div><h1>Ordini {data.year}</h1><p class="lead">E-commerce e manuali, in un'unica vista · {list.length} risultati{#if pages > 1} · pagina {page} di {pages}{/if}</p></div>
@@ -100,7 +106,7 @@
 
 <div class="dcard" style="overflow-x:auto;padding:0">
 	<table class="dtable otable">
-		<thead><tr><th></th><th>Ordine</th><th>Cliente</th><th>Articolo</th><th>Categoria</th><th>Q.tà</th><th>Spedizione</th><th>Stato</th><th style="text-align:right">Importo</th><th></th></tr></thead>
+		<thead><tr><th></th><th>Ordine</th><th>Cliente</th><th>Articolo</th><th>Categoria</th><th>Q.tà</th><th>Stato</th><th style="text-align:right">Importo</th><th></th></tr></thead>
 		<tbody>
 			{#each pageList as g (g.key)}
 				{@const first = g.items[0]}
@@ -117,12 +123,20 @@
 					</td>
 					<td><span class="cat" style="background:{CATS[first.product_slug]?.soft};color:{CATS[first.product_slug]?.color}">{CATS[first.product_slug]?.name ?? first.product_slug}</span></td>
 					<td>{g.qty.toLocaleString('it-IT')} pz</td>
-					<td>{dmy(g.delivery_date)}</td>
-					<td><span class="st" style="background:{st(g.status).soft};color:{st(g.status).color}">{st(g.status).label}</span></td>
+					<td>
+						{#if canStart(g)}
+							<form method="POST" action="?/produzione" use:enhance={() => { starting = g.key; return async ({ update }) => { starting = null; await update(); }; }}><input type="hidden" name="group" value={g.key} /><button class="btn btn--green btn--xs" type="submit" disabled={starting === g.key} title="L'ordine entra nella coda di produzione (prima lavorazione: stampa)">{starting === g.key ? '…' : '▶ Inizia produzione'}</button></form>
+							{#if g.status === 'attesa_pagamento'}<div class="osub" style="margin-top:4px">in attesa dell'anticipo</div>{/if}
+						{:else}
+							<span class="st" style="background:{st(g.status).soft};color:{st(g.status).color}">{st(g.status).label}</span>
+							{#if g.status === 'in_produzione' && first.prod_stage}<div class="osub">{PROD_STAGES[first.prod_stage] ?? first.prod_stage}</div>{/if}
+						{/if}
+					</td>
 					<td style="text-align:right"><b>{money(g.net)}</b><div class="osub">{money(g.gross)} IVA incl.{#if paymentIcon(g.payment_method)} <img src={paymentIcon(g.payment_method)} alt={paymentLabel(g.payment_method)} title={paymentLabel(g.payment_method)} style="height:14px;vertical-align:middle" />{:else if g.payment_method} · {g.payment_method}{/if}</div></td>
 					<td>
 						<div class="row-actions">
 							<form method="POST" action="?/star" use:enhance><input type="hidden" name="group" value={g.key} /><input type="hidden" name="on" value={g.starred ? '0' : '1'} /><button type="submit" class="ibtn" title="Segna ordine">{g.starred ? '⭐' : '☆'}</button></form>
+							<a class="ibtn" href="/dashboard/fatturazione/ordini/nuovo?da={g.key}" title="Duplica: ordine nuovo con gli stessi dati">⧉</a>
 							<form method="POST" action="?/delete" use:enhance onsubmit={(e) => { if (!confirm(`Eliminare l'ordine ${g.number}?`)) e.preventDefault(); }}><input type="hidden" name="group" value={g.key} /><button type="submit" class="ibtn" title="Elimina">🗑️</button></form>
 						</div>
 					</td>
@@ -133,20 +147,20 @@
 							<td></td><td><span class="osub">{it.number}</span></td><td></td>
 							<td><div class="item-cell">{#if it.preview_url || it.mockup_url}<img src={it.mockup_url ?? it.preview_url} alt="" />{/if}<div><b>{it.product_name}</b><div class="osub">{itemMeta(it)}</div></div></div></td>
 							<td><span class="cat" style="background:{CATS[it.product_slug]?.soft};color:{CATS[it.product_slug]?.color}">{CATS[it.product_slug]?.name ?? it.product_slug}</span></td>
-							<td>{it.qty.toLocaleString('it-IT')} pz</td><td></td>
+							<td>{it.qty.toLocaleString('it-IT')} pz</td>
 							<td><span class="st" style="background:{st(it.status).soft};color:{st(it.status).color}">{st(it.status).label}</span></td>
 							<td style="text-align:right">{money(Number(it.total_net))}</td><td></td>
 						</tr>
 					{/each}
 				{/if}
 			{:else}
-				<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:30px">Nessun ordine corrisponde ai filtri selezionati.</td></tr>
+				<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:30px">Nessun ordine corrisponde ai filtri selezionati.</td></tr>
 			{/each}
 		</tbody>
 		{#if list.length}
 			<tfoot class="otot">
 				<tr>
-					<td colspan="8"><b>Totale {totals.n} {totals.n === 1 ? 'ordine' : 'ordini'}</b> con i filtri attivi{#if totals.cancelled} <span class="osub">({totals.cancelled} {totals.cancelled === 1 ? 'annullato escluso' : 'annullati esclusi'})</span>{/if}{#if pages > 1}<div class="osub">In questa pagina: {money(totals.pageNet)} imponibile · {money(totals.pageGross)} IVA inclusa</div>{/if}</td>
+					<td colspan="7"><b>Totale {totals.n} {totals.n === 1 ? 'ordine' : 'ordini'}</b> con i filtri attivi{#if totals.cancelled} <span class="osub">({totals.cancelled} {totals.cancelled === 1 ? 'annullato escluso' : 'annullati esclusi'})</span>{/if}{#if pages > 1}<div class="osub">In questa pagina: {money(totals.pageNet)} imponibile · {money(totals.pageGross)} IVA inclusa</div>{/if}</td>
 					<td style="text-align:right"><div class="otot__row"><span>Imponibile</span><b>{money(totals.net)}</b></div><div class="otot__row"><span>IVA</span><b>{money(totals.vat)}</b></div><div class="otot__row otot__row--tot"><span>Totale IVA inclusa</span><b>{money(totals.gross)}</b></div></td>
 					<td></td>
 				</tr>

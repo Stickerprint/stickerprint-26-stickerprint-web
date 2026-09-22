@@ -13,6 +13,8 @@
 	const st = (s: string) => ORDER_STATUS[s] ?? { label: s, color: '#6b7280', soft: '#eceef3' };
 	const addr = (a: Record<string, string> | null) => a ? [a.company, [a.first_name, a.last_name].filter(Boolean).join(' '), [a.street, a.street2].filter(Boolean).join(', '), [a.zip, a.city, a.province ? `(${a.province})` : ''].filter(Boolean).join(' '), COUNTRIES[a.country]?.name ?? a.country].filter(Boolean) : [];
 	const first = $derived(g.items[0]);
+	/* "Inizia produzione": ordine non ancora in coda (manuale appena creato, in attesa dell'anticipo, o del vecchio flusso) */
+	const canStart = $derived(['attesa_pagamento', 'in_attesa', 'attesa_file', 'attesa_prova', 'modifiche_richieste', 'approvazione'].includes(g.status) || (g.status === 'in_produzione' && !first.prod_stage));
 	const vat = $derived(g.gross - g.net);
 	const terms = $derived(first.payment_terms ?? []);
 	// dopo un salvataggio dall'editor si torna alla vista
@@ -45,23 +47,35 @@
 {#if editing}
 	<OrderEditor draft={draftFromGroup(g, data.methods)} methods={data.methods} codes={data.codes} contacts={data.contacts} supabase={data.supabase} mode="edit" {form} title="Modifica ordine {g.number}" oncancel={() => (editing = false)} />
 {:else}
-	<div class="toolbar" style="justify-content:space-between;align-items:flex-start">
-		<div>
-			<h1>Ordine {g.number} <span class="st" style="background:{st(g.status).soft};color:{st(g.status).color};vertical-align:middle;font-size:12px">{st(g.status).label}</span></h1>
-			<p class="lead">{dmy(g.created_at)} · {g.customer} · <span title={CHANNEL_ICON[g.channel]?.label}>{CHANNEL_ICON[g.channel]?.icon} {CHANNEL_ICON[g.channel]?.label}</span>{#if g.device} · {DEVICE_ICON[g.device]} da {g.device}{/if} · {COUNTRIES[g.country]?.flag ?? ''} {COUNTRIES[g.country]?.name ?? g.country}{#if g.express} · ⚡ Produzione express{/if}</p>
-			<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
-				<button type="button" class="btn btn--yellow btn--xs" onclick={() => (editing = true)}>✏️ Modifica</button>
-				<a class="btn btn--ghost btn--xs" href="/dashboard/fatturazione/ordini/{g.key}/pdf" target="_blank" rel="noopener">⬇ PDF conferma d'ordine</a>
-			</div>
+	<div class="ohead">
+		<div class="ohead__title">
+			<h1>Ordine {g.number}</h1>
+			<p class="lead">{dmy(g.created_at)} · {g.customer} · <span title={CHANNEL_ICON[g.channel]?.label}>{CHANNEL_ICON[g.channel]?.icon} {CHANNEL_ICON[g.channel]?.label}</span>{#if g.device} · {DEVICE_ICON[g.device]} da {g.device}{/if} · {COUNTRIES[g.country]?.flag ?? ''} {COUNTRIES[g.country]?.name ?? g.country}</p>
 		</div>
-		<div style="display:grid;gap:8px;justify-items:end">
-			<form method="POST" action="?/status" use:enhance class="dform" style="grid-template-columns:auto auto auto;gap:8px">
-				<label>Stato<select name="status" value={g.status} class="sel-sm">{#each statusOptions(g.status) as k (k)}<option value={k}>{ORDER_STATUS[k]?.label ?? k}</option>{/each}</select></label>
-				<label>Fase<select name="prod_stage" value={first.prod_stage ?? ''} class="sel-sm"><option value="">—</option>{#each Object.entries(PROD_STAGES) as [k, v] (k)}<option value={k}>{v}</option>{/each}</select></label>
-				<button class="btn btn--ghost btn--xs" type="submit">Aggiorna</button>
-			</form>
-			<form method="POST" action="?/delete" use:enhance onsubmit={(e) => { if (!confirm('Eliminare questo ordine?')) e.preventDefault(); }}><button class="link-btn" type="submit" style="color:#b3261e">🗑️ Elimina ordine</button></form>
+		<!-- stato: lo porta avanti la produzione (reparti) e la pagina Spedizioni; da qui si cambia solo nei casi eccezionali -->
+		<div class="ostate" style="background:{st(g.status).soft};color:{st(g.status).color};border-color:{st(g.status).color}">
+			<small>Stato attuale</small>
+			<b>{st(g.status).label}{#if g.status === 'in_produzione' && first.prod_stage} · {PROD_STAGES[first.prod_stage] ?? first.prod_stage}{/if}</b>
+			<details class="ostate__more">
+				<summary>Cambia a mano</summary>
+				<form method="POST" action="?/status" use:enhance class="ostate__form">
+					<select name="status" value={g.status} class="sel-sm">{#each statusOptions(g.status) as k (k)}<option value={k}>{ORDER_STATUS[k]?.label ?? k}</option>{/each}</select>
+					<input type="hidden" name="prod_stage" value={first.prod_stage ?? ''} />
+					<button class="btn btn--ghost btn--xs" type="submit">Applica</button>
+				</form>
+			</details>
 		</div>
+	</div>
+	<!-- tutti i comandi dell'ordine: solo qui, mai in fondo alla pagina -->
+	<div class="obar">
+		{#if canStart}<form method="POST" action="?/produzione" use:enhance><button class="btn btn--green btn--xs" type="submit" title="L'ordine entra nella coda di produzione (prima lavorazione: stampa)">▶ Inizia produzione</button></form>{/if}
+		<button type="button" class="btn btn--blue btn--xs" onclick={openSend} disabled={!g.email} title={g.email ? '' : 'L’ordine non ha un’email'}>✉️ {data.conf.sent_at ? 'Reinvia conferma' : 'Invia conferma'}</button>
+		<button type="button" class="btn btn--yellow btn--xs" onclick={() => (editing = true)}>✏️ Modifica</button>
+		<a class="btn btn--ghost btn--xs" href="/dashboard/fatturazione/ordini/nuovo?da={g.key}" title="Ordine nuovo, con numero nuovo, gia' compilato con questi dati">⧉ Duplica</a>
+		<a class="btn btn--ghost btn--xs" href="/dashboard/fatturazione/ordini/{g.key}/pdf" target="_blank" rel="noopener">⬇ PDF conferma</a>
+		<a class="btn btn--ghost btn--xs" href="/conferma/{data.conf.token}?anteprima=1" target="_blank" rel="noopener">🔗 Pagina del cliente</a>
+		{#if data.conf.sent_at}<span class="osub">✉ inviata {fmtAgo(data.conf.sent_at)}{#if data.conf.sender_name} da {data.conf.sender_name}{/if} · 👁 {data.conf.opened_count ? `aperta ${data.conf.opened_count}×, ${fmtAgo(data.conf.opened_at)}` : 'mai aperta'}{#if data.conf.pdf_downloaded_at} · 📄 PDF scaricato{/if}</span>{/if}
+		<form method="POST" action="?/delete" use:enhance onsubmit={(e) => { if (!confirm('Eliminare questo ordine?')) e.preventDefault(); }} style="margin-left:auto"><button class="link-btn" type="submit" style="color:#b3261e">🗑️ Elimina ordine</button></form>
 	</div>
 
 	<div class="grid3" style="grid-template-columns:1fr 1fr">
@@ -85,8 +99,8 @@
 				<details class="delay">
 					<summary>🙏 Avvisa il cliente di un nostro ritardo{#if first.shipping_notified?.includes('ritardo_nostro')} <span class="pr-chip">già avvisato</span>{/if}</summary>
 					<form method="POST" action="?/ritardo" use:enhance style="display:grid;gap:8px;margin-top:8px">
-						<label class="osub">Nuova data di spedizione <input type="date" name="nuova_data" class="sel-sm" /></label>
-						<label class="osub">Motivo (come lo legge il cliente)<textarea name="motivo" rows="3" class="sel-sm" style="width:100%;box-sizing:border-box">Durante il controllo qualità sulla tua tiratura abbiamo trovato un dettaglio di stampa che non ci convinceva, e abbiamo preferito rifarla piuttosto che spedirti qualcosa di imperfetto.</textarea></label>
+						<label class="osub delay__field">Nuova data di spedizione <input type="date" name="nuova_data" class="sel-sm" /></label>
+						<label class="osub delay__field delay__field--col">Motivo (come lo legge il cliente)<textarea name="motivo" rows="6" class="sel-sm delay__text">Durante il controllo qualità sulla tua tiratura abbiamo trovato un dettaglio di stampa che non ci convinceva, e abbiamo preferito rifarla piuttosto che spedirti qualcosa di imperfetto.</textarea></label>
 						<button class="btn btn--ghost btn--xs" type="submit" style="justify-self:start" disabled={!g.email}>✉ Invia le scuse{#if first.user_id} (con link all'ordine){/if}</button>
 					</form>
 				</details>
@@ -118,17 +132,14 @@
 						<div class="ofiles">
 							{#if data.files[it.id] && studioOrderHref(it.product_slug, it.id)}<a class="btn btn--blue btn--xs" href={studioOrderHref(it.product_slug, it.id)} target="_blank" rel="noopener">Passa il file su Stickerprint Studio</a>{/if}
 							{#if data.fileLists[it.id]?.length}
-								{#each data.fileLists[it.id] as f, k (f.name)}<a class="btn btn--ghost btn--xs" href={f.url} target="_blank" rel="noopener" download={f.name}>1.{k + 1} · {f.name.startsWith('cavallotto') ? 'Cavallotto' : 'Adesivo ' + f.name.replace(/\D/g, '')} ({f.name.split('.').pop()?.toUpperCase()})</a>{/each}
-							{:else if data.files[it.id]}<a class="btn btn--ghost btn--xs" href={data.files[it.id]} target="_blank" rel="noopener">1 · File originale del cliente</a>{:else}<span class="btn btn--ghost btn--xs is-off">1 · File originale: non presente</span>{/if}
-							{#if it.proof_url ?? it.preview_url}<a class="btn btn--ghost btn--xs" href={it.proof_url ?? it.preview_url} target="_blank" rel="noopener" download>2 · File generato con tracciato di taglio</a>{:else}<span class="btn btn--ghost btn--xs is-off">2 · File generato: non disponibile</span>{/if}
-							{#if it.imposition_url}<a class="btn btn--ghost btn--xs" href={it.imposition_url} target="_blank" rel="noopener">3 · Impaginato per la stampa</a>{:else}<span class="btn btn--ghost btn--xs is-off" title="La griglia di stampa arriva con il motore di produzione">3 · Impaginato: in arrivo</span>{/if}
-							{#if it.mockup_url}<a class="btn btn--ghost btn--xs" href={it.mockup_url} target="_blank" rel="noopener">Mockup</a>{/if}
+								{#each data.fileLists[it.id] as f, k (f.name)}<a class="btn btn--ghost btn--xs" href={f.url} target="_blank" rel="noopener" download={f.name}>⬇ {f.name.startsWith('cavallotto') ? 'Cavallotto' : 'Adesivo ' + f.name.replace(/\D/g, '')} ({f.name.split('.').pop()?.toUpperCase()})</a>{/each}
+							{:else if data.files[it.id]}<a class="btn btn--ghost btn--xs" href={data.files[it.id]} target="_blank" rel="noopener" download>⬇ Scarica file cliente</a>{:else}<span class="btn btn--ghost btn--xs is-off">File cliente non presente</span>{/if}
 						</div>
 						{#if g.items.length > 1}
 							<form method="POST" action="?/status" use:enhance class="oitem__status">
 								<input type="hidden" name="item" value={it.id} />
 								<label>Stato<select name="status" value={it.status} class="sel-sm">{#each statusOptions(it.status) as k (k)}<option value={k}>{ORDER_STATUS[k]?.label ?? k}</option>{/each}</select></label>
-								<label>Fase<select name="prod_stage" value={it.prod_stage ?? ''} class="sel-sm"><option value="">—</option>{#each Object.entries(PROD_STAGES) as [k, v] (k)}<option value={k}>{v}</option>{/each}</select></label>
+								<input type="hidden" name="prod_stage" value={it.prod_stage ?? ''} />
 								<button class="btn btn--ghost btn--xs" type="submit">Salva</button>
 							</form>
 						{/if}
@@ -159,12 +170,6 @@
 				<div class="sumrow"><span>IVA 22%</span><b>{money(vat)}</b></div>
 				<div class="sumrow sumrow--tot"><span>Totale IVA inclusa</span><b>{money(g.gross)}</b></div>
 			</div>
-		</div>
-		<div class="editor-actions" style="margin-top:14px;align-items:center;flex-wrap:wrap;gap:10px">
-			<button type="button" class="btn btn--blue" onclick={openSend} disabled={!g.email} title={g.email ? '' : 'L’ordine non ha un’email'}>✉️ {data.conf.sent_at ? 'Reinvia la conferma' : 'Invia conferma per email'}</button>
-			<button type="button" class="btn btn--green" onclick={() => (editing = true)}>✏️ Modifica ordine</button>
-			<a class="btn btn--ghost btn--xs" href="/conferma/{data.conf.token}?anteprima=1" target="_blank" rel="noopener">🔗 Pagina del cliente</a>
-			{#if data.conf.sent_at}<span class="osub">✉ inviata {fmtAgo(data.conf.sent_at)}{#if data.conf.sender_name} da {data.conf.sender_name}{/if} · 👁 {data.conf.opened_count ? `aperta ${data.conf.opened_count}×, ${fmtAgo(data.conf.opened_at)}` : 'mai aperta'}{#if data.conf.pdf_downloaded_at} · 📄 PDF scaricato{/if}</span>{/if}
 		</div>
 	</div>
 

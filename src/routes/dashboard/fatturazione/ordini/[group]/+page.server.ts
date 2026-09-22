@@ -117,6 +117,15 @@ export const actions: Actions = {
 		if (r.error) return fail(400, { error: r.error });
 		return { ok: true, contactId: r.id, contactMsg: 'Cliente salvato in anagrafica.' };
 	},
+	/** "Inizia produzione": stato in produzione, prima lavorazione stampa, piano delle lavorazioni */
+	produzione: async ({ params, locals }) => {
+		const { supabase } = locals;
+		const { error: e } = await supabase.from('orders').update({ status: 'in_produzione', prod_stage: 'stampa' }).eq('checkout_group', params.group).neq('status', 'annullato');
+		if (e) return fail(400, { error: e.message });
+		const { data: rows } = await supabase.from('orders').select('*').eq('checkout_group', params.group);
+		await ensurePlan(supabase, (rows ?? []) as OrderRow[], await operatorName(supabase, locals.user));
+		return { ok: true, message: 'Ordine in produzione: prima lavorazione in Produzione › Stampa.' };
+	},
 	status: async ({ request, params, locals }) => {
 		const { supabase } = locals;
 		const f = await request.formData();

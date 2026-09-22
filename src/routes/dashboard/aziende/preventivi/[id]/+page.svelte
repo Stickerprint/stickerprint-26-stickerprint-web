@@ -75,6 +75,7 @@
 			<form method="POST" action="?/ordine" use:enhance style="display:flex;gap:6px;align-items:center"><label class="osub" style="display:flex;gap:4px;align-items:center"><input type="checkbox" name="mail" checked /> conferma via email</label><button class="btn btn--green btn--xs" type="submit">📦 Crea ordine</button></form>
 		{/if}
 		{#if q.status !== 'ordinato'}<form method="POST" action="?/versione" use:enhance><button class="btn btn--ghost btn--xs" type="submit" title="Copia modificabile con lo stesso numero (rev. successiva)">↻ Nuova versione</button></form>{/if}
+		<a class="btn btn--ghost btn--xs" href="/dashboard/aziende/preventivi/nuovo?da={q.id}" title="Preventivo nuovo, con numero nuovo, gia' compilato con questi dati">⧉ Duplica</a>
 		<a class="btn btn--ghost btn--xs" href="/preventivo/{q.token}?anteprima=1" target="_blank" rel="noopener">🔗 Pagina del cliente</a>
 	</div>
 </div>
