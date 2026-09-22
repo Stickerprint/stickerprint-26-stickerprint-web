@@ -1649,6 +1649,94 @@ function togliFiletti(m,w,h){
   }
   if(tolti)for(let i=0;i<w*h;i++)if(m[i]&&via[lab[i]])m[i]=0;
   return tolti;}
+/* ==========================================================================
+   FOGLIO DI ADESIVI — PIU' SOGGETTI IN UN FILE SOLO
+   Il cliente manda un foglio con dentro sei, otto, dodici adesivi diversi.
+   Qui il disegno si divide in soggetti e per ognuno si ricava il suo tracciato,
+   con lo stesso contorno degli adesivi sagomati: bordo, raccordo e pochi nodi.
+   Le misure sono quelle del foglio: il file si usa 1:1.
+   ========================================================================== */
+function soggettiFoglio(o){
+  const w=S.mw,h=S.mh,m=S.mask;
+  if(!m)throw new Error('Nessun file caricato');
+  const foglioW=+o.foglioW>0?+o.foglioW:210;
+  const mmPerPx=foglioW/w;
+  const bordo=Math.max(0,+o.bordo>=0?+o.bordo:2);
+  const offPx=Math.max(0.5,bordo/mmPerPx);
+  /* RAGGRUPPAMENTO
+     Le parti di uno stesso adesivo sono staccate (la scritta sotto il disegno, i cuoricini).
+     Si chiudono i vuoti con un raggio: piccolo, ogni pezzo resta per se'; grande, due adesivi
+     vicini diventano uno. Il raggio giusto e' quello che tiene il conteggio FERMO piu' a lungo:
+     la' i soggetti sono separati e interi. L'operatore puo' comunque spostarlo. */
+  const raggi=[],cont=[];
+  const prova=r=>{const G=closeMask(m,w,h,Math.max(1,r));fillHoles(G,w,h);return G;};
+  let scelto=+o.unione>0?(+o.unione)/mmPerPx:0;
+  if(!scelto){
+    const scala=Math.max(w,h);
+    for(let r=Math.max(2,scala*0.004);r<=scala*0.06;r*=1.35){
+      const G=prova(r); raggi.push(r); cont.push(nComp(G,w,h,Math.max(60,w*h*0.0004)));
+    }
+    /* il gruppo di raggi consecutivi con lo stesso numero di soggetti: si prende il piu' lungo,
+       e dentro quel gruppo il raggio piu' piccolo che gia' tiene tutto insieme */
+    let best=-1,bestLen=0,i=0;
+    while(i<cont.length){
+      let j=i; while(j+1<cont.length&&cont[j+1]===cont[i])j++;
+      if(cont[i]>=2&&(j-i+1)>bestLen){bestLen=j-i+1;best=i;}
+      i=j+1;
+    }
+    scelto=best>=0?raggi[best]:Math.max(2,Math.max(w,h)*0.012);
+  }
+  const G=prova(scelto);
+  /* etichette dei gruppi */
+  const lab=new Int32Array(w*h).fill(-1);const st=[];let n=0;const box=[];
+  const minArea=Math.max(80,w*h*0.0004);
+  for(let s0=0;s0<w*h;s0++){
+    if(!G[s0]||lab[s0]>=0)continue;
+    st.length=0;st.push(s0);lab[s0]=n;let a=0,x0=w,x1=-1,y0=h,y1=-1;
+    while(st.length){const i=st.pop();a++;const x=i%w,y=(i/w)|0;
+      if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;
+      if(x>0&&G[i-1]&&lab[i-1]<0){lab[i-1]=n;st.push(i-1);}
+      if(x<w-1&&G[i+1]&&lab[i+1]<0){lab[i+1]=n;st.push(i+1);}
+      if(y>0&&G[i-w]&&lab[i-w]<0){lab[i-w]=n;st.push(i-w);}
+      if(y<h-1&&G[i+w]&&lab[i+w]<0){lab[i+w]=n;st.push(i+w);}}
+    box.push({a,x0,y0,x1,y1});n++;
+  }
+  const dev=Math.max(0.45,0.12/mmPerPx);           /* scarto massimo del contorno: 0,12 mm */
+  const R=Math.max(1.2,(bordo>0?bordo:1.2)/mmPerPx*1.2);
+  const out=[];
+  for(let k=0;k<n;k++){
+    if(box[k].a<minArea)continue;
+    /* solo il disegno di QUESTO soggetto, in un riquadro con un margine per bordo e raccordo */
+    const pad=Math.ceil(offPx+R)+4;
+    const bw=box[k].x1-box[k].x0+1+pad*2, bh=box[k].y1-box[k].y0+1+pad*2;
+    const sub=new Uint8Array(bw*bh);
+    for(let y=box[k].y0;y<=box[k].y1;y++)for(let x=box[k].x0;x<=box[k].x1;x++){
+      const i=y*w+x; if(m[i]&&lab[i]===k)sub[(y-box[k].y0+pad)*bw+(x-box[k].x0+pad)]=1;}
+    let U=unify(sub,bw,bh,offPx,R);
+    for(let i=0;i<bw*bh;i++)if(sub[i])U[i]=1;
+    U=largestComponent(U,bw,bh);
+    fillHoles(U,bw,bh);
+    const loops=traceLoops(U,bw,bh);
+    if(!loops.length)continue;
+    const maxA=Math.abs(loops[0].area);
+    const sel=loops.filter(L=>Math.abs(L.area)>=maxA*0.02).slice(0,12);
+    const parts=[];
+    for(const L of sel){const c=contourOne(L,{maxDevPx:dev,cornerDeg:42,smooth:0.85});if(c)parts.push(c);}
+    if(!parts.length)continue;
+    let fx0=1e9,fy0=1e9,fx1=-1e9,fy1=-1e9;
+    parts.forEach(p=>p.flat.forEach(q=>{if(q[0]<fx0)fx0=q[0];if(q[0]>fx1)fx1=q[0];if(q[1]<fy0)fy0=q[1];if(q[1]>fy1)fy1=q[1];}));
+    const T=q=>[(q[0]-fx0)*mmPerPx,(q[1]-fy0)*mmPerPx];
+    const d=parts.map(p=>{const P2=p.P.map(T),A=turnAngles(P2,Math.max(2.5,dev*mmPerPx*2));
+      return pathOf(P2,A,p.sm,p.cr);}).join(' ');
+    out.push({
+      pathD:d,
+      x:(box[k].x0-pad+fx0)*mmPerPx, y:(box[k].y0-pad+fy0)*mmPerPx,
+      w:(fx1-fx0)*mmPerPx, h:(fy1-fy0)*mmPerPx,
+      nodi:parts.reduce((a,p)=>a+p.nodes,0)
+    });
+  }
+  out.sort((a,b)=>(a.y-b.y)||(a.x-b.x));
+  return {soggetti:out,foglio:{w:foglioW,h:h*mmPerPx},unione:+(scelto*mmPerPx).toFixed(2),bordo,px:[w,h]};}
 function computeMask(){
   const w=S.work.w,h=S.work.h,d=S.work.data;
   let m=null,src='';
@@ -5739,6 +5827,8 @@ function ppGeoUI(){
         if(d.what==='applica'){ applicaStato(d.stato||{}); window.__busyOff=performance.now(); snapshot();
           send('studio',{id:d.id,ok:true,pathD:S.pathD,cutW:S.cutW,cutH:S.cutH}); return; }
         /* 'geom' = solo il contorno (per ricavarne il tracciato leggero dello studio) */
+        /* 'soggetti' = foglio di adesivi: un tracciato per ogni adesivo del file */
+        if(d.what==='soggetti'){ send('studio',{id:d.id,ok:true,...soggettiFoglio(d)}); return; }
         if(d.what==='geom'){ send('studio',{id:d.id,ok:true,pathD:S.pathD,polys:S.polys||null,shape:CL.shape,cutW:S.cutW,cutH:S.cutH,bleed:S.bleed||0,border:borderMM()}); return; }
         /* lo studio puo' passare il SUO tracciato (liscio, pochi nodi): mockup e grafica di stampa
            vengono disegnati su quello, cosi' bordo bianco, stampa e taglio coincidono */

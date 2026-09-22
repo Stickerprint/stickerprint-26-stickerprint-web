@@ -77,3 +77,16 @@ function arcToCubic(x1: number, y1: number, rx: number, ry: number, rotDeg: numb
 	return out;
 }
 
+
+/** sposta un tracciato (mm) di dx, dy: serve a mettere ogni adesivo al suo posto nel foglio */
+export function spostaPath(d: string, dx: number, dy: number): string {
+	const n = (v: number) => (Math.round(v * 1000) / 1000).toString();
+	return parsePath(d)
+		.map((s) => {
+			if (s[0] === 'M') return `M${n(s[1] + dx)} ${n(s[2] + dy)}`;
+			if (s[0] === 'L') return `L${n(s[1] + dx)} ${n(s[2] + dy)}`;
+			if (s[0] === 'C') return `C${n(s[1] + dx)} ${n(s[2] + dy)} ${n(s[3] + dx)} ${n(s[4] + dy)} ${n(s[5] + dx)} ${n(s[6] + dy)}`;
+			return 'Z';
+		})
+		.join(' ');
+}
