@@ -18,15 +18,15 @@
 .qp__price { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-top: 4px; font-size: 15px; }
 .qp__price small { color: var(--muted); font-weight: 600; }
 .qp__price b { font-family: var(--font-display); font-size: 22px; }
-.qp__two { display: grid; grid-template-columns: 1.3fr 1fr; gap: 18px; align-items: start; }
-.qp__sum { background: var(--navy); color: #fff; border-radius: 20px; padding: 22px 24px; display: grid; gap: 8px; }
+.qp__two { display: grid; grid-template-columns: 1.3fr 1fr; gap: 18px; align-items: stretch; } /* i due riquadri hanno sempre la stessa altezza */
+.qp__sum { background: var(--navy); color: #fff; border-radius: 20px; padding: 22px 24px; display: grid; gap: 8px; align-content: start; }
 .qp__sum .qp__h2 { color: #fff; }
 .qp__row { display: flex; justify-content: space-between; font-size: 15px; color: #d9dcf2; }
 .qp__row b { color: #fff; }
 .qp__row--tot { border-top: 1px solid rgba(255,255,255,.18); padding-top: 12px; margin-top: 4px; font-size: 18px; }
 .qp__row--tot b { font-family: var(--font-display); font-size: 30px; color: var(--green); }
-.qp__terms { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 8px; font-size: 13.5px; line-height: 1.45; color: #d9dcf2; }
-.qp__why { display: grid; gap: 14px; background: #fff; border: 1px solid var(--line); border-radius: 20px; padding: 20px 22px; }
+.qp__terms { list-style: none; margin: 12px 0 0; align-self: end; padding: 0; display: grid; gap: 8px; font-size: 13.5px; line-height: 1.45; color: #d9dcf2; }
+.qp__why { display: grid; gap: 14px; align-content: start; background: #fff; border: 1px solid var(--line); border-radius: 20px; padding: 20px 22px; }
 .qp__person { display: grid; grid-template-columns: 48px 1fr; gap: 12px; align-items: center; font-size: 14px; line-height: 1.4; }
 .qp__person span { color: var(--ink-soft); }
 .qp__avatar { width: 48px; height: 48px; border-radius: 50%; background: var(--yellow); color: var(--navy); display: grid; place-items: center; font-family: var(--font-display); font-weight: 800; font-size: 17px; }
