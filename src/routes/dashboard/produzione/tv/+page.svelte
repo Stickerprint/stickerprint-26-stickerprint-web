@@ -32,7 +32,7 @@
 		<div class="tv__kpis">
 			<div class="tv__kpi is-warn"><b>{data.kpi.startToday}</b><span>da avviare oggi</span></div>
 			<div class="tv__kpi is-ok"><b>{data.kpi.running}</b><span>in corso</span></div>
-			<div class="tv__kpi"><b>{data.kpi.toPack}</b><span>da confezionare</span></div>
+			<div class="tv__kpi"><b>{data.kpi.doneToday}</b><span>finiti oggi</span></div>
 			<div class="tv__kpi is-hot"><b>{data.kpi.atRisk + data.kpi.late}</b><span>a rischio</span></div>
 			<div class="tv__kpi is-blue"><b>{data.kpi.busyMachines}/{machines.length}</b><span>macchine al lavoro</span></div>
 		</div>

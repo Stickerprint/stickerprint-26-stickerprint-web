@@ -12,14 +12,13 @@
 	let { data, form } = $props();
 	const now = $derived(new Date(data.now));
 	const cal = $derived(data.setup.calendar);
-	const FILTERS = [['tutti', 'Tutti'], ['da-avviare', 'Da avviare'], ['in-corso', 'In corso'], ['da-confezionare', 'Da confezionare'], ['a-rischio', 'A rischio'], ['completati', 'Completati']] as const;
+	const FILTERS = [['tutti', 'Tutti'], ['da-avviare', 'Da avviare'], ['in-corso', 'In corso'], ['a-rischio', 'A rischio'], ['completati', 'Completati']] as const;
 	const f = $derived(page.url.searchParams.get('f') ?? 'tutti');
 	let q = $state('');
 	const match = (r: { job: { order_number: string }; group: { customer: string; email: string } }) => { const s = q.trim().toLowerCase(); return !s || r.job.order_number.toLowerCase().includes(s) || r.group.customer.toLowerCase().includes(s) || r.group.email.toLowerCase().includes(s); };
 	const list = $derived(data.queue.filter((r) => {
 		if (f === 'da-avviare') return r.job.status === 'READY_TO_START';
-		if (f === 'in-corso') return ['IN_PROGRESS', 'WAITING_PASSIVE_TIME', 'PACKAGING'].includes(r.job.status);
-		if (f === 'da-confezionare') return r.job.status === 'READY_FOR_PACKAGING' || r.job.status === 'PACKAGING';
+		if (f === 'in-corso') return ['IN_PROGRESS', 'WAITING_PASSIVE_TIME'].includes(r.job.status);
 		if (f === 'a-rischio') return r.job.risk_status !== 'ON_TRACK';
 		return true;
 	}).filter(match));
@@ -31,7 +30,7 @@
 <div class="pv-head"><div><h1>📋 Coda ordini</h1><p class="lead">Ordinati per urgenza: prima i ritardi, poi chi rischia, poi chi ha l'ultimo avvio utile più vicino.</p></div><ProdNav /></div>
 {#if form?.error}<p class="error">{form.error}</p>{/if}
 <div class="pv-filters">
-	<div class="tabs">{#each FILTERS as [k, l] (k)}<button type="button" class:is-active={f === k} onclick={() => goto(`?f=${k}`, { keepFocus: true, noScroll: true })}>{l}{#if k !== 'completati'} <span class="osub">{k === 'tutti' ? data.queue.length : data.queue.filter((r) => (k === 'da-avviare' ? r.job.status === 'READY_TO_START' : k === 'in-corso' ? ['IN_PROGRESS', 'WAITING_PASSIVE_TIME', 'PACKAGING'].includes(r.job.status) : k === 'da-confezionare' ? ['READY_FOR_PACKAGING', 'PACKAGING'].includes(r.job.status) : r.job.risk_status !== 'ON_TRACK')).length}</span>{/if}</button>{/each}</div>
+	<div class="tabs">{#each FILTERS as [k, l] (k)}<button type="button" class:is-active={f === k} onclick={() => goto(`?f=${k}`, { keepFocus: true, noScroll: true })}>{l}{#if k !== 'completati'} <span class="osub">{k === 'tutti' ? data.queue.length : data.queue.filter((r) => (k === 'da-avviare' ? r.job.status === 'READY_TO_START' : k === 'in-corso' ? ['IN_PROGRESS', 'WAITING_PASSIVE_TIME'].includes(r.job.status) : r.job.risk_status !== 'ON_TRACK')).length}</span>{/if}</button>{/each}</div>
 	<input placeholder="Cerca numero ordine o cliente…" bind:value={q} />
 </div>
 
@@ -42,7 +41,7 @@
 			<div><span class="qrow__num">{r.job.order_number}</span> <span class="jstate jstate--{r.job.status}">{JOB_LABEL[r.job.status]}</span><div class="qrow__sub">{r.group.customer}</div></div>
 			<div class="qrow__sub">{r.group.qty.toLocaleString('it-IT')} × {r.group.items[0].product_name}</div>
 			<div><span class="qrow__lbl">Spedizione promessa</span><b>{dmy(r.job.promised_ship_date)}</b></div>
-			<div><span class="qrow__lbl">{r.job.status === 'CANCELLED' ? 'Annullata' : 'Completata'}</span><b>{fmtWhen(r.job.completed_at ?? r.job.cancelled_at, now, cal)}</b></div>
+			<div><span class="qrow__lbl">{r.job.status === 'CANCELLED' ? 'Annullata' : 'Finita → spedizioni'}</span><b>{fmtWhen(r.job.completed_at ?? r.job.cancelled_at, now, cal)}</b></div>
 		</a>
 	{:else}<p class="osub">Nessuna commessa completata.</p>{/each}
 {:else}

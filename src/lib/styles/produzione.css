@@ -22,7 +22,7 @@
 .risk--lg { font-size: 15px; padding: 8px 14px; }
 .jstate { display: inline-block; padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 800; background: #eef2ff; color: #3730a3; white-space: nowrap; }
 .jstate--READY_TO_START { background: #e5f0ff; color: #1d4ed8; } .jstate--IN_PROGRESS { background: #dcfce7; color: #15803d; } .jstate--WAITING_PASSIVE_TIME { background: #ede9fe; color: #6d28d9; }
-.jstate--READY_FOR_PACKAGING, .jstate--PACKAGING { background: #fef3c7; color: #92400e; } .jstate--COMPLETED { background: #e5e7eb; color: #374151; } .jstate--CANCELLED { background: #fee2e2; color: #991b1b; }
+.jstate--COMPLETED { background: #e5e7eb; color: #374151; } .jstate--CANCELLED { background: #fee2e2; color: #991b1b; }
 .promised { display: inline-flex; align-items: center; gap: 8px; background: #0b0b3b; color: #fff; border-radius: 12px; padding: 8px 14px; font-weight: 800; }
 .promised small { font-weight: 600; opacity: .8; }
 .promised--big { padding: 14px 18px; font-size: 20px; flex-wrap: wrap; }

@@ -2,13 +2,14 @@
  * productionRoutingService: dal prodotto acquistato alle fasi di produzione.
  *
  * REGOLE ATTUALI DI STICKERPRINT (configurazione in ROUTES, non sparsa nelle pagine):
- *  - con lamina protettiva → stampa eco-solvente (SG3), asciugatura configurabile, laminazione, taglio, controllo, confezionamento;
- *  - senza protezione (adesivi, etichette, kit, fogli) → stampa UV (LG2), taglio se serve, controllo, confezionamento; MAI la laminatrice;
+ *  - con lamina protettiva → stampa eco-solvente (SG3), asciugatura configurabile, laminazione, taglio;
+ *  - senza protezione (adesivi, etichette, kit, fogli) → stampa UV (LG2), taglio se serve; MAI la laminatrice;
  *  - vetrofanie → stampa UV; taglio solo se previsto dal prodotto;
- *  - adesivi resinati → stampa eco-solvente (SG3), taglio basi, resinatura, maturazione (passiva), controllo, confezionamento; MAI la LG2;
+ *  - adesivi resinati → stampa eco-solvente (SG3), taglio basi, resinatura, maturazione (passiva); MAI la LG2;
  *    la laminazione sui resinati resta una scelta esplicita dell'ordine (non si deduce);
- *  - adesivi in rilievo → stampa UV, taglio, controllo, confezionamento;
- *  - campioni → solo confezionamento.
+ *  - adesivi in rilievo → stampa UV, taglio;
+ *  - campioni → nessuna lavorazione: vanno direttamente in spedizione.
+ * Finita l'ultima fase l'ordine passa in Spedizioni: niente controllo qualita' ne' confezionamento come fasi.
  * Le durate vengono dai parametri dei macchinari (Setup → Macchinari). Se un parametro manca ("Da configurare")
  * vale la durata di riserva del template, e la fase e' segnata come non stimata.
  */
@@ -36,9 +37,7 @@ const T = {
 	laminazione: (): Tpl => ({ stage: 'laminazione', label: 'Laminazione', capability: 'laminazione', machine_types: ['laminatrice'], fallback: (a) => mins(10 + a.totalSqm * 8) }),
 	taglio: (label = 'Taglio'): Tpl => ({ stage: 'taglio', label, capability: 'taglio', machine_types: ['plotter_taglio'], fallback: (a) => mins(10 + a.totalSqm * 12 + a.qty * 0.02) }),
 	resinatura: (): Tpl => ({ stage: 'resinatura', label: 'Resinatura', capability: 'resinatura', machine_types: ['resinatrice'], fallback: (a) => mins(20 + a.qty * 0.35) }),
-	maturazione: (): Tpl => ({ stage: 'resinatura', label: 'Maturazione resina', capability: 'resinatura', machine_types: [], fallback: () => 0, passive: 'machine' }),
-	controllo: (): Tpl => ({ stage: 'controllo', label: 'Controllo qualità', capability: 'controllo', machine_types: [], fallback: (a) => mins(10 + a.qty * 0.01, 5, 90) }),
-	confezionamento: (label = 'Confezionamento'): Tpl => ({ stage: 'confezionamento', label, capability: 'confezionamento', machine_types: [], fallback: (a) => mins(10 + a.qty * 0.01, 5, 120) })
+	maturazione: (): Tpl => ({ stage: 'resinatura', label: 'Maturazione resina', capability: 'resinatura', machine_types: [], fallback: () => 0, passive: 'machine' })
 };
 const MATURAZIONE_DEFAULT = 12 * 60;   // se la resinatrice non ha un tempo passivo configurato
 const CUT_BY_DEFAULT: Record<string, boolean> = { adesivi_personalizzati: true, etichette: true, kit_adesivi: true, fogli_adesivi: true, adesivi_rilievo: true, adesivi_resinati: true, vetrofanie: false, campioni: false };
@@ -47,18 +46,18 @@ const CUT_BY_DEFAULT: Record<string, boolean> = { adesivi_personalizzati: true, 
 export function routeTemplate(i: RoutingInput): Tpl[] {
 	const cut = i.needs_cut ?? CUT_BY_DEFAULT[i.product_slug] ?? true;
 	switch (i.product_slug) {
-		case 'campioni': return [T.confezionamento('Preparazione campioni')];
+		case 'campioni': return [];
 		case 'adesivi_resinati':
-			return [T.stampaEco(), ...(i.laminated ? [T.laminazione()] : []), T.taglio('Taglio basi'), T.resinatura(), T.maturazione(), T.controllo(), T.confezionamento()];
+			return [T.stampaEco(), ...(i.laminated ? [T.laminazione()] : []), T.taglio('Taglio basi'), T.resinatura(), T.maturazione()];
 		case 'vetrofanie':
-			return [T.stampaUV(), ...(cut ? [T.taglio()] : []), T.controllo(), T.confezionamento()];
+			return [T.stampaUV(), ...(cut ? [T.taglio()] : [])];
 		case 'adesivi_rilievo':
-			return [T.stampaUV(), T.taglio('Taglio e finitura'), T.controllo(), T.confezionamento()];
+			return [T.stampaUV(), T.taglio('Taglio e finitura')];
 		default: {
 			// adesivi personalizzati, etichette, kit, fogli
 			const uv = i.print_tech === 'uv' || (i.print_tech !== 'ecosolvente' && !i.laminated);
-			if (uv) return [T.stampaUV(), ...(cut ? [T.taglio()] : []), T.controllo(), T.confezionamento(i.product_slug === 'kit_adesivi' ? 'Confezionamento kit' : 'Confezionamento')];
-			return [T.stampaEco(), T.asciugatura(), T.laminazione(), ...(cut ? [T.taglio()] : []), T.controllo(), T.confezionamento(i.product_slug === 'kit_adesivi' ? 'Confezionamento kit' : 'Confezionamento')];
+			if (uv) return [T.stampaUV(), ...(cut ? [T.taglio()] : [])];
+			return [T.stampaEco(), T.asciugatura(), T.laminazione(), ...(cut ? [T.taglio()] : [])];
 		}
 	}
 }

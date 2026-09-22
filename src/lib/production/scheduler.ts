@@ -98,7 +98,7 @@ export function forecastForward(phases: PlanPhase[], promisedDay: string, cal: C
 			let best: { m: Machine; at: Date } | null = null;
 			for (const m of pool) { const at = earliestSlot(m.id, cur, p.minutes, cal, out); if (!best || at < best.at || (at.getTime() === best.at.getTime() && (m.id === p.machine_id || (best.m.id !== p.machine_id && m.sort < best.m.sort)))) best = { m, at }; }
 			mid = best!.m.id; start = best!.at;
-		} else { mid = null; start = nextWorking(cur, cal); }   // postazione (controllo, confezionamento): nessuna macchina da occupare
+		} else { mid = null; start = nextWorking(cur, cal); }   // nessuna macchina usabile: la fase resta senza macchina (da assegnare)
 		const end = addWork(start, p.minutes, cal);
 		planned_start[k] = start; planned_end[k] = end; machine_id[k] = mid;
 		if (mid) out.push({ machine_id: mid, start, end, job_id: jobId });

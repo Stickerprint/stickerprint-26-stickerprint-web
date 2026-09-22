@@ -19,8 +19,6 @@
 			{ label: 'Laminazione', href: '/dashboard/produzione/reparto/laminazione', count: data.counts?.laminazione },
 			{ label: 'Taglio', href: '/dashboard/produzione/reparto/taglio', count: data.counts?.taglio },
 			{ label: 'Resinatura', href: '/dashboard/produzione/reparto/resinatura', count: data.counts?.resinatura },
-			{ label: 'Controllo qualità', href: '/dashboard/produzione/reparto/controllo', count: data.counts?.controllo },
-			{ label: 'Confezionamento', href: '/dashboard/produzione/reparto/confezionamento', count: data.counts?.confezionamento },
 			{ label: 'Macchinari', href: '/dashboard/produzione/macchinari' },
 			{ label: 'Modalità TV', href: '/dashboard/produzione/tv' },
 			{ label: 'Spedizioni', href: '/dashboard/produzione/spedizioni', count: data.counts?.spedizione }

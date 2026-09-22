@@ -8,7 +8,7 @@
 	const used = $derived(new Set(data.usedIds));
 	const v = (x: number | null) => (x == null ? null : String(x));
 	const todo = (x: number | null) => (x == null ? 'Da configurare' : String(x));
-	const caps = Object.keys(CAPABILITY_LABEL).filter((c) => c !== 'controllo' && c !== 'confezionamento');
+	const caps = Object.keys(CAPABILITY_LABEL);
 	$effect(() => { if (form?.ok) editing = null; });
 	const blank = (): Machine => ({ id: '', code: '', name: '', brand: null, model: null, machine_type: 'stampante_ecosolvente', department: 'stampa', usable_width_mm: null, is_active: true, archived_at: null, setup_minutes: null, sqm_per_hour: null, minutes_per_sqm: null, pieces_per_hour: null, minutes_per_piece: null, cleanup_minutes: null, passive_minutes: null, waste_coefficient: null, capabilities: ['stampa_ecosolvente'], notes: null, sort: data.machines.length + 1 });
 	const cur = $derived(editing === 'new' ? blank() : editing);

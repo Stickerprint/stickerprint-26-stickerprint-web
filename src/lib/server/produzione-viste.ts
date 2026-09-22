@@ -6,7 +6,7 @@ import type { Machine, Phase } from '$lib/production/types';
 import { loadQueue, loadSetup, recalcIfStale, type QueueRow, type Setup } from './produzione';
 
 export interface MachineView { machine: Machine; state: 'busy' | 'free' | 'off'; current: { row: QueueRow; phase: Phase } | null; next: { row: QueueRow; phase: Phase } | null; loadMinutes: number; loadPct: number; queueCount: number }
-export interface Overview { queue: QueueRow[]; setup: Setup; machines: MachineView[]; today: string; kpi: { paidToday: number; startToday: number; running: number; toPack: number; atRisk: number; busyMachines: number; late: number }; now: string }
+export interface Overview { queue: QueueRow[]; setup: Setup; machines: MachineView[]; today: string; kpi: { paidToday: number; startToday: number; running: number; atRisk: number; busyMachines: number; late: number; doneToday: number }; now: string }
 
 export async function loadOverview(db: SupabaseClient): Promise<Overview> {
 	await recalcIfStale(db);
@@ -24,8 +24,8 @@ export async function loadOverview(db: SupabaseClient): Promise<Overview> {
 	const kpi = {
 		paidToday: queue.filter((r) => r.job.paid_at && dayOf(r.job.paid_at, setup.calendar) === today).length + queue.filter((r) => !r.job.paid_at && dayOf(r.job.created_at, setup.calendar) === today).length,
 		startToday: queue.filter((r) => r.job.status === 'READY_TO_START' && r.job.latest_start_at && dayOf(r.job.latest_start_at, setup.calendar) <= today).length,
-		running: queue.filter((r) => ['IN_PROGRESS', 'WAITING_PASSIVE_TIME', 'PACKAGING'].includes(r.job.status)).length,
-		toPack: queue.filter((r) => r.job.status === 'READY_FOR_PACKAGING' || r.job.status === 'PACKAGING').length,
+		running: queue.filter((r) => ['IN_PROGRESS', 'WAITING_PASSIVE_TIME'].includes(r.job.status)).length,
+		doneToday: await db.from('production_jobs').select('id', { count: 'exact', head: true }).eq('status', 'COMPLETED').gte('completed_at', `${today}T00:00:00Z`).then((r) => r.count ?? 0),
 		atRisk: queue.filter((r) => r.job.risk_status === 'AT_RISK' || r.job.risk_status === 'TIGHT').length,
 		late: queue.filter((r) => r.job.risk_status === 'LATE').length,
 		busyMachines: machines.filter((m) => m.state === 'busy').length

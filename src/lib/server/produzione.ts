@@ -40,7 +40,16 @@ export async function loadEvents(db: DB, jobId: string, limit = 100) {
 }
 
 /* ---------- setup ---------- */
+/* il setup (macchinari, profili, calendario) cambia di rado: si tiene in memoria 30 s e si azzera a ogni modifica dal Setup */
+let setupCache: { at: number; value: Setup } | null = null;
+export const invalidateSetup = () => { setupCache = null; };
 export async function loadSetup(db: DB): Promise<Setup> {
+	if (setupCache && Date.now() - setupCache.at < 30000) return setupCache.value;
+	const v = await loadSetupFresh(db);
+	setupCache = { at: Date.now(), value: v };
+	return v;
+}
+async function loadSetupFresh(db: DB): Promise<Setup> {
 	const [{ data: m }, { data: p }, { data: c }] = await Promise.all([
 		db.from('production_machines').select('*').order('sort').order('name'),
 		db.from('production_machine_profiles').select('*'),
@@ -69,6 +78,7 @@ export function machineFromForm(f: FormData): Partial<Machine> & { code: string;
 	};
 }
 export async function saveMachine(db: DB, id: string | null, m: ReturnType<typeof machineFromForm>): Promise<{ id: string | null; error?: string }> {
+	invalidateSetup();
 	if (!m.code || !m.name) return { id: null, error: 'Codice e nome sono obbligatori.' };
 	const patch = { ...m, updated_at: new Date().toISOString() };
 	if (id) { const { error } = await db.from('production_machines').update(patch).eq('id', id); return { id, error: error?.message }; }
@@ -77,6 +87,7 @@ export async function saveMachine(db: DB, id: string | null, m: ReturnType<typeo
 }
 /** copia con codice e nome nuovi (i profili di velocita' vengono copiati) */
 export async function duplicateMachine(db: DB, id: string): Promise<{ id: string | null; error?: string }> {
+	invalidateSetup();
 	const { data: m } = await db.from('production_machines').select('*').eq('id', id).maybeSingle();
 	if (!m) return { id: null, error: 'Macchinario non trovato.' };
 	const { id: _id, created_at: _c, updated_at: _u, archived_at: _a, ...rest } = m;
@@ -90,16 +101,19 @@ export async function duplicateMachine(db: DB, id: string): Promise<{ id: string
 }
 /** mai usato in una commessa → eliminato; altrimenti archiviato (le commesse vecchie continuano a mostrarlo) */
 export async function removeMachine(db: DB, id: string): Promise<{ archived: boolean; error?: string }> {
+	invalidateSetup();
 	const { count } = await db.from('production_tasks').select('id', { count: 'exact', head: true }).eq('machine_id', id);
 	if (!count) { const { error } = await db.from('production_machines').delete().eq('id', id); return { archived: false, error: error?.message }; }
 	const { error } = await db.from('production_machines').update({ archived_at: new Date().toISOString(), is_active: false, updated_at: new Date().toISOString() }).eq('id', id);
 	return { archived: true, error: error?.message };
 }
 export async function setMachineActive(db: DB, id: string, on: boolean) {
+	invalidateSetup();
 	const { error } = await db.from('production_machines').update({ is_active: on, archived_at: on ? null : undefined, updated_at: new Date().toISOString() }).eq('id', id);
 	return error?.message ?? null;
 }
 export async function saveProfile(db: DB, machineId: string, id: string | null, f: FormData) {
+	invalidateSetup();
 	const s = (k: string) => String(f.get(k) ?? '').trim();
 	const n = (k: string) => (s(k) === '' ? null : Number(s(k).replace(',', '.')));
 	const row = { machine_id: machineId, name: s('name') || 'Profilo', product_slug: s('product_slug') || null, quality: s('quality') || null, material: s('material') || null, capability: s('capability') || null, sqm_per_hour: n('sqm_per_hour'), minutes_per_sqm: n('minutes_per_sqm'), minutes_per_piece: n('minutes_per_piece'), setup_minutes: n('setup_minutes'), coefficient: n('coefficient'), is_active: f.get('is_active') !== 'off' };
@@ -107,6 +121,7 @@ export async function saveProfile(db: DB, machineId: string, id: string | null, 
 	return error?.message ?? null;
 }
 export async function saveCalendar(db: DB, f: FormData) {
+	invalidateSetup();
 	const s = (k: string) => String(f.get(k) ?? '').trim();
 	const days = f.getAll('working_days').map(Number).filter((d) => d >= 1 && d <= 7);
 	const holidays = s('holidays').split(/[\n,;]+/).map((x) => x.trim()).filter((x) => /^\d{4}-\d{2}-\d{2}$/.test(x));
@@ -119,7 +134,7 @@ export async function saveCalendar(db: DB, f: FormData) {
 }
 
 /* ---------- commesse ---------- */
-const OPEN_JOB: JobStatus[] = ['READY_TO_START', 'IN_PROGRESS', 'WAITING_PASSIVE_TIME', 'READY_FOR_PACKAGING', 'PACKAGING'];
+const OPEN_JOB: JobStatus[] = ['READY_TO_START', 'IN_PROGRESS', 'WAITING_PASSIVE_TIME'];
 const isOpen = (p: Phase) => p.status !== 'completato' && p.status !== 'saltata';
 
 /** l'ordine e' davvero da produrre: pagato (o manuale senza anticipo in sospeso), in produzione, non annullato */
@@ -165,8 +180,12 @@ export async function ensurePlan(db: DB, rows: OrderRow[], operator: string | nu
 			rowsToInsert[0].status = 'pronto';
 			const { error } = await db.from('production_tasks').insert(rowsToInsert);
 			if (error) { console.error('[produzione] fasi', error.message); continue; }
+			await db.from('orders').update({ prod_stage: rowsToInsert[0].stage }).eq('checkout_group', g.key);
+		} else {
+			// nessuna lavorazione (es. campioni): l'ordine va direttamente in spedizione
+			await db.from('production_jobs').update({ status: 'COMPLETED', completed_at: new Date().toISOString() }).eq('id', job.id);
+			await db.from('orders').update({ prod_stage: null, status: 'in_spedizione' }).eq('checkout_group', g.key).eq('status', 'in_produzione');
 		}
-		await db.from('orders').update({ prod_stage: rowsToInsert[0]?.stage ?? null }).eq('checkout_group', g.key);
 		await logEvent(db, { order_id: f.id, job_id: job.id, kind: 'pianificata', detail: `${rowsToInsert.length} fasi, spedizione promessa ${promised}${ins?.length ? '' : ' (commessa già esistente)'}`, operator, to_status: 'READY_TO_START' });
 		touched = true;
 	}
@@ -199,13 +218,10 @@ export async function loadOpenJobs(db: DB): Promise<JobFull[]> {
 const toPlan = (p: Phase): PlanPhase => ({ id: p.id, seq: p.seq, capability: p.capability, machine_types: p.machine_type ? [p.machine_type] : [], machine_id: p.machine_id, minutes: p.minutes, wait_minutes: p.wait_minutes, passive: p.passive, status: p.status, started_at: p.started_at, completed_at: p.completed_at, machine_locked: p.machine_locked });
 function jobStatusOf(phases: Phase[], cur: JobStatus): JobStatus {
 	if (cur === 'CANCELLED') return cur;
-	if (!phases.length) return cur;
+	if (!phases.length) return 'COMPLETED';   // niente lavorazioni (campioni): passa subito in spedizione
 	if (phases.every((p) => !isOpen(p))) return 'COMPLETED';
-	const running = phases.find((p) => p.status === 'in_corso');
-	if (running) return running.stage === 'confezionamento' ? 'PACKAGING' : 'IN_PROGRESS';
+	if (phases.some((p) => p.status === 'in_corso')) return 'IN_PROGRESS';
 	if (phases.some((p) => p.status === 'in_attesa')) return 'WAITING_PASSIVE_TIME';
-	const next = phases.find(isOpen);
-	if (next?.stage === 'confezionamento' && next.status === 'pronto') return 'READY_FOR_PACKAGING';
 	if (!phases.some((p) => p.started_at || p.status === 'completato')) return 'READY_TO_START';
 	return 'IN_PROGRESS';
 }
@@ -227,22 +243,24 @@ async function settlePassive(db: DB, phases: Phase[], now: Date, operator: strin
  * come occupate le fasi di quelle prima di lei. Aggiorna fasi e campi calcolati delle commesse.
  */
 export async function recalcAll(db: DB, now = new Date()): Promise<void> {
-	const setup = await loadSetup(db);
-	const jobs = await loadOpenJobs(db);
+	const [setup, jobs] = await Promise.all([loadSetup(db), loadOpenJobs(db)]);
 	// prima passata: date a ritroso e chiusura dei tempi passivi scaduti
 	for (const jf of jobs) await settlePassive(db, jf.phases, now);
 	const ranked = sortQueue(jobs.map((jf) => ({ ...jf, risk_status: jf.job.risk_status, latest_start_at: jf.job.latest_start_at, promised_ship_date: jf.job.promised_ship_date, paid_at: jf.job.paid_at, created_at: jf.job.created_at })));
 	let busy: Busy[] = [];
+	const phasePatch: Record<string, unknown>[] = [], jobPatch: Record<string, unknown>[] = [], afterDone: JobFull[] = [];
+	const near = (a: string | null, b: string | null) => !!a && !!b && Math.abs(new Date(a).getTime() - new Date(b).getTime()) < 60000;   // sotto il minuto non si riscrive
 	for (const jf of ranked) {
 		/* le durate seguono i parametri ATTUALI dei macchinari (cambiare una velocita' ricalcola le stime);
 		   le durate corrette a mano e le fasi gia' avviate non si toccano */
+		const newMinutes = new Map<string, number>();
 		for (const p of jf.phases) {
 			if (!isOpen(p) || p.passive || p.manual_minutes || p.status === 'in_corso' || !p.capability || !p.machine_id) continue;
 			const m = setup.machines.find((x) => x.id === p.machine_id); const it = jf.group.items.find((i) => i.id === p.order_id);
 			if (!m || !it) continue;
 			const inp = { ...routingInputFrom(it), complexity: (p.complexity as 'semplice' | 'standard' | 'complesso' | null) ?? null };
 			const est = machineMinutes(m, p.capability, areaOf(inp), inp, setup.profiles);
-			if (est != null && est !== p.minutes) { await db.from('production_tasks').update({ minutes: est }).eq('id', p.id); p.minutes = est; }
+			if (est != null && est !== p.minutes) { newMinutes.set(p.id, est); p.minutes = est; }
 		}
 		const plan = jf.phases.map(toPlan);
 		const back = planBackward(plan, jf.job.promised_ship_date, setup.calendar);
@@ -251,16 +269,30 @@ export async function recalcAll(db: DB, now = new Date()): Promise<void> {
 		for (let k = 0; k < jf.phases.length; k++) {
 			const p = jf.phases[k];
 			const mid = isOpen(p) && !p.machine_locked && p.status !== 'in_corso' ? fwd.machine_id[k] : p.machine_id;
-			const patch = { latest_start_at: back.latest_start[k].toISOString(), due_at: back.latest_end[k].toISOString(), planned_start_at: fwd.planned_start[k].toISOString(), planned_end_at: fwd.planned_end[k].toISOString(), machine_id: mid, machine: setup.machines.find((m) => m.id === mid)?.name ?? p.machine };
-			if (patch.latest_start_at !== p.latest_start_at || patch.planned_start_at !== p.planned_start_at || patch.planned_end_at !== p.planned_end_at || mid !== p.machine_id) await db.from('production_tasks').update(patch).eq('id', p.id);
+			const patch = { id: p.id, latest_start_at: back.latest_start[k].toISOString(), due_at: back.latest_end[k].toISOString(), planned_start_at: fwd.planned_start[k].toISOString(), planned_end_at: fwd.planned_end[k].toISOString(), machine_id: mid, machine: setup.machines.find((m) => m.id === mid)?.name ?? p.machine, minutes: newMinutes.get(p.id) ?? null };
+			if (!near(patch.latest_start_at, p.latest_start_at) || !near(patch.planned_start_at, p.planned_start_at) || !near(patch.planned_end_at, p.planned_end_at) || mid !== p.machine_id || patch.minutes != null) phasePatch.push(patch);
 		}
 		const status = jobStatusOf(jf.phases, jf.job.status);
-		const patch = { latest_start_at: back.job_latest_start.toISOString(), estimated_packaging_at: fwd.estimated_packaging_at.toISOString(), total_minutes: jf.phases.filter(isOpen).reduce((s, p) => s + p.minutes, 0), slack_minutes: fwd.slack_minutes, predicted_delay_minutes: fwd.predicted_delay_minutes, risk_status: status === 'COMPLETED' ? 'ON_TRACK' : fwd.risk, status, completed_at: status === 'COMPLETED' ? (jf.job.completed_at ?? now.toISOString()) : jf.job.completed_at, updated_at: now.toISOString() };
-		await db.from('production_jobs').update(patch).eq('id', jf.job.id);
-		if (status === 'COMPLETED' && jf.job.status !== 'COMPLETED') {
-			await db.from('orders').update({ prod_stage: null, status: 'in_spedizione' }).eq('checkout_group', jf.job.checkout_group).eq('status', 'in_produzione');
-			await logEvent(db, { order_id: jf.group.items[0].id, job_id: jf.job.id, kind: 'completata', detail: 'Commessa completata: passa in spedizione', from_status: jf.job.status, to_status: 'COMPLETED' });
+		const total = jf.phases.filter(isOpen).reduce((s, p) => s + p.minutes, 0);
+		const risk = status === 'COMPLETED' ? 'ON_TRACK' : fwd.risk;
+		const eta = fwd.estimated_packaging_at.toISOString(), latest = back.job_latest_start.toISOString();
+		if (status !== jf.job.status || risk !== jf.job.risk_status || total !== jf.job.total_minutes || fwd.slack_minutes !== jf.job.slack_minutes || fwd.predicted_delay_minutes !== jf.job.predicted_delay_minutes || !near(eta, jf.job.estimated_packaging_at) || !near(latest, jf.job.latest_start_at)) {
+			jobPatch.push({ id: jf.job.id, latest_start_at: latest, estimated_packaging_at: eta, total_minutes: total, slack_minutes: fwd.slack_minutes, predicted_delay_minutes: fwd.predicted_delay_minutes, risk_status: risk, status, completed_at: status === 'COMPLETED' ? now.toISOString() : null });
 		}
+		if (status === 'COMPLETED' && jf.job.status !== 'COMPLETED') afterDone.push(jf);
+	}
+	// due scritture in blocco invece di una per fase e una per commessa
+	if (phasePatch.length || jobPatch.length) {
+		const { error } = await db.rpc('production_apply_plan', { phases: phasePatch, jobs: jobPatch });
+		if (error) {
+			// funzione non ancora presente (migrazione 0048 non applicata): scritture una per una
+			for (const p of phasePatch) { const { id, minutes, ...rest } = p; await db.from('production_tasks').update(minutes == null ? rest : { ...rest, minutes }).eq('id', id); }
+			for (const j of jobPatch) { const { id, completed_at, ...rest } = j; await db.from('production_jobs').update(completed_at ? { ...rest, completed_at } : rest).eq('id', id); }
+		}
+	}
+	for (const jf of afterDone) {
+		await db.from('orders').update({ prod_stage: null, status: 'in_spedizione' }).eq('checkout_group', jf.job.checkout_group).eq('status', 'in_produzione');
+		await logEvent(db, { order_id: jf.group.items[0].id, job_id: jf.job.id, kind: 'completata', detail: 'Ultima lavorazione finita: l’ordine è in Spedizioni', from_status: jf.job.status, to_status: 'COMPLETED' });
 	}
 }
 let lastRecalc = 0;
@@ -296,8 +328,10 @@ export async function startPhase(db: DB, phaseId: string, operator: string | nul
 	if (c.phase.machine_id) { const m = await db.from('production_machines').select('is_active, archived_at').eq('id', c.phase.machine_id).maybeSingle(); if (m.data && (!m.data.is_active || m.data.archived_at)) return 'Il macchinario assegnato è disattivato: cambia macchinario prima di avviare.'; }
 	const { data: upd } = await db.from('production_tasks').update({ status: 'in_corso', started_at: c.phase.started_at ?? nowIso(), operator, block_reason: null, updated_at: nowIso() }).eq('id', phaseId).in('status', ['pronto', 'bloccato']).select('id');
 	if (!upd?.length) return 'La fase è già stata avviata.';
-	await db.from('orders').update({ prod_stage: c.phase.stage, status: 'in_produzione' }).eq('id', c.phase.order_id);
-	if (!c.job.started_at) await db.from('production_jobs').update({ started_at: nowIso() }).eq('id', c.job.id);
+	await Promise.all([
+		db.from('orders').update({ prod_stage: c.phase.stage, status: 'in_produzione' }).eq('id', c.phase.order_id),
+		c.job.started_at ? Promise.resolve() : db.from('production_jobs').update({ started_at: nowIso() }).eq('id', c.job.id)
+	]);
 	await afterAction(db, c, 'iniziata', c.phase, operator, { detail: c.phase.label, from_status: c.phase.status, to_status: 'in_corso', est_minutes: c.phase.minutes });
 	return null;
 }

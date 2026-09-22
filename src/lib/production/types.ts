@@ -5,7 +5,7 @@
 
 /* ---------- lavorazioni e macchinari ---------- */
 /** cosa una macchina (o una postazione) sa fare */
-export type Capability = 'stampa_ecosolvente' | 'stampa_uv' | 'laminazione' | 'taglio' | 'resinatura' | 'controllo' | 'confezionamento';
+export type Capability = 'stampa_ecosolvente' | 'stampa_uv' | 'laminazione' | 'taglio' | 'resinatura';
 /** tipologie iniziali: la tabella accetta stringhe nuove, questo elenco serve solo alle tendine */
 export const MACHINE_TYPES: Record<string, { label: string; department: Department; capabilities: Capability[] }> = {
 	stampante_ecosolvente: { label: 'Stampante eco-solvente', department: 'stampa', capabilities: ['stampa_ecosolvente'] },
@@ -14,17 +14,17 @@ export const MACHINE_TYPES: Record<string, { label: string; department: Departme
 	plotter_taglio: { label: 'Plotter da taglio', department: 'taglio', capabilities: ['taglio'] },
 	resinatrice: { label: 'Resinatrice automatica', department: 'resinatura', capabilities: ['resinatura'] }
 };
-export type Department = 'stampa' | 'laminazione' | 'taglio' | 'resinatura' | 'controllo' | 'confezionamento';
+/* Niente controllo qualita' ne' confezionamento come fasi (scelta di Mattia, 22/09/2026): finita l'ultima lavorazione
+   l'ordine passa direttamente in Spedizioni. */
+export type Department = 'stampa' | 'laminazione' | 'taglio' | 'resinatura';
 export const DEPARTMENTS: Record<Department, { label: string; icon: string; station: boolean }> = {
 	stampa: { label: 'Stampa', icon: '🖨️', station: false },
 	laminazione: { label: 'Laminazione', icon: '🧴', station: false },
 	taglio: { label: 'Taglio', icon: '✂️', station: false },
-	resinatura: { label: 'Resinatura', icon: '💧', station: false },
-	controllo: { label: 'Controllo qualità', icon: '🔍', station: true },      // postazione, non macchinario
-	confezionamento: { label: 'Confezionamento', icon: '📦', station: true }  // postazione, non macchinario
+	resinatura: { label: 'Resinatura', icon: '💧', station: false }
 };
 export const CAPABILITY_LABEL: Record<Capability, string> = {
-	stampa_ecosolvente: 'Stampa eco-solvente', stampa_uv: 'Stampa UV', laminazione: 'Laminazione', taglio: 'Taglio', resinatura: 'Resinatura', controllo: 'Controllo qualità', confezionamento: 'Confezionamento'
+	stampa_ecosolvente: 'Stampa eco-solvente', stampa_uv: 'Stampa UV', laminazione: 'Laminazione', taglio: 'Taglio', resinatura: 'Resinatura'
 };
 
 export interface Machine {
@@ -54,7 +54,7 @@ export const DEFAULT_CALENDAR: Calendar = {
 };
 
 /* ---------- commesse e fasi ---------- */
-export type JobStatus = 'READY_TO_START' | 'IN_PROGRESS' | 'WAITING_PASSIVE_TIME' | 'READY_FOR_PACKAGING' | 'PACKAGING' | 'COMPLETED' | 'CANCELLED';
+export type JobStatus = 'READY_TO_START' | 'IN_PROGRESS' | 'WAITING_PASSIVE_TIME' | 'COMPLETED' | 'CANCELLED';
 export type RiskStatus = 'ON_TRACK' | 'TIGHT' | 'AT_RISK' | 'LATE';
 /** stati delle fasi nel database (italiano) e loro nome nel modello */
 export type PhaseStatus = 'da_fare' | 'pronto' | 'in_corso' | 'bloccato' | 'completato' | 'in_attesa' | 'saltata';
@@ -63,7 +63,7 @@ export const PHASE_MODEL: Record<PhaseStatus, 'LOCKED' | 'READY' | 'IN_PROGRESS'
 };
 export const PHASE_LABEL: Record<PhaseStatus, string> = { da_fare: 'In arrivo', pronto: 'Pronta', in_corso: 'In corso', bloccato: 'Bloccata', completato: 'Completata', in_attesa: 'In attesa (tempo passivo)', saltata: 'Saltata' };
 export const JOB_LABEL: Record<JobStatus, string> = {
-	READY_TO_START: 'Da avviare', IN_PROGRESS: 'In corso', WAITING_PASSIVE_TIME: 'In attesa (maturazione)', READY_FOR_PACKAGING: 'Da confezionare', PACKAGING: 'In confezionamento', COMPLETED: 'Completata', CANCELLED: 'Annullata'
+	READY_TO_START: 'Da avviare', IN_PROGRESS: 'In corso', WAITING_PASSIVE_TIME: 'In attesa (maturazione)', COMPLETED: 'Completata: in spedizione', CANCELLED: 'Annullata'
 };
 export const RISK: Record<RiskStatus, { label: string; hex: string; soft: string; icon: string }> = {
 	ON_TRACK: { label: 'In tempo', hex: '#16a34a', soft: '#dcfce7', icon: '🟢' },

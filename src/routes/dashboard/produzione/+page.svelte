@@ -16,7 +16,7 @@
 </script>
 
 <svelte:head><title>Produzione | Dashboard</title></svelte:head>
-<div class="pv-head"><div><h1>🏭 Produzione</h1><p class="lead">Cosa avviare adesso, cosa è in corso, cosa rischia. Le date promesse ai clienti non si toccano: si lavora per rispettarle.</p></div><ProdNav /></div>
+<div class="pv-head"><div><h1>🏭 Produzione</h1><p class="lead">Cosa avviare adesso, cosa è in corso, cosa rischia. Finita l'ultima lavorazione l'ordine passa da solo in Spedizioni. Le date promesse ai clienti non si toccano.</p></div><ProdNav /></div>
 {#if form?.error}<p class="error">{form.error}</p>{/if}
 {#if unconfigured.length}<p class="note" style="background:#fef6db;padding:10px 14px;border-radius:12px;margin-bottom:12px">⚙️ Velocità <b>da configurare</b> per: {unconfigured.map((m) => m.name).join(', ')}. Finché mancano, le durate sono di riserva. <a class="link" href="/dashboard/setup/macchinari">Setup → Macchinari</a></p>{/if}
 
@@ -24,7 +24,7 @@
 	<a class="pv-kpi is-blue" href="/dashboard/produzione/coda?f=tutti"><b>{data.kpi.paidToday}</b><span>Ordini pagati oggi</span></a>
 	<a class="pv-kpi is-warn" href="/dashboard/produzione/coda?f=da-avviare"><b>{data.kpi.startToday}</b><span>Da avviare oggi</span></a>
 	<a class="pv-kpi is-ok" href="/dashboard/produzione/coda?f=in-corso"><b>{data.kpi.running}</b><span>In corso</span></a>
-	<a class="pv-kpi" href="/dashboard/produzione/coda?f=da-confezionare"><b>{data.kpi.toPack}</b><span>Da confezionare</span></a>
+	<a class="pv-kpi" href="/dashboard/produzione/spedizioni"><b>{data.kpi.doneToday}</b><span>Finiti oggi → spedizioni</span></a>
 	<a class="pv-kpi is-hot" href="/dashboard/produzione/coda?f=a-rischio"><b>{data.kpi.atRisk + data.kpi.late}</b><span>A rischio o in ritardo</span></a>
 	<a class="pv-kpi" href="/dashboard/produzione/macchinari"><b>{data.kpi.busyMachines}<small style="font-size:16px;color:var(--muted)">/{data.machines.filter((m) => m.state !== 'off').length}</small></b><span>Macchinari occupati</span></a>
 </div>

@@ -3,6 +3,7 @@
  * Solo per i test: Postgres embedded (pglite) con le migrazioni VERE del progetto e un client minimo
  * che imita la parte di supabase-js usata dal modulo di produzione (select/insert/update/upsert/delete + filtri).
  */
+// @ts-nocheck: file usato solo dai test (vitest gira in Node; il check del sito non ha i tipi di Node)
 import { PGlite } from '@electric-sql/pglite';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -117,7 +118,13 @@ class Q implements PromiseLike<{ data: unknown; error: { message: string; code?:
 }
 /** finto SupabaseClient: solo `.from()`; `auth.uid()` si imposta con setUser */
 export function fakeClient(db: PGlite) {
-	const client = { from: (t: string) => new Q(db, t) };
+	const client = {
+		from: (t: string) => new Q(db, t),
+		rpc: async (fn: string, args: Record<string, unknown> = {}) => {
+			try { await db.query(`select public.${fn}(${Object.entries(args).map(([k, v]) => `${k} => ${lit(v)}`).join(', ')})`); return { data: null, error: null }; }
+			catch (e) { return { data: null, error: { message: String((e as Error).message) } }; }
+		}
+	};
 	return client as unknown as import('@supabase/supabase-js').SupabaseClient;
 }
 export async function setUser(db: PGlite, uid: string | null) { await db.query(`update public._test_ctx set uid = ${uid ? `'${uid}'` : 'null'}`); }

@@ -43,7 +43,7 @@ describe('commesse e pagamenti', () => {
 		await ensurePlan(db, rows);
 		expect(await jobs(rows[0].checkout_group!)).toBe(1);
 		const ph = await phases(rows[0].checkout_group!);
-		expect(ph.length).toBeGreaterThan(2);
+		expect(ph.length).toBe(2);   // stampa UV + taglio: niente controllo ne' confezionamento
 		expect(ph[0].status).toBe('pronto');
 		expect(ph.slice(1).every((p) => p.status === 'da_fare')).toBe(true);
 	});
@@ -75,8 +75,14 @@ describe('commesse e pagamenti', () => {
 		const uv = await order({ finitura: 'nessuna' }); await ensurePlan(db, uv);
 		expect((await phases(uv[0].checkout_group!))[0].machine).toBe('Roland LG2 UV');
 	});
-	it('22. fase completata sblocca la successiva; fine dell\'ultima → ordine in spedizione', async () => {
+	it('campioni: nessuna lavorazione, l\'ordine va subito in spedizione', async () => {
 		const rows = await order({ product: 'campioni' }); await ensurePlan(db, rows);
+		expect((await phases(rows[0].checkout_group!)).length).toBe(0);
+		expect((await pg.query<{ status: string }>(`select status from public.orders where checkout_group = '${rows[0].checkout_group}'`)).rows[0].status).toBe('in_spedizione');
+		expect((await loadJob(db, rows[0].checkout_group!))?.job.status).toBe('COMPLETED');
+	});
+	it('22. fase completata sblocca la successiva; fine dell\'ultima → ordine in spedizione', async () => {
+		const rows = await order({ product: 'vetrofanie' }); await ensurePlan(db, rows);   // vetrofania: solo stampa UV
 		const [p1] = await phases(rows[0].checkout_group!);
 		expect(await startPhase(db, p1.id, 'Operatore')).toBeNull();
 		expect(await startPhase(db, p1.id, 'Operatore')).not.toBeNull();   // doppio click: la seconda volta non passa

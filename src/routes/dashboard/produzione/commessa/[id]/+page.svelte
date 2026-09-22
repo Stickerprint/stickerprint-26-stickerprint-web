@@ -36,14 +36,14 @@
 	<div class="dcard" style="display:grid;gap:6px;align-content:center">
 		<RiskChip risk={j.risk_status} lg />
 		<div><b>Avvia entro:</b> {fmtWhen(j.latest_start_at, now, cal)}</div>
-		<div><b>Confezionamento previsto:</b> {fmtWhen(j.estimated_packaging_at, now, cal)}</div>
+		<div><b>Fine lavorazioni prevista:</b> {fmtWhen(j.estimated_packaging_at, now, cal)}</div>
 		<div>{#if j.predicted_delay_minutes > 0}<b style="color:{rk.hex}">Previsione oltre la spedizione di {fmtMin(j.predicted_delay_minutes)}</b>{:else}<b>Margine:</b> {fmtMin(j.slack_minutes ?? 0)}{/if}</div>
 		<div><b>Tempo produttivo residuo:</b> {fmtMin(j.total_minutes)}</div>
 	</div>
 	<div class="dcard" style="display:grid;gap:8px;align-content:center">
 		{#if j.status === 'READY_TO_START'}<form method="POST" action="?/avvia" use:enhance><input type="hidden" name="job" value={j.id} /><button class="btn btn--green" type="submit" style="width:100%">▶ Avvia produzione</button></form>{/if}
 		<PhaseBar phases={data.phases} />
-		<div class="osub">{data.phases.filter((p) => p.status === 'completato').length} di {data.phases.length} fasi completate · macchinari: {[...new Set(data.phases.map((p) => mName(p.machine_id)).filter(Boolean))].join(', ') || '—'}</div>
+		<div class="osub">{data.phases.filter((p) => p.status === 'completato').length} di {data.phases.length} fasi completate{#if j.status === 'COMPLETED'} · <a class="link" href="/dashboard/produzione/spedizioni">in Spedizioni ›</a>{/if} · macchinari: {[...new Set(data.phases.map((p) => mName(p.machine_id)).filter(Boolean))].join(', ') || '—'}</div>
 		{#if data.admin && j.status !== 'CANCELLED' && j.status !== 'COMPLETED'}
 			<details><summary class="osub" style="cursor:pointer;color:#b3261e">✕ Annulla commessa (solo amministratore)</summary>
 				<form method="POST" action="?/annulla" use:enhance style="display:grid;gap:6px;margin-top:6px" onsubmit={(e) => { if (!confirm('Annullare la commessa? L’ordine risulterà annullato.')) e.preventDefault(); }}><input type="hidden" name="job" value={j.id} /><input name="motivo" placeholder="Motivo" class="sel-sm" style="max-width:none" /><button class="btn btn--ghost btn--xs" type="submit">Conferma annullamento</button></form>

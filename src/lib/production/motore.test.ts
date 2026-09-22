@@ -32,7 +32,7 @@ describe('routing: le regole di Stickerprint', () => {
 	it('5. prodotto laminato → stampa su una SG3, poi laminazione e taglio su Graphtec', () => {
 		const r = routeOrder(order({ laminated: true, protection: 'lucida' }), PARK());
 		const caps = r.phases.map((p) => p.capability);
-		expect(caps).toEqual(['stampa_ecosolvente', 'laminazione', 'taglio', 'controllo', 'confezionamento']);
+		expect(caps).toEqual(['stampa_ecosolvente', 'laminazione', 'taglio']);
 		expect(['SG3-1', 'SG3-2']).toContain(r.phases[0].machine_id);
 		expect(['FC-1', 'FC-2']).toContain(r.phases[2].machine_id);
 	});
@@ -52,7 +52,7 @@ describe('routing: le regole di Stickerprint', () => {
 	});
 	it('8. resinato → SG3, taglio basi su Graphtec, resinatrice, maturazione passiva; mai la LG2', () => {
 		const r = routeOrder(order({ product_slug: 'adesivi_resinati', width_mm: 25, height_mm: 25 }), PARK());
-		expect(r.phases.map((p) => p.capability)).toEqual(['stampa_ecosolvente', 'taglio', 'resinatura', 'resinatura', 'controllo', 'confezionamento']);
+		expect(r.phases.map((p) => p.capability)).toEqual(['stampa_ecosolvente', 'taglio', 'resinatura', 'resinatura']);
 		expect(['SG3-1', 'SG3-2']).toContain(r.phases[0].machine_id);
 		expect(r.phases[2].machine_id).toBe('RES-1');
 		expect(r.phases[3].passive).toBe(true);
