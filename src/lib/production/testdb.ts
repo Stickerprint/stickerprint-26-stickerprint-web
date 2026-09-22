@@ -39,7 +39,15 @@ export async function freshDb(): Promise<PGlite> {
 	// come supabase-js: date e timestamp arrivano come stringhe, non come Date
 	const db = new PGlite({ parsers: { 1082: (v: string) => v, 1114: (v: string) => new Date(v + 'Z').toISOString(), 1184: (v: string) => new Date(v).toISOString(), 1700: (v: string) => Number(v) } });
 	await db.exec(PRE);
-	for (const f of fs.readdirSync(MIG).sort()) for (const st of split(fs.readFileSync(path.join(MIG, f), 'utf8'))) { try { await db.exec(st); } catch { /* policy, estensioni, cron: non servono ai test */ } }
+	const bad: string[] = [];
+	for (const f of fs.readdirSync(MIG).sort()) for (const st of split(fs.readFileSync(path.join(MIG, f), 'utf8'))) {
+		try { await db.exec(st); } catch (e) {
+			// policy, estensioni, cron, grant, viste su schemi di Supabase: non servono ai test. Tutto il resto deve passare.
+			if (/^(create|drop|alter) (policy|extension)|cron\.|grant |revoke |storage\.|auth\.|realtime|pg_net|supabase_functions|create publication|alter publication/i.test(st) || /schema "(cron|extensions|net)"/.test(String(e))) continue;
+			bad.push(`${f}: ${String((e as Error).message).split('\n')[0].slice(0, 120)} :: ${st.slice(0, 80).replace(/\s+/g, ' ')}`);
+		}
+	}
+	if (bad.length) throw new Error('Migrazioni con errori:\n' + bad.join('\n'));
 	return db;
 }
 

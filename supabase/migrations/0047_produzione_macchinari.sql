@@ -2,6 +2,10 @@
 -- fasi con macchinario assegnato e pianificazione. Niente magazzino, niente approvazioni.
 -- Le tabelle production_tasks (fasi) e production_events (cronologia) restano: si estendono.
 
+-- pulizia: lavorazioni ed eventi rimasti senza ordine (ordini di prova cancellati con i vincoli disattivati)
+delete from public.production_events e where not exists (select 1 from public.orders o where o.id = e.order_id);
+delete from public.production_tasks t where not exists (select 1 from public.orders o where o.id = t.order_id);
+
 -- ---------- MACCHINARI ----------
 create table if not exists public.production_machines (
   id uuid primary key default gen_random_uuid(),
@@ -167,11 +171,11 @@ update public.production_tasks set passive = true where wait_minutes > 0 and min
 update public.production_tasks set capability = case stage when 'stampa' then (case when machine = 'Roland LG-300' then 'stampa_uv' else 'stampa_ecosolvente' end) when 'laminazione' then 'laminazione' when 'taglio' then 'taglio' when 'resinatura' then 'resinatura' when 'controllo' then 'controllo' when 'confezionamento' then 'confezionamento' end where capability is null;
 -- una commessa per ogni ordine in produzione che ha gia' lavorazioni
 insert into public.production_jobs (checkout_group, order_number, promised_ship_date, status, paid_at, created_at)
-  select coalesce(o.checkout_group, o.id::text), o.number, coalesce(o.ship_by, o.delivery_date, (o.created_at + interval '5 days')::date),
-         case when exists (select 1 from public.production_tasks t where t.order_id = o.id and t.status = 'in_corso') then 'IN_PROGRESS' else 'READY_TO_START' end,
-         o.created_at, o.created_at
+  select coalesce(o.checkout_group, o.id::text) as k, min(o.number), min(coalesce(o.ship_by, o.delivery_date, (o.created_at + interval '5 days')::date)),
+         case when bool_or(exists (select 1 from public.production_tasks t where t.order_id = o.id and t.status = 'in_corso')) then 'IN_PROGRESS' else 'READY_TO_START' end,
+         min(o.created_at), min(o.created_at)
   from public.orders o where o.status = 'in_produzione'
-  group by coalesce(o.checkout_group, o.id::text), o.number, o.ship_by, o.delivery_date, o.created_at
+  group by coalesce(o.checkout_group, o.id::text)
 on conflict (checkout_group) do nothing;
 update public.production_tasks t set job_id = j.id from public.orders o join public.production_jobs j on j.checkout_group = coalesce(o.checkout_group, o.id::text)
   where t.order_id = o.id and t.job_id is null;
