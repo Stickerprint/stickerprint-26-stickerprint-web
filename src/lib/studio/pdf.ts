@@ -13,7 +13,7 @@ import { PDFDocument, PDFName, PDFNumber, PDFOperator, PDFOperatorNames as Op, S
 import { markRects, barcodeRects, MARK_BLACK } from './graphtec';
 import type { Placement, Strip } from './layout';
 
-import { SPOTS, type CutSpot } from './spots';
+import { SPOTS, GLOSS, type CutSpot } from './spots';
 export { SPOTS, type CutSpot };
 
 const PT = 72 / 25.4;
@@ -58,6 +58,8 @@ export interface Artwork {
 	cutH: number;
 	bleed: number;
 	pathD: string;
+	/** adesivi in rilievo: le zone in rilievo, in tracciato, tinta RDG_GLOSS (mm, come pathD) */
+	glossD?: string;
 }
 
 export interface PdfJob {
@@ -78,6 +80,7 @@ interface Res {
 	/** la grafica e' una pagina PDF vettoriale (non un'immagine) */
 	vector?: boolean;
 	cs: Record<CutSpot, PDFRef>;
+	gloss: PDFRef;
 	gs: PDFRef;
 }
 
@@ -88,9 +91,12 @@ function setupResources(pdf: PDFDocument, imgRef: PDFRef): Res {
 		const fn = ctx.register(ctx.obj({ FunctionType: 2, Domain: [0, 1], C0: [0, 0, 0, 0], C1: SPOTS[name].cmyk, N: 1 }));
 		cs[name] = ctx.register(ctx.obj([PDFName.of('Separation'), PDFName.of(name), PDFName.of('DeviceCMYK'), fn]));
 	}
+	// rilievo UV: stessa costruzione, tinta piatta RDG_GLOSS
+	const fnG = ctx.register(ctx.obj({ FunctionType: 2, Domain: [0, 1], C0: [0, 0, 0, 0], C1: GLOSS.cmyk, N: 1 }));
+	const gloss = ctx.register(ctx.obj([PDFName.of('Separation'), PDFName.of(GLOSS.name), PDFName.of('DeviceCMYK'), fnG]));
 	// sovrastampa: il tracciato non buca la grafica sotto
 	const gs = ctx.register(ctx.obj({ Type: 'ExtGState', OP: true, op: true, OPM: 1 }));
-	return { img: imgRef, cs, gs };
+	return { img: imgRef, cs, gloss, gs };
 }
 
 /*
@@ -116,6 +122,19 @@ function drawPage(page: PDFPage, job: PdfJob, strip: Strip, res: Res, pageIndex:
 		artOps.push(op(Op.DrawObject, PDFName.of('Im')), op(Op.PopGraphicsState));
 	}
 	const artForm = ctx.register(ctx.formXObject(artOps, { BBox: [0, 0, W, H], Resources: { XObject: { Im: res.img } } }));
+
+	/* 1-bis. gruppo RILIEVO (adesivi in rilievo): le zone in rilievo in tinta piatta RDG_GLOSS.
+	   Deve essere vettoriale, altrimenti la Roland non lo legge; sta SOTTO la grafica. */
+	let glossForm: PDFRef | null = null;
+	if (art.glossD) {
+		const gsegs = parsePath(art.glossD);
+		const gOps: PDFOperator[] = [mm(), op(Op.NonStrokingColorspace, PDFName.of(GLOSS.name)), op(Op.NonStrokingColorN, 1)];
+		for (const p of strip.pieces) {
+			gOps.push(op(Op.PushGraphicsState), op(Op.ConcatTransformationMatrix, ...pieceMatrix(p, art.cutW, art.cutH)));
+			gOps.push(...pathOps(gsegs), op(Op.FillEvenOdd), op(Op.PopGraphicsState));
+		}
+		glossForm = ctx.register(ctx.formXObject(gOps, { BBox: [0, 0, W, H], Resources: { ColorSpace: { [GLOSS.name]: res.gloss } } }));
+	}
 
 	// 2. gruppo TAGLIO, in sovrastampa
 	const cs: Record<string, PDFRef> = {};
@@ -148,8 +167,10 @@ function drawPage(page: PDFPage, job: PdfJob, strip: Strip, res: Res, pageIndex:
 		/* niente scritte accanto ai codici: il Code 39 vuole almeno 10 moduli (4 mm) di bianco ai lati,
 		   una scritta a 3 mm ne impediva la lettura. Cutting Master non ne mette. */
 	}
+	const nGloss = glossForm ? node.newXObject('Rilievo', glossForm) : null;
 	const nArt = node.newXObject('Grafica', artForm);
 	const nCut = node.newXObject('Taglio', cutForm);
+	if (nGloss) page.pushOperators(op(Op.PushGraphicsState), op(Op.DrawObject, nGloss), op(Op.PopGraphicsState));
 	page.pushOperators(op(Op.PushGraphicsState), op(Op.DrawObject, nArt), op(Op.PopGraphicsState));
 	if (nMarks) page.pushOperators(op(Op.PushGraphicsState), op(Op.DrawObject, nMarks), op(Op.PopGraphicsState));
 	/* striscia con crocini Graphtec: il taglio va al plotter da Data Link Server, nel PDF da stampare
