@@ -23,7 +23,12 @@ export const GET: RequestHandler = async ({ request, url }) => {
 	   1. mai gli ordini importati dal vecchio sito (legacy_id valorizzato): quei clienti hanno gia' avuto la loro richiesta a suo tempo;
 	   2. mai consegne piu' vecchie di 14 giorni: se il cron resta fermo per un periodo, alla ripresa non recupera l'arretrato. */
 	const oldest = new Date(Date.now() - 14 * 24 * 3600 * 1000).toISOString();
-	const { data, error } = await db.from('orders').select('id, number, checkout_group, user_id, email, shipping, product_name, qty, delivered_at, preview_url, proof_url, mockup_url').eq('status', 'consegnato').is('review_asked_at', null).is('legacy_id', null).not('email', 'is', null).lte('delivered_at', limit).gte('delivered_at', oldest).limit(100);
+	/* elenco esplicito (?orders=SPIT00340,SPIT00326): richiesta voluta da Mattia per quegli ordini precisi, anche se importati
+	   o gia' contattati; unica condizione: devono essere consegnati */
+	const explicit = (url.searchParams.get('orders') ?? '').split(',').map((s) => s.trim().toUpperCase()).filter(Boolean);
+	const { data, error } = explicit.length
+		? await db.from('orders').select('id, number, checkout_group, user_id, email, shipping, product_name, qty, delivered_at, preview_url, proof_url, mockup_url').eq('status', 'consegnato').in('number', explicit).not('email', 'is', null)
+		: await db.from('orders').select('id, number, checkout_group, user_id, email, shipping, product_name, qty, delivered_at, preview_url, proof_url, mockup_url').eq('status', 'consegnato').is('review_asked_at', null).is('legacy_id', null).not('email', 'is', null).lte('delivered_at', limit).gte('delivered_at', oldest).limit(100);
 	if (error) return json({ error: error.message }, { status: 500 });
 	const groups = new Map<string, typeof data>();
 	for (const o of data ?? []) { const k = o.checkout_group ?? o.id; if (!groups.has(k)) groups.set(k, []); groups.get(k)!.push(o); }
@@ -41,6 +46,6 @@ export const GET: RequestHandler = async ({ request, url }) => {
 		else if (reqId) await db.from('review_requests').delete().eq('id', reqId);
 	}
 	// stesso cron (piano Hobby: massimo due): solleciti automatici dei preventivi senza risposta
-	const quotes = await remindDueQuotes(db, url.origin, true).catch(() => [] as string[]);
-	return json({ candidates: groups.size, sent, quotesReminded: quotes });
+	const quotes = explicit.length ? [] : await remindDueQuotes(db, url.origin, true).catch(() => [] as string[]);
+	return json({ candidates: groups.size, sent, notFound: explicit.filter((n) => !(data ?? []).some((o) => o.number === n)), quotesReminded: quotes });
 };
