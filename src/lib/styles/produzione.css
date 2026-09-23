@@ -79,17 +79,18 @@
 @media (max-width: 1100px) { .q__row { grid-template-columns: 52px minmax(0, 1fr) 150px 130px; } .q__row > .q__steps { grid-column: 2 / -1; } }
 @media (max-width: 700px) { .q__row { grid-template-columns: 44px minmax(0, 1fr); } .q__row > .q__steps, .q__row > .q__when, .q__row > .q__act { grid-column: 1 / -1; } .q__act { justify-items: start; } }
 
-/* fasi come passi */
-.steps { list-style: none; margin: 0; padding: 0; display: flex; align-items: center; gap: 0; flex-wrap: wrap; row-gap: 6px; }
-.step { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: #9ca3af; }
-.step + .step::before { content: ''; width: 14px; height: 2px; background: #e5e7eb; margin: 0 6px; }
-.step__dot { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; background: #f1f3f8; font-size: 12px; line-height: 1; border: 2px solid transparent; }
-.step--done { color: #6b7280; } .step--done .step__dot { background: #16a34a; color: #fff; font-weight: 900; }
-.step--run { color: var(--ink); } .step--run .step__dot { background: #2563eb; border-color: #bfdbfe; box-shadow: 0 0 0 3px #dbeafe; animation: pv-pulse 1.4s ease-in-out infinite; }
-.step--ready { color: var(--ink); } .step--ready .step__dot { background: #fff; border-color: #2563eb; }
-.step--wait .step__dot { background: #ede9fe; }
-.step--block { color: #b3261e; } .step--block .step__dot { background: #fee2e2; color: #b3261e; font-weight: 900; }
-.steps--compact .step__dot { width: 18px; height: 18px; font-size: 10px; } .steps--compact .step + .step::before { width: 8px; margin: 0 3px; }
+/* fasi come passi (un passo per reparto) */
+.pvs { list-style: none; margin: 0; padding: 0; display: flex; align-items: center; flex-wrap: wrap; row-gap: 6px; }
+.pvs__step { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 700; color: #9ca3af; white-space: nowrap; }
+.pvs__step + .pvs__step::before { content: ''; display: inline-block; width: 16px; height: 2px; background: #e5e7eb; margin: 0 8px; }
+.pvs__lbl i { font-style: normal; font-weight: 600; font-size: 11px; opacity: .8; }
+.pvs__dot { width: 26px; height: 26px; border-radius: 50%; display: inline-grid; place-items: center; background: #f1f3f8; font-size: 13px; line-height: 1; border: 2px solid transparent; flex: 0 0 auto; }
+.pvs__step--done { color: #6b7280; } .pvs__step--done .pvs__dot { background: #16a34a; color: #fff; font-weight: 900; }
+.pvs__step--run { color: var(--ink); } .pvs__step--run .pvs__dot { background: #dbeafe; border-color: #2563eb; box-shadow: 0 0 0 3px #eff6ff; animation: pv-pulse 1.4s ease-in-out infinite; }
+.pvs__step--ready { color: var(--ink); } .pvs__step--ready .pvs__dot { background: #fff; border-color: #2563eb; }
+.pvs__step--wait { color: #6d28d9; } .pvs__step--wait .pvs__dot { background: #ede9fe; }
+.pvs__step--block { color: #b3261e; } .pvs__step--block .pvs__dot { background: #fee2e2; color: #b3261e; font-weight: 900; }
+.pvs--compact .pvs__dot { width: 20px; height: 20px; font-size: 10px; } .pvs--compact .pvs__step + .pvs__step::before { width: 8px; margin: 0 3px; }
 
 /* ---------- scheda della fase (reparti) ---------- */
 .rep { margin-top: 22px; }
