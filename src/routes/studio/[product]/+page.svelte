@@ -23,7 +23,7 @@
 	let dragging = $state(false);
 	let fileInput = $state<HTMLInputElement | undefined>();
 	let colInput = $state<HTMLInputElement | undefined>();
-	let engine = $state<{ post: (type: string, detail?: Record<string, unknown>) => void; studio: (what: 'mockup' | 'print' | 'geom' | 'applica' | 'stato' | 'soggetti', opts?: Record<string, unknown>) => Promise<{ blob?: Blob; soggetti?: { pathD: string; x: number; y: number; w: number; h: number; nodi: number }[]; foglio?: { w: number; h: number }; unione?: number; cutW?: number; cutH?: number; bleed?: number; pathD?: string; polys?: [number, number][][] | null; shape?: string; dpi?: number; border?: number }> }>();
+	let engine = $state<{ post: (type: string, detail?: Record<string, unknown>) => void; studio: (what: 'mockup' | 'print' | 'geom' | 'applica' | 'stato' | 'soggetti' | 'rilievo', opts?: Record<string, unknown>) => Promise<{ blob?: Blob; glossD?: string; zone?: number; nodi?: number; soggetti?: { pathD: string; x: number; y: number; w: number; h: number; nodi: number }[]; foglio?: { w: number; h: number }; unione?: number; cutW?: number; cutH?: number; bleed?: number; pathD?: string; polys?: [number, number][][] | null; shape?: string; dpi?: number; border?: number }> }>();
 
 	/* kit: si lavora un adesivo del kit oppure il cavallotto */
 	let pezzo = $state<'adesivo' | 'cavallotto'>('adesivo');
@@ -303,7 +303,13 @@
 		if (!r.cutW || !r.cutH) throw new Error('Il motore non ha restituito le misure del taglio.');
 		traceInfo = `Tracciato: ${t.nodes} punti di ancoraggio · grafica a ${r.dpi ?? '?'} dpi`;
 		if (!r.blob) throw new Error('Il motore non ha restituito la grafica.');
-		return { png: new Uint8Array(await r.blob.arrayBuffer()), cutW: r.cutW, cutH: r.cutH, bleed: r.bleed ?? 0, pathD: t.d };
+		/* adesivi in rilievo: sotto la grafica va il livello RDG_GLOSS vettoriale, solo dove c'e' il rilievo */
+		let glossD: string | undefined;
+		if (P.rilievo) {
+			const g = await engine!.studio('rilievo');
+			if (g.glossD) { glossD = g.glossD; traceInfo += ` · rilievo RDG_GLOSS: ${g.zone} zone, ${g.nodi} punti`; }
+		}
+		return { png: new Uint8Array(await r.blob.arrayBuffer()), cutW: r.cutW, cutH: r.cutH, bleed: r.bleed ?? 0, pathD: t.d, glossD };
 	}
 
 	const scaricaAnteprima = () => run('mockup', async () => {
@@ -810,7 +816,7 @@
 					<label class="st-dpi">Risoluzione <select bind:value={dpi}><option value="auto">Massima (min. 600 dpi)</option><option value={300}>300 dpi</option><option value={600}>600 dpi</option><option value={1200}>1200 dpi</option></select></label>
 					{#if traceInfo}<p class="st-note st-trace">{traceInfo}</p>{/if}
 					{#if downloadErr}<p class="st-err">{downloadErr}</p>{/if}
-					{#if P.rilievo}<p class="st-note">Rilievo: il livello RDG_GLOSS vettoriale per la Roland arriva nel prossimo passaggio. Oggi il PDF contiene grafica e passante.</p>{/if}
+					{#if P.rilievo}<p class="st-note">Rilievo: sotto la grafica c’è il livello <b>RDG_GLOSS</b> vettoriale, solo sulle zone in rilievo (le stesse di “Effetto rilievo”).</p>{/if}
 				</div>
 			</aside>
 		</div>

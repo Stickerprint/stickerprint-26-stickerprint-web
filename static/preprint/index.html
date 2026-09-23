@@ -3933,6 +3933,47 @@ function rilievoMask(){
   try{console.debug('[rilievo] '+Math.round(frac*100)+'% del disegno in rilievo, '+w+'x'+h+' in '+Math.round(performance.now()-t0)+' ms');}catch(e){}
   return S.ril;}
 
+/* ==========================================================================
+   RILIEVO VETTORIALE — tinta RDG_GLOSS per la Roland
+   La Roland applica il rilievo dove trova la tinta piatta RDG_GLOSS, ma solo se e'
+   un TRACCIATO: un'immagine non la legge. Qui la maschera del rilievo (la stessa che
+   il cliente vede con "Effetto rilievo") diventa contorni in millimetri, nello stesso
+   riquadro del taglio, pronti da mettere nel file di stampa.
+   ========================================================================== */
+function rilievoVettoriale(){
+  const m=rilievoMask(); const A=artRect();
+  if(!m||!A)throw new Error('Nessuna zona in rilievo da vettorializzare');
+  const w=m.w,h=m.h;
+  /* contorno morbido come nella vista del cliente: sfocatura mezzo pixel e soglia al 40%,
+     cosi' i tratti sottili (la i) restano e i bordi non escono a gradini */
+  const cv=document.createElement('canvas');cv.width=w;cv.height=h;
+  const g=cv.getContext('2d',{willReadFrequently:true});
+  const id=g.createImageData(w,h);
+  for(let i=0;i<w*h;i++){id.data[i*4+3]=m.on[i]?255:0;}
+  g.putImageData(id,0,0);
+  sfocaAlfa(cv,0.5);
+  const q=g.getImageData(0,0,w,h).data;
+  const M=new Uint8Array(w*h);
+  for(let i=0;i<w*h;i++)M[i]=q[i*4+3]>=102?1:0;      /* 40% */
+  const loops=traceLoops(M,w,h);
+  if(!loops.length)throw new Error('Nessuna zona in rilievo');
+  const kx=A.w/w, ky=A.h/h;                          /* pixel della maschera -> mm sul pezzo */
+  /* scarto 0,12 mm: il rilievo non si taglia, quindi non serve la precisione del taglio, e con
+     meno nodi il file resta leggero e modificabile in Illustrator */
+  const dev=Math.max(0.6,0.12/Math.max(kx,ky));
+  const parts=[];
+  const minA=Math.max(2,(0.35/ (kx*ky)));            /* via i puntini sotto 0,35 mm2 */
+  for(const L of loops){
+    if(Math.abs(L.area)<minA)continue;
+    const c=contourOne(L,{maxDevPx:dev,cornerDeg:50,smooth:0.7});
+    if(c)parts.push(c);
+  }
+  if(!parts.length)throw new Error('Nessuna zona in rilievo');
+  const T=p=>[A.x+p[0]*kx, A.y+p[1]*ky];
+  const d=parts.map(p=>{const P2=p.P.map(T),ang=turnAngles(P2,Math.max(2.5,dev*Math.max(kx,ky)*2));
+    return pathOf(P2,ang,p.sm,p.cr);}).join(' ');
+  return {glossD:d, zone:parts.length, nodi:parts.reduce((a,p)=>a+p.nodes,0), frac:m.frac};}
+
 /* posizione del disegno dentro il pezzo, in mm (con zoom e spostamento del sagomato) */
 function artRect(){
   let A=S.art; if(!A)return null;
@@ -5830,6 +5871,8 @@ function ppGeoUI(){
           send('studio',{id:d.id,ok:true,pathD:S.pathD,cutW:S.cutW,cutH:S.cutH}); return; }
         /* 'geom' = solo il contorno (per ricavarne il tracciato leggero dello studio) */
         /* 'soggetti' = foglio di adesivi: un tracciato per ogni adesivo del file */
+        /* 'rilievo' = le zone in rilievo in tracciato (tinta RDG_GLOSS nel file di stampa) */
+        if(d.what==='rilievo'){ send('studio',{id:d.id,ok:true,...rilievoVettoriale()}); return; }
         if(d.what==='soggetti'){ send('studio',{id:d.id,ok:true,...soggettiFoglio(d)}); return; }
         if(d.what==='geom'){ send('studio',{id:d.id,ok:true,pathD:S.pathD,polys:S.polys||null,shape:CL.shape,cutW:S.cutW,cutH:S.cutH,bleed:S.bleed||0,border:borderMM()}); return; }
         /* lo studio puo' passare il SUO tracciato (liscio, pochi nodi): mockup e grafica di stampa
