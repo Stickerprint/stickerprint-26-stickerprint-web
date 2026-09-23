@@ -9,7 +9,7 @@ import { klaviyoPlacedOrder } from './klaviyo';
 import { buildInvoicePdf, type InvoiceLine } from './invoice';
 import { sendEmail } from './email';
 import { pushStaff } from './push';
-import { orderConfirmationEmail } from './email-templates';
+import { orderConfirmationEmail, ownerNotifyEmail, OWNER_EMAIL } from './email-templates';
 import { estimatedShipDate, formatItDate } from '$lib/utils/shipping';
 import { ensurePlan } from './produzione';
 import type { OrderRow } from '$lib/dashboard/orders';
@@ -115,6 +115,8 @@ export async function finalizeCheckout(db: DB, group: string, o: { provider: str
 	sendEmail({ to: p.email, ...mail, attachments: pdfB64 ? [{ name: `${invoice.number}.pdf`, content: pdfB64, contentType: 'application/pdf' }] : undefined })
 		.then((r) => { if (r.ok && !r.skipped) db.from('invoices').update({ sent_at: new Date().toISOString() }).eq('number', invoice.number).then(() => {}); })
 		.catch((e) => console.error('[checkout] email', e));
+	/* avviso interno via email (oltre alla notifica push): chi ha ordinato, cosa, quanto, e il link alla scheda in dashboard */
+	sendEmail({ to: OWNER_EMAIL, ...ownerNotifyEmail({ title: `Nuovo ordine ${p.numbers[0]} · ${p.toPay.toFixed(2).replace('.', ',')} €`, lines: [`Cliente: ${p.firstName} ${p.lastName} (${p.email})`, ...p.emailLines.map((l) => `${l.qty} × ${l.description}`), `Pagamento: ${p.payment}${p.express ? ' · express' : ''}`, `Totale incassato: ${p.toPay.toFixed(2).replace('.', ',')} € · fattura ${invoice.number}`], href: `${origin}/dashboard/fatturazione/ordini/${encodeURIComponent(group)}` }) }).catch((e) => console.error('[checkout] avviso interno', e));
 	pushStaff({ title: `Nuovo ordine ${p.numbers[0]}`, body: `${p.firstName} ${p.lastName} · ${p.emailLines.length} ${p.emailLines.length === 1 ? 'articolo' : 'articoli'} · ${p.toPay.toFixed(2)} €${o.provider === 'stripe' ? ' · pagato con carta' : o.provider === 'paypal' ? ' · pagato con PayPal' : ''}`, url: `/dashboard/fatturazione/ordini/${group}`, tag: p.numbers[0] }).catch((e) => console.error('[push]', e));
 	return { done: true, payload: p, invoice: invoice.number };
 }
