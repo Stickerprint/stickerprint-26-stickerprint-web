@@ -24,7 +24,7 @@ function shipmentInput(g: OrderGroup) {
 }
 
 /** Genera le spedizioni del corriere: via API (tracking + etichetta ufficiale salvata) se collegato, altrimenti etichette interne. Il PDF unico si scarica con labelsPdf. */
-export async function generateLabels(supabase: SupabaseClient, courier: string, keys: string[]): Promise<{ count: number; warnings: string[] }> {
+export async function generateLabels(supabase: SupabaseClient, courier: string, keys: string[], courierCode?: string | null): Promise<{ count: number; warnings: string[] }> {
 	const { data } = await supabase.from('orders').select('*').in('checkout_group', keys);
 	const groups = groupOrders((data ?? []) as OrderRow[]);
 	const adapter = adapterFor(courier);
@@ -34,7 +34,7 @@ export async function generateLabels(supabase: SupabaseClient, courier: string, 
 		let patch: Record<string, string | null> = { labels_generated_at: new Date().toISOString() };
 		if (adapter?.configured) {
 			try {
-				const r = await adapter.createShipment(shipmentInput(g));
+				const r = await adapter.createShipment({ ...shipmentInput(g), courier: courierCode ?? null });
 				let labelPath: string | null = null;
 				if (r.labelPdf) {
 					labelPath = `couriers/${courier}/${g.number}.pdf`;

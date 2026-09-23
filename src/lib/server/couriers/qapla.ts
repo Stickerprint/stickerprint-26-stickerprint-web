@@ -47,11 +47,24 @@ async function mergePdfs(b64s: string[]): Promise<Uint8Array | null> {
 	return out.save();
 }
 
+/** Corrieri attivi sul canale Qapla (codice + nome), per la tendina in Spedizioni; cache 1 ora */
+let couriersCache: { at: number; list: { code: string; name: string }[] } | null = null;
+export async function qaplaCouriers(): Promise<{ code: string; name: string }[]> {
+	if (!env.QAPLA_API_KEY) return [];
+	if (couriersCache && Date.now() - couriersCache.at < 3600_000) return couriersCache.list;
+	try {
+		const r = await post<{ couriers: { code: string; name: string }[] }>('getCouriers', { type: 'used' });
+		const list = (r.couriers ?? []).map((c) => ({ code: String(c.code), name: String(c.name ?? c.code) }));
+		couriersCache = { at: Date.now(), list };
+		return list;
+	} catch (e) { console.warn('[qapla] getCouriers', e); return couriersCache?.list ?? []; }
+}
+
 export const qapla: CourierAdapter = {
 	id: 'Qapla', configured: missing.length === 0, missing,
 	async createShipment(s: ShipmentInput) {
 		const r = s.recipient;
-		const courier = env.QAPLA_COURIER || 'GLS-ITA';
+		const courier = s.courier || env.QAPLA_COURIER || 'GLS-ITA';
 		const perParcel = Math.max(0.1, Math.round((s.weightKg / Math.max(1, s.parcels)) * 100) / 100);
 		const body = {
 			sandbox: env.QAPLA_SANDBOX === '1',

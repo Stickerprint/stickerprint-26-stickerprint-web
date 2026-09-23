@@ -1,3 +1,4 @@
+import { qaplaCouriers } from '$lib/server/couriers/qapla';
 import { fail } from '@sveltejs/kit';
 import { groupOrders, itemMeta, deliveryMode, thumbOf, type OrderRow } from '$lib/dashboard/orders';
 import { generateLabels } from '$lib/server/shipping';
@@ -25,7 +26,7 @@ export const load: PageServerLoad = async ({ locals: { supabase }, url }) => {
 	/* DA SPEDIRE: usciti dalla produzione, non ancora inviati a Qapla ne' conclusi. Appena si invia o si conclude, l'ordine esce da qui */
 	const { data: todo } = await supabase.from('orders').select('*').in('status', ['pronto', 'in_spedizione']).is('transmitted_at', null).is('ddt_id', null).order('created_at', { ascending: false });
 	const groups = groupOrders((todo ?? []) as OrderRow[]);
-	if (view === 'da-spedire') return { view, groups, qaplaOk: !!env.QAPLA_API_KEY, today, month: today.slice(0, 7), day: today, days: {} as Record<string, number>, shipped: [] as ReturnType<typeof groupOrders>, todoCount: groups.length };
+	if (view === 'da-spedire') return { view, groups, couriers: await qaplaCouriers(), defaultCourier: env.QAPLA_COURIER || 'GLS-ITA', qaplaOk: !!env.QAPLA_API_KEY, today, month: today.slice(0, 7), day: today, days: {} as Record<string, number>, shipped: [] as ReturnType<typeof groupOrders>, todoCount: groups.length };
 
 	/* ORDINI SPEDITI: calendario del mese; per ogni giorno gli ordini partiti quel giorno (data di invio a Qapla o di conclusione) */
 	const month = /^\d{4}-\d{2}$/.test(url.searchParams.get('mese') ?? '') ? String(url.searchParams.get('mese')) : today.slice(0, 7);
@@ -39,7 +40,7 @@ export const load: PageServerLoad = async ({ locals: { supabase }, url }) => {
 	const asked = url.searchParams.get('giorno');
 	const day = asked && /^\d{4}-\d{2}-\d{2}$/.test(asked) && asked.startsWith(month) ? asked : (month === today.slice(0, 7) && days[today] ? today : (Object.keys(days).sort().pop() ?? `${month}-01`));
 	const shipped = all.filter((g) => romeDay(g.items[0].shipped_at!) === day);
-	return { view, groups: [] as typeof groups, qaplaOk: !!env.QAPLA_API_KEY, today, month, day, days, shipped, todoCount: groups.length };
+	return { view, groups: [] as typeof groups, couriers: await qaplaCouriers(), defaultCourier: env.QAPLA_COURIER || 'GLS-ITA', qaplaOk: !!env.QAPLA_API_KEY, today, month, day, days, shipped, todoCount: groups.length };
 };
 const r2 = (v: number) => Math.round(v * 100) / 100;
 
@@ -106,6 +107,19 @@ export const actions: Actions = {
 		if (error) return fail(400, { error: error.message });
 		return { ok: true };
 	},
+	/** Rimanda a Qapla' un ordine gia' inviato ma non ancora ritirato, con un altro corriere (stesso riferimento: Qapla' aggiorna l'ordine) */
+	ricorriere: async ({ request, locals: { supabase } }) => {
+		const f = await request.formData();
+		const group = String(f.get('group') ?? ''); const courierCode = String(f.get('courier') ?? '').trim() || null;
+		const { data } = await supabase.from('orders').select('number, tracking_number, courier').eq('checkout_group', group);
+		if (!data?.length) return fail(404, { error: 'Ordine non trovato.' });
+		if (data[0].tracking_number) return fail(400, { error: 'La spedizione ha già un tracking: il corriere non si cambia più da qui.' });
+		let r: { count: number; warnings: string[] };
+		try { r = await generateLabels(supabase, 'Qapla', [group], courierCode); } catch (e) { return fail(400, { error: e instanceof Error ? e.message : 'Errore Qapla' }); }
+		const hard = r.warnings.filter((w) => !/Ordine inviato a Qapla/.test(w));
+		if (hard.length) return fail(400, { error: hard.join(' · ') + ' — se Qapla rifiuta il riferimento doppio, elimina l\'ordine dal pannello Qapla (Etichette → Crea) e riprova.' });
+		return { ok: true, qapla: data[0].number, emailed: false, notes: [], ddt: null, labels: null, reshipped: courierCode };
+	},
 	/** Invia a Qapla': l'ordine passa a Qapla' (sezione Crea, etichetta dal pannello) ed esce da "Da spedire". Resta IN SPEDIZIONE
 	    finche' il corriere non lo ritira: da li' spedito, in consegna e consegnato arrivano da Qapla' (webhook e sincronizzazione).
 	    Il cliente riceve l'email "in attesa di ritiro". */
@@ -119,7 +133,8 @@ export const actions: Actions = {
 		/* colli e peso (dal popup degli ordini manuali) servono a Qapla per l'etichetta */
 		if (f.has('parcels')) await supabase.from('orders').update({ parcels: Math.max(1, Number(f.get('parcels') ?? 1)), weight_kg: Number(f.get('weight') ?? 0) || null }).eq('checkout_group', group);
 		let r: { count: number; warnings: string[] };
-		try { r = await generateLabels(supabase, 'Qapla', [group]); } catch (e) { return fail(400, { error: e instanceof Error ? e.message : 'Errore Qapla' }); }
+		const courierCode = String(f.get('courier') ?? '').trim() || null;
+		try { r = await generateLabels(supabase, 'Qapla', [group], courierCode); } catch (e) { return fail(400, { error: e instanceof Error ? e.message : 'Errore Qapla' }); }
 		const hard = r.warnings.filter((w) => !/Ordine inviato a Qapla/.test(w));
 		if (hard.length) return fail(400, { error: hard.join(' · ') });
 		const now = new Date().toISOString();

@@ -8,6 +8,7 @@
 	let ddtPopup = $state<string | null>(null);
 	/* il popup serve a "Concludi" (consegna diretta, corriere cliente) e a "Invia a Qapla": il DDT si fa sempre */
 	let popupKind = $state<'ddt' | 'qapla'>('ddt');
+	let qaplaCourier = $state(data.defaultCourier ?? 'GLS-ITA');
 	let ddtParcels = $state(1);
 	let ddtWeight = $state<number | null>(null);
 	let ddtQty = $state<Record<string, number>>({});
@@ -179,6 +180,10 @@
 							<b style="display:flex;align-items:center;gap:8px">{#if f.courier === 'Qapla'}<img class="courier-logo" src={COURIERS.Qapla.logo} alt="Qapla" />{/if}{info.how}</b>
 							<div class="osub">{info.sub}</div>
 							{#if f.tracking_url}<div class="osub"><a class="link" href={f.tracking_url} target="_blank" rel="noopener">↗ segui la spedizione</a></div>{/if}
+							{#if f.courier === 'Qapla' && !f.tracking_number && data.couriers?.length}
+								<!-- non ancora ritirato: si puo' rimandare a Qapla con un altro corriere (l'ordine con lo stesso riferimento viene aggiornato) -->
+								<form method="POST" action="?/ricorriere" use:enhance class="reship"><input type="hidden" name="group" value={g.key} /><select name="courier">{#each data.couriers as k (k.code)}<option value={k.code}>{k.name}</option>{/each}</select><button class="btn btn--ghost btn--xs" type="submit">↻ Rimanda</button></form>
+							{/if}
 							{#if f.parcels}<div class="osub">{f.parcels} {f.parcels === 1 ? 'collo' : 'colli'}{#if f.ddt_id} · <a class="link" href="/dashboard/produzione/spedizioni/etichette?ddt={f.ddt_id}&courier={encodeURIComponent(f.courier ?? '')}" target="_blank">etichette</a>{/if}</div>{/if}
 						</td>
 						<td>
@@ -228,7 +233,12 @@
 				<div><span class="osub">Trasporto</span><br />
 					{#if m === 'direct'}<b>Consegna diretta Stickerprint</b>
 					{:else if m === 'customer'}<b>Corriere a carico del destinatario</b><div class="osub">ritira il corriere del cliente</div>
-					{:else}<b style="display:flex;align-items:center;gap:8px">{#if COURIERS[c]}<img class="courier-logo" src={COURIERS[c].logo} alt={c} />{/if}Corriere a carico del mittente · {c || 'Qapla'}</b><div class="osub">l'ordine passa a Qapla: etichetta dal pannello Qapla</div>{/if}
+					{:else}<b style="display:flex;align-items:center;gap:8px">{#if COURIERS[c]}<img class="courier-logo" src={COURIERS[c].logo} alt={c} />{/if}Corriere a carico del mittente · Qapla</b>
+						{#if popupKind === 'qapla'}
+							{#if data.couriers?.length}<label style="display:block;margin-top:6px"><span class="osub">Corriere con cui spedire</span><select name="courier" bind:value={qaplaCourier}>{#each data.couriers as k (k.code)}<option value={k.code}>{k.name}</option>{/each}</select></label>
+							{:else}<input type="hidden" name="courier" value={qaplaCourier} /><div class="osub">corriere: {qaplaCourier} (elenco corrieri non disponibile da Qapla)</div>{/if}
+						{/if}
+						<div class="osub">l'ordine passa a Qapla: etichetta dal pannello Qapla</div>{/if}
 				</div>
 			</div>
 			<p class="note">Il DDT prende il prossimo numero SPD (Fatturazione → DDT){ddtGroup.channel === 'manuale' ? ' e sarà da fatturare' : ' (ordine e-commerce già fatturato)'}; le etichette dei colli, una per collo, si scaricano subito.</p>
@@ -236,3 +246,7 @@
 		</form>
 	</div></div>
 {/if}
+
+<style>
+	.reship { display: flex; gap: 6px; align-items: center; margin-top: 6px; } .reship select { padding: 4px 8px; border: 1px solid var(--line); border-radius: 8px; font: inherit; font-size: 12px; }
+</style>
