@@ -53,7 +53,7 @@ export async function qaplaCouriers(): Promise<{ code: string; name: string }[]>
 	if (!env.QAPLA_API_KEY) return [];
 	if (couriersCache && Date.now() - couriersCache.at < 3600_000) return couriersCache.list;
 	try {
-		const r = await post<{ couriers: { code: string; name: string }[] }>('getCouriers', { type: 'used' });
+		const r = await qaplaGet<{ couriers: { code: string; name: string }[] }>('getCouriers', { type: 'used' }, '1.2');
 		const list = (r.couriers ?? []).map((c) => ({ code: String(c.code), name: String(c.name ?? c.code) }));
 		couriersCache = { at: Date.now(), list };
 		return list;
