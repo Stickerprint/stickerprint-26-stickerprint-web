@@ -227,6 +227,9 @@
 					const path = `${data.user?.id ?? 'guest'}/${it.id}.${ext}`;
 					await putFile(path, f);
 					filePath = path;
+				} else if (!filePath && it.fileName) {
+					/* il file era stato caricato ma il browser non ce l'ha piu' (succede su iPhone): meglio fermarsi che ordinare senza file */
+					throw new Error(`Il file ${it.fileName} non è più disponibile su questo dispositivo: torna al prodotto e ricaricalo, poi conferma di nuovo l'ordine.`);
 				}
 				lines.push({ id: it.id, product: it.product, forma: it.forma, materiale: it.materiale, finitura: it.finitura, w: it.w, h: it.h, qty: it.qty, filePath, fileName: it.fileName ?? null, previewUrl, note: it.note, reorderOf: it.reorderOf ?? null, promoId: it.promoId ?? null, engineState: it.engineState ?? null });
 			}

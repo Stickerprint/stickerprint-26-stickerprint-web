@@ -72,10 +72,25 @@ export const saveDraft = (draft: Draft) => put(STORE, KEY, draft);
 export const loadDraft = () => get<Draft>(STORE, KEY);
 export const clearDraft = () => del(STORE, KEY);
 
+/* I file NON si salvano come oggetti File/Blob: Safari (iPhone/iPad) li restituisce vuoti dopo un cambio pagina
+ * ("No content provided" al checkout). Si salvano i byte (ArrayBuffer) con nome e tipo, e si ricostruisce il File in lettura. */
+type StoredFile = { name: string; type: string; lastModified: number; buf: ArrayBuffer };
+async function toStored(file: Blob, name = 'file', lastModified = Date.now()): Promise<StoredFile> {
+	const buf = await file.arrayBuffer();
+	if (!buf.byteLength) throw new Error('Il file e\' vuoto o non leggibile: ricaricalo.');
+	return { name, type: file.type || '', lastModified, buf };
+}
+function fromStored(v: StoredFile | File | Blob | null): File | null {
+	if (!v) return null;
+	if (v instanceof Blob) return v.size > 0 ? (v instanceof File ? v : new File([v], 'file', { type: v.type })) : null; // formato vecchio: se Safari l'ha svuotato, e' come mancante
+	if (!v.buf?.byteLength) return null;
+	return new File([v.buf], v.name, { type: v.type, lastModified: v.lastModified });
+}
+
 /** File del cliente per una riga del carrello (chiave = id della riga) */
-export const saveCartFile = (id: string, file: File) => put(FILES, id, file);
-export const getCartFile = (id: string) => get<File>(FILES, id);
+export const saveCartFile = async (id: string, file: File) => put(FILES, id, await toStored(file, file.name, file.lastModified));
+export const getCartFile = async (id: string) => fromStored(await get<StoredFile | File>(FILES, id));
 export const deleteCartFile = (id: string) => Promise.all([del(FILES, id), del(FILES, id + ':preview')]).then(() => {});
 /** Anteprima generata dal sistema (PNG con tracciato di taglio) per una riga del carrello */
-export const saveCartPreview = (id: string, blob: Blob) => put(FILES, id + ':preview', blob);
-export const getCartPreview = (id: string) => get<Blob>(FILES, id + ':preview');
+export const saveCartPreview = async (id: string, blob: Blob) => put(FILES, id + ':preview', await toStored(blob, 'anteprima.png'));
+export const getCartPreview = async (id: string): Promise<Blob | null> => fromStored(await get<StoredFile | Blob>(FILES, id + ':preview'));
