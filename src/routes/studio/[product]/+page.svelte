@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import EnginePreview from '$lib/components/EnginePreview.svelte';
+	import StudioLente from '$lib/components/StudioLente.svelte';
 	import { showFinishStep, showMaterialStep, minForShape, startSize, sizeProposals, roundHalf, proportionalSize, sizeRule } from '$lib/pricing/engine';
 	import { KIT_CAVALLOTTO } from '$lib/studio/products';
 	import { STRIP_MATERIALS, SHEET_RULES, layoutLoose, layoutSheets, type Strip } from '$lib/studio/layout';
@@ -200,10 +201,10 @@
 			if (!list.length) throw new Error('Nel file non trovo nessun adesivo.');
 			/* stesso alleggerimento degli adesivi sagomati: pochi nodi, il plotter non rallenta */
 			const [{ fitPathD, samplePath }, { parsePath }] = await Promise.all([import('$lib/studio/fit'), import('$lib/studio/path')]);
-			const tol = Math.min(0.15, Math.max(0.05, bordoF * 0.25));
+			const opt = fitOpts(bordoF);
 			let nodi = 0;
 			sogg = list.map((x) => {
-				const f = fitPathD(samplePath(parsePath(x.pathD)), { tolerance: tol, smooth: Math.min(0.15, Math.max(0.05, bordoF * 0.12)) });
+				const f = fitPathD(samplePath(parsePath(x.pathD)), opt);
 				nodi += f.d ? f.nodes : x.nodi;
 				return { ...x, pathD: f.d || x.pathD };
 			});
@@ -223,7 +224,7 @@
 	let soggTimer: ReturnType<typeof setTimeout> | undefined;
 	$effect(() => {
 		if (!MULTI || !file || renders < 1) return;
-		const key = `${foglioW}|${bordoF}|${unioneF}|${renders}`;
+		const key = `${foglioW}|${bordoF}|${unioneF}|${renders}|${semplifica}|${morbido}`;
 		clearTimeout(soggTimer);
 		soggTimer = setTimeout(() => { void key; void rilevaSoggetti(); }, 700);
 	});
@@ -275,16 +276,109 @@
 		try { await fn(); } catch (e) { downloadErr = e instanceof Error ? e.message : String(e); } finally { busy = ''; }
 	}
 
+	/* ------------------------------------------------------------ regolazioni del tracciato */
+	/* Due selettori, come in Illustrator, per i casi in cui la sagoma automatica non basta:
+	   SEMPLIFICA toglie punti (via le zigrinature), MORBIDO arrotonda o rende spigoloso.
+	   A meta' (50) vale esattamente la regolazione automatica di prima. */
+	let semplifica = $state(50);
+	let morbido = $state(50);
+	function fitOpts(border: number) {
+		const b = border > 0 ? border : 1;
+		const autoTol = Math.min(0.15, Math.max(0.05, b * 0.25));
+		const autoSm = Math.min(0.15, Math.max(0.05, b * 0.12));
+		/* 0 = fedele al disegno, 50 = automatico, 100 = molto pulito */
+		const kS = semplifica <= 50 ? 0.35 + (semplifica / 50) * 0.65 : 1 + ((semplifica - 50) / 50) * 5;
+		const kM = morbido <= 50 ? 0.2 + (morbido / 50) * 0.8 : 1 + ((morbido - 50) / 50) * 9;
+		return {
+			tolerance: Math.max(0.02, autoTol * kS),
+			smooth: Math.max(0.01, autoSm * kM),
+			cornerDeg: 55 + (morbido - 50) * 0.5 - (semplifica - 50) * 0.1
+		};
+	}
+	const ritoccato = $derived(semplifica !== 50 || morbido !== 50);
+
+	/* rifinitura di un tracciato gia' pronto (file dell'azienda): si tocca solo se l'operatore
+	   ha mosso i selettori, altrimenti resta quello del cliente */
+	async function rifinisci(d: string, border: number) {
+		const [{ fitPathD, samplePath }, { parsePath }] = await Promise.all([import('$lib/studio/fit'), import('$lib/studio/path')]);
+		const f = fitPathD(samplePath(parsePath(d)), fitOpts(border));
+		return f.d ? f : { d, nodes: (d.match(/[MLCZmlcz]/g) ?? []).length };
+	}
+
+	/* ------------------------------------------------------------ lente */
+	let lenteOpen = $state(false);
+	let lenteImg = $state('');
+	let lenteBusy = $state(false);
+	let lentePaths = $state<{ d: string; x?: number; y?: number }[]>([]);
+	let lenteNodi = $state(0);
+	let geomBase = $state<{ pathD: string; border: number } | null>(null);
+	const lenteW = $derived(MULTI ? foglioW : (engCut?.w ?? (cavallotto ? KIT_CAVALLOTTO.w : w)));
+	const lenteH = $derived(MULTI ? foglioH : (engCut?.h ?? (cavallotto ? KIT_CAVALLOTTO.h : h)));
+
+	async function apriLente() {
+		lenteOpen = true; lenteBusy = true; downloadErr = '';
+		try {
+			if (MULTI) { lenteImg = fileUrl; }
+			else if (fonte === 'pronto') { lenteImg = readyPreview; }
+			else if (engine) {
+				const g = await engine.studio('geom');
+				if (g.pathD) geomBase = { pathD: g.pathD, border: g.border ?? 1 };
+				await disegnaLente();
+				const m = await engine.studio('mockup', { px: 1600, pathD: lentePaths[0]?.d });
+				if (m.blob) { if (lenteImg.startsWith('blob:')) URL.revokeObjectURL(lenteImg); lenteImg = URL.createObjectURL(m.blob); }
+			}
+			await disegnaLente();
+		} catch (e) { downloadErr = e instanceof Error ? e.message : String(e); }
+		finally { lenteBusy = false; }
+	}
+
+	/* il tracciato si ricalcola qui, senza ridisegnare la grafica: i selettori rispondono subito */
+	async function disegnaLente() {
+		if (MULTI) { lentePaths = sogg.map((x) => ({ d: x.pathD, x: x.x, y: x.y })); lenteNodi = nodiF; return; }
+		if (fonte === 'pronto') {
+			if (!ready) return;
+			const r = ritoccato ? await rifinisci(ready.pathD, 1) : { d: ready.pathD, nodes: (ready.pathD.match(/[MLCZmlcz]/g) ?? []).length };
+			lentePaths = [{ d: r.d }]; lenteNodi = r.nodes; prontoPath = ritoccato ? r.d : '';
+			return;
+		}
+		if (!geomBase) return;
+		const t = await tracciato({ pathD: geomBase.pathD, shape: 'diecut', border: geomBase.border });
+		lentePaths = [{ d: t.d }]; lenteNodi = t.nodes; lastPath = t.d;
+	}
+	/* tracciato del file pronto con i selettori applicati (vuoto = quello originale del cliente) */
+	let prontoPath = $state('');
+
+	let lenteTimer: ReturnType<typeof setTimeout> | undefined;
+	$effect(() => {
+		const key = `${semplifica}|${morbido}|${sogg.length}|${lenteOpen}`;
+		if (!lenteOpen) return;
+		clearTimeout(lenteTimer);
+		lenteTimer = setTimeout(() => { void key; void disegnaLente(); void rinfrescaMockup(); }, 120);
+	});
+
+	/* la grafica sotto (con il suo bordo bianco) segue il tracciato: si rifa' quando l'operatore
+	   smette di muovere i selettori, non a ogni scatto */
+	let mockTimer: ReturnType<typeof setTimeout> | undefined;
+	function rinfrescaMockup() {
+		if (!lenteOpen || MULTI || fonte === 'pronto' || !engine) return;
+		clearTimeout(mockTimer);
+		mockTimer = setTimeout(async () => {
+			try {
+				lenteBusy = true;
+				const m = await engine!.studio('mockup', { px: 1600, pathD: lentePaths[0]?.d });
+				if (m.blob) { if (lenteImg.startsWith('blob:')) URL.revokeObjectURL(lenteImg); lenteImg = URL.createObjectURL(m.blob); }
+			} catch { /* resta l'immagine di prima */ } finally { lenteBusy = false; }
+		}, 700);
+	}
+
 	/* sagomato: il contorno del motore ha una curva per ogni punto (centinaia di nodi, il plotter
-	   rallenta su ognuno); si riadatta con poche curve entro 0,12 mm. Le forme geometriche hanno
+	   rallenta su ognuno); si riadatta con poche curve. Le forme geometriche hanno
 	   gia' il tracciato minimo (archi e lati). */
 	async function tracciato(r: { pathD?: string; polys?: [number, number][][] | null; shape?: string; border?: number }) {
 		if (r.shape === 'diecut' && r.pathD) {
-			/* si parte dalla LINEA APPROVATA (quella che il cliente ha visto) e se ne scosta di circa un quarto del bordo (0,05–0,15 mm, misurato 0,14 mm su bordo piccolo): con il bordo piccolo il taglio non si avvicina al disegno */
+			/* si parte dalla LINEA APPROVATA (quella che il cliente ha visto) e se ne scosta di circa un quarto del bordo */
 			const [{ fitPathD, samplePath }, { parsePath }] = await Promise.all([import('$lib/studio/fit'), import('$lib/studio/path')]);
-			const b = r.border && r.border > 0 ? r.border : 1;
-			const tol = Math.min(0.15, Math.max(0.05, b * 0.25));
-			const f = fitPathD(samplePath(parsePath(r.pathD)), { tolerance: tol, smooth: Math.min(0.15, Math.max(0.05, b * 0.12)) });
+			const f = fitPathD(samplePath(parsePath(r.pathD)), fitOpts(r.border ?? 1));
 			if (f.d) return { d: f.d, nodes: f.nodes };
 		}
 		const d = r.pathD ?? '';
@@ -307,7 +401,8 @@
 			/* file pronto: grafica vettoriale del cliente 1:1, il suo tracciato diventa la tinta di taglio */
 			if (!ready) throw new Error('Carica prima il PDF pronto.');
 			traceInfo = `Tracciato del cliente: ${ready.paths} ${ready.paths === 1 ? 'tracciato' : 'tracciati'} · grafica vettoriale`;
-			return { pdfPage: { bytes: ready.cleaned, bboxPt: ready.bboxPt }, cutW: ready.cutW, cutH: ready.cutH, bleed: 1, pathD: ready.pathD };
+			const dPronto = ritoccato ? (prontoPath || (await rifinisci(ready.pathD, 1)).d) : ready.pathD;
+			return { pdfPage: { bytes: ready.cleaned, bboxPt: ready.bboxPt }, cutW: ready.cutW, cutH: ready.cutH, bleed: 1, pathD: dPronto };
 		}
 		const t = await traccia();
 		const r = await engine!.studio('print', { dpi, pathD: t.d });
@@ -654,7 +749,8 @@
 					{:else}<p class="st-note">Preparo l’anteprima…</p>{/if}
 					<div class="st-bar">
 						<button type="button" class="st-tool st-tool--blue" onclick={() => readyInput?.click()}>Cambia file</button>
-						<span class="st-note">{readyName}</span>
+						<button type="button" class="st-tool" onclick={apriLente}>🔍 Tracciato da vicino</button>
+						<span class="st-note">{readyName}{ritoccato ? ` · tracciato ritoccato (semplifica ${semplifica}, morbido ${morbido})` : ''}</span>
 					</div>
 				</div>
 				<aside class="st-side">
@@ -692,7 +788,8 @@
 					{#if soggBusy}<span class="st-foglio__wait">Cerco gli adesivi…</span>{/if}
 				</div>
 				<div class="st-bar">
-					<span class="st-note">{sogg.length ? `${sogg.length} adesivi riconosciuti · ${nodiF} punti di ancoraggio` : 'Nessun adesivo riconosciuto'}</span>
+					<button type="button" class="st-tool" disabled={!sogg.length} onclick={apriLente}>🔍 Tracciato da vicino</button>
+					<span class="st-note">{sogg.length ? `${sogg.length} adesivi riconosciuti · ${nodiF} punti di ancoraggio` : 'Nessun adesivo riconosciuto'}{ritoccato ? ` · ritoccato (semplifica ${semplifica}, morbido ${morbido})` : ''}</span>
 				</div>
 				<!-- il motore serve per riconoscere gli adesivi: resta fuori vista -->
 				<div class="st-hidden"><EnginePreview bind:this={engine} {file} forma="sagomato" {materiale} finitura="lucida" prodotto={P.engineProduct} w={0} h={0} showCut={false} stage={120} onrender={onRender} /></div>
@@ -733,6 +830,7 @@
 			<div class="st-stage">
 				<EnginePreview bind:this={engine} {file} forma={eForma} {materiale} finitura={showFinish ? finitura : 'lucida'} prodotto={P.engineProduct} foglio={!!P.foglio} rilievo={!!P.rilievo} vetro={!!P.vetro} noang={cavallotto} w={eW} h={eH} {showCut} panel stage={560} onrender={onRender} />
 				<div class="st-bar">
+					<button type="button" class="st-tool" disabled={!rendered} onclick={apriLente}>🔍 Tracciato da vicino</button>
 					{#if !P.vetro}
 						<span class="st-bar__label">Sfondo</span>
 						<span class="st-dots">
@@ -825,6 +923,7 @@
 						Genera file di stampa<small>{P.mode === 'fogli' ? 'fogli impaginati sulla striscia' : 'striscia piena di pezzi'}, crocini e codice a barre Graphtec</small>
 					</button>
 					<label class="st-dpi">Risoluzione <select bind:value={dpi}><option value="auto">Massima (min. 600 dpi)</option><option value={300}>300 dpi</option><option value={600}>600 dpi</option><option value={1200}>1200 dpi</option></select></label>
+					{#if ritoccato}<p class="st-note">Tracciato ritoccato a mano: semplifica <b>{semplifica}</b>, morbido <b>{morbido}</b>. <button type="button" class="st-link" onclick={() => { semplifica = 50; morbido = 50; }}>rimetti automatico</button></p>{/if}
 					{#if traceInfo}<p class="st-note st-trace">{traceInfo}</p>{/if}
 					{#if downloadErr}<p class="st-err">{downloadErr}</p>{/if}
 					{#if P.rilievo}<p class="st-note">Rilievo: sotto la grafica c’è il livello <b>RDG_GLOSS</b> vettoriale, solo sulle zone in rilievo (le stesse di “Effetto rilievo”).</p>{/if}
@@ -922,3 +1021,17 @@
 		</section>
 	{/if}
 </section>
+
+<StudioLente
+	open={lenteOpen}
+	img={lenteImg}
+	w={lenteW}
+	h={lenteH}
+	paths={lentePaths}
+	color={cutColor(P.pieceCut)}
+	nodes={lenteNodi}
+	busy={lenteBusy}
+	bind:semplifica
+	bind:morbido
+	onclose={() => (lenteOpen = false)}
+/>
