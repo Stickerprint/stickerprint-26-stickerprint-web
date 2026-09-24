@@ -175,18 +175,27 @@
 	let soggErr = $state('');
 	let fileUrl = $state('');
 	let nodiF = $state(0);
+	/* l'indirizzo del file per l'anteprima si crea UNA volta per file e si butta solo quando
+	   ne arriva un altro: prima bastava un ricalcolo per restare senza anteprima */
+	let urlFile: File | null = null;
 	$effect(() => {
-		if (!file) { fileUrl = ''; return; }
-		const u = URL.createObjectURL(file);
-		fileUrl = u;
-		return () => URL.revokeObjectURL(u);
+		const f = file;
+		if (f === urlFile) return;
+		if (fileUrl) URL.revokeObjectURL(fileUrl);
+		urlFile = f;
+		fileUrl = f ? URL.createObjectURL(f) : '';
 	});
 
+	let soggToken = 0;
 	async function rilevaSoggetti() {
 		if (!engine || !file) return;
+		const W = +foglioW;
+		if (!(W >= 30)) { soggErr = 'La larghezza del foglio deve essere almeno 30 mm.'; return; }
+		const mio = ++soggToken;                 /* solo l'ultima lettura vale: le vecchie si scartano */
 		soggBusy = true; soggErr = ''; downloadErr = '';
 		try {
-			const r = await engine.studio('soggetti', { foglioW, bordo: bordoF, unione: typeof unioneF === 'number' && unioneF > 0 ? unioneF : 0 });
+			const r = await engine.studio('soggetti', { foglioW: W, bordo: bordoF, unione: typeof unioneF === 'number' && unioneF > 0 ? unioneF : 0 });
+			if (mio !== soggToken) return;
 			const list = r.soggetti ?? [];
 			if (!list.length) throw new Error('Nel file non trovo nessun adesivo.');
 			/* stesso alleggerimento degli adesivi sagomati: pochi nodi, il plotter non rallenta */
@@ -198,15 +207,17 @@
 				nodi += f.d ? f.nodes : x.nodi;
 				return { ...x, pathD: f.d || x.pathD };
 			});
+			if (mio !== soggToken) return;
 			nodiF = nodi;
 			if (r.foglio) foglioH = Math.round(r.foglio.h * 10) / 10;
 			unioneUsata = r.unione ?? 0;
 			engCut = { w: foglioW, h: foglioH };
 			rendered = true;
 		} catch (e) {
+			if (mio !== soggToken) return;
 			soggErr = e instanceof Error ? e.message : String(e);
 			sogg = [];
-		} finally { soggBusy = false; }
+		} finally { if (mio === soggToken) soggBusy = false; }
 	}
 
 	let soggTimer: ReturnType<typeof setTimeout> | undefined;
@@ -214,7 +225,7 @@
 		if (!MULTI || !file || renders < 1) return;
 		const key = `${foglioW}|${bordoF}|${unioneF}|${renders}`;
 		clearTimeout(soggTimer);
-		soggTimer = setTimeout(() => { void key; void rilevaSoggetti(); }, 250);
+		soggTimer = setTimeout(() => { void key; void rilevaSoggetti(); }, 700);
 	});
 
 	/* il foglio intero come grafica di stampa: il file del cliente 1:1, senza ritocchi */
