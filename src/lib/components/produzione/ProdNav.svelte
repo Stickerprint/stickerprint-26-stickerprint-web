@@ -3,7 +3,6 @@
 	const path = $derived(page.url.pathname);
 	const tabs = [
 		{ href: '/dashboard/produzione', label: '📊 Riepilogo', exact: true },
-		{ href: '/dashboard/produzione/coda', label: '📋 Coda ordini' },
 		{ href: '/dashboard/produzione/reparto/stampa', label: '🏭 Reparti', prefix: '/dashboard/produzione/reparto' },
 		{ href: '/dashboard/produzione/macchinari', label: '🛠 Macchinari' },
 		{ href: '/dashboard/produzione/tv', label: '📺 Modalità TV' }

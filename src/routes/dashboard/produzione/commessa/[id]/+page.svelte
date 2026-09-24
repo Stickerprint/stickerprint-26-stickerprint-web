@@ -21,7 +21,7 @@
 </script>
 
 <svelte:head><title>Commessa {j.order_number} | Produzione</title></svelte:head>
-<p class="lead" style="margin:0 0 8px"><a class="link" href="/dashboard/produzione/coda">← Coda ordini</a></p>
+<p class="lead" style="margin:0 0 8px"><a class="link" href="/dashboard/produzione/reparto/stampa">← Stampa</a></p>
 {#if form?.error}<p class="error">{form.error}</p>{/if}
 <div class="pv-head">
 	<div>

@@ -97,7 +97,7 @@
 
 <svelte:head><title>Ordini | Dashboard Stickerprint</title></svelte:head>
 {#if form?.error}<p class="error">{form.error}</p>{/if}
-{#if form?.ok && form.started}<p class="success">Ordine {form.started} in produzione: lo trovi in <a class="link" href="/dashboard/produzione/coda">Produzione › Coda ordini</a>.</p>{/if}
+{#if form?.ok && form.started}<p class="success">Ordine {form.started} in produzione: lo trovi in <a class="link" href="/dashboard/produzione/reparto/stampa">Produzione › Stampa</a>.</p>{/if}
 
 <div class="toolbar" style="justify-content:space-between">
 	<div><h1>Ordini {data.year}</h1><p class="lead">E-commerce e manuali, in un'unica vista · {list.length} risultati{#if pages > 1} · pagina {page} di {pages}{/if}</p></div>
@@ -156,7 +156,7 @@
 					<td>{g.qty.toLocaleString('it-IT')} pz</td>
 					<td>
 						{#if canStart(g)}
-							<form method="POST" action="?/produzione" use:enhance={() => { starting = g.key; return async ({ update }) => { starting = null; await update(); }; }}><input type="hidden" name="group" value={g.key} /><button class="btn btn--green btn--xs" type="submit" disabled={starting === g.key} title="L'ordine entra nella coda di produzione (prima lavorazione: stampa)">{starting === g.key ? '…' : '▶ Inizia produzione'}</button></form>
+							<form method="POST" action="?/produzione" use:enhance={() => { starting = g.key; return async ({ update }) => { starting = null; await update(); }; }}><input type="hidden" name="group" value={g.key} /><button class="btn btn--green btn--xs" type="submit" disabled={starting === g.key} title="L'ordine va in produzione e compare subito nel reparto Stampa">{starting === g.key ? '…' : '▶ Metti in stampa'}</button></form>
 							{#if g.status === 'attesa_pagamento'}<div class="osub" style="margin-top:4px">in attesa dell'anticipo</div>{/if}
 						{:else}
 							<span class="st" style="background:{st(g.status).soft};color:{st(g.status).color}">{st(g.status).label}</span>

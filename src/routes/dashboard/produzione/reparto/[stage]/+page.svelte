@@ -17,6 +17,12 @@
 {#if form?.error}<p class="error">{form.error}</p>{/if}
 <div class="tabs" style="margin-bottom:18px">{#each deps as [k, d] (k)}<a class:is-active={k === data.stage} href="/dashboard/produzione/reparto/{k}">{d.icon} {d.label}</a>{/each}</div>
 
+{#if data.stampa && (data.stampa.vecchi > 0 || data.conVecchi)}
+	<p class="rep__vecchi">
+		{#if data.conVecchi}Stai vedendo anche i lavori dei mesi scorsi. <a class="link" href="?">Mostra solo il mese in corso</a>
+		{:else}{data.stampa.vecchi} {data.stampa.vecchi === 1 ? 'lavoro' : 'lavori'} dei mesi scorsi {data.stampa.vecchi === 1 ? 'non è' : 'non sono'} in elenco: li mandi tu in stampa dagli ordini. <a class="link" href="?vecchi=1">Mostrali lo stesso</a>{/if}
+	</p>
+{/if}
 {#if data.stampa}
 	<!-- STAMPA: le tre macchine affiancate, ognuna con i compiti di oggi raggruppati per plastifica -->
 	<div class="mac3">
