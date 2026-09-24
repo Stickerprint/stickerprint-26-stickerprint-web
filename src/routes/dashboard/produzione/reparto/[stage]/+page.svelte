@@ -4,7 +4,7 @@
 	import FaseCard from '$lib/components/produzione/FaseCard.svelte';
 	import { enhance } from '$app/forms';
 	import { DEPARTMENTS } from '$lib/production/types';
-	import { RUOLO, type Ruolo } from '$lib/production/bobine';
+	import { RUOLO, etichettaProtezione, iconaProdotto, type Ruolo } from '$lib/production/bobine';
 	import { fmtMin, fmtWhen, fmtDay } from '$lib/production/format';
 	let { data, form } = $props();
 	const now = $derived(new Date(data.now));
@@ -29,20 +29,21 @@
 					<div><b>{m?.name ?? RUOLO[ruolo as Ruolo].label}</b><small>{RUOLO[ruolo as Ruolo].icon} {RUOLO[ruolo as Ruolo].cosa}</small></div>
 					<span class="mac__n">{daFare.length} da fare</span>
 				</header>
+				<img class="mac__foto" src={RUOLO[ruolo as Ruolo].foto} alt={m?.name ?? RUOLO[ruolo as Ruolo].label} />
 				{#if !gruppi.length}
 					<p class="mac__empty">Niente da stampare su questa macchina.</p>
 				{/if}
 				{#each gruppi as b (b.id)}
 					<article class="bob" class:is-ready={b.pronta} class:is-run={b.inCorso}>
 						<div class="bob__top">
-							<b>{b.protezione === 'nessuna' ? 'Senza plastifica' : b.protezione === 'rilievo' ? 'Rilievo' : `Plastifica ${b.protezione}`}</b>
+							<b>{etichettaProtezione(b.protezione)}</b>
 							<span class="bob__mq">{b.lavori.length} {b.lavori.length === 1 ? 'lavoro' : 'lavori'} · {b.mq.toFixed(2)} m² · {fmtMin(b.minuti)}</span>
 						</div>
 						<p class="bob__why" class:is-wait={!b.pronta}>{b.pronta ? '▶' : '⏳'} {b.motivo}{#if b.avviaEntro} · entro {fmtDay(b.avviaEntro, now, data.setup.calendar)}{/if}</p>
 						<ul class="bob__list">
 							{#each b.lavori as l (l.faseId)}
 								<li>
-									<a class="oid" href="/dashboard/produzione/commessa/{l.jobId}">{l.numero}</a>
+									<a class="oid" href="/dashboard/produzione/commessa/{l.jobId}"><span class="pico" title={l.prodotto.replace(/[-_]/g, ' ')}>{iconaProdotto(l.prodotto)}</span> {l.numero}</a>
 									<span>{l.cliente}</span>
 									<small>{l.pezzi} pz · {l.mq.toFixed(2)} m² · {l.canale === 'manuale' ? '✍️ manuale' : '🛒 sito'}{#if l.consegna} · consegna {fmtDay(l.consegna, now, data.setup.calendar)}{/if}</small>
 								</li>
@@ -63,8 +64,48 @@
 	</div>
 {/if}
 
+{#if data.laminazione}
+	<!-- LAMINAZIONE: una macchina sola, i lavori in fila per pellicola -->
+	<div class="mac1">
+		<section class="mac">
+			<header class="mac__top mac__top--lam">
+				<div><b>Laminatrice</b><small>🧴 una bobina per volta: i lavori della stessa pellicola si fanno di seguito</small></div>
+				<span class="mac__n">{data.laminazione.filter((b) => b.pronta).length} da fare</span>
+			</header>
+			<img class="mac__foto mac__foto--wide" src="/images/macchine/laminatrice.jpg" alt="Laminatrice" />
+			{#each data.laminazione as b (b.id)}
+				{#if b.cambioBobina}<p class="lam__cambio">🔄 monta la bobina · <b>{etichettaProtezione(b.protezione)}</b></p>{/if}
+				<article class="bob" class:is-ready={b.pronta} class:is-run={b.inCorso}>
+					<div class="bob__top">
+						<b>{b.ordine}ª passata · {etichettaProtezione(b.protezione)}</b>
+						<span class="bob__mq">{b.lavori.length} {b.lavori.length === 1 ? 'lavoro' : 'lavori'} · {b.mq.toFixed(2)} m² · {fmtMin(b.minuti)}</span>
+					</div>
+					<p class="bob__why" class:is-wait={!b.pronta}>{b.pronta ? '▶' : '⏳'} {b.motivo}{#if b.avviaEntro} · entro {fmtDay(b.avviaEntro, now, data.setup.calendar)}{/if}</p>
+					<ul class="bob__list">
+						{#each b.lavori as l (l.faseId)}
+							<li>
+								<a class="oid" href="/dashboard/produzione/commessa/{l.jobId}"><span class="pico">{iconaProdotto(l.prodotto)}</span> {l.numero}</a>
+								<span>{l.cliente}</span>
+								<small>{l.pezzi} pz · {l.mq.toFixed(2)} m² · {l.canale === 'manuale' ? '✍️ manuale' : '🛒 sito'}{#if l.consegna} · consegna {fmtDay(l.consegna, now, data.setup.calendar)}{/if}</small>
+							</li>
+						{/each}
+					</ul>
+					{#if b.pronta && !b.inCorso}
+						<form method="POST" action="?/bobina" use:enhance>
+							<input type="hidden" name="fasi" value={b.lavori.map((l) => l.faseId).join(',')} />
+							<button class="btn btn--green btn--xs" type="submit">▶ Avvia questa passata</button>
+						</form>
+					{:else if b.inCorso}<p class="bob__run">Laminazione in corso</p>{/if}
+				</article>
+			{:else}
+				<p class="mac__empty">Niente da laminare.</p>
+			{/each}
+		</section>
+	</div>
+{/if}
+
 {#if data.taglio}
-	<!-- TAGLIO: i lavori divisi sui due plotter -->
+	<!-- TAGLIO: i lavori divisi sui due plotter, stesso stile della stampa -->
 	<div class="mac2">
 		{#each data.taglio as coda, i (i)}
 			<section class="mac">
@@ -72,14 +113,58 @@
 					<div><b>Graphtec {i + 1}</b><small>✂️ taglio e mezzo taglio</small></div>
 					<span class="mac__n">{coda.length} {coda.length === 1 ? 'lavoro' : 'lavori'}</span>
 				</header>
-				<img class="mac__foto" src="/images/macchine-graphtec.jpg" alt="Plotter Graphtec {i + 1}" />
-				{#each coda as x (x.phase.id)}
-					<FaseCard phase={x.phase} job={x.row.job} group={x.row.group} machineName={`Graphtec ${i + 1}`} {now} />
+				<img class="mac__foto" src="/images/macchine/graphtec.jpg" alt="Plotter Graphtec {i + 1}" />
+				{#each coda as l (l.faseId)}
+					<article class="bob" class:is-ready={l.stato === 'pronto'} class:is-run={l.stato === 'in_corso'}>
+						<div class="bob__top">
+							<b><span class="pico">{iconaProdotto(l.prodotto)}</span> <a class="oid" href="/dashboard/produzione/commessa/{l.jobId}">{l.numero}</a></b>
+							<span class="bob__mq">{l.pezzi} pz · {l.mq.toFixed(2)} m² · {fmtMin(l.minuti)}</span>
+						</div>
+						<p class="bob__why" class:is-wait={l.stato !== 'pronto' && l.stato !== 'in_corso'}>
+							{l.cliente}{#if l.consegna} · consegna {fmtDay(l.consegna, now, data.setup.calendar)}{/if} · {l.canale === 'manuale' ? '✍️ manuale' : '🛒 sito'}
+						</p>
+						{#if l.stato === 'pronto'}
+							<form method="POST" action="?/inizia" use:enhance><input type="hidden" name="task" value={l.faseId} /><button class="btn btn--green btn--xs" type="submit">▶ Avvia taglio</button></form>
+						{:else if l.stato === 'in_corso'}
+							<form method="POST" action="?/completa" use:enhance><input type="hidden" name="task" value={l.faseId} /><button class="btn btn--blue btn--xs" type="submit">✓ Taglio finito</button></form>
+						{:else}
+							<p class="bob__why is-wait">⏳ aspetta la lavorazione prima</p>
+						{/if}
+					</article>
 				{:else}
 					<p class="mac__empty">Nessun lavoro in coda su questo plotter.</p>
 				{/each}
 			</section>
 		{/each}
+	</div>
+{/if}
+
+{#if data.resinatura}
+	<!-- RESINATURA: una macchina sola -->
+	<div class="mac1">
+		<section class="mac">
+			<header class="mac__top mac__top--res">
+				<div><b>Resinatrice</b><small>💧 resina sui pezzi già tagliati</small></div>
+				<span class="mac__n">{data.resinatura.filter((l) => l.stato === 'pronto').length} da fare</span>
+			</header>
+			<img class="mac__foto mac__foto--wide" src="/images/macchine/resinatrice.jpg" alt="Resinatrice" />
+			{#each data.resinatura as l (l.faseId)}
+				<article class="bob" class:is-ready={l.stato === 'pronto'} class:is-run={l.stato === 'in_corso'}>
+					<div class="bob__top">
+						<b><span class="pico">{iconaProdotto(l.prodotto)}</span> <a class="oid" href="/dashboard/produzione/commessa/{l.jobId}">{l.numero}</a></b>
+						<span class="bob__mq">{l.pezzi} pz · {fmtMin(l.minuti)}</span>
+					</div>
+					<p class="bob__why" class:is-wait={l.stato !== 'pronto' && l.stato !== 'in_corso'}>{l.cliente}{#if l.consegna} · consegna {fmtDay(l.consegna, now, data.setup.calendar)}{/if}</p>
+					{#if l.stato === 'pronto'}
+						<form method="POST" action="?/inizia" use:enhance><input type="hidden" name="task" value={l.faseId} /><button class="btn btn--green btn--xs" type="submit">▶ Avvia resinatura</button></form>
+					{:else if l.stato === 'in_corso'}
+						<form method="POST" action="?/completa" use:enhance><input type="hidden" name="task" value={l.faseId} /><button class="btn btn--blue btn--xs" type="submit">✓ Resinatura finita</button></form>
+					{/if}
+				</article>
+			{:else}
+				<p class="mac__empty">Niente da resinare.</p>
+			{/each}
+		</section>
 	</div>
 {/if}
 

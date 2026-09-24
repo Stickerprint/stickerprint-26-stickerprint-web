@@ -1,6 +1,6 @@
 import { error, fail } from '@sveltejs/kit';
 import { DEPARTMENTS, type Department, type Machine, type Phase } from '$lib/production/types';
-import { bobine, suiPlotter, type LavoroStampa } from '$lib/production/bobine';
+import { bobine, pianoLaminazione, suiPlotter, type LavoroStampa } from '$lib/production/bobine';
 import { isoDay } from '$lib/production/calendar';
 import { loadQueue, loadSetup, recalcIfStale, startPhase, taskActions, operatorName, type QueueRow } from '$lib/server/produzione';
 import type { Actions, PageServerLoad } from './$types';
@@ -17,11 +17,11 @@ function ruoliMacchine(machines: Machine[]) {
 const mq = (row: QueueRow) =>
 	row.group.items.reduce((s, i) => s + ((i.width_mm ?? 0) * (i.height_mm ?? 0) * (i.qty ?? 0)) / 1e6, 0);
 
-/** i lavori che aspettano la stampa, pronti per essere raggruppati in bobine */
-function lavoriStampa(queue: QueueRow[], oggi: string): LavoroStampa[] {
+/** i lavori che aspettano una lavorazione, pronti per essere raggruppati */
+function lavoriDi(queue: QueueRow[], stage: Department, oggi: string): LavoroStampa[] {
 	const out: LavoroStampa[] = [];
 	for (const row of queue) {
-		const fase = row.phases.find((p) => p.stage === 'stampa' && !p.passive && ['pronto', 'da_fare', 'in_corso', 'bloccato'].includes(p.status));
+		const fase = row.phases.find((p) => p.stage === stage && !p.passive && ['pronto', 'da_fare', 'in_corso', 'bloccato'].includes(p.status));
 		if (!fase) continue;
 		const f = row.group.items[0];
 		out.push({
@@ -59,17 +59,22 @@ export const load: PageServerLoad = async ({ params, locals: { supabase } }) => 
 
 	/* STAMPA: i compiti del giorno, divisi sulle tre macchine e raggruppati per plastifica */
 	const stampa = stage === 'stampa'
-		? { macchine: ruoliMacchine(setup.machines), gruppi: bobine(lavoriStampa(queue, oggi), oggi, setup.calendar) }
+		? { macchine: ruoliMacchine(setup.machines), gruppi: bobine(lavoriDi(queue, 'stampa', oggi), oggi, setup.calendar) }
 		: null;
+
+	/* LAMINAZIONE: una macchina sola, i lavori in fila per pellicola (un cambio bobina per volta) */
+	const laminazione = stage === 'laminazione' ? pianoLaminazione(lavoriDi(queue, 'laminazione', oggi), oggi, setup.calendar) : null;
 
 	/* TAGLIO: i lavori divisi sui due plotter, carico in pari */
-	const aperti = items.filter((x) => x.phase.status !== 'bloccato').sort(byLatest);
 	const taglio = stage === 'taglio'
-		? suiPlotter(aperti.map((x) => ({ row: x.row, phase: x.phase, minuti: x.phase.minutes ?? 0 })), 2)
+		? suiPlotter(lavoriDi(queue, 'taglio', oggi).sort((a, b) => (a.consegna ?? '9').localeCompare(b.consegna ?? '9')), 2)
 		: null;
 
+	/* RESINATURA: una macchina sola, i lavori in ordine di consegna */
+	const resinatura = stage === 'resinatura' ? lavoriDi(queue, 'resinatura', oggi).sort((a, b) => (a.consegna ?? '9').localeCompare(b.consegna ?? '9')) : null;
+
 	return {
-		stage, info: DEPARTMENTS[stage], setup, now: new Date().toISOString(), oggi, stampa, taglio,
+		stage, info: DEPARTMENTS[stage], setup, now: new Date().toISOString(), oggi, stampa, laminazione, taglio, resinatura,
 		running: items.filter((x) => x.phase.status === 'in_corso').sort(byLatest),
 		ready: items.filter((x) => x.phase.status === 'pronto').sort(byLatest),
 		blocked: items.filter((x) => x.phase.status === 'bloccato').sort(byLatest),
