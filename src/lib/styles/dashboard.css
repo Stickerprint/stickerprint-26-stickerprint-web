@@ -60,7 +60,8 @@
 .stat5 { display: flex; gap: 12px; align-items: center; padding: 14px 16px; }
 .stat5 .ico { width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; font-size: 18px; flex: 0 0 auto; }
 .stat5 small { display: block; font-size: 11.5px; color: var(--muted); font-weight: 700; }
-.stat5 b { font-family: var(--font-display); font-size: 20px; }
+.stat5 b { display: block; font-family: var(--font-display); font-size: 20px; line-height: 1.15; }
+.stat5 i { display: block; font-style: normal; font-size: 11px; font-weight: 600; color: var(--muted); margin-top: 2px; }
 .filters { display: grid; grid-template-columns: 2fr repeat(4, 1fr); gap: 10px; padding: 12px 14px; }
 .filters input, .filters select { padding: 9px 12px; border: 1px solid var(--line); border-radius: 8px; font: inherit; font-size: 13.5px; }
 .otable td { vertical-align: middle; }
