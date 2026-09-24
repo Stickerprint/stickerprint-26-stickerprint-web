@@ -6,7 +6,7 @@ import { loadQueue, loadSetup, recalcIfStale, startPhase, taskActions, operatorN
 import type { Actions, PageServerLoad } from './$types';
 
 /** quale macchina fa cosa: la UV, quella dei resinati e quella degli adesivi da plastificare */
-export function ruoliMacchine(machines: Machine[]) {
+function ruoliMacchine(machines: Machine[]) {
 	const vive = machines.filter((m) => m.is_active && !m.archived_at).sort((a, b) => a.sort - b.sort || a.code.localeCompare(b.code));
 	const uv = vive.find((m) => m.capabilities.includes('stampa_uv')) ?? null;
 	const eco = vive.filter((m) => m.capabilities.includes('stampa_ecosolvente'));
