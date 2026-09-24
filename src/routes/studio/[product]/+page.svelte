@@ -7,6 +7,7 @@
 	import { STRIP_MATERIALS, SHEET_RULES, layoutLoose, layoutSheets, type Strip } from '$lib/studio/layout';
 	import { MARKED_MARGIN, pageWidthFor, DEFAULT_COND, markRects, barcodeRects } from '$lib/studio/graphtec';
 	import { pickDataLink, savedDataLink, grantDataLink, takenJobIds, writeXpf, type DataLinkDir } from '$lib/studio/datalink';
+	import { pickVersaworks, savedVersaworks, grantVersaworks, stampanti, mappaSalvata, salvaMappa, inviaAStampante, RUOLO_LABEL, type VwDir, type Ruolo as VwRuolo } from '$lib/studio/versaworks';
 	import { SPOTS } from '$lib/studio/spots';
 
 	let { data } = $props();
@@ -613,9 +614,53 @@
 		const n = pages.reduce((a, s) => a + s.pieces.length, 0);
 		lastJob = { ids, pages, art: { pathD: art.pathD, cutW: art.cutW, cutH: art.cutH }, name: baseName() };
 		sent = '';
-		download(new Blob([bytes as BlobPart], { type: 'application/pdf' }), `${baseName()}_striscia-${mat.width / 10}cm_${n}pz${pages.length > 1 ? `_${pages.length}strisce` : ''}.pdf`);
+		const nomePdf = `${baseName()}_striscia-${mat.width / 10}cm_${n}pz${pages.length > 1 ? `_${pages.length}strisce` : ''}.pdf`;
+		/* la stampa va in coda sulla Roland; il PDF si scarica lo stesso, come riserva */
+		vwInviato = ''; vwErr = '';
+		if (vwDir && vwStampante) {
+			try { await inviaAStampante(vwDir, vwStampante, nomePdf, bytes); vwInviato = `In coda sulla ${vwStampante} (coda A): ${nomePdf}`; }
+			catch (e) { vwErr = e instanceof Error ? e.message : String(e); }
+		}
+		download(new Blob([bytes as BlobPart], { type: 'application/pdf' }), nomePdf);
 		await consegnaTaglio(dir);
 	});
+
+	/* ------------------------------------------------------------ Roland (VersaWorks) */
+	/* la striscia va nella coda A della stampante giusta: UV per gli adesivi senza laminazione e per
+	   il rilievo, una SG3 per i resinati, l'altra per i laminati. Provato il 24/9 sulla SG3-300#2. */
+	let vwDir = $state<VwDir | null>(null);
+	let vwLista = $state<string[]>([]);
+	let vwMappa = $state<Partial<Record<VwRuolo, string>>>({});
+	let vwErr = $state('');
+	let vwInviato = $state('');
+	const vwRuolo = $derived<VwRuolo>(P.id === 'adesivi-resinati' ? 'resinati' : P.rilievo ? 'uv' : showFinish && finitura && finitura !== 'nessuna' ? 'laminati' : 'uv');
+	const vwStampante = $derived(vwMappa[vwRuolo] ?? '');
+
+	onMount(async () => {
+		try {
+			vwDir = await savedVersaworks();
+			vwMappa = await mappaSalvata();
+			if (vwDir && (await grantVersaworks(vwDir))) vwLista = await stampanti(vwDir);
+		} catch { /* nessuna cartella salvata */ }
+	});
+	async function sceglieVersaworks() {
+		vwErr = '';
+		try {
+			vwDir = await pickVersaworks();
+			vwLista = await stampanti(vwDir);
+			/* prima proposta: dai nomi delle stampanti si capisce quale e' la UV */
+			if (!Object.keys(vwMappa).length) {
+				const uv = vwLista.find((n) => /lg|uv/i.test(n));
+				const eco = vwLista.filter((n) => n !== uv);
+				vwMappa = { uv: uv ?? vwLista[0], resinati: eco[0] ?? '', laminati: eco[1] ?? eco[0] ?? '' };
+				await salvaMappa(vwMappa);
+			}
+		} catch (e) { if (e instanceof Error && e.name !== 'AbortError') vwErr = e.message; }
+	}
+	async function cambiaStampante(r: VwRuolo, nome: string) {
+		vwMappa = { ...vwMappa, [r]: nome };
+		await salvaMappa(vwMappa);
+	}
 
 	/* ------------------------------------------------------------ Data Link Server */
 	/* l'ultimo PDF generato: il taglio da mandare al plotter deve essere ESATTAMENTE quello */
@@ -645,6 +690,7 @@
 	let sentErr = $state('');
 	/* cartella pronta con il permesso: si chiede per prima cosa, finche' vale il clic dell'operatore */
 	async function cartellaPronta(): Promise<DataLinkDir | null> {
+		if (vwDir) await grantVersaworks(vwDir);
 		if (!dlDir) await sceglieCartella();
 		if (!dlDir) return null;
 		return (await grantDataLink(dlDir)) ? dlDir : null;
@@ -997,9 +1043,24 @@
 							<button type="button" class="st-chip" class:is-on={cutMode === 'passante'} onclick={() => (cutMode = 'passante')}>Solo passante (verde)</button>
 						</div>
 					{/if}
-					<button type="button" class="btn btn--green st-act" disabled={!!busy || !strips.length} onclick={generaStriscia}>{busy === 'strip' ? 'Genero striscia e taglio…' : 'Genera striscia e taglio'}<small>PDF da stampare + taglio in Data Link Server</small></button>
+					<button type="button" class="btn btn--green st-act" disabled={!!busy || !strips.length} onclick={generaStriscia}>{busy === 'strip' ? 'Genero striscia e taglio…' : 'Genera striscia e taglio'}<small>{vwDir && vwStampante ? `stampa in coda sulla ${vwStampante}` : 'PDF da stampare'} + taglio in Data Link Server</small></button>
 
 					<div class="st-dls">
+						<p class="st-label">Stampa sulla Roland</p>
+						{#if !vwDir}
+							<p class="st-note">La striscia può andare direttamente in coda su VersaWorks. <button type="button" class="st-link" onclick={sceglieVersaworks}>collega la cartella delle stampanti</button></p>
+						{:else}
+							<p class="st-note">
+								Questo lavoro va sulla stampante <b>{RUOLO_LABEL[vwRuolo]}</b>:
+								<select class="st-sel" value={vwStampante} onchange={(e) => cambiaStampante(vwRuolo, (e.currentTarget as HTMLSelectElement).value)}>
+									<option value="">— non mandare in stampa —</option>
+									{#each vwLista as n (n)}<option value={n}>{n}</option>{/each}
+								</select>
+								· coda A · <button type="button" class="st-link" onclick={sceglieVersaworks}>cambia cartella</button>
+							</p>
+						{/if}
+						{#if vwInviato}<p class="st-ok">✓ {vwInviato}</p>{/if}
+						{#if vwErr}<p class="st-err">{vwErr}</p>{/if}
 						{#if sent}<p class="st-ok">✓ {sent}</p>{/if}
 						{#if sentErr}<p class="st-err">{sentErr}</p>{/if}
 						<p class="st-note">
