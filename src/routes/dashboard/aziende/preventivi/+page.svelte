@@ -2,21 +2,26 @@
 	import { enhance } from '$app/forms';
 	import { page } from '$app/state';
 	import { QUOTE_REMIND_DAYS, QUOTE_STATUS, type QuoteStatus } from '$lib/dashboard/richieste';
-	import { money, dmy } from '$lib/dashboard/orders';
+	import { money, dmy, monthKey, MONTHS } from '$lib/dashboard/orders';
+	import MonthBar from '$lib/components/dashboard/MonthBar.svelte';
 	import { fmtAgo } from '$lib/dashboard/produzione';
 	let { data, form } = $props();
 	const years = Array.from({ length: 4 }, (_, i) => new Date().getFullYear() - i);
 	const filter = $derived(page.url.searchParams.get('stato') ?? 'tutti');
-	const list = $derived(data.quotes.filter((q) => (filter === 'tutti' ? true : q.status === filter)));
+	/* come negli ordini: si parte dal mese in corso; riquadri, elenco e totali parlano di quel mese */
+	let month = $state<string | null>(data.year === new Date().getFullYear() ? String(new Date().getMonth()) : null);
+	const meseLabel = $derived(month === null ? `tutto il ${data.year}` : month === 'prev' ? `prima del ${data.year}` : month === 'next' ? `dopo il ${data.year}` : `${MONTHS[+month]} ${data.year}`);
+	const nelMese = $derived(data.quotes.filter((q) => month === null || monthKey(q.created_at, data.year) === month));
+	const list = $derived(nelMese.filter((q) => (filter === 'tutti' ? true : q.status === filter)));
 	/* paginazione (70 per pagina) e totali dell'elenco filtrato */
 	const PER_PAGE = 70;
 	let pg = $state(1);
-	$effect(() => { void filter; pg = 1; });
+	$effect(() => { void [filter, month]; pg = 1; });
 	const pages = $derived(Math.max(1, Math.ceil(list.length / PER_PAGE)));
 	const pageList = $derived(list.slice((pg - 1) * PER_PAGE, pg * PER_PAGE));
 	const sums = $derived.by(() => { const net = list.reduce((a, q) => a + Number(q.total_net), 0), gross = list.reduce((a, q) => a + Number(q.total_gross), 0); return { net, vat: gross - net, gross, pageNet: pageList.reduce((a, q) => a + Number(q.total_net), 0), pageGross: pageList.reduce((a, q) => a + Number(q.total_gross), 0) }; });
 	const toRemind = (q: { status: string; sent_at: string | null; reminded_at: string | null; auto_remind?: boolean }) => q.status === 'inviato' && !q.reminded_at && !!q.sent_at && Date.now() - new Date(q.sent_at).getTime() > QUOTE_REMIND_DAYS * 864e5;
-	const totals = $derived({ inviati: data.quotes.filter((q) => q.status === 'inviato').reduce((a, q) => a + Number(q.total_gross), 0), vinti: data.quotes.filter((q) => q.status === 'accettato' || q.status === 'ordinato').reduce((a, q) => a + Number(q.total_gross), 0) });
+	const totals = $derived({ inviati: nelMese.filter((q) => q.status === 'inviato').reduce((a, q) => a + Number(q.total_gross), 0), vinti: nelMese.filter((q) => q.status === 'accettato' || q.status === 'ordinato').reduce((a, q) => a + Number(q.total_gross), 0) });
 </script>
 
 <svelte:head><title>Preventivi | Dashboard</title></svelte:head>
@@ -31,16 +36,18 @@
 {#if form?.error}<p class="error">{form.error}</p>{/if}
 {#if form?.message}<p class="ok">{form.message}</p>{/if}
 
+<MonthBar bind:month year={data.year} items={data.quotes} dateOf={(q: { created_at: string }) => q.created_at} amountOf={(q: { total_gross: number }) => Number(q.total_gross)} unit="prev." />
+<p class="stats5-rif">Stai guardando <b>{meseLabel}</b>: riquadri, elenco e totali qui sotto sono solo di {meseLabel}.</p>
 <div class="pr-kpis" style="grid-template-columns:repeat(4,1fr)">
-	<div class="pr-kpi"><b>{data.quotes.length}</b><span>preventivi nell'anno</span></div>
-	<div class="pr-kpi"><b>{data.quotes.filter((q) => q.status === 'inviato').length}</b><span>in attesa · {money(totals.inviati)}</span></div>
-	<div class="pr-kpi"><b>{data.quotes.filter((q) => q.status === 'accettato' || q.status === 'ordinato').length}</b><span>accettati · {money(totals.vinti)}</span></div>
-	<div class="pr-kpi" class:is-warn={data.quotes.some(toRemind)}><b>{data.quotes.filter(toRemind).length}</b><span>da sollecitare</span></div>
+	<div class="pr-kpi"><b>{nelMese.length}</b><span>preventivi in {meseLabel}</span></div>
+	<div class="pr-kpi"><b>{nelMese.filter((q) => q.status === 'inviato').length}</b><span>in attesa · {money(totals.inviati)}</span></div>
+	<div class="pr-kpi"><b>{nelMese.filter((q) => q.status === 'accettato' || q.status === 'ordinato').length}</b><span>accettati · {money(totals.vinti)}</span></div>
+	<div class="pr-kpi" class:is-warn={nelMese.some(toRemind)}><b>{nelMese.filter(toRemind).length}</b><span>da sollecitare</span></div>
 </div>
 
 <div class="tabs">
 	<a class="tab-link" class:is-active={filter === 'tutti'} href="?anno={data.year}&stato=tutti">Tutti</a>
-	{#each Object.entries(QUOTE_STATUS) as [k, v] (k)}<a class="tab-link" class:is-active={filter === k} href="?anno={data.year}&stato={k}">{v.label} ({data.quotes.filter((q) => q.status === k).length})</a>{/each}
+	{#each Object.entries(QUOTE_STATUS) as [k, v] (k)}<a class="tab-link" class:is-active={filter === k} href="?anno={data.year}&stato={k}">{v.label} ({nelMese.filter((q) => q.status === k).length})</a>{/each}
 </div>
 
 {#if list.length === 0}

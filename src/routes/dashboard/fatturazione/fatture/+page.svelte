@@ -1,11 +1,15 @@
 <script lang="ts">
-	import { money, dmy } from '$lib/dashboard/orders';
+	import { money, dmy, monthKey, MONTHS } from '$lib/dashboard/orders';
+	import MonthBar from '$lib/components/dashboard/MonthBar.svelte';
 	import { paymentIcon, paymentLabel } from '$lib/dashboard/payments';
 	import { invalidateAll } from '$app/navigation';
 	let { data } = $props();
 	let selected = $state<Set<string>>(new Set());
 	let search = $state('');
-	const list = $derived(data.invoices.filter((i) => { const q = search.trim().toLowerCase(); if (!q) return true; const b = i.billing ?? {}; return `${i.number} ${b.company ?? ''} ${b.first_name ?? ''} ${b.last_name ?? ''} ${i.email ?? ''} ${b.vat ?? ''}`.toLowerCase().includes(q); }));
+	/* come negli ordini: si parte dal mese in corso, elenco e totali parlano di quel mese */
+	let month = $state<string | null>(data.year === new Date().getFullYear() ? String(new Date().getMonth()) : null);
+	const meseLabel = $derived(month === null ? `tutto il ${data.year}` : month === 'prev' ? `prima del ${data.year}` : month === 'next' ? `dopo il ${data.year}` : `${MONTHS[+month]} ${data.year}`);
+	const list = $derived(data.invoices.filter((i) => { if (month !== null && monthKey(i.issued_at, data.year) !== month) return false; const q = search.trim().toLowerCase(); if (!q) return true; const b = i.billing ?? {}; return `${i.number} ${b.company ?? ''} ${b.first_name ?? ''} ${b.last_name ?? ''} ${i.email ?? ''} ${b.vat ?? ''}`.toLowerCase().includes(q); }));
 	function toggle(id: string) { const s = new Set(selected); s.has(id) ? s.delete(id) : s.add(id); selected = s; }
 	function genXml() { window.open(`/dashboard/fatturazione/fatture/xml?ids=${[...selected].join(',')}`, '_blank'); setTimeout(() => { selected = new Set(); invalidateAll(); }, 1500); }
 	const tot = $derived(list.reduce((s, i) => s + Number(i.amount_gross), 0));
@@ -22,6 +26,8 @@
 		<button type="button" class="btn btn--green" disabled={selected.size === 0} onclick={genXml}>📤 Genera XML fatture elettroniche ({selected.size})</button>
 	</div>
 </div>
+<MonthBar bind:month year={data.year} items={data.invoices} dateOf={(i: { issued_at: string }) => i.issued_at} amountOf={(i: { amount_gross: number }) => Number(i.amount_gross)} unit="fatt." />
+<p class="stats5-rif">Stai guardando <b>{meseLabel}</b>: elenco e totali qui sotto sono solo di {meseLabel}.</p>
 <div class="dcard filters" style="grid-template-columns:1fr"><input type="text" placeholder="Cerca numero, intestatario, email o P.IVA…" bind:value={search} /></div>
 
 <div class="dcard" style="padding:0;overflow-x:auto">
@@ -42,9 +48,9 @@
 					<td style="white-space:nowrap"><a class="btn btn--ghost btn--xs" href="/dashboard/fatturazione/fatture/{inv.id}">{inv.xml_generated_at ? '👁 Apri' : '✏️ Apri'}</a> {#if inv.pdf}<a class="btn btn--ghost btn--xs" href={inv.pdf} target="_blank" rel="noopener">⬇ PDF</a>{/if}</td>
 				</tr>
 			{:else}
-				<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:30px">Nessuna fattura nel {data.year}.</td></tr>
+				<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:30px">Nessuna fattura in {meseLabel}.</td></tr>
 			{/each}
 		</tbody>
-		{#if list.length}<tfoot><tr><td colspan="4"><b>Totale {data.year}</b></td><td><b>{money(net)}</b></td><td></td><td style="text-align:right"><b>{money(tot)}</b></td><td colspan="2"></td></tr></tfoot>{/if}
+		{#if list.length}<tfoot><tr><td colspan="4"><b>Totale {meseLabel}</b></td><td><b>{money(net)}</b></td><td></td><td style="text-align:right"><b>{money(tot)}</b></td><td colspan="2"></td></tr></tfoot>{/if}
 	</table>
 </div>

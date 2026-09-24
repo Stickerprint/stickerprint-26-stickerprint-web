@@ -149,3 +149,6 @@ export function nextStage(item: OrderRow): string | null {
 	return i < 0 ? flow[0] : (flow[i + 1] ?? null);
 }
 export const STAGE_ICON: Record<string, string> = { stampa: '🖨️', plastifica: '🧴', taglio: '✂️', resinatura: '💧', controllo: '🔍', confezionamento: '📦', spedizione: '🚀' };
+
+/** Cella della barra dei mesi per una data: '0'..'11' nell'anno scelto, 'prev'/'next' fuori */
+export function monthKey(date: string, year: number): string { const d = new Date(date); const y = d.getFullYear(); return y < year ? 'prev' : y > year ? 'next' : String(d.getMonth()); }
