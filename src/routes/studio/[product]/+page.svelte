@@ -678,7 +678,7 @@
 	/* anteprima della striscia col contorno vero: il tracciato si chiede al motore (a bassa risoluzione) */
 	let pathTimer: ReturnType<typeof setTimeout> | undefined;
 	$effect(() => {
-		const go = stripOpen && renders > 0 && !busy;
+		const go = stripOpen && renders > 0 && !busy && !MULTI;
 		if (!go) return;
 		clearTimeout(pathTimer);
 		pathTimer = setTimeout(async () => {
@@ -1017,20 +1017,32 @@
 					<svg viewBox="-2 -2 {preview.w + 4} {preview.h + 4}" preserveAspectRatio="xMidYMin meet">
 						<rect x="0" y="0" width={preview.w} height={preview.h} fill="#fff" stroke="#c7cbe0" stroke-width="1" />
 						{#each previewMarks as r, i (i)}<rect x={r.x} y={r.y} width={r.w} height={r.h} fill="#111" />{/each}
-						{#if lastPath || forma}
+						{#if MULTI}
+							<!-- foglio di adesivi: ogni copia porta il suo passante attorno e il mezzo taglio su ogni adesivo -->
 							{#each preview.pieces as p, i (i)}
-								{#if lastPath}
-									<path d={lastPath} transform={pieceTf(p)} fill="#eef0fb" stroke={cutColor(P.pieceCut)} stroke-width="0.6" />
-								{:else}
-									<rect x={p.x} y={p.y} width={p.rot ? cutH : cutW} height={p.rot ? cutW : cutH} rx="1.5" fill="#eef0fb" stroke={cutColor(P.pieceCut)} stroke-width="0.6" />
-								{/if}
+								<g transform={pieceTf(p)}>
+									<rect x="0" y="0" width={foglioW} height={foglioH} fill="#fff" stroke={cutColor(P.sheetCut ?? 'Passante')} stroke-width="0.8" />
+									{#each sogg as sg, j (j)}
+										<path d={sg.pathD} transform="translate({sg.x} {sg.y})" fill="#eef0fb" stroke={cutColor(P.pieceCut)} stroke-width="0.4" />
+									{/each}
+								</g>
+							{/each}
+						{:else}
+							{#if lastPath || forma}
+								{#each preview.pieces as p, i (i)}
+									{#if lastPath}
+										<path d={lastPath} transform={pieceTf(p)} fill="#eef0fb" stroke={cutColor(P.pieceCut)} stroke-width="0.6" />
+									{:else}
+										<rect x={p.x} y={p.y} width={p.rot ? cutH : cutW} height={p.rot ? cutW : cutH} rx="1.5" fill="#eef0fb" stroke={cutColor(P.pieceCut)} stroke-width="0.6" />
+									{/if}
+								{/each}
+							{/if}
+							{#each preview.sheets ?? [] as s, i (i)}
+								<rect x={s.x} y={s.y} width={s.w} height={s.h} fill="none" stroke={cutColor(P.sheetCut ?? 'Passante')} stroke-width="1" />
 							{/each}
 						{/if}
-						{#each preview.sheets ?? [] as s, i (i)}
-							<rect x={s.x} y={s.y} width={s.w} height={s.h} fill="none" stroke={cutColor(P.sheetCut ?? 'Passante')} stroke-width="1" />
-						{/each}
 					</svg>
-					<p class="st-note">{mat.label}: pagina {pageW} mm con crocini e codice a barre · la prima striscia. {lastPath ? '' : 'Il contorno vero compare dopo il primo file generato.'}</p>
+					<p class="st-note">{mat.label}: pagina {pageW} mm con crocini e codice a barre · la prima striscia. {MULTI || lastPath ? '' : 'Il contorno vero compare dopo il primo file generato.'}</p>
 				</div>
 			{/if}
 		</section>
