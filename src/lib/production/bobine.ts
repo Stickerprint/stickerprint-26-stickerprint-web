@@ -28,9 +28,22 @@ export const iconaProdotto = (slug: string) => PRODOTTO_ICON[(slug ?? '').replac
 
 /** come si chiama la protezione: laminazione lucida / opaca (mai "plastifica") */
 export function etichettaProtezione(p: string): string {
-	if (!p || p === 'nessuna') return 'Senza laminazione';
-	if (p === 'rilievo') return 'Rilievo';
+	const v = (p ?? '').toLowerCase();
+	if (!v || v === 'nessuna') return 'Senza laminazione';
+	if (v === 'rilievo') return 'Rilievo';
+	if (v.includes('lucid')) return 'Laminazione lucida';
+	if (v.includes('opac')) return 'Laminazione opaca';
+	if (v.includes('plastific') || v.includes('lamin')) return 'Laminazione (tipo non indicato)';
 	return `Laminazione ${p}`;
+}
+/** targhetta colorata: la laminazione si deve leggere a colpo d'occhio */
+export function targhettaProtezione(p: string): { testo: string; bg: string; fg: string } {
+	const v = (p ?? '').toLowerCase();
+	if (v.includes('lucid')) return { testo: 'Lamina lucida', bg: '#7dd3fc', fg: '#06283d' };
+	if (v.includes('opac')) return { testo: 'Lamina opaca', bg: '#bef264', fg: '#1a2e05' };
+	if (v === 'rilievo') return { testo: 'Rilievo', bg: '#ddd6fe', fg: '#2e1065' };
+	if (!v || v === 'nessuna') return { testo: 'Senza lamina', bg: '#e5e7eb', fg: '#374151' };
+	return { testo: 'Lamina da indicare', bg: '#fde68a', fg: '#4a2f00' };
 }
 export const RUOLO: Record<Ruolo, { label: string; cosa: string; icon: string; foto: string }> = {
 	uv: { label: 'Stampa UV', cosa: 'adesivi senza laminazione e rilievo', icon: '🟣', foto: '/images/macchine/roland-lg-uv.jpg' },
@@ -64,6 +77,8 @@ export interface LavoroStampa {
 	inCodaDal: string;
 	stato: string;
 	rischio: RiskStatus;
+	/** anteprima dell'ordine (prova, mockup o file del cliente) */
+	thumb: string | null;
 }
 
 export interface Bobina {
