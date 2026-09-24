@@ -89,8 +89,9 @@ export async function buildInvoicePdf(inv: InvoiceData): Promise<Uint8Array> {
 	y -= 14;
 	if (inv.notes) { text(`Note: ${inv.notes}`.slice(0, 140), M, y, 9, font, gray); y -= 13; }
 	// in fondo alla pagina: pagamento e scadenze a sinistra, totali a destra
-	const taxable = inv.lines.reduce((s, l) => s + l.total_net, 0) + inv.express_net;
-	const vat = Math.round(taxable * COMPANY.vatRate * 100) / 100;
+	const taxable = Math.round((inv.lines.reduce((s, l) => s + l.total_net, 0) + inv.express_net) * 100) / 100;
+	/* IVA: quella registrata sulla fattura (scorporo dal prezzo IVA inclusa: totale = incassato al centesimo); se manca, il 22% dell'imponibile */
+	const vat = Number.isFinite(inv.vat_amount) && Math.abs(inv.vat_amount - taxable * COMPANY.vatRate) < 0.05 ? Math.round(inv.vat_amount * 100) / 100 : Math.round(taxable * COMPANY.vatRate * 100) / 100;
 	const base = Math.min(y - 10, 200);
 	const pm = PAYMENT_TEXT[inv.payment_method] ?? inv.payment_method;
 	let yl = base;
