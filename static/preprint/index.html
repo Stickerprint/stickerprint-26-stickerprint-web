@@ -1686,7 +1686,20 @@ function soggettiFoglio(o){
     }
     scelto=best>=0?raggi[best]:Math.max(2,Math.max(w,h)*0.012);
   }
-  const G=prova(scelto);
+  /* RETE DI SICUREZZA
+     Se con il raggio scelto viene fuori UN SOLO soggetto grande quanto tutto il foglio, i disegni
+     si sono incollati fra loro: si riprova con raggi piu' piccoli finche' tornano separati. */
+  let G=prova(scelto);
+  const coperto=(M)=>{let x0=w,y0=h,x1=-1,y1=-1,n=0;for(let i=0;i<w*h;i++)if(M[i]){n++;const x=i%w,y=(i/w)|0;if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;}
+    return n?((x1-x0+1)*(y1-y0+1))/(w*h):0;};
+  const minComp=Math.max(60,w*h*0.0004);
+  if(!(+o.unione>0)&&nComp(G,w,h,minComp)<2&&coperto(G)>0.6){
+    for(const f of [1.35,1.8,2.4,3.2,4.5]){
+      const r2=scelto/f; if(r2<1.5)break;
+      const G2=prova(r2);
+      if(nComp(G2,w,h,minComp)>=2){G=G2;scelto=r2;break;}
+    }
+  }
   /* etichette dei gruppi */
   const lab=new Int32Array(w*h).fill(-1);const st=[];let n=0;const box=[];
   const minArea=Math.max(80,w*h*0.0004);
