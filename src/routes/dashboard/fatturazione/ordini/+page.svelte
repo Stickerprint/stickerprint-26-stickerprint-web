@@ -54,12 +54,28 @@
 		const pv = pageList.filter((g: OrderGroup) => g.status !== 'annullato');
 		return { n: valid.length, net, vat: gross - net, gross, pageNet: pv.reduce((s: number, g: OrderGroup) => s + g.net, 0), pageGross: pv.reduce((s: number, g: OrderGroup) => s + g.gross, 0), cancelled: list.length - valid.length };
 	});
+	/* mese di riferimento del fatturato: quello scelto nella barra dei mesi; con "Tutti i mesi" vale
+	   il mese in corso (se si guarda l'anno corrente), altrimenti tutto l'anno scelto */
+	const meseRif = $derived(month ?? (year === new Date().getFullYear() ? String(new Date().getMonth()) : null));
+	const meseLabel = $derived(
+		meseRif === null ? String(year) : meseRif === 'prev' ? `prima del ${year}` : meseRif === 'next' ? `dopo il ${year}` : `${MONTHS[+meseRif]} ${year}`
+	);
+	const nelMese = (g: OrderGroup) => {
+		if (meseRif === null) return true;
+		const d = new Date(g.created_at), y = d.getFullYear();
+		return (y < year ? 'prev' : y > year ? 'next' : String(d.getMonth())) === meseRif;
+	};
 	const stats = $derived({
+		/* totale di TUTTI gli ordini dell'anno, e-commerce e manuali insieme */
 		total: data.groups.length,
+		ecom: data.groups.filter((g: OrderGroup) => g.channel === 'ecommerce').length,
+		manuali: data.groups.filter((g: OrderGroup) => g.channel !== 'ecommerce').length,
 		produzione: data.groups.filter((g: OrderGroup) => PRODUCTION_STATUSES.includes(g.status)).length,
 		spedizione: data.groups.filter((g: OrderGroup) => SHIPPING_STATUSES.includes(g.status)).length,
 		consegnati: data.groups.filter((g: OrderGroup) => g.status === 'consegnato' && Date.now() - new Date(g.created_at).getTime() < 30 * 864e5).length,
-		net: data.groups.filter((g: OrderGroup) => g.status !== 'annullato').reduce((s: number, g: OrderGroup) => s + g.net, 0)
+		/* fatturato del solo mese di riferimento: il totale dell'anno confondeva */
+		net: data.groups.filter((g: OrderGroup) => g.status !== 'annullato' && nelMese(g)).reduce((s: number, g: OrderGroup) => s + g.net, 0),
+		netOrdini: data.groups.filter((g: OrderGroup) => g.status !== 'annullato' && nelMese(g)).length
 	});
 	function toggle(k: string) { const s = new Set(expanded); s.has(k) ? s.delete(k) : s.add(k); expanded = s; }
 	const st = (s: string) => ORDER_STATUS[s] ?? { label: s, color: '#6b7280', soft: '#eceef3' };
@@ -89,11 +105,11 @@
 </div>
 
 <div class="stats5">
-	<div class="dcard stat5"><span class="ico" style="background:#fde7f1;color:#e0117f">📦</span><div><small>Totale ordini</small><b>{stats.total}</b></div></div>
+	<div class="dcard stat5"><span class="ico" style="background:#fde7f1;color:#e0117f">📦</span><div><small>Totale ordini {year}</small><b>{stats.total}</b><i>{stats.ecom} e-commerce · {stats.manuali} manuali</i></div></div>
 	<div class="dcard stat5"><span class="ico" style="background:#e5f0ff;color:#3b82f6">🖨️</span><div><small>In produzione</small><b>{stats.produzione}</b></div></div>
 	<div class="dcard stat5"><span class="ico" style="background:#dcf9f4;color:#0d9488">🚚</span><div><small>In spedizione</small><b>{stats.spedizione}</b></div></div>
 	<div class="dcard stat5"><span class="ico" style="background:#dcfce7;color:#15803d">✅</span><div><small>Consegnati (30 gg)</small><b>{stats.consegnati}</b></div></div>
-	<div class="dcard stat5"><span class="ico" style="background:#fef6db;color:#c48a00">💶</span><div><small>Fatturato netto</small><b>{money(stats.net)}</b></div></div>
+	<div class="dcard stat5"><span class="ico" style="background:#fef6db;color:#c48a00">💶</span><div><small>Fatturato netto · {meseLabel}</small><b>{money(stats.net)}</b><i>{stats.netOrdini} ordini</i></div></div>
 </div>
 
 <div class="dcard filters">
