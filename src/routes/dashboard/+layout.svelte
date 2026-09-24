@@ -14,7 +14,6 @@
 	const menu = $derived([
 		{ id: 'produzione', title: 'Produzione', items: [
 			{ label: 'Riepilogo', href: '/dashboard/produzione', exact: true },
-			{ label: 'Coda ordini', href: '/dashboard/produzione/coda', count: data.counts?.daAvviare },
 			{ label: 'Stampa', href: '/dashboard/produzione/reparto/stampa', count: data.counts?.stampa },
 			{ label: 'Laminazione', href: '/dashboard/produzione/reparto/laminazione', count: data.counts?.laminazione },
 			{ label: 'Taglio', href: '/dashboard/produzione/reparto/taglio', count: data.counts?.taglio },

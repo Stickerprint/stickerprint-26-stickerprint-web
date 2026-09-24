@@ -21,17 +21,17 @@
 {#if unconfigured.length}<p class="note" style="background:#fef6db;padding:10px 14px;border-radius:12px;margin-bottom:12px">⚙️ Velocità <b>da configurare</b> per: {unconfigured.map((m) => m.name).join(', ')}. Finché mancano, le durate sono di riserva. <a class="link" href="/dashboard/setup/macchinari">Setup → Macchinari</a></p>{/if}
 
 <div class="pv-kpis">
-	<a class="pv-kpi is-blue" href="/dashboard/produzione/coda?f=tutti"><b>{data.kpi.paidToday}</b><span>Ordini pagati oggi</span></a>
-	<a class="pv-kpi is-warn" href="/dashboard/produzione/coda?f=da-avviare"><b>{data.kpi.startToday}</b><span>Da avviare oggi</span></a>
-	<a class="pv-kpi is-ok" href="/dashboard/produzione/coda?f=in-corso"><b>{data.kpi.running}</b><span>In corso</span></a>
+	<a class="pv-kpi is-blue" href="/dashboard/produzione/reparto/stampa"><b>{data.kpi.paidToday}</b><span>Ordini pagati oggi</span></a>
+	<a class="pv-kpi is-warn" href="/dashboard/produzione/reparto/stampa"><b>{data.kpi.startToday}</b><span>Da avviare oggi</span></a>
+	<a class="pv-kpi is-ok" href="/dashboard/produzione/reparto/stampa"><b>{data.kpi.running}</b><span>In corso</span></a>
 	<a class="pv-kpi" href="/dashboard/produzione/spedizioni"><b>{data.kpi.doneToday}</b><span>Finiti oggi → spedizioni</span></a>
-	<a class="pv-kpi is-hot" href="/dashboard/produzione/coda?f=a-rischio"><b>{data.kpi.atRisk + data.kpi.late}</b><span>A rischio o in ritardo</span></a>
+	<a class="pv-kpi is-hot" href="/dashboard/produzione/reparto/stampa"><b>{data.kpi.atRisk + data.kpi.late}</b><span>A rischio o in ritardo</span></a>
 	<a class="pv-kpi" href="/dashboard/produzione/macchinari"><b>{data.kpi.busyMachines}<small style="font-size:16px;color:var(--muted)">/{data.machines.filter((m) => m.state !== 'off').length}</small></b><span>Macchinari occupati</span></a>
 </div>
 
 <div class="grid3" style="grid-template-columns:1.3fr 1fr;margin-top:16px;align-items:start">
 	<div class="dcard">
-		<h3>Adesso: gli ordini in cima alla coda <a class="link" style="font-size:13px;float:right" href="/dashboard/produzione/coda">Tutta la coda ›</a></h3>
+		<h3>Adesso: i lavori in cima <a class="link" style="font-size:13px;float:right" href="/dashboard/produzione/reparto/stampa">Vai alla stampa ›</a></h3>
 		{#if urgent.length === 0}<p class="osub">Nessuna commessa aperta.</p>{/if}
 		{#each urgent as r (r.job.id)}
 			{@const rk = RISK[r.job.risk_status]}

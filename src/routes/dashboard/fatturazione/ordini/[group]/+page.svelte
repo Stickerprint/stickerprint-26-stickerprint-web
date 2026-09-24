@@ -68,7 +68,7 @@
 	</div>
 	<!-- tutti i comandi dell'ordine: solo qui, mai in fondo alla pagina -->
 	<div class="obar">
-		{#if canStart}<form method="POST" action="?/produzione" use:enhance><button class="btn btn--green btn--xs" type="submit" title="L'ordine entra nella coda di produzione (prima lavorazione: stampa)">▶ Inizia produzione</button></form>{/if}
+		{#if canStart}<form method="POST" action="?/produzione" use:enhance><button class="btn btn--green btn--xs" type="submit" title="L'ordine va in produzione e compare subito nel reparto Stampa">▶ Metti in stampa</button></form>{/if}
 		<button type="button" class="btn btn--blue btn--xs" onclick={openSend} disabled={!g.email} title={g.email ? '' : 'L’ordine non ha un’email'}>✉️ {data.conf.sent_at ? 'Reinvia conferma' : 'Invia conferma'}</button>
 		<button type="button" class="btn btn--yellow btn--xs" onclick={() => (editing = true)}>✏️ Modifica</button>
 		<a class="btn btn--ghost btn--xs" href="/dashboard/fatturazione/ordini/nuovo?da={g.key}" title="Ordine nuovo, con numero nuovo, gia' compilato con questi dati">⧉ Duplica</a>

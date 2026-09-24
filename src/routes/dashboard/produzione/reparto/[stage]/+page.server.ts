@@ -17,6 +17,9 @@ function ruoliMacchine(machines: Machine[]) {
 const mq = (row: QueueRow) =>
 	row.group.items.reduce((s, i) => s + ((i.width_mm ?? 0) * (i.height_mm ?? 0) * (i.qty ?? 0)) / 1e6, 0);
 
+/** primo giorno del mese di oggi, in formato 2026-09-01 */
+const primoDelMese = (oggi: string) => `${oggi.slice(0, 7)}-01`;
+
 /** i lavori che aspettano una lavorazione, pronti per essere raggruppati */
 function lavoriDi(queue: QueueRow[], stage: Department, oggi: string): LavoroStampa[] {
 	const out: LavoroStampa[] = [];
@@ -47,7 +50,7 @@ function lavoriDi(queue: QueueRow[], stage: Department, oggi: string): LavoroSta
 }
 
 /** Vista reparto: in cima la fase con l'ultimo avvio utile piu' vicino; poi in corso, pronte, bloccate, in arrivo */
-export const load: PageServerLoad = async ({ params, locals: { supabase } }) => {
+export const load: PageServerLoad = async ({ params, url, locals: { supabase } }) => {
 	const stage = params.stage as Department;
 	if (!DEPARTMENTS[stage]) error(404, 'Reparto non trovato');
 	await recalcIfStale(supabase);
@@ -56,25 +59,31 @@ export const load: PageServerLoad = async ({ params, locals: { supabase } }) => 
 	for (const row of queue) for (const phase of row.phases) if (phase.stage === stage && !phase.passive && phase.status !== 'completato' && phase.status !== 'saltata') items.push({ row, phase });
 	const byLatest = (a: { phase: Phase }, b: { phase: Phase }) => (a.phase.latest_start_at ?? '9').localeCompare(b.phase.latest_start_at ?? '9');
 	const oggi = isoDay(new Date(), setup.calendar.timezone);
+	/* nei reparti si lavora sul MESE IN CORSO: i lavori piu' vecchi li rimette in lavorazione Mattia
+	   a mano dagli ordini. Con ?vecchi=1 si vedono lo stesso. */
+	const conVecchi = url.searchParams.get('vecchi') === '1';
+	const dal = primoDelMese(oggi);
+	const soloMese = (l: LavoroStampa) => conVecchi || l.inCodaDal >= dal;
 
 	/* STAMPA: i compiti del giorno, divisi sulle tre macchine e raggruppati per plastifica */
+	const tuttiStampa = stage === 'stampa' ? lavoriDi(queue, 'stampa', oggi) : [];
 	const stampa = stage === 'stampa'
-		? { macchine: ruoliMacchine(setup.machines), gruppi: bobine(lavoriDi(queue, 'stampa', oggi), oggi, setup.calendar) }
+		? { macchine: ruoliMacchine(setup.machines), gruppi: bobine(tuttiStampa.filter(soloMese), oggi, setup.calendar), vecchi: tuttiStampa.length - tuttiStampa.filter(soloMese).length }
 		: null;
 
 	/* LAMINAZIONE: una macchina sola, i lavori in fila per pellicola (un cambio bobina per volta) */
-	const laminazione = stage === 'laminazione' ? pianoLaminazione(lavoriDi(queue, 'laminazione', oggi), oggi, setup.calendar) : null;
+	const laminazione = stage === 'laminazione' ? pianoLaminazione(lavoriDi(queue, 'laminazione', oggi).filter(soloMese), oggi, setup.calendar) : null;
 
 	/* TAGLIO: i lavori divisi sui due plotter, carico in pari */
 	const taglio = stage === 'taglio'
-		? suiPlotter(lavoriDi(queue, 'taglio', oggi).sort((a, b) => (a.consegna ?? '9').localeCompare(b.consegna ?? '9')), 2)
+		? suiPlotter(lavoriDi(queue, 'taglio', oggi).filter(soloMese).sort((a, b) => (a.consegna ?? '9').localeCompare(b.consegna ?? '9')), 2)
 		: null;
 
 	/* RESINATURA: una macchina sola, i lavori in ordine di consegna */
-	const resinatura = stage === 'resinatura' ? lavoriDi(queue, 'resinatura', oggi).sort((a, b) => (a.consegna ?? '9').localeCompare(b.consegna ?? '9')) : null;
+	const resinatura = stage === 'resinatura' ? lavoriDi(queue, 'resinatura', oggi).filter(soloMese).sort((a, b) => (a.consegna ?? '9').localeCompare(b.consegna ?? '9')) : null;
 
 	return {
-		stage, info: DEPARTMENTS[stage], setup, now: new Date().toISOString(), oggi, stampa, laminazione, taglio, resinatura,
+		stage, info: DEPARTMENTS[stage], setup, now: new Date().toISOString(), oggi, conVecchi, stampa, laminazione, taglio, resinatura,
 		running: items.filter((x) => x.phase.status === 'in_corso').sort(byLatest),
 		ready: items.filter((x) => x.phase.status === 'pronto').sort(byLatest),
 		blocked: items.filter((x) => x.phase.status === 'bloccato').sort(byLatest),
