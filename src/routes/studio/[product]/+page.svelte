@@ -176,16 +176,29 @@
 	let soggErr = $state('');
 	let fileUrl = $state('');
 	let nodiF = $state(0);
-	/* l'indirizzo del file per l'anteprima si crea UNA volta per file e si butta solo quando
-	   ne arriva un altro: prima bastava un ricalcolo per restare senza anteprima */
+	/* l'anteprima del foglio non deve MAI sparire: l'indirizzo si crea quando arriva il file e non
+	   si butta via; se il browser non riesce comunque a mostrarlo, si rilegge il file e si mostra
+	   quello (piu' pesante ma sempre valido) */
 	let urlFile: File | null = null;
 	$effect(() => {
 		const f = file;
 		if (f === urlFile) return;
-		if (fileUrl) URL.revokeObjectURL(fileUrl);
 		urlFile = f;
 		fileUrl = f ? URL.createObjectURL(f) : '';
 	});
+	async function anteprimaKo() {
+		const f = file;
+		if (!f) return;
+		try {
+			const d = await new Promise<string>((ok, ko) => {
+				const r = new FileReader();
+				r.onload = () => ok(String(r.result));
+				r.onerror = () => ko(new Error('file illeggibile'));
+				r.readAsDataURL(f);
+			});
+			if (d && d !== fileUrl) fileUrl = d;
+		} catch { soggErr = 'Non riesco a mostrare l’anteprima di questo file.'; }
+	}
 
 	let soggToken = 0;
 	async function rilevaSoggetti() {
@@ -778,7 +791,7 @@
 		<div class="st-bench">
 			<div class="st-stage st-foglio">
 				<div class="st-foglio__art">
-					{#if fileUrl}<img src={fileUrl} alt="Foglio del cliente" />{/if}
+					{#if fileUrl}<img src={fileUrl} alt="Foglio del cliente" onerror={anteprimaKo} />{/if}
 					<svg viewBox="0 0 {foglioW} {foglioH}" preserveAspectRatio="xMidYMid meet">
 						<rect x="0" y="0" width={foglioW} height={foglioH} fill="none" stroke={cutColor(P.sheetCut ?? 'Passante')} stroke-width="0.4" />
 						{#each sogg as sg, i (i)}
@@ -789,6 +802,7 @@
 				</div>
 				<div class="st-bar">
 					<button type="button" class="st-tool" disabled={!sogg.length} onclick={apriLente}>🔍 Tracciato da vicino</button>
+					<button type="button" class="st-tool st-tool--blue" disabled={soggBusy} onclick={rilevaSoggetti}>↻ Rileggi</button>
 					<span class="st-note">{sogg.length ? `${sogg.length} adesivi riconosciuti · ${nodiF} punti di ancoraggio` : 'Nessun adesivo riconosciuto'}{ritoccato ? ` · ritoccato (semplifica ${semplifica}, morbido ${morbido})` : ''}</span>
 				</div>
 				<!-- il motore serve per riconoscere gli adesivi: resta fuori vista -->
@@ -815,6 +829,7 @@
 					<p class="st-note">Il bordo si allarga o si stringe finché il taglio non cade sul bordo bianco del file. L’unione tiene insieme le parti staccate di uno stesso adesivo: alzala se un adesivo esce spezzato, abbassala se due adesivi vicini si uniscono.</p>
 					<button type="button" class="st-tool st-tool--blue" disabled={soggBusy} onclick={rilevaSoggetti}>{soggBusy ? 'Cerco…' : 'Rileggi il foglio'}</button>
 					{#if soggErr}<p class="st-err">{soggErr}</p>{/if}
+					{#if sogg.length === 1 && !soggErr}<p class="st-warn">Ho trovato un solo adesivo: se nel foglio ce ne sono di più, abbassa l’unione delle parti (per esempio {(unioneUsata / 2).toFixed(1)} mm) e premi Rileggi.</p>{/if}
 				</div>
 				<div class="st-actions">
 					<button type="button" class="btn btn--pink st-act" disabled={!sogg.length || !!busy} onclick={scaricaStampaTaglio}>{busy === 'print' ? 'Preparo il file…' : 'Scarica file di stampa e taglio'}<small>PDF del foglio: grafica + {P.pieceCut} su ogni adesivo + {P.sheetCut} sul foglio</small></button>
