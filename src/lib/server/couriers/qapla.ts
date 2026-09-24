@@ -71,7 +71,8 @@ export const qapla: CourierAdapter = {
 			createLabel: {
 				origin: 'public', reference: s.orderNumber, courier, courierService: env.QAPLA_COURIER_SERVICE || '0',
 				name: r.name.slice(0, 60), address: r.street.slice(0, 60), city: r.city, state: r.province, postCode: r.zip, country: r.country || 'IT',
-				email: r.email ?? '', telephone: r.phone ?? '', isCOD: false, currencyCode: 'EUR', notes: (s.notes ?? '').slice(0, 255),
+				/* niente email del cliente a Qapla/corriere: le comunicazioni sulla spedizione le mandiamo solo noi (regola di Mattia, 24/9/2026) */
+				email: '', telephone: r.phone ?? '', isCOD: false, currencyCode: 'EUR', notes: (s.notes ?? '').slice(0, 255),
 				content: s.contents.slice(0, 100), custom1: s.group,
 				parcels: Array.from({ length: Math.max(1, s.parcels) }, () => ({ weight: perParcel, length: 30, width: 20, height: 10 }))
 			}
