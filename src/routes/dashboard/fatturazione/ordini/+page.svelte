@@ -9,13 +9,24 @@
 	let channel = $state('all');
 	let status = $state('all');
 	let star = $state('entrambi');
-	let month = $state<string | null>(null);
+	/* si parte dal mese in corso: elenco, totali e riquadri parlano sempre dello stesso mese.
+	   Con "Tutti i mesi" si vede tutto l'anno, elenco compreso. */
+	let month = $state<string | null>(new Date().getFullYear() === (data.year ?? new Date().getFullYear()) ? String(new Date().getMonth()) : null);
 	/* "Inizia produzione": ordini appena creati (manuali, o in attesa di prova del vecchio flusso) che non hanno ancora una coda di lavorazioni.
 	   Gli e-commerce pagati entrano da soli; quelli in attesa dell'anticipo si possono forzare (es. pagato a voce). */
 	let starting = $state<string | null>(null);
 	const canStart = (g: (typeof data.groups)[number]) => ['attesa_pagamento', 'in_attesa', 'attesa_file', 'attesa_prova', 'modifiche_richieste', 'approvazione'].includes(g.status) || (g.status === 'in_produzione' && !g.items[0].prod_stage);
 	let expanded = $state<Set<string>>(new Set());
 	const year = $derived(data.year);
+	/* cambiando anno si riparte dal mese giusto: l'anno in corso sul mese in corso, gli anni passati
+	   su tutto l'anno */
+	let annoVisto = data.year;
+	$effect(() => {
+		const y = data.year;
+		if (y === annoVisto) return;
+		annoVisto = y;
+		month = y === new Date().getFullYear() ? String(new Date().getMonth()) : null;
+	});
 	const buckets = $derived.by(() => {
 		const b: Record<string, { n: number; amt: number }> = { prev: { n: 0, amt: 0 }, next: { n: 0, amt: 0 } };
 		for (let m = 0; m < 12; m++) b[m] = { n: 0, amt: 0 };
@@ -56,9 +67,9 @@
 	});
 	/* mese di riferimento del fatturato: quello scelto nella barra dei mesi; con "Tutti i mesi" vale
 	   il mese in corso (se si guarda l'anno corrente), altrimenti tutto l'anno scelto */
-	const meseRif = $derived(month ?? (year === new Date().getFullYear() ? String(new Date().getMonth()) : null));
+	const meseRif = $derived(month);
 	const meseLabel = $derived(
-		meseRif === null ? String(year) : meseRif === 'prev' ? `prima del ${year}` : meseRif === 'next' ? `dopo il ${year}` : `${MONTHS[+meseRif]} ${year}`
+		meseRif === null ? `tutto il ${year}` : meseRif === 'prev' ? `prima del ${year}` : meseRif === 'next' ? `dopo il ${year}` : `${MONTHS[+meseRif]} ${year}`
 	);
 	const nelMese = (g: OrderGroup) => {
 		if (meseRif === null) return true;
@@ -107,12 +118,12 @@
 	<button type="button" class="btn btn--xs {month === null ? 'btn--blue' : 'btn--ghost'}" onclick={() => (month = null)}>Tutti i mesi</button>
 </div>
 
-<p class="stats5-rif">Riquadri di <b>{meseLabel}</b>{month === null ? ' (mese in corso): scegli un mese nella barra qui sopra per vedere il suo' : ''}</p>
+<p class="stats5-rif">Stai guardando <b>{meseLabel}</b>: riquadri, elenco e totali qui sotto sono solo di {meseLabel}.</p>
 <div class="stats5">
-	<div class="dcard stat5"><span class="ico" style="background:#fde7f1;color:#e0117f">📦</span><div><small>Ordini di {meseLabel}</small><b>{stats.total}</b><i>{stats.ecom} e-commerce · {stats.manuali} manuali</i></div></div>
-	<div class="dcard stat5"><span class="ico" style="background:#e5f0ff;color:#3b82f6">🖨️</span><div><small>In produzione</small><b>{stats.produzione}</b><i>ordini di {meseLabel}</i></div></div>
-	<div class="dcard stat5"><span class="ico" style="background:#dcf9f4;color:#0d9488">🚚</span><div><small>In spedizione</small><b>{stats.spedizione}</b><i>ordini di {meseLabel}</i></div></div>
-	<div class="dcard stat5"><span class="ico" style="background:#dcfce7;color:#15803d">✅</span><div><small>Consegnati</small><b>{stats.consegnati}</b><i>ordini di {meseLabel}</i></div></div>
+	<div class="dcard stat5"><span class="ico" style="background:#fde7f1;color:#e0117f">📦</span><div><small>Ordini · {meseLabel}</small><b>{stats.total}</b><i>{stats.ecom} e-commerce · {stats.manuali} manuali</i></div></div>
+	<div class="dcard stat5"><span class="ico" style="background:#e5f0ff;color:#3b82f6">🖨️</span><div><small>In produzione</small><b>{stats.produzione}</b><i>di {meseLabel}</i></div></div>
+	<div class="dcard stat5"><span class="ico" style="background:#dcf9f4;color:#0d9488">🚚</span><div><small>In spedizione</small><b>{stats.spedizione}</b><i>di {meseLabel}</i></div></div>
+	<div class="dcard stat5"><span class="ico" style="background:#dcfce7;color:#15803d">✅</span><div><small>Consegnati</small><b>{stats.consegnati}</b><i>di {meseLabel}</i></div></div>
 	<div class="dcard stat5"><span class="ico" style="background:#fef6db;color:#c48a00">💶</span><div><small>Fatturato netto</small><b>{money(stats.net)}</b><i>{stats.netOrdini} ordini di {meseLabel}</i></div></div>
 </div>
 
