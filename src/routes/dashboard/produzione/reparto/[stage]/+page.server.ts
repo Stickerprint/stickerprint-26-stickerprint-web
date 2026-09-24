@@ -3,6 +3,7 @@ import { DEPARTMENTS, type Department, type Machine, type Phase } from '$lib/pro
 import { bobine, pianoLaminazione, suiPlotter, type LavoroStampa } from '$lib/production/bobine';
 import { isoDay } from '$lib/production/calendar';
 import { loadQueue, loadSetup, recalcIfStale, startPhase, taskActions, operatorName, type QueueRow } from '$lib/server/produzione';
+import { thumbOf } from '$lib/dashboard/orders';
 import type { Actions, PageServerLoad } from './$types';
 
 /** quale macchina fa cosa: la UV, quella dei resinati e quella degli adesivi da plastificare */
@@ -43,7 +44,8 @@ function lavoriDi(queue: QueueRow[], stage: Department, oggi: string): LavoroSta
 			consegna: row.job.promised_ship_date ?? null,
 			inCodaDal: (row.job.paid_at ?? row.job.created_at ?? oggi).slice(0, 10),
 			stato: fase.status,
-			rischio: row.job.risk_status
+			rischio: row.job.risk_status,
+			thumb: thumbOf(f)
 		});
 	}
 	return out;
