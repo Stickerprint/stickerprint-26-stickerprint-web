@@ -65,17 +65,20 @@
 		const d = new Date(g.created_at), y = d.getFullYear();
 		return (y < year ? 'prev' : y > year ? 'next' : String(d.getMonth())) === meseRif;
 	};
-	const stats = $derived({
-		/* totale di TUTTI gli ordini dell'anno, e-commerce e manuali insieme */
-		total: data.groups.length,
-		ecom: data.groups.filter((g: OrderGroup) => g.channel === 'ecommerce').length,
-		manuali: data.groups.filter((g: OrderGroup) => g.channel !== 'ecommerce').length,
-		produzione: data.groups.filter((g: OrderGroup) => PRODUCTION_STATUSES.includes(g.status)).length,
-		spedizione: data.groups.filter((g: OrderGroup) => SHIPPING_STATUSES.includes(g.status)).length,
-		consegnati: data.groups.filter((g: OrderGroup) => g.status === 'consegnato' && Date.now() - new Date(g.created_at).getTime() < 30 * 864e5).length,
-		/* fatturato del solo mese di riferimento: il totale dell'anno confondeva */
-		net: data.groups.filter((g: OrderGroup) => g.status !== 'annullato' && nelMese(g)).reduce((s: number, g: OrderGroup) => s + g.net, 0),
-		netOrdini: data.groups.filter((g: OrderGroup) => g.status !== 'annullato' && nelMese(g)).length
+	/* TUTTI i riquadri parlano del mese di riferimento: scegliendo agosto si vedono i numeri di agosto */
+	const stats = $derived.by(() => {
+		const mese = data.groups.filter(nelMese);
+		const validi = mese.filter((g: OrderGroup) => g.status !== 'annullato');
+		return {
+			total: mese.length,
+			ecom: mese.filter((g: OrderGroup) => g.channel === 'ecommerce').length,
+			manuali: mese.filter((g: OrderGroup) => g.channel !== 'ecommerce').length,
+			produzione: mese.filter((g: OrderGroup) => PRODUCTION_STATUSES.includes(g.status)).length,
+			spedizione: mese.filter((g: OrderGroup) => SHIPPING_STATUSES.includes(g.status)).length,
+			consegnati: mese.filter((g: OrderGroup) => g.status === 'consegnato').length,
+			net: validi.reduce((s: number, g: OrderGroup) => s + g.net, 0),
+			netOrdini: validi.length
+		};
 	});
 	function toggle(k: string) { const s = new Set(expanded); s.has(k) ? s.delete(k) : s.add(k); expanded = s; }
 	const st = (s: string) => ORDER_STATUS[s] ?? { label: s, color: '#6b7280', soft: '#eceef3' };
@@ -104,12 +107,13 @@
 	<button type="button" class="btn btn--xs {month === null ? 'btn--blue' : 'btn--ghost'}" onclick={() => (month = null)}>Tutti i mesi</button>
 </div>
 
+<p class="stats5-rif">Riquadri di <b>{meseLabel}</b>{month === null ? ' (mese in corso): scegli un mese nella barra qui sopra per vedere il suo' : ''}</p>
 <div class="stats5">
-	<div class="dcard stat5"><span class="ico" style="background:#fde7f1;color:#e0117f">📦</span><div><small>Totale ordini {year}</small><b>{stats.total}</b><i>{stats.ecom} e-commerce · {stats.manuali} manuali</i></div></div>
-	<div class="dcard stat5"><span class="ico" style="background:#e5f0ff;color:#3b82f6">🖨️</span><div><small>In produzione</small><b>{stats.produzione}</b></div></div>
-	<div class="dcard stat5"><span class="ico" style="background:#dcf9f4;color:#0d9488">🚚</span><div><small>In spedizione</small><b>{stats.spedizione}</b></div></div>
-	<div class="dcard stat5"><span class="ico" style="background:#dcfce7;color:#15803d">✅</span><div><small>Consegnati (30 gg)</small><b>{stats.consegnati}</b></div></div>
-	<div class="dcard stat5"><span class="ico" style="background:#fef6db;color:#c48a00">💶</span><div><small>Fatturato netto · {meseLabel}</small><b>{money(stats.net)}</b><i>{stats.netOrdini} ordini</i></div></div>
+	<div class="dcard stat5"><span class="ico" style="background:#fde7f1;color:#e0117f">📦</span><div><small>Ordini di {meseLabel}</small><b>{stats.total}</b><i>{stats.ecom} e-commerce · {stats.manuali} manuali</i></div></div>
+	<div class="dcard stat5"><span class="ico" style="background:#e5f0ff;color:#3b82f6">🖨️</span><div><small>In produzione</small><b>{stats.produzione}</b><i>ordini di {meseLabel}</i></div></div>
+	<div class="dcard stat5"><span class="ico" style="background:#dcf9f4;color:#0d9488">🚚</span><div><small>In spedizione</small><b>{stats.spedizione}</b><i>ordini di {meseLabel}</i></div></div>
+	<div class="dcard stat5"><span class="ico" style="background:#dcfce7;color:#15803d">✅</span><div><small>Consegnati</small><b>{stats.consegnati}</b><i>ordini di {meseLabel}</i></div></div>
+	<div class="dcard stat5"><span class="ico" style="background:#fef6db;color:#c48a00">💶</span><div><small>Fatturato netto</small><b>{money(stats.net)}</b><i>{stats.netOrdini} ordini di {meseLabel}</i></div></div>
 </div>
 
 <div class="dcard filters">
