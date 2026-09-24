@@ -43,6 +43,8 @@ export const load: PageServerLoad = async ({ locals: { supabase }, url }) => {
 	return { view, groups: [] as typeof groups, couriers: await qaplaCouriers(), defaultCourier: env.QAPLA_COURIER || 'GLS-ITA', qaplaOk: !!env.QAPLA_API_KEY, today, month, day, days, shipped, todoCount: groups.length };
 };
 const r2 = (v: number) => Math.round(v * 100) / 100;
+/* regola: e-commerce pagato subito → fattura gia' emessa al checkout, niente DDT; manuali e altri casi → DDT sempre */
+const needsDdt = (o: { channel: string | null; payment_status: string | null }) => !(o.channel === 'ecommerce' && o.payment_status === 'paid');
 
 type Db = App.Locals['supabase'];
 /** Quantita' consegnate, scadenze riallineate e DDT: serve a "Concludi" (consegna diretta, corriere del cliente) e a "Invia a Qapla" per gli ordini manuali */
@@ -141,7 +143,7 @@ export const actions: Actions = {
 		await supabase.from('orders').update({ status: 'in_spedizione', courier: 'Qapla', shipped_at: now, transmitted_at: now }).eq('checkout_group', group);
 		/* il DDT si fa SEMPRE (Qapla, consegna diretta, corriere del cliente): qui con le quantita' davvero spedite */
 		let ddtInfo: { id: string; number: string } | null = null;
-		if (!g.items[0].ddt_id) {
+		if (!g.items[0].ddt_id && needsDdt(g.items[0])) {
 			const d = await makeDdt(supabase, group, f, 'ours');
 			if ('error' in d) return fail(400, { error: `Ordine inviato a Qapla, ma ${d.error}` });
 			ddtInfo = { id: d.id, number: d.number };
@@ -162,12 +164,20 @@ export const actions: Actions = {
 	ddt: async ({ request, url, locals: { supabase } }) => {
 		const f = await request.formData();
 		const group = String(f.get('group') ?? '');
-		const { data: cur } = await supabase.from('orders').select('shipping_method, channel, courier, transmitted_at').eq('checkout_group', group).limit(1).maybeSingle();
+		const { data: cur } = await supabase.from('orders').select('shipping_method, channel, courier, transmitted_at, payment_status').eq('checkout_group', group).limit(1).maybeSingle();
 		if (!cur) return fail(404, { error: 'Ordine non trovato.' });
 		if (deliveryMode(cur) === 'ours') return fail(400, { error: 'Con il nostro corriere usa "Invia a Qapla"; Concludi vale per consegna diretta e corriere del cliente.' });
+		const now = new Date().toISOString();
+		if (!needsDdt(cur)) {
+			/* e-commerce gia' pagato e fatturato: si chiude senza DDT, salvando solo colli e peso */
+			const { data: rows } = await supabase.from('orders').select('*').eq('checkout_group', group);
+			const g0 = groupOrders((rows ?? []) as OrderRow[])[0]; const m = deliveryMode(cur);
+			await supabase.from('orders').update({ parcels: Math.max(1, Number(f.get('parcels') ?? 1)), weight_kg: Number(f.get('weight') ?? 0) || null, ...(m === 'direct' ? { status: 'consegnato', courier: 'Consegna diretta', shipped_at: now, delivered_at: now } : { status: 'spedito', courier: 'Corriere del destinatario', shipped_at: now }) }).eq('checkout_group', group);
+			if (g0?.email) { const mail = shippingUpdateEmail({ kind: 'affidato', consegna: m === 'direct' ? 'noi' : 'cliente', name: g0.items[0].shipping?.first_name || g0.customer, number: g0.number, trackingUrl: `${url.origin}/account/ordini`, items: g0.items.map((i) => ({ name: i.product_name, qty: i.qty })) }); sendEmail({ to: g0.email, subject: mail.subject, html: mail.html, tag: mail.tag, metadata: { order: g0.number } }).catch(() => {}); }
+			return { ok: true, labels: null, ddt: null, closed: m === 'direct' ? 'consegnato' : 'spedito' };
+		}
 		const r = await makeDdt(supabase, group, f);
 		if ('error' in r) return fail(400, { error: r.error });
-		const now = new Date().toISOString();
 		await supabase.from('orders').update(r.mode === 'direct' ? { status: 'consegnato', courier: r.courier, shipped_at: now, delivered_at: now } : { status: 'spedito', courier: r.courier, shipped_at: now }).eq('checkout_group', group);
 		const g = r.g, first = g.items[0];
 		// email "ordine concluso"

@@ -8,6 +8,8 @@
 	let ddtPopup = $state<string | null>(null);
 	/* il popup serve a "Concludi" (consegna diretta, corriere cliente) e a "Invia a Qapla": il DDT si fa sempre */
 	let popupKind = $state<'ddt' | 'qapla'>('ddt');
+	/* regola: e-commerce pagato subito → fattura gia' emessa al checkout, niente DDT; manuali e altri casi → DDT sempre */
+	const needsDdt = (g: { channel: string | null; items: { payment_status: string | null }[] }) => !(g.channel === 'ecommerce' && g.items[0]?.payment_status === 'paid');
 	let qaplaCourier = $state(data.defaultCourier ?? 'GLS-ITA');
 	let ddtParcels = $state(1);
 	let ddtWeight = $state<number | null>(null);
@@ -207,11 +209,12 @@
 	{@const c = ddtGroup.items[0].courier ?? ''}
 	<div class="dmodal-bg"><div class="dmodal">
 		<h3>{popupKind === 'qapla' ? 'Invia a Qapla' : 'Concludi'} l'ordine {ddtGroup.number} · {ddtGroup.customer}</h3>
-		<p class="note">Controlla le voci: puoi cambiare solo le quantità (es. ordinate 1.000, prodotte 1.200). Importi e fattura seguiranno le quantità consegnate.</p>
+		{#if needsDdt(ddtGroup)}<p class="note">Controlla le voci: puoi cambiare solo le quantità (es. ordinate 1.000, prodotte 1.200). Importi e fattura seguiranno le quantità consegnate.</p>
+		{:else}<p class="note">Ordine e-commerce già pagato e fatturato al momento dell'acquisto: niente DDT, servono solo colli e peso.</p>{/if}
 		<form method="POST" action={popupKind === 'qapla' ? '?/qapla' : '?/ddt'} use:enhance style="display:grid;gap:12px">
 			<input type="hidden" name="group" value={ddtPopup} />
 			<input type="hidden" name="qtys" value={JSON.stringify(ddtQty)} />
-			<div class="tscroll"><table class="dtable">
+			{#if needsDdt(ddtGroup)}<div class="tscroll"><table class="dtable">
 				<thead><tr><th>Articolo</th><th>Q.tà ordinata</th><th>Q.tà consegnata</th><th>Prezzo unit.</th><th style="text-align:right">Imponibile</th></tr></thead>
 				<tbody>
 					{#each ddtGroup.items as it (it.id)}
@@ -226,7 +229,7 @@
 					{/each}
 				</tbody>
 				<tfoot><tr><td colspan="4"><b>Imponibile</b> · IVA {money(ddtTotal * 0.22)} · totale {money(ddtTotal * 1.22)}</td><td style="text-align:right"><b>{money(ddtTotal)}</b></td></tr></tfoot>
-			</table></div>
+			</table></div>{/if}
 			<div class="row3" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,2fr)">
 				<label>Colli<input type="number" name="parcels" min="1" bind:value={ddtParcels} /></label>
 				<label>Peso (kg)<input type="number" name="weight" step="0.1" min="0" bind:value={ddtWeight} placeholder="es. 2.4" /></label>
@@ -241,8 +244,8 @@
 						<div class="osub">l'ordine passa a Qapla: etichetta dal pannello Qapla</div>{/if}
 				</div>
 			</div>
-			<p class="note">Il DDT prende il prossimo numero SPD (Fatturazione → DDT){ddtGroup.channel === 'manuale' ? ' e sarà da fatturare' : ' (ordine e-commerce già fatturato)'}; le etichette dei colli, una per collo, si scaricano subito.</p>
-			<div style="display:flex;gap:8px;justify-content:flex-end"><button type="button" class="btn btn--ghost btn--xs" onclick={() => (ddtPopup = null)}>Annulla</button><button class="btn btn--green" type="submit">{popupKind === 'qapla' ? 'Genera DDT e invia a Qapla' : m === 'direct' ? 'Genera DDT: ordine consegnato' : 'Genera DDT: ordine spedito'}</button></div>
+			{#if needsDdt(ddtGroup)}<p class="note">Il DDT prende il prossimo numero SPD (Fatturazione → DDT){ddtGroup.channel === 'manuale' ? ' e sarà da fatturare' : ''}; le etichette dei colli, una per collo, si scaricano subito.</p>{/if}
+			<div style="display:flex;gap:8px;justify-content:flex-end"><button type="button" class="btn btn--ghost btn--xs" onclick={() => (ddtPopup = null)}>Annulla</button><button class="btn btn--green" type="submit">{popupKind === 'qapla' ? (needsDdt(ddtGroup) ? 'Genera DDT e invia a Qapla' : 'Invia a Qapla') : m === 'direct' ? 'Genera DDT: ordine consegnato' : 'Genera DDT: ordine spedito'}</button></div>
 		</form>
 	</div></div>
 {/if}
