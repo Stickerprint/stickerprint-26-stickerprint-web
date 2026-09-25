@@ -52,7 +52,7 @@ export function firmaHtml(d: DatiFirma): string {
 	const r = d.stelle && d.stelle.quante > 0 ? d.stelle : null;
 	const claim = d.claim || 'realizzati con cura e passione nel nostro laboratorio';
 	const wa = d.whatsapp ? tel(d.whatsapp).replace('+', '') : '';
-	return `<table cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;font-family:Arial,Helvetica,sans-serif;color:${C.navy};width:560px;max-width:100%;background:#ffffff;">
+	return `<table cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;font-family:Arial,Helvetica,sans-serif;color:${C.navy};width:600px;max-width:100%;background:#ffffff;">
 <tr><td style="padding:0 0 14px;">
 	<table cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
 		<tr>
@@ -84,10 +84,10 @@ export function firmaHtml(d: DatiFirma): string {
 	</table>
 </td></tr>
 
-<tr><td style="padding:0 0 12px;font:400 13px/1.55 Arial,Helvetica,sans-serif;color:${C.navy};">
-	<span style="font-size:17px;">🥇</span> <b style="font-family:${TITOLO};font-weight:800;background:#ffe9a8;padding:3px 8px;border-radius:6px;">1ª scelta per adesivi premium</b><br>
-	<span style="font-family:${TITOLO};font-weight:700;color:${C.navy};">${esc(claim)}</span><br>
-	<img src="${esc(assets)}/images/firma-riga-azzurra.png" width="${Math.round(claim.length * 6.4)}" height="7" alt="" style="display:block;border:0;margin:-2px 0 0;width:${Math.round(claim.length * 6.4)}px;height:7px;">
+<tr><td style="padding:0 0 12px;font:400 12px/1.5 Arial,Helvetica,sans-serif;color:${C.navy};white-space:nowrap;">
+	<span style="font-size:15px;">🥇</span> <b style="font-family:${TITOLO};font-weight:800;font-size:12.5px;background:#ffe9a8;padding:3px 7px;border-radius:6px;">1ª scelta per adesivi premium</b>
+	<span style="color:${C.linea};">&nbsp;·&nbsp;</span>
+	<span style="font-family:${TITOLO};font-weight:700;font-size:12.5px;color:${C.navy};border-bottom:3px solid ${C.azzurro};padding-bottom:1px;">${esc(claim)}</span>
 </td></tr>
 
 <tr><td style="padding:0 0 12px;">
