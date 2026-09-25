@@ -10,7 +10,7 @@
 	let ruolo = $state(data.io.ruolo || 'Titolare');
 	let email = $state(data.io.email || 'info@stickerprint.it');
 	let conStelle = $state(true);
-	let claim = $state('Prodotti con cura nel nostro laboratorio');
+	let claim = $state('realizzati con cura e passione nel nostro laboratorio');
 	let whatsapp = $state('');
 	/* le sedi: la prima arriva dai dati di fatturazione, la seconda e' quella americana */
 	let sedeIt = $state(data.sedeIt);
@@ -63,7 +63,7 @@
 		<label class="fi-f"><span>Nome e cognome</span><input bind:value={nome} /></label>
 		<label class="fi-f"><span>Ruolo</span><input bind:value={ruolo} /></label>
 		<label class="fi-f"><span>Email</span><input bind:value={email} /></label>
-		<label class="fi-f"><span>Frase in evidenza</span><input bind:value={claim} /></label>
+		<label class="fi-f"><span>Frase sotto la medaglia</span><input bind:value={claim} /></label>
 		<label class="fi-f"><span>WhatsApp <em>(vuoto = niente bottone)</em></span><input bind:value={whatsapp} placeholder="+39 351 8000437" /></label>
 		<h3>Sedi</h3>
 		<label class="fi-f"><span>Italia · nome</span><input bind:value={nomeIt} /></label>
