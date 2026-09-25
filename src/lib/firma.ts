@@ -27,6 +27,9 @@ export interface DatiFirma {
 
 /* i colori del sito: il navy e' quello dell'header, l'azzurro e' quello della scritta STICKER nel logo */
 const C = { navy: '#050538', azzurro: '#0a95ff', giallo: '#f4b400', grigio: '#6b7280', linea: '#e6e8f0' };
+/* I TITOLI: Rubik come sul sito. I programmi di posta non scaricano i caratteri dal web, quindi Rubik
+   si vede su chi ce l'ha installato (noi) e altrove si ripiega su Arial, che ha la stessa struttura. */
+const TITOLO = "'Rubik','Rubik ExtraBold',Arial,Helvetica,sans-serif";
 const esc = (s: string) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const tel = (s: string) => s.replace(/[^\d+]/g, '');
 
@@ -57,8 +60,8 @@ export function firmaHtml(d: DatiFirma): string {
 				<a href="${esc(sito)}" style="text-decoration:none;"><img src="${esc(assets)}/images/splogo-400.png" alt="Stickerprint" width="116" height="93" style="display:block;border:0;width:116px;height:auto;"></a>
 			</td>
 			<td style="vertical-align:middle;border-left:4px solid ${C.navy};padding:2px 0 2px 18px;">
-				<div style="font:800 20px/1.15 Arial,Helvetica,sans-serif;color:${C.navy};letter-spacing:-.01em;">${esc(d.nome)}</div>
-				<div style="font:800 14px/1.4 Arial,Helvetica,sans-serif;padding-top:4px;">
+				<div style="font-family:${TITOLO};font-weight:800;font-size:21px;line-height:1.15;color:${C.navy};letter-spacing:-.01em;">${esc(d.nome)}</div>
+				<div style="font-family:${TITOLO};font-weight:800;font-size:14.5px;line-height:1.4;padding-top:4px;">
 					<span style="color:${C.azzurro};">Stickerprint</span> <span style="color:${C.navy};">${esc(d.ruolo)}</span>
 				</div>
 				<img src="${esc(assets)}/images/firma-riga-gialla.png" width="${Math.round(88 + d.ruolo.length * 7.6)}" height="8" alt="" style="display:block;border:0;margin:-3px 0 0;width:${Math.round(88 + d.ruolo.length * 7.6)}px;height:8px;">
@@ -82,8 +85,8 @@ export function firmaHtml(d: DatiFirma): string {
 </td></tr>
 
 <tr><td style="padding:0 0 12px;font:400 13px/1.55 Arial,Helvetica,sans-serif;color:${C.navy};">
-	<span style="font-size:17px;">🥇</span> <b style="background:#ffe9a8;padding:3px 8px;border-radius:6px;">1ª scelta per adesivi premium</b><br>
-	<span style="color:${C.navy};font-weight:700;">${esc(claim)}</span><br>
+	<span style="font-size:17px;">🥇</span> <b style="font-family:${TITOLO};font-weight:800;background:#ffe9a8;padding:3px 8px;border-radius:6px;">1ª scelta per adesivi premium</b><br>
+	<span style="font-family:${TITOLO};font-weight:700;color:${C.navy};">${esc(claim)}</span><br>
 	<img src="${esc(assets)}/images/firma-riga-azzurra.png" width="${Math.round(claim.length * 6.4)}" height="7" alt="" style="display:block;border:0;margin:-2px 0 0;width:${Math.round(claim.length * 6.4)}px;height:7px;">
 </td></tr>
 
