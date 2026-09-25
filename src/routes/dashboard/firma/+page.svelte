@@ -9,18 +9,22 @@
 	let nome = $state(data.io.nome || 'Mattia Boccotti');
 	let ruolo = $state(data.io.ruolo || 'Titolare');
 	let email = $state(data.io.email || 'info@stickerprint.it');
-	let telefono = $state('+39 02 1234567');
-	let cellulare = $state('');
-	let whatsapp = $state('');
 	let conStelle = $state(true);
+	let claim = $state('Prodotti con cura nel nostro laboratorio');
+	/* le sedi: la prima arriva dai dati di fatturazione, la seconda e' quella americana */
+	let sedeIt = $state(data.sedeIt);
+	let sedeUs = $state('18 Bridge Street 2A - 11201 Brooklyn (NY)');
+	let nomeIt = $state('Stickerprint Italy Srl');
+	let nomeUs = $state('Stickerprint North America Inc');
 
 	const html = $derived(
 		firmaHtml({
-			nome, ruolo, email, telefono,
-			cellulare: cellulare || undefined,
-			whatsapp: whatsapp || undefined,
-			sito, assets,
-			azienda: data.azienda,
+			nome, ruolo, email, sito, assets, claim,
+			sedi: [
+				{ nome: nomeIt, indirizzo: sedeIt },
+				...(sedeUs.trim() ? [{ nome: nomeUs, indirizzo: sedeUs }] : [])
+			],
+			legale: data.legale,
 			stelle: conStelle ? data.stelle : null
 		})
 	);
@@ -57,15 +61,18 @@
 		<label class="fi-f"><span>Nome e cognome</span><input bind:value={nome} /></label>
 		<label class="fi-f"><span>Ruolo</span><input bind:value={ruolo} /></label>
 		<label class="fi-f"><span>Email</span><input bind:value={email} /></label>
-		<label class="fi-f"><span>Telefono</span><input bind:value={telefono} /></label>
-		<label class="fi-f"><span>Cellulare <em>(se vuoi)</em></span><input bind:value={cellulare} placeholder="+39 333 1234567" /></label>
-		<label class="fi-f"><span>WhatsApp <em>(se vuoi, aggiunge il bottone verde)</em></span><input bind:value={whatsapp} placeholder="+39 333 1234567" /></label>
+		<label class="fi-f"><span>Frase sotto le stelle</span><input bind:value={claim} /></label>
+		<h3>Sedi</h3>
+		<label class="fi-f"><span>Italia · nome</span><input bind:value={nomeIt} /></label>
+		<label class="fi-f"><span>Italia · indirizzo</span><input bind:value={sedeIt} /></label>
+		<label class="fi-f"><span>Stati Uniti · nome</span><input bind:value={nomeUs} /></label>
+		<label class="fi-f"><span>Stati Uniti · indirizzo <em>(vuoto = non compare)</em></span><input bind:value={sedeUs} /></label>
 		<h3>Indirizzi</h3>
 		<label class="fi-f"><span>Sito nei link</span><input bind:value={sito} /></label>
 		<label class="fi-f"><span>Dove stanno le immagini</span><input bind:value={assets} />
 			<em class="fi-note">Deve essere un indirizzo pubblico e raggiungibile: è da lì che Gmail prende il logo.</em></label>
 		<label class="fi-check"><input type="checkbox" bind:checked={conStelle} disabled={!data.stelle} />
-			{#if data.stelle}Mostra le stelle: <b>{data.stelle.media.toFixed(1).replace('.', ',')}/5</b> su {data.stelle.quante} recensioni pubblicate{:else}Nessuna recensione pubblicata: la riga delle stelle resta fuori{/if}</label>
+			{#if data.stelle}Mostra le stelle: <b>{data.stelle.media.toFixed(1).replace('.', ',')}/5</b> (calcolata su {data.stelle.quante} recensioni pubblicate, il numero non si vede nella firma){:else}Nessuna recensione pubblicata: la riga delle stelle resta fuori{/if}</label>
 
 		<div class="fi-act">
 			<button class="btn btn--blue" type="button" onclick={copia}>📋 Copia la firma</button>

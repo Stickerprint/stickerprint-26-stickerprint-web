@@ -13,7 +13,8 @@ export const load: PageServerLoad = async ({ url, locals: { supabase, user } }) 
 	return {
 		origin: url.origin,
 		stelle,
-		azienda: `${COMPANY.name} · ${COMPANY.street}, ${COMPANY.zip} ${COMPANY.city} (${COMPANY.province}) · P.IVA ${COMPANY.vat}`,
-		io: { nome: prof?.full_name ?? '', email: user?.email ?? '', ruolo: prof?.role === 'admin' ? 'Titolare' : 'Stampa e produzione' }
+		sedeIt: `${COMPANY.street} - ${COMPANY.zip} ${COMPANY.city} (${COMPANY.province})`,
+		legale: `${COMPANY.name} · P.IVA ${COMPANY.vat}`,
+		io: { nome: prof?.full_name ?? '', email: user?.email ?? '', ruolo: prof?.role === 'admin' ? 'Founder' : 'Produzione' }
 	};
 };
