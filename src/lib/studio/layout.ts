@@ -12,6 +12,10 @@
  *    passante sul bordo; i fogli riempiono la striscia.
  */
 
+/** verso di un pezzo o di un foglio sulla striscia */
+export type Verso = 'auto' | 'dritto' | 'girato';
+const versi = (v: Verso | undefined) => (v === 'dritto' ? [false] : v === 'girato' ? [true] : [false, true]);
+
 export interface StripMaterial {
 	id: string;
 	label: string;
@@ -99,6 +103,8 @@ export interface LooseOptions {
 	gap: number;
 	/** 0 = riempi le strisce; altrimenti quanti pezzi servono in tutto */
 	qty: number;
+	/** verso dei pezzi: auto (sceglie il migliore), dritto o girato di 90 gradi */
+	verso?: Verso;
 }
 
 export interface Strip {
@@ -125,7 +131,7 @@ export interface LooseResult {
 export function layoutLoose(cutW: number, cutH: number, o: LooseOptions): LooseResult {
 	const my = o.marginY ?? o.margin;
 	const aw = o.stripW - 2 * o.margin, ah = o.stripH - 2 * my;
-	const opts = [false, true].map((rot) => {
+	const opts = versi(o.verso).map((rot) => {
 		const pw = rot ? cutH : cutW, ph = rot ? cutW : cutH;
 		return { pw, ph, g: grid(pw, ph, fit(aw, pw, o.gap), fit(ah, ph, o.gap), o.gap, rot) };
 	});
@@ -176,6 +182,10 @@ export interface SheetStripOptions {
 	sheetGap: number;
 	/** 0 = riempi le strisce; altrimenti quanti fogli servono */
 	sheets: number;
+	/** verso delle etichette dentro il foglio */
+	versoPezzi?: Verso;
+	/** verso del foglio sulla striscia */
+	versoFoglio?: Verso;
 }
 
 export interface SheetResult {
@@ -218,7 +228,7 @@ export function layoutSheets(cutW: number, cutH: number, rules: SheetRules, o: S
 	const my = o.marginY ?? o.margin;
 	const aw = o.stripW - 2 * o.margin, ah = o.stripH - 2 * my;
 	const cands: Cand[] = [];
-	for (const rot of [false, true]) {
+	for (const rot of versi(o.versoPezzi)) {
 		const pw = rot ? cutH : cutW, ph = rot ? cutW : cutH;
 		const maxC = fit(aw - 2 * rules.margin, pw, rules.gap), maxR = fit(Math.max(aw, ah) - 2 * rules.margin, ph, rules.gap);
 		for (let c = 1; c <= maxC; c++)
@@ -228,7 +238,7 @@ export function layoutSheets(cutW: number, cutH: number, rules: SheetRules, o: S
 				const g = grid(pw, ph, c, r, rules.gap, rot);
 				const sw = Math.round((g.w + 2 * rules.margin) * 10) / 10, sh = Math.round((g.h + 2 * rules.margin) * 10) / 10;
 				const sheet: SheetLayout = { w: sw, h: sh, grid: g, pieces: place(g, pw, ph, rules.gap, rules.margin, rules.margin), pw, ph, nearA4: a4Near(sw, sh, A4_TOL) };
-				for (const sRot of [false, true]) {
+				for (const sRot of versi(o.versoFoglio)) {
 					const W = sRot ? sh : sw, H = sRot ? sw : sh;
 					const across = fit(aw, W, o.sheetGap), down = fit(ah, H, o.sheetGap);
 					if (!across || !down) continue;

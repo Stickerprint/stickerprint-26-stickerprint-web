@@ -4,7 +4,7 @@
 	import StudioLente from '$lib/components/StudioLente.svelte';
 	import { showFinishStep, showMaterialStep, minForShape, startSize, sizeProposals, roundHalf, proportionalSize, sizeRule } from '$lib/pricing/engine';
 	import { KIT_CAVALLOTTO } from '$lib/studio/products';
-	import { STRIP_MATERIALS, SHEET_RULES, layoutLoose, layoutSheets, type Strip } from '$lib/studio/layout';
+	import { STRIP_MATERIALS, SHEET_RULES, layoutLoose, layoutSheets, type Strip, type Verso } from '$lib/studio/layout';
 	import { MARKED_MARGIN, pageWidthFor, DEFAULT_COND, markRects, barcodeRects } from '$lib/studio/graphtec';
 	import { pickDataLink, savedDataLink, grantDataLink, takenJobIds, writeXpf, type DataLinkDir } from '$lib/studio/datalink';
 	import { pickVersaworks, savedVersaworks, grantVersaworks, stampanti, mappaSalvata, salvaMappa, inviaAStampante, RUOLO_LABEL, type VwDir, type Ruolo as VwRuolo } from '$lib/studio/versaworks';
@@ -537,6 +537,9 @@
 	const mat = $derived(STRIP_MATERIALS.find((m) => m.id === matId) ?? STRIP_MATERIALS[0]);
 	const maxH = $derived(P.mode === 'fogli' ? mat.maxHSheets : mat.maxHLoose);
 	let stripH = $state(0);
+	/* il verso lo decide lo studio, ma l'operatore puo' forzarlo per vedere se guadagna spazio */
+	let versoPezzi = $state<Verso>('auto');
+	let versoFoglio = $state<Verso>('auto');
 	let qty = $state<number | ''>('');
 	/* sugli ordini si stampa l'8% in piu' dei pezzi chiesti, per coprire gli scarti di produzione */
 	const SCARTO = 0.08;
@@ -551,25 +554,26 @@
 	const MIN_SHEET_GAP = 10;
 	let sheetGap = $state(MIN_SHEET_GAP);
 	const sGap = $derived(Math.max(MIN_SHEET_GAP, +sheetGap || 0));
-	$effect(() => { if (!stripH || stripH > maxH) stripH = maxH; });
+	/* la prima volta si parte dall'altezza consigliata; poi comanda l'operatore, anche oltre */
+	$effect(() => { if (!stripH) stripH = maxH; });
 
 	const cutW = $derived(engCut?.w ?? (cavallotto ? KIT_CAVALLOTTO.w : w));
 	const cutH = $derived(engCut?.h ?? (cavallotto ? KIT_CAVALLOTTO.h : h));
 	const plan = $derived.by(() => {
 		if (!(cutW > 0 && cutH > 0)) return null;
-		const H = Math.min(stripH || maxH, maxH);
+		const H = stripH > 0 ? stripH : maxH;
 		if (MULTI) {
 			/* il foglio e' gia' impaginato dal cliente: sulla striscia ci vanno i fogli interi */
-			return { kind: 'multi' as const, r: layoutLoose(cutW, cutH, { stripW: pageW, stripH: H, margin, marginY, gap: sGap, qty: qtyDaFare }) };
+			return { kind: 'multi' as const, r: layoutLoose(cutW, cutH, { stripW: pageW, stripH: H, margin, marginY, gap: sGap, qty: qtyDaFare, verso: versoFoglio }) };
 		}
 		if (P.mode === 'fogli') {
 			const rules = SHEET_RULES[P.sheetRules ?? 'etichette'];
-			const probe = layoutSheets(cutW, cutH, rules, { stripW: pageW, stripH: H, margin, marginY, sheetGap: sGap, sheets: 0 });
+			const probe = layoutSheets(cutW, cutH, rules, { stripW: pageW, stripH: H, margin, marginY, sheetGap: sGap, sheets: 0, versoPezzi, versoFoglio });
 			if (!probe.ok || !probe.sheet) return { kind: 'fogli' as const, r: probe, sheets: 0 };
 			const want = qtyDaFare ? Math.ceil(qtyDaFare / probe.sheet.grid.n) : 0;
-			return { kind: 'fogli' as const, r: want ? layoutSheets(cutW, cutH, rules, { stripW: pageW, stripH: H, margin, marginY, sheetGap: sGap, sheets: want }) : probe, sheets: want };
+			return { kind: 'fogli' as const, r: want ? layoutSheets(cutW, cutH, rules, { stripW: pageW, stripH: H, margin, marginY, sheetGap: sGap, sheets: want, versoPezzi, versoFoglio }) : probe, sheets: want };
 		}
-		return { kind: 'sciolti' as const, r: layoutLoose(cutW, cutH, { stripW: pageW, stripH: H, margin, marginY, gap, qty: qtyDaFare }) };
+		return { kind: 'sciolti' as const, r: layoutLoose(cutW, cutH, { stripW: pageW, stripH: H, margin, marginY, gap, qty: qtyDaFare, verso: versoPezzi }) };
 	});
 	const strips = $derived<Strip[]>(plan?.r.ok ? plan.r.strips : []);
 	const preview = $derived(strips[0] ?? null);
@@ -582,21 +586,21 @@
 		const { buildPdf } = await import('$lib/studio/pdf');
 		const art = await artwork();
 		// si rifa' l'impaginazione con le misure esatte del tracciato
-		const H = Math.min(stripH || maxH, maxH);
+		const H = stripH > 0 ? stripH : maxH;
 		let pages: Strip[];
 		if (MULTI) {
-			const r = layoutLoose(art.cutW, art.cutH, { stripW: pageW, stripH: H, margin, marginY, gap: sGap, qty: qtyDaFare });
+			const r = layoutLoose(art.cutW, art.cutH, { stripW: pageW, stripH: H, margin, marginY, gap: sGap, qty: qtyDaFare, verso: versoFoglio });
 			if (!r.ok) throw new Error(r.error ?? 'Impaginazione non possibile');
 			/* ogni foglio porta il suo passante attorno */
 			pages = r.strips.map((pg) => ({ ...pg, sheets: pg.pieces.map((q) => ({ x: q.x, y: q.y, w: q.rot ? art.cutH : art.cutW, h: q.rot ? art.cutW : art.cutH, rot: q.rot })) }));
 		} else if (P.mode === 'fogli') {
 			const rules = SHEET_RULES[P.sheetRules ?? 'etichette'];
-			const probe = layoutSheets(art.cutW, art.cutH, rules, { stripW: pageW, stripH: H, margin, marginY, sheetGap: sGap, sheets: 0 });
+			const probe = layoutSheets(art.cutW, art.cutH, rules, { stripW: pageW, stripH: H, margin, marginY, sheetGap: sGap, sheets: 0, versoPezzi, versoFoglio });
 			if (!probe.ok || !probe.sheet) throw new Error(probe.error ?? 'Impaginazione non possibile');
 			const want = qtyDaFare ? Math.ceil(qtyDaFare / probe.sheet.grid.n) : 0;
-			pages = (want ? layoutSheets(art.cutW, art.cutH, rules, { stripW: pageW, stripH: H, margin, marginY, sheetGap: sGap, sheets: want }) : probe).strips;
+			pages = (want ? layoutSheets(art.cutW, art.cutH, rules, { stripW: pageW, stripH: H, margin, marginY, sheetGap: sGap, sheets: want, versoPezzi, versoFoglio }) : probe).strips;
 		} else {
-			const r = layoutLoose(art.cutW, art.cutH, { stripW: pageW, stripH: H, margin, marginY, gap, qty: qtyDaFare });
+			const r = layoutLoose(art.cutW, art.cutH, { stripW: pageW, stripH: H, margin, marginY, gap, qty: qtyDaFare, verso: versoPezzi });
 			if (!r.ok) throw new Error(r.error ?? 'Impaginazione non possibile');
 			pages = r.strips;
 		}
@@ -1005,8 +1009,28 @@
 						{/each}
 					</div>
 				</div>
-				<label class="st-field"><span>Altezza striscia (mm, max {maxH})</span><input class="input" type="number" min="50" max={maxH} step="1" bind:value={stripH} /></label>
+				<label class="st-field"><span>Altezza striscia (mm)</span><input class="input" type="number" min="50" step="1" bind:value={stripH} placeholder={String(maxH)} />
+					{#if stripH > maxH}<em class="st-hint st-hint--warn">oltre i {maxH} mm consigliati per {P.mode === 'fogli' ? 'i fogli' : 'gli adesivi'}: decidi tu fin dove spingerti</em>
+					{:else}<em class="st-hint">vuoto = {maxH} mm, il consigliato; puoi alzarla quanto vuoi</em>{/if}</label>
 				<label class="st-field"><span>{MULTI ? 'Fogli da stampare' : P.mode === 'fogli' ? 'Etichette da stampare' : 'Pezzi da stampare'} <em>(vuoto = una striscia piena)</em></span><input class="input" type="number" min="1" step="1" bind:value={qty} placeholder="riempi la striscia" />{#if qtyDaFare}<em class="st-hint">ne preparo {qtyDaFare}: l’8% in piu&#39; per gli scarti</em>{/if}</label>
+				<div class="st-block">
+					<p class="st-label">Verso sulla striscia</p>
+					<div class="st-chips">
+						<span class="st-note" style="width:100%">{P.mode === 'fogli' && !MULTI ? 'Etichette dentro il foglio' : MULTI ? 'Fogli sulla striscia' : 'Pezzi sulla striscia'}</span>
+						{#each [['auto', 'Automatico'], ['dritto', 'Dritti'], ['girato', 'Girati 90°']] as [v, lab] (v)}
+							<button type="button" class="st-chip" class:is-on={(MULTI ? versoFoglio : versoPezzi) === v} onclick={() => (MULTI ? (versoFoglio = v as Verso) : (versoPezzi = v as Verso))}>{lab}</button>
+						{/each}
+					</div>
+					{#if P.mode === 'fogli' && !MULTI}
+						<div class="st-chips" style="margin-top:6px">
+							<span class="st-note" style="width:100%">Foglio sulla striscia</span>
+							{#each [['auto', 'Automatico'], ['dritto', 'Dritto'], ['girato', 'Girato 90°']] as [v, lab] (v)}
+								<button type="button" class="st-chip" class:is-on={versoFoglio === v} onclick={() => (versoFoglio = v as Verso)}>{lab}</button>
+							{/each}
+						</div>
+					{/if}
+					<p class="st-note">Automatico sceglie il verso che rende di più; prova gli altri e guarda qui sotto quante strisce servono.</p>
+				</div>
 				<details class="st-adv">
 					<summary>Margini e spazi</summary>
 					<p class="st-note">Crocini e codice a barre Graphtec sempre presenti: pagina {pageW} mm, pezzi a {margin} mm dai lati e {marginY} mm da sopra e sotto.</p>
@@ -1036,13 +1060,16 @@
 						{/if}
 						<li>{strips.length} {strips.length === 1 ? 'striscia' : 'strisce'}, {strips.reduce((a, s) => a + s.pieces.length, 0)} {MULTI ? 'fogli' : 'pezzi'} in tutto · prima striscia {pageW} × {strips[0]?.h} mm</li>
 					</ul>
-					{#if P.mode === 'fogli'}
-						<p class="st-label">Taglio sul Graphtec</p>
-						<div class="st-chips">
+					<p class="st-label">Taglio sul Graphtec</p>
+					<div class="st-chips">
+						{#if P.mode === 'fogli'}
 							<button type="button" class="st-chip" class:is-on={cutMode === 'tutto'} onclick={() => (cutMode = 'tutto')}>Mezzo taglio + passante</button>
 							<button type="button" class="st-chip" class:is-on={cutMode === 'passante'} onclick={() => (cutMode = 'passante')}>Solo passante (verde)</button>
-						</div>
-					{/if}
+						{:else}
+							<span class="st-note" style="width:100%">Solo {P.pieceCut} · condizione {P.pieceCut === 'Passante' ? condThrough : condHalf}</span>
+						{/if}
+					</div>
+
 					<button type="button" class="btn btn--green st-act" disabled={!!busy || !strips.length} onclick={generaStriscia}>{busy === 'strip' ? 'Genero striscia e taglio…' : 'Genera striscia e taglio'}<small>{vwDir && vwStampante ? `stampa in coda sulla ${vwStampante}` : 'PDF da stampare'} + taglio in Data Link Server</small></button>
 
 					<div class="st-dls">
