@@ -180,12 +180,12 @@ export function shippingUpdateEmail(o: { kind: ShippingMailKind; name?: string |
 	return { subject: T.subject, tag: `shipping-${o.kind}`, html: layoutHtml(T.title, T.body + gif, { label: T.cta, href }) };
 }
 
-/** richiesta di recensione, 24 ore dopo la consegna (registrati e ospiti) */
+/** richiesta di recensione, poche ore dopo la consegna (registrati e ospiti) */
 export function reviewRequestEmail(o: { name?: string | null; number: string; items: (string | EmailItem)[]; href: string }) {
 	const n = esc(o.number);
 	/* una recensione per ordine: gli articoli sono elencati, il bottone giallo e' uno solo */
 	const list = itemsBlock(o.items.map((i) => (typeof i === 'string' ? { name: i } : { ...i, cta: undefined })));
-	const html = layoutHtml(`Il tuo ordine ${n} è ${hl('arrivato')} ⭐`, `<p>Ciao ${esc(o.name || '')},</p><p>ieri il corriere ti ha consegnato i tuoi adesivi. Ci racconti com'è andata? Bastano due righe e una stella da 1 a 5.</p><p>Una recensione sincera serve a noi per crescere e a chi deve ancora ordinare per sentirsi tranquillo prima di scegliere. Per ringraziarti, <b>appena la invii ricevi un codice sconto del 10% sul prossimo ordine</b> (valido 6 mesi, ordini da 50 €), qualunque voto tu dia.</p>${list}`, { label: '⭐ Scrivi recensione', href: o.href })
+	const html = layoutHtml(`Il tuo ordine ${n} è ${hl('arrivato')} ⭐`, `<p>Ciao ${esc(o.name || '')},</p><p>il corriere ti ha consegnato i tuoi adesivi. Ci racconti com'è andata? Bastano due righe e una stella da 1 a 5.</p><p>Una recensione sincera serve a noi per crescere e a chi deve ancora ordinare per sentirsi tranquillo prima di scegliere. Per ringraziarti, <b>appena la invii ricevi un codice sconto del 10% sul prossimo ordine</b> (valido 6 mesi, ordini da 50 €), qualunque voto tu dia.</p>${list}`, { label: '⭐ Scrivi recensione', href: o.href })
 		.replace('background:#0e8bff;color:#fff;', 'background:#f4b400;color:#0b0b3b;');
 	return { subject: `Com'è andata con l'ordine ${o.number}? ⭐ (c'è un 10% per te)`, tag: 'review-request', html };
 }
