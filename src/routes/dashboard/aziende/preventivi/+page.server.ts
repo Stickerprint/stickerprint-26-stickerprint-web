@@ -1,5 +1,5 @@
 import { fail } from '@sveltejs/kit';
-import { listQuotes, remindDueQuotes, remindQuote } from '$lib/server/richieste';
+import { deleteQuote, listQuotes, remindDueQuotes, remindQuote } from '$lib/server/richieste';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ url, locals: { supabase } }) => {
@@ -11,6 +11,11 @@ export const load: PageServerLoad = async ({ url, locals: { supabase } }) => {
 export const actions: Actions = {
 	sollecita: async ({ request, url, locals: { supabase } }) => {
 		const r = await remindQuote(supabase, String((await request.formData()).get('id')), url.origin);
+		return r.ok ? { ok: true, message: r.message } : fail(400, { error: r.message });
+	},
+	/** cancella un preventivo sbagliato (mai quelli gia' diventati ordine) */
+	elimina: async ({ request, locals: { supabase } }) => {
+		const r = await deleteQuote(supabase, String((await request.formData()).get('id')));
 		return r.ok ? { ok: true, message: r.message } : fail(400, { error: r.message });
 	}
 };

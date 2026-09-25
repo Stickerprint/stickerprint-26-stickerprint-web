@@ -5,6 +5,8 @@
 	import { money, dmy } from '$lib/dashboard/orders';
 	import { fmtAgo, fmtWhen } from '$lib/dashboard/produzione';
 	let { data, form } = $props();
+	/* cancellazione in due passaggi, senza finestrelle del browser */
+	let cancellare = $state(false);
 	const q = $derived(data.q);
 	const st = $derived(QUOTE_STATUS[q.status as QuoteStatus]);
 	const editable = $derived(q.status === 'bozza' || q.status === 'inviato');
@@ -66,6 +68,14 @@
 		{#if editable}<button class="btn btn--blue btn--xs" type="button" onclick={openSend}>✉ {q.status === 'inviato' ? 'Reinvia preventivo' : 'Invia preventivo'}</button>{/if}
 		<form method="POST" action="?/validita" use:enhance class="pr-machine"><label class="osub">Valido fino al <input type="date" name="valid_until" value={q.valid_until ?? ''} onchange={(e) => (e.currentTarget.form as HTMLFormElement).requestSubmit()} disabled={!editable} /></label></form>
 		<form method="POST" action="?/pdf" use:enhance><button class="btn btn--ghost btn--xs" type="submit">📄 Anteprima PDF</button></form>
+		{#if q.status !== 'ordinato' && !q.order_group}
+			{#if cancellare}
+				<form method="POST" action="?/elimina"><button class="btn btn--xs" style="background:#dc2626;color:#fff" type="submit">Sì, cancella {q.number}</button></form>
+				<button class="btn btn--ghost btn--xs" type="button" onclick={() => (cancellare = false)}>annulla</button>
+			{:else}
+				<button class="btn btn--ghost btn--xs" type="button" onclick={() => (cancellare = true)}>🗑 Cancella</button>
+			{/if}
+		{/if}
 		{#if q.status === 'inviato'}
 			<form method="POST" action="?/sollecita" use:enhance><button class="btn btn--ghost btn--xs" type="submit">⏰ Sollecita ora</button></form>
 			<form method="POST" action="?/stato" use:enhance><input type="hidden" name="status" value="accettato" /><input type="hidden" name="motivo" value="confermato a voce/email" /><button class="btn btn--ghost btn--xs" type="submit" title="Il cliente ha confermato per telefono o email">✓ Segna accettato</button></form>

@@ -6,6 +6,8 @@
 	import MonthBar from '$lib/components/dashboard/MonthBar.svelte';
 	import { fmtAgo } from '$lib/dashboard/produzione';
 	let { data, form } = $props();
+	/* cancellazione in due passaggi: si clicca il cestino e poi si conferma sulla riga */
+	let daCancellare = $state<string | null>(null);
 	const years = Array.from({ length: 4 }, (_, i) => new Date().getFullYear() - i);
 	const filter = $derived(page.url.searchParams.get('stato') ?? 'tutti');
 	/* come negli ordini: si parte dal mese in corso; riquadri, elenco e totali parlano di quel mese */
@@ -66,7 +68,22 @@
 						<td><span class="pill" style="background:{st.soft};color:{st.color}">{st.label}</span>{#if q.order_group}<div><a class="link" style="font-size:12px" href="/dashboard/fatturazione/ordini/{q.order_group}">ordine ›</a></div>{/if}</td>
 						<td>{dmy(q.valid_until)}</td>
 						<td>{#if q.sent_at}{fmtAgo(q.sent_at)}<div class="osub">{q.opened_count ? `👁 aperto ${q.opened_count}×, ${fmtAgo(q.opened_at ?? null)}` : 'mai aperto'}{#if q.pdf_downloaded_at} · 📄 PDF{/if}</div>{#if q.reminded_at}<div class="osub">sollecitato {fmtAgo(q.reminded_at)}</div>{/if}{:else}—{/if}</td>
-						<td style="white-space:nowrap"><a class="ibtn" href="/dashboard/aziende/preventivi/nuovo?da={q.id}" title="Duplica">⧉</a> {#if toRemind(q)}<form method="POST" action="?/sollecita" use:enhance style="display:inline"><input type="hidden" name="id" value={q.id} /><button class="btn btn--ghost btn--xs" type="submit">✉ Sollecita</button></form>{/if}</td>
+						<td style="white-space:nowrap">
+							<a class="ibtn" href="/dashboard/aziende/preventivi/nuovo?da={q.id}" title="Duplica">⧉</a>
+							{#if toRemind(q)}<form method="POST" action="?/sollecita" use:enhance style="display:inline"><input type="hidden" name="id" value={q.id} /><button class="btn btn--ghost btn--xs" type="submit">✉ Sollecita</button></form>{/if}
+							{#if q.status !== 'ordinato' && !q.order_group}
+								{#if daCancellare === q.id}
+									<!-- due passaggi invece della finestrella del browser: si vede cosa si sta per cancellare -->
+									<form method="POST" action="?/elimina" use:enhance={() => async ({ update }) => { daCancellare = null; await update(); }} style="display:inline">
+										<input type="hidden" name="id" value={q.id} />
+										<button class="btn btn--xs" style="background:#dc2626;color:#fff" type="submit">Sì, cancella {q.number}</button>
+									</form>
+									<button class="btn btn--ghost btn--xs" type="button" onclick={() => (daCancellare = null)}>annulla</button>
+								{:else}
+									<button class="ibtn" type="button" title="Cancella il preventivo" onclick={() => (daCancellare = q.id)}>🗑</button>
+								{/if}
+							{/if}
+						</td>
 					</tr>
 				{/each}
 			</tbody>

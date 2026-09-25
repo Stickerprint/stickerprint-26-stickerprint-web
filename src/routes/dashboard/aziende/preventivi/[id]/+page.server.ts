@@ -1,6 +1,6 @@
 import { error, fail, redirect } from '@sveltejs/kit';
 import { loadEditorData, parseDraft, upsertContact } from '$lib/server/orders';
-import { getQuote, loadQuoteMessages, markQuoteRead, newQuoteVersion, orderFromQuote, quotePdf, remindQuote, replyQuote, saveQuote, sendQuote, setQuoteStatus, setQuoteValidity, toB64 } from '$lib/server/richieste';
+import { deleteQuote, getQuote, loadQuoteMessages, markQuoteRead, newQuoteVersion, orderFromQuote, quotePdf, remindQuote, replyQuote, saveQuote, sendQuote, setQuoteStatus, setQuoteValidity, toB64 } from '$lib/server/richieste';
 import { listTemplates } from '$lib/server/helpdesk';
 import { operatorName } from '$lib/server/produzione';
 import type { Actions, PageServerLoad } from './$types';
@@ -21,6 +21,12 @@ export const load: PageServerLoad = async ({ params, url, locals: { supabase, us
 };
 
 export const actions: Actions = {
+	/** cancella il preventivo sbagliato e torna all'elenco */
+	elimina: async ({ params, locals: { supabase } }) => {
+		const r = await deleteQuote(supabase, params.id);
+		if (!r.ok) return fail(400, { error: r.message });
+		redirect(303, '/dashboard/aziende/preventivi');
+	},
 	save: async ({ request, params, locals: { supabase } }) => {
 		const d = parseDraft((await request.formData()).get('payload'));
 		if (!d) return fail(400, { error: 'Dati non leggibili.' });
