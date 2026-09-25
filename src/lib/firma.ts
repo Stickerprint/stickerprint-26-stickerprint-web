@@ -61,15 +61,21 @@ export function firmaHtml(d: DatiFirma): string {
 				<div style="font:800 14px/1.4 Arial,Helvetica,sans-serif;padding-top:4px;">
 					<span style="color:${C.azzurro};">Stickerprint</span> <span style="color:${C.navy};">${esc(d.ruolo)}</span>
 				</div>
+				<img src="${esc(assets)}/images/firma-riga-gialla.png" width="${Math.round(88 + d.ruolo.length * 7.6)}" height="8" alt="" style="display:block;border:0;margin:-3px 0 0;width:${Math.round(88 + d.ruolo.length * 7.6)}px;height:8px;">
 				<div style="font:400 13px/1.7 Arial,Helvetica,sans-serif;padding-top:7px;">
-					<a href="mailto:${esc(d.email)}" style="color:${C.navy};text-decoration:none;font-weight:700;">${esc(d.email)}</a><br>
+					<a href="mailto:${esc(d.email)}" style="color:${C.navy};text-decoration:none;font-weight:700;">${esc(d.email)}</a>
+					<span style="color:${C.linea};">&nbsp;|&nbsp;</span>
 					<a href="${esc(sito)}" style="color:${C.azzurro};text-decoration:none;font-weight:700;">${esc(dominio)}</a>
 				</div>
-				${wa ? `<div style="padding-top:12px;">${bottone('💬  Scrivimi su WhatsApp', `https://wa.me/${wa}`, '#25d366', '#062b12')}</div>` : ''}
-				${r ? `<div style="padding-top:10px;font:800 13px/1.3 Arial,Helvetica,sans-serif;color:${C.navy};">
-					<span style="color:${C.giallo};font-size:16px;letter-spacing:1px;">${stelline(r.media)}</span>&nbsp; ${r.media.toFixed(1).replace('.', ',')}/5
-					<span style="font-weight:400;color:${C.grigio};">· Recensioni verificate</span>
-				</div>` : ''}
+				${wa || r ? `<table cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;margin-top:12px;">
+					<tr>
+						${wa ? `<td style="vertical-align:middle;padding:0 14px 0 0;">${bottone('💬  WhatsApp', `https://wa.me/${wa}`, '#25d366', '#062b12')}</td>` : ''}
+						${r ? `<td style="vertical-align:middle;font:800 13px/1.3 Arial,Helvetica,sans-serif;color:${C.navy};white-space:nowrap;">
+							<span style="color:${C.giallo};font-size:16px;letter-spacing:1px;">${stelline(r.media)}</span>&nbsp; ${r.media.toFixed(1).replace('.', ',')}/5
+							<span style="font-weight:400;color:${C.grigio};">· Recensioni verificate</span>
+						</td>` : ''}
+					</tr>
+				</table>` : ''}
 			</td>
 		</tr>
 	</table>
@@ -77,7 +83,8 @@ export function firmaHtml(d: DatiFirma): string {
 
 <tr><td style="padding:0 0 12px;font:400 13px/1.55 Arial,Helvetica,sans-serif;color:${C.navy};">
 	<span style="font-size:17px;">🥇</span> <b style="background:#ffe9a8;padding:3px 8px;border-radius:6px;">1ª scelta per adesivi premium</b><br>
-	<span style="color:${C.grigio};">${esc(claim)}</span>
+	<span style="color:${C.navy};font-weight:700;">${esc(claim)}</span><br>
+	<img src="${esc(assets)}/images/firma-riga-azzurra.png" width="${Math.round(claim.length * 6.4)}" height="7" alt="" style="display:block;border:0;margin:-2px 0 0;width:${Math.round(claim.length * 6.4)}px;height:7px;">
 </td></tr>
 
 <tr><td style="padding:0 0 12px;">
