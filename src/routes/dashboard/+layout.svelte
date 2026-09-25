@@ -37,7 +37,8 @@
 			{ label: 'Fatture', href: '/dashboard/fatturazione/fatture', count: data.counts?.fatture }
 		] },
 		{ id: 'anagrafica', title: 'Anagrafica', items: [
-			{ label: 'Clienti', href: '/dashboard/anagrafica/clienti' }
+			{ label: 'Clienti', href: '/dashboard/anagrafica/clienti' },
+			{ label: 'Firma email', href: '/dashboard/firma' }
 		] },
 		{ id: 'marketing', title: 'Marketing', items: [
 			// Dati dalla dashboard PERIZ Marketing (src/lib/server/periz.ts)
