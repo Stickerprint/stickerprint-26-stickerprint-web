@@ -60,11 +60,25 @@ export function draftFromRequest(r: ContactRequest): OrderDraft {
 }
 
 /* ---------- preventivi ---------- */
+/** La numerazione dei preventivi continua quella che l'azienda usava prima (Mattia, 25/09/2026):
+ *  dopo i preventivi di prova si riparte da 581, e il numero NON si azzera a inizio anno. */
+export const SEQ_BASE = 580;
 async function nextQuoteNumber(db: DB): Promise<{ year: number; seq: number; number: string }> {
 	const year = new Date().getFullYear();
-	const { data } = await db.from('quotes').select('seq').eq('year', year).order('seq', { ascending: false }).limit(1).maybeSingle();
-	const seq = (Number(data?.seq) || 0) + 1;
+	const { data } = await db.from('quotes').select('seq').order('seq', { ascending: false }).limit(1).maybeSingle();
+	const seq = Math.max(Number(data?.seq) || 0, SEQ_BASE) + 1;
 	return { year, seq, number: `SPP${String(seq).padStart(5, '0')}` };
+}
+
+/** Cancella un preventivo sbagliato. Non si cancella quello gia' diventato ordine. */
+export async function deleteQuote(db: DB, id: string): Promise<{ ok: boolean; message: string }> {
+	const q = await getQuote(db, id);
+	if (!q) return { ok: false, message: 'Preventivo non trovato.' };
+	if (q.status === 'ordinato' || q.order_group) return { ok: false, message: `Il preventivo ${q.number} è già diventato un ordine: non si può cancellare.` };
+	await db.from('contact_requests').update({ quote_id: null }).eq('quote_id', id);
+	const { error } = await db.from('quotes').delete().eq('id', id);
+	if (error) return { ok: false, message: error.message };
+	return { ok: true, message: `Preventivo ${q.number} cancellato.` };
 }
 export async function listQuotes(db: DB, year: number): Promise<Quote[]> {
 	// i preventivi inviati oltre la validita' diventano scaduti
