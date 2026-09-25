@@ -11,6 +11,7 @@
 	let email = $state(data.io.email || 'info@stickerprint.it');
 	let conStelle = $state(true);
 	let claim = $state('Prodotti con cura nel nostro laboratorio');
+	let whatsapp = $state('');
 	/* le sedi: la prima arriva dai dati di fatturazione, la seconda e' quella americana */
 	let sedeIt = $state(data.sedeIt);
 	let sedeUs = $state('18 Bridge Street 2A - 11201 Brooklyn (NY)');
@@ -20,6 +21,7 @@
 	const html = $derived(
 		firmaHtml({
 			nome, ruolo, email, sito, assets, claim,
+			whatsapp: whatsapp || undefined,
 			sedi: [
 				{ nome: nomeIt, indirizzo: sedeIt },
 				...(sedeUs.trim() ? [{ nome: nomeUs, indirizzo: sedeUs }] : [])
@@ -61,7 +63,8 @@
 		<label class="fi-f"><span>Nome e cognome</span><input bind:value={nome} /></label>
 		<label class="fi-f"><span>Ruolo</span><input bind:value={ruolo} /></label>
 		<label class="fi-f"><span>Email</span><input bind:value={email} /></label>
-		<label class="fi-f"><span>Frase sotto le stelle</span><input bind:value={claim} /></label>
+		<label class="fi-f"><span>Frase in evidenza</span><input bind:value={claim} /></label>
+		<label class="fi-f"><span>WhatsApp <em>(vuoto = niente bottone)</em></span><input bind:value={whatsapp} placeholder="+39 351 8000437" /></label>
 		<h3>Sedi</h3>
 		<label class="fi-f"><span>Italia · nome</span><input bind:value={nomeIt} /></label>
 		<label class="fi-f"><span>Italia · indirizzo</span><input bind:value={sedeIt} /></label>
