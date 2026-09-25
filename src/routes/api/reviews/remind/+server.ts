@@ -9,8 +9,11 @@ import { createReviewRequest } from '$lib/server/recensioni';
 import type { RequestHandler } from './$types';
 
 /**
- * Ogni giorno (cron Vercel alle 9): agli ordini consegnati da almeno 24 ore e non ancora contattati
- * si manda la richiesta di recensione. Registrati → area personale; ospiti → pagina /recensione/<id ordine>.
+ * DUE GIRI AL GIORNO (Mattia, 25/09/2026): i corrieri consegnano nelle fasce 9-12 e 13-16, quindi il
+ * controllo gira alle 10 e alle 14 UTC — le 12 e le 16 italiane con l'ora legale — e manda subito la
+ * richiesta a chi ha ricevuto il pacco in quella fascia.
+ * Si scrive agli ordini consegnati da almeno mezz'ora (il tempo che il corriere registri la consegna)
+ * e non ancora contattati. Registrati → area personale; ospiti → pagina /recensione/<id ordine>.
  */
 export const GET: RequestHandler = async ({ request, url }) => {
 	const auth = request.headers.get('authorization') ?? '';
@@ -18,7 +21,8 @@ export const GET: RequestHandler = async ({ request, url }) => {
 	if (!ok) return json({ error: 'unauthorized' }, { status: 401 });
 	if (!env.SUPABASE_SERVICE_ROLE_KEY) return json({ skipped: true });
 	const db = createClient(PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
-	const limit = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+	/* mezz'ora: la consegna delle 11:40 entra nel giro delle 12 */
+	const limit = new Date(Date.now() - 30 * 60 * 1000).toISOString();
 	/* DUE PROTEZIONI (dopo l'errore del 19-20/09/2026, quando il cron appena attivato ha scritto a 176 ordini importati dal vecchio sito):
 	   1. mai gli ordini importati dal vecchio sito (legacy_id valorizzato): quei clienti hanno gia' avuto la loro richiesta a suo tempo;
 	   2. mai consegne piu' vecchie di 14 giorni: se il cron resta fermo per un periodo, alla ripresa non recupera l'arretrato. */
