@@ -15,8 +15,8 @@
 	/* le sedi: la prima arriva dai dati di fatturazione, la seconda e' quella americana */
 	let sedeIt = $state(data.sedeIt);
 	let sedeUs = $state('18 Bridge Street 2A - 11201 Brooklyn (NY)');
-	let nomeIt = $state('Stickerprint Italy Srl');
-	let nomeUs = $state('Stickerprint North America Inc');
+	let nomeIt = $state('🇮🇹 Stickerprint Srl');
+	let nomeUs = $state('🇺🇸 Stickerprint North America Inc');
 
 	const html = $derived(
 		firmaHtml({
