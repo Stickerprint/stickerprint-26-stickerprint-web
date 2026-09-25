@@ -34,7 +34,8 @@ export const actions: Actions = {
 		const category_id = String(f.get('category_id') ?? '');
 		if (!q || !a) return fail(400, { error: 'Servono sia la domanda sia la risposta.' });
 		if (!category_id) return fail(400, { error: 'Scegli la categoria.' });
-		const row = { q, a, category_id, sort: Number(f.get('sort') ?? 0) || 0, active: f.get('active') !== 'off', updated_at: new Date().toISOString() };
+		const products = f.getAll('products').map(String).filter(Boolean);
+		const row = { q, a, category_id, sort: Number(f.get('sort') ?? 0) || 0, active: f.get('active') === 'on', products, updated_at: new Date().toISOString() };
 		const { error } = id ? await supabase.from('faq_items').update(row).eq('id', id) : await supabase.from('faq_items').insert(row);
 		if (error) return fail(400, { error: error.message });
 		invalidateFaq();

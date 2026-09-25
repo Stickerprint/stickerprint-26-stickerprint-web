@@ -9,6 +9,7 @@
 	const cats = $derived(data.categories as FaqCategory[]);
 	const cat = $derived(cats[cur] ?? null);
 	const PRODOTTI = [...PRODUCT_ENGINES, { slug: 'fogli_adesivi', name: 'Fogli di adesivi' }, { slug: 'vetrofanie', name: 'Vetrofanie' }].filter((p, i, a) => a.findIndex((x) => x.slug === p.slug) === i);
+	const PRODOTTI_FAQ = [...PRODOTTI, { slug: 'kit_adesivi', name: 'Kit di adesivi' }].filter((p, i, a) => a.findIndex((x) => x.slug === p.slug) === i);
 	const chiudi = () => async ({ update }: { update: () => Promise<void> }) => { await update(); editCat = null; editItem = null; };
 </script>
 
@@ -16,7 +17,7 @@
 
 <div>
 	<h1>Domande frequenti</h1>
-	<p class="lead">Categorie e domande della pagina <a href="/support" target="_blank">Supporto</a>. Una categoria collegata a un prodotto compare anche in fondo alla pagina di quel prodotto.</p>
+	<p class="lead">Categorie e domande della pagina <a href="/support" target="_blank">Supporto</a>. Ogni domanda può essere spuntata per una o più pagine prodotto: lì compare in fondo alla pagina; senza spunte resta solo in Supporto.</p>
 </div>
 
 {#if form?.error}<p class="error">{form.error}</p>{/if}
@@ -41,7 +42,12 @@
 		<label style="grid-column:1/-1">Domanda<input name="q" required value={it?.q ?? ''} /></label>
 		<label style="grid-column:1/-1">Risposta<textarea name="a" rows="4" required>{it?.a ?? ''}</textarea></label>
 		<label>Ordine<input name="sort" type="number" value={it?.sort ?? 0} /></label>
-		<label>Visibile<select name="active"><option value="on" selected={it?.active ?? true}>Sì</option><option value="off" selected={it ? !it.active : false}>No</option></select></label>
+		<label style="display:flex;align-items:center;gap:8px"><input type="checkbox" name="active" checked={it?.active ?? true} /> Visibile</label>
+		<fieldset class="faq-prod" style="grid-column:1/-1">
+			<legend>Mostra anche nella pagina prodotto</legend>
+			<div class="faq-prod__list">{#each PRODOTTI_FAQ as p (p.slug)}<label><input type="checkbox" name="products" value={p.slug} checked={it?.products?.includes(p.slug) ?? false} /> {p.name}</label>{/each}</div>
+			<small class="osub">Senza spunte la domanda compare solo in Supporto. Con la spunta compare in fondo a quella pagina prodotto.</small>
+		</fieldset>
 		<div style="grid-column:1/-1;display:flex;gap:8px"><button class="btn btn--blue btn--sm" type="submit">Salva</button><button class="btn btn--ghost btn--sm" type="button" onclick={() => (editItem = null)}>Annulla</button></div>
 	</form>
 {/snippet}
@@ -78,7 +84,7 @@
 							<td><b>{it.q}</b></td>
 							<td style="max-width:520px;color:var(--muted);font-size:13px">{it.a.length > 160 ? it.a.slice(0, 160) + '…' : it.a}</td>
 							<td>{it.sort}</td>
-							<td>{#if it.active}<span class="pill pill--on">Visibile</span>{:else}<span class="pill pill--off">Nascosta</span>{/if}</td>
+							<td>{#if it.active}<span class="pill pill--on">Visibile</span>{:else}<span class="pill pill--off">Nascosta</span>{/if}{#if it.products?.length}<div class="osub">{it.products.map((s) => PRODOTTI_FAQ.find((p) => p.slug === s)?.name ?? s).join(', ')}</div>{:else}<div class="osub">solo Supporto</div>{/if}</td>
 							<td style="white-space:nowrap">
 								<button class="btn btn--ghost btn--xs" type="button" onclick={() => (editItem = editItem === it.id ? null : it.id)}>Modifica</button>
 								<form method="POST" action="?/deleteItem" use:enhance style="display:inline" onsubmit={(e) => { if (!confirm('Eliminare questa domanda?')) e.preventDefault(); }}><input type="hidden" name="id" value={it.id} /><button class="btn btn--ghost btn--xs" type="submit">Elimina</button></form>
@@ -91,3 +97,10 @@
 		{/if}
 	</div>
 {/if}
+
+<style>
+	.faq-prod { border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; }
+	.faq-prod legend { font-weight: 700; font-size: 13px; padding: 0 6px; }
+	.faq-prod__list { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 4px 0 6px; }
+	.faq-prod__list label { display: inline-flex; align-items: center; gap: 6px; font-size: 13.5px; }
+</style>
