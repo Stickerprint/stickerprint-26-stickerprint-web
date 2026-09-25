@@ -122,7 +122,10 @@
 					</td>
 					<td style="white-space:nowrap">
 						{#if c === 'qapla'}
-							{#if !f.ddt_id}
+							{#if !needsDdt(g)}
+								<!-- e-commerce gia' pagato e fatturato: si invia subito, senza popup (1 collo, corriere predefinito; si cambia dopo da Ordini spediti) -->
+								<form method="POST" action="?/qapla" use:enhance={() => { sending = g.key; return async ({ update }) => { sending = null; await update(); }; }} style="display:inline"><input type="hidden" name="group" value={g.key} /><input type="hidden" name="courier" value={qaplaCourier} /><button class="btn btn--blue btn--xs" type="submit" disabled={sending === g.key} title="Invia subito a Qapla (ordine già fatturato)">{sending === g.key ? '…' : '📦 Invia a Qapla'}</button></form>
+							{:else if !f.ddt_id}
 								<button type="button" class="btn btn--blue btn--xs" title="Colli, peso e quantità spedite, poi DDT e invio a Qapla" onclick={() => openDdt(g, 'qapla')}>📦 Invia a Qapla</button>
 							{:else}
 								<form method="POST" action="?/qapla" use:enhance={() => { sending = g.key; return async ({ update }) => { sending = null; await update(); }; }}><input type="hidden" name="group" value={g.key} /><button class="btn btn--blue btn--xs" type="submit" disabled={sending === g.key} title="Trasmette l'ordine a Qapla e avvisa il cliente">{sending === g.key ? '…' : '📦 Invia a Qapla'}</button></form>
