@@ -7,6 +7,7 @@
 	import { STRIP_MATERIALS, SHEET_RULES, layoutLoose, layoutSheets, type Strip, type Verso } from '$lib/studio/layout';
 	import { MARKED_MARGIN, pageWidthFor, DEFAULT_COND, markRects, barcodeRects } from '$lib/studio/graphtec';
 	import { pickDataLink, savedDataLink, grantDataLink, takenJobIds, writeXpf, type DataLinkDir } from '$lib/studio/datalink';
+	import { pickArchivio, savedArchivio, grantArchivio, salvaNellArchivio, type ArchivioDir } from '$lib/studio/archivio';
 	import { pickVersaworks, savedVersaworks, grantVersaworks, stampanti, mappaSalvata, salvaMappa, inviaAStampante, RUOLO_LABEL, type VwDir, type Ruolo as VwRuolo } from '$lib/studio/versaworks';
 	import { SPOTS } from '$lib/studio/spots';
 
@@ -299,7 +300,10 @@
 
 	const safe = (s: string) => (s || 'lavoro').replace(/[^\w\-]+/g, '_').replace(/_+/g, '_').slice(0, 60);
 	const sizeTag = () => `${(engCut?.w ?? (cavallotto ? KIT_CAVALLOTTO.w : w)).toFixed(0)}x${(engCut?.h ?? (cavallotto ? KIT_CAVALLOTTO.h : h)).toFixed(0)}mm`;
-	const baseName = () => `${safe(jobName)}_${P.id}${cavallotto ? '_cavallotto' : ''}_${sizeTag()}`;
+	/* i file di produzione portano SOLO il numero d'ordine (Mattia, 26/9): SP00355.pdf, SP00355.xpf.
+	   Senza ordine (lavoro sciolto) resta il nome del lavoro con misura e prodotto. */
+	const numeroOrdine = $derived(ORD?.number ?? '');
+	const baseName = () => (numeroOrdine ? safe(numeroOrdine) : `${safe(jobName)}_${P.id}${cavallotto ? '_cavallotto' : ''}_${sizeTag()}`);
 
 	function download(blob: Blob, name: string) {
 		const url = URL.createObjectURL(blob);
@@ -475,7 +479,11 @@
 		/* foglio di adesivi: attorno al foglio ci va il passante */
 		if (MULTI) pagina.sheets = [{ x: art.bleed, y: art.bleed, w: art.cutW, h: art.cutH, rot: false }];
 		const bytes = await buildPdf({ title: `${jobName} — stampa e taglio`, art, pages: [pagina], pieceCut: P.pieceCut, sheetCut: MULTI ? P.sheetCut : undefined });
-		download(new Blob([bytes as BlobPart], { type: 'application/pdf' }), `${baseName()}_stampa-taglio.pdf`);
+		/* il PDF del pezzo singolo: con l'ordine si chiama come lui, con la parola che lo distingue
+		   dall'impaginato che va in macchina */
+		const nome = numeroOrdine ? `${baseName()}_singolo.pdf` : `${baseName()}_stampa-taglio.pdf`;
+		download(new Blob([bytes as BlobPart], { type: 'application/pdf' }), nome);
+		await archivia(nome, bytes);
 	});
 
 	/* ------------------------------------------------------------ file pronto dell'azienda */
@@ -647,7 +655,9 @@
 		const n = pages.reduce((a, s) => a + s.pieces.length, 0);
 		lastJob = { ids, pages, art: { pathD: art.pathD, cutW: art.cutW, cutH: art.cutH }, name: baseName() };
 		sent = '';
-		const nomePdf = `${baseName()}_striscia-${mat.width / 10}cm_${n}pz${pages.length > 1 ? `_${pages.length}strisce` : ''}.pdf`;
+		const nomePdf = numeroOrdine
+			? `${baseName()}.pdf`
+			: `${baseName()}_striscia-${mat.width / 10}cm_${n}pz${pages.length > 1 ? `_${pages.length}strisce` : ''}.pdf`;
 		/* la stampa va in coda sulla Roland; il PDF si scarica lo stesso, come riserva */
 		vwInviato = ''; vwErr = '';
 		if (vwDir && vwStampante) {
@@ -655,8 +665,31 @@
 			catch (e) { vwErr = e instanceof Error ? e.message : String(e); }
 		}
 		download(new Blob([bytes as BlobPart], { type: 'application/pdf' }), nomePdf);
+		await archivia(nomePdf, bytes);
 		await consegnaTaglio(dir);
 	});
+
+	/* ------------------------------------------------------------ archivio dei lavori */
+	/* una cartella per ogni ordine con dentro il file del cliente, l'impaginato e il taglio */
+	let arcDir = $state<ArchivioDir | null>(null);
+	let arcErr = $state('');
+	let arcFatti = $state<string[]>([]);
+	onMount(async () => { try { arcDir = await savedArchivio(); } catch { /* nessuna cartella salvata */ } });
+	async function sceglieArchivio() {
+		arcErr = '';
+		try { arcDir = await pickArchivio(); } catch (e) { if (e instanceof Error && e.name !== 'AbortError') arcErr = e.message; }
+	}
+	/** mette nell'archivio dell'ordine il file del cliente e quelli generati */
+	async function archivia(nome: string, dati: Uint8Array | Blob) {
+		if (!arcDir || !numeroOrdine) return;
+		try {
+			arcFatti = [...arcFatti, await salvaNellArchivio(arcDir, numeroOrdine, nome, dati)];
+			/* il file del cliente si copia una volta sola, la prima volta che si genera qualcosa */
+			if (file && !arcFatti.some((x) => x.includes('/originale_'))) {
+				arcFatti = [...arcFatti, await salvaNellArchivio(arcDir, numeroOrdine, `originale_${file.name}`, file)];
+			}
+		} catch (e) { arcErr = e instanceof Error ? e.message : String(e); }
+	}
 
 	/* ------------------------------------------------------------ Roland (VersaWorks) */
 	/* la striscia va nella coda A della stampante giusta: UV per gli adesivi senza laminazione e per
@@ -724,6 +757,7 @@
 	/* cartella pronta con il permesso: si chiede per prima cosa, finche' vale il clic dell'operatore */
 	async function cartellaPronta(): Promise<DataLinkDir | null> {
 		if (vwDir) await grantVersaworks(vwDir);
+		if (arcDir) await grantArchivio(arcDir);
 		if (!dlDir) await sceglieCartella();
 		if (!dlDir) return null;
 		return (await grantDataLink(dlDir)) ? dlDir : null;
@@ -735,12 +769,22 @@
 		const jobs = xpfJobs();
 		if (dir) {
 			try {
-				for (const j of jobs) await writeXpf(dir, `SP_${j.id}.xpf`, buildXpf(j));
+				for (const [i, j] of jobs.entries()) {
+					const x = buildXpf(j);
+					const nome = numeroOrdine ? `${baseName()}${jobs.length > 1 ? `-${i + 1}` : ''}.xpf` : `SP_${j.id}.xpf`;
+					await writeXpf(dir, nome, x);
+					await archivia(nome, x);
+				}
 				sent = `Taglio in Data Link Server: ${jobs.map((j) => j.id).join(', ')}. Stampa la striscia e fai leggere il codice a barre.`;
 				return;
 			} catch (e) { sentErr = `Non riesco a scrivere nella cartella di Data Link Server (${e instanceof Error ? e.message : e}).`; }
 		} else sentErr = 'Cartella di Data Link Server non collegata.';
-		for (const j of jobs) download(new Blob([buildXpf(j) as BlobPart], { type: 'application/octet-stream' }), `SP_${j.id}.xpf`);
+		for (const [i, j] of jobs.entries()) {
+			const x = buildXpf(j);
+			const nome = numeroOrdine ? `${baseName()}${jobs.length > 1 ? `-${i + 1}` : ''}.xpf` : `SP_${j.id}.xpf`;
+			download(new Blob([x as BlobPart], { type: 'application/octet-stream' }), nome);
+			await archivia(nome, x);
+		}
 		sentErr += ' Ho scaricato il file di taglio: mettilo nella cartella cut_jobs.';
 	}
 	/* rimanda lo stesso taglio (es. cambiato mezzo taglio/passante): stesso codice, stessa striscia stampata */
@@ -1107,6 +1151,15 @@
 					<button type="button" class="btn btn--green st-act" disabled={!!busy || !strips.length} onclick={generaStriscia}>{busy === 'strip' ? 'Genero striscia e taglio…' : 'Genera striscia e taglio'}<small>{vwDir && vwStampante ? `stampa in coda sulla ${vwStampante}` : 'PDF da stampare'} + taglio in Data Link Server</small></button>
 
 					<div class="st-dls">
+						<p class="st-label">Archivio dei lavori</p>
+						{#if !arcDir}
+							<p class="st-note">Posso tenere in una cartella di rete, per ogni ordine, il file del cliente + l’impaginato + il taglio. <button type="button" class="st-link" onclick={sceglieArchivio}>collega la cartella</button></p>
+						{:else}
+							<p class="st-note">{numeroOrdine ? `I file finiscono nella cartella ${numeroOrdine}.` : 'Serve un ordine: i lavori sciolti non vengono archiviati.'} <button type="button" class="st-link" onclick={sceglieArchivio}>cambia cartella</button></p>
+						{/if}
+						{#if arcFatti.length}<p class="st-ok">✓ Archiviati: {arcFatti.join(' · ')}</p>{/if}
+						{#if arcErr}<p class="st-err">{arcErr}</p>{/if}
+
 						<p class="st-label">Stampa sulla Roland</p>
 						{#if !vwDir}
 							<p class="st-note">La striscia può andare direttamente in coda su VersaWorks. <button type="button" class="st-link" onclick={sceglieVersaworks}>collega la cartella delle stampanti</button></p>
