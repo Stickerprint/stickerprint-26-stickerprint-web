@@ -95,10 +95,10 @@
 	/* stato: carico il file -> rimetto le regolazioni approvate -> confronto il tracciato */
 	let ordStato = $state<'' | 'carico' | 'applico' | 'identico' | 'diverso' | 'senza' | 'prova' | 'errore'>('');
 	let ordErr = $state('');
-	/* Cosa si apre dall'ordine: la PROVA approvata dal cliente (l'immagine che ha visto e confermato)
-	   oppure il file originale con le regolazioni salvate. La prova e' la scelta giusta quasi sempre:
-	   e' gia' scontornata e la sua sagoma e' esattamente quella approvata. */
-	let fonteOrdine = $state<'prova' | 'originale'>(data.order?.previewUrl ? 'prova' : 'originale');
+	/* Cosa si apre dall'ordine: SEMPRE il file originale del cliente con le regolazioni approvate
+	   (Mattia, 26/09/2026: la prova puo' contenere errori, si riparte dall'originale).
+	   La prova resta a portata di clic, per confrontare. */
+	let fonteOrdine = $state<'prova' | 'originale'>(data.order?.fileUrl ? 'originale' : 'prova');
 	onMount(() => { void caricaOrdine(fonteOrdine); });
 
 	async function caricaOrdine(quale: 'prova' | 'originale') {
@@ -790,11 +790,11 @@
 			<div class="st-ord__txt">
 				<p class="st-ord__t">Ordine <b>{ORD.number}</b> · {ORD.productName} · {ORD.qty} pz · {ORD.w}×{ORD.h} mm</p>
 				<div class="st-chips st-ord__scelta">
-					<button type="button" class="st-chip" class:is-on={fonteOrdine === 'prova'} disabled={!ORD.previewUrl} onclick={() => caricaOrdine('prova')}>Prova approvata dal cliente</button>
 					<button type="button" class="st-chip" class:is-on={fonteOrdine === 'originale'} disabled={!ORD.fileUrl} onclick={() => caricaOrdine('originale')}>File originale del cliente</button>
+					<button type="button" class="st-chip" class:is-on={fonteOrdine === 'prova'} disabled={!ORD.previewUrl} onclick={() => caricaOrdine('prova')}>Apri la prova (solo per confronto)</button>
 				</div>
 				<p class="st-ord__s">
-					{#if ordStato === 'prova'}✓ Aperta la <b>prova approvata</b>: la sagoma è quella che il cliente ha confermato, con il suo bordo. Il taglio segue quel profilo.
+					{#if ordStato === 'prova'}Aperta la <b>prova</b> al posto del file originale: serve solo per confrontare, il taglio segue il profilo della prova.
 					{:else if ordStato === 'carico'}Carico il file…
 					{:else if ordStato === 'applico'}Rimetto le regolazioni approvate dal cliente…
 					{:else if ordStato === 'identico'}✓ Regolazioni del cliente applicate: il tracciato è <b>identico</b> a quello che ha approvato.
