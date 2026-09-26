@@ -25,7 +25,7 @@
 	let dragging = $state(false);
 	let fileInput = $state<HTMLInputElement | undefined>();
 	let colInput = $state<HTMLInputElement | undefined>();
-	let engine = $state<{ post: (type: string, detail?: Record<string, unknown>) => void; studio: (what: 'mockup' | 'print' | 'geom' | 'applica' | 'stato' | 'soggetti' | 'rilievo', opts?: Record<string, unknown>) => Promise<{ blob?: Blob; glossD?: string; zone?: number; nodi?: number; soggetti?: { pathD: string; x: number; y: number; w: number; h: number; nodi: number }[]; foglio?: { w: number; h: number }; unione?: number; cutW?: number; cutH?: number; bleed?: number; pathD?: string; polys?: [number, number][][] | null; shape?: string; dpi?: number; border?: number }> }>();
+	let engine = $state<{ post: (type: string, detail?: Record<string, unknown>) => void; studio: (what: 'mockup' | 'print' | 'geom' | 'applica' | 'stato' | 'soggetti' | 'rilievo', opts?: Record<string, unknown>) => Promise<{ blob?: Blob; stato?: Record<string, unknown>; glossD?: string; zone?: number; nodi?: number; soggetti?: { pathD: string; x: number; y: number; w: number; h: number; nodi: number }[]; foglio?: { w: number; h: number }; unione?: number; cutW?: number; cutH?: number; bleed?: number; pathD?: string; polys?: [number, number][][] | null; shape?: string; dpi?: number; border?: number }> }>();
 
 	/* kit: si lavora un adesivo del kit oppure il cavallotto */
 	let pezzo = $state<'adesivo' | 'cavallotto'>('adesivo');
@@ -93,18 +93,31 @@
 
 	/* ------------------------------------------------------------ ordine dalla dashboard */
 	/* stato: carico il file -> rimetto le regolazioni approvate -> confronto il tracciato */
-	let ordStato = $state<'' | 'carico' | 'applico' | 'identico' | 'diverso' | 'senza' | 'errore'>('');
+	let ordStato = $state<'' | 'carico' | 'applico' | 'identico' | 'diverso' | 'senza' | 'prova' | 'errore'>('');
 	let ordErr = $state('');
-	onMount(async () => {
+	/* Cosa si apre dall'ordine: la PROVA approvata dal cliente (l'immagine che ha visto e confermato)
+	   oppure il file originale con le regolazioni salvate. La prova e' la scelta giusta quasi sempre:
+	   e' gia' scontornata e la sua sagoma e' esattamente quella approvata. */
+	let fonteOrdine = $state<'prova' | 'originale'>(data.order?.previewUrl ? 'prova' : 'originale');
+	onMount(() => { void caricaOrdine(fonteOrdine); });
+
+	async function caricaOrdine(quale: 'prova' | 'originale') {
 		const o = data.order;
 		if (!o) return;
-		if (!o.fileUrl) { ordStato = 'errore'; ordErr = o.folder ? 'Questo ordine ha più file (kit o foglio): caricali uno alla volta.' : 'L’ordine non ha il file del cliente.'; return; }
+		fonteOrdine = quale;
+		const src = quale === 'prova' ? o.previewUrl : o.fileUrl;
+		if (!src) {
+			ordStato = 'errore';
+			ordErr = quale === 'prova' ? 'Questo ordine non ha la prova generata: apri il file del cliente.' : o.folder ? 'Questo ordine ha più file (kit o foglio): caricali uno alla volta.' : 'L’ordine non ha il file del cliente.';
+			return;
+		}
 		ordStato = 'carico';
 		try {
-			const res = await fetch(o.fileUrl);
+			const res = await fetch(src);
 			if (!res.ok) throw new Error(`file non scaricabile (${res.status})`);
 			const blob = await res.blob();
-			const f = new File([blob], o.fileName ?? 'file-cliente', { type: blob.type });
+			const nome = quale === 'prova' ? `${o.number}_prova.png` : (o.fileName ?? 'file-cliente');
+			const f = new File([blob], nome, { type: blob.type });
 			if (o.forma && SHAPES.some((x) => x.id === o.forma)) forma = o.forma;
 			if (o.materiale && MATERIALS.some((x) => x.id === o.materiale)) materiale = o.materiale;
 			if (o.finitura && FINISHES.some((x) => x.id === o.finitura)) finitura = o.finitura;
@@ -112,7 +125,23 @@
 			jobName = `${o.number}${o.fileName ? '_' + o.fileName.replace(/\.[^.]+$/, '') : ''}`;
 			w = o.w; h = o.h;
 			if (o.qty) qty = o.qty;
+			if (quale === 'prova') ordStato = 'prova';
 		} catch (e) { ordStato = 'errore'; ordErr = e instanceof Error ? e.message : String(e); }
+	}
+
+	/* la prova e' gia' scontornata e ha gia' il suo bordo bianco: il taglio deve seguire il suo
+	   profilo, quindi il bordo del motore si porta al minimo */
+	let provaSistemata = false;
+	$effect(() => {
+		if (fonteOrdine !== 'prova' || !engine || renders < 1 || provaSistemata) return;
+		provaSistemata = true;
+		(async () => {
+			try {
+				const r = await engine!.studio('stato');
+				const st = (r.stato ?? {}) as Record<string, unknown>;
+				if (st.inp) await engine!.studio('applica', { stato: { ...st, bord: 0 } });
+			} catch { /* resta il bordo di partenza */ }
+		})();
 	});
 	async function applicaOrdine() {
 		const st = data.order?.engineState;
@@ -760,8 +789,13 @@
 			{#if ORD.previewUrl}<a class="st-ord__img" href={ORD.previewUrl} target="_blank" rel="noopener" title="Anteprima approvata dal cliente"><img src={ORD.previewUrl} alt="Anteprima approvata" /></a>{/if}
 			<div class="st-ord__txt">
 				<p class="st-ord__t">Ordine <b>{ORD.number}</b> · {ORD.productName} · {ORD.qty} pz · {ORD.w}×{ORD.h} mm</p>
+				<div class="st-chips st-ord__scelta">
+					<button type="button" class="st-chip" class:is-on={fonteOrdine === 'prova'} disabled={!ORD.previewUrl} onclick={() => caricaOrdine('prova')}>Prova approvata dal cliente</button>
+					<button type="button" class="st-chip" class:is-on={fonteOrdine === 'originale'} disabled={!ORD.fileUrl} onclick={() => caricaOrdine('originale')}>File originale del cliente</button>
+				</div>
 				<p class="st-ord__s">
-					{#if ordStato === 'carico'}Carico il file del cliente…
+					{#if ordStato === 'prova'}✓ Aperta la <b>prova approvata</b>: la sagoma è quella che il cliente ha confermato, con il suo bordo. Il taglio segue quel profilo.
+					{:else if ordStato === 'carico'}Carico il file…
 					{:else if ordStato === 'applico'}Rimetto le regolazioni approvate dal cliente…
 					{:else if ordStato === 'identico'}✓ Regolazioni del cliente applicate: il tracciato è <b>identico</b> a quello che ha approvato.
 					{:else if ordStato === 'diverso'}Regolazioni del cliente applicate, ma il tracciato non coincide al millesimo con quello approvato: confronta con l’anteprima qui a fianco prima di stampare.
