@@ -6,7 +6,8 @@ import type { Actions, PageServerLoad } from './$types';
 export const load: PageServerLoad = async ({ url, locals: { supabase } }) => {
 	// anno di riferimento: si può tornare indietro agli anni precedenti
 	const year = Number(url.searchParams.get('anno')) || new Date().getFullYear();
-	const { data } = await supabase.from('orders').select('*').gte('created_at', `${year}-01-01`).lt('created_at', `${year + 1}-01-01`).order('created_at', { ascending: false }).limit(2000);
+	/* gli ordini e-commerce compaiono solo a pagamento riuscito: quelli fermi al passo del pagamento (carrelli abbandonati su Stripe/PayPal) restano fuori dall'elenco */
+	const { data } = await supabase.from('orders').select('*').gte('created_at', `${year}-01-01`).lt('created_at', `${year + 1}-01-01`).or('channel.neq.ecommerce,status.neq.attesa_pagamento').order('created_at', { ascending: false }).limit(2000);
 	const { data: first } = await supabase.from('orders').select('created_at').order('created_at', { ascending: true }).limit(1).maybeSingle();
 	const firstYear = first ? new Date(first.created_at).getFullYear() : year;
 	return { groups: groupOrders((data ?? []) as OrderRow[]), year, years: Array.from({ length: Math.max(1, new Date().getFullYear() - Math.min(firstYear, new Date().getFullYear() - 2) + 1) }, (_, i) => new Date().getFullYear() - i) };
