@@ -67,7 +67,7 @@
 {#if integ}
 	<div class="dmodal-bg"><div class="dmodal dmodal--lg">
 		<h3>💶 Integrazione di pagamento · {g.number}</h3>
-		<p class="note">Cambia misura, materiale, finitura o quantità: il listino ricalcola e ti mostra la differenza rispetto a quanto il cliente ha già pagato. Poi invii la richiesta: lui paga dalla sua pagina ordine (carta, PayPal o bonifico).</p>
+		<p class="note">Cambia misura, materiale, finitura o quantità: il listino ricalcola e ti mostra la differenza rispetto a quanto il cliente ha già pagato. Poi invii la richiesta: lui paga dalla sua pagina ordine (carta o PayPal).</p>
 		<div class="tscroll"><table class="dtable">
 			<thead><tr><th>Articolo</th><th>Larg. mm</th><th>Alt. mm</th><th>Materiale</th><th>Finitura</th><th>Q.tà</th><th style="text-align:right">Pagato</th></tr></thead>
 			<tbody>{#each g.items as it (it.id)}{#if integRows[it.id]}<tr>

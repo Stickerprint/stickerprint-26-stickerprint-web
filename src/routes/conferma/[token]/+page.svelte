@@ -59,9 +59,9 @@
 								<div class="qp__paybtns">
 									{#if data.online}<a class="btn btn--green" href="/conferma/{token()}/paga/{p.seq}" data-sveltekit-reload>💳 Paga con carta</a>{/if}
 									{#if data.paypal}<a class="btn btn--paypal" href="/conferma/{token()}/paypal/{p.seq}" data-sveltekit-reload><img src="/icons/footer/paypal.webp" alt="" /> Paga con PayPal</a>{/if}
-									<button class="btn btn--white" class:is-on={bankOpen === p.seq} type="button" onclick={() => (bankOpen = bankOpen === p.seq ? null : p.seq)}>🏦 Paga con bonifico</button>
+									{#if p.kind !== 'integrazione'}<button class="btn btn--white" class:is-on={bankOpen === p.seq} type="button" onclick={() => (bankOpen = bankOpen === p.seq ? null : p.seq)}>🏦 Paga con bonifico</button>{/if}
 								</div>
-								{#if data.online}<small class="qp__paynote">carta, Apple Pay, Google Pay{#if data.paypal}, PayPal{/if} o bonifico</small>{/if}
+								{#if data.online}<small class="qp__paynote">carta, Apple Pay, Google Pay{#if data.paypal}, PayPal{/if}{#if p.kind !== 'integrazione'} o bonifico{/if}</small>{/if}
 								{#if bankOpen === p.seq}
 									<div class="qp__bank">
 										<b>Bonifico bancario · {money(p.amount)}</b>

@@ -88,7 +88,7 @@ export async function requestIntegration(db: DB, group: string, inputs: ChangeIn
 	await db.from('order_payments').delete().eq('checkout_group', group).eq('kind', 'integrazione').eq('status', 'da_pagare');
 	const payments = await loadPayments(db, group);
 	const seq = Math.max(0, ...payments.map((p) => p.seq)) + 1;
-	const { error } = await db.from('order_payments').insert({ checkout_group: group, seq, method: 'Carta, PayPal o bonifico', due: new Date().toISOString().slice(0, 10), amount, upfront: true, status: 'da_pagare', kind: 'integrazione', reason: why, changes: pv.changes });
+	const { error } = await db.from('order_payments').insert({ checkout_group: group, seq, method: 'Carta o PayPal', due: new Date().toISOString().slice(0, 10), amount, upfront: true, status: 'da_pagare', kind: 'integrazione', reason: why, changes: pv.changes });
 	if (error) return { error: error.message };
 	await db.from('orders').update({ status: 'attesa_integrazione' }).eq('checkout_group', group).neq('status', 'annullato');
 	await holdProduction(db, group, true, operator);
