@@ -4,6 +4,7 @@ import { loadEditorData, parseDraft, saveOrderDraft, upsertContact } from '$lib/
 import { ensurePlan, operatorName } from '$lib/server/produzione';
 import { getConfirmation, loadMessages, markConfirmationRead, remindPayment, replyCustomer, sendConfirmation, setPaymentStatus, syncPayments } from '$lib/server/conferme';
 import { sendEmail } from '$lib/server/email';
+import { previewIntegration, requestIntegration, cancelIntegration, type ChangeInput } from '$lib/server/integrazioni';
 import { shippingUpdateEmail } from '$lib/server/email-templates';
 import { thumbOf } from '$lib/dashboard/orders';
 import type { Actions, PageServerLoad } from './$types';
@@ -118,6 +119,31 @@ export const actions: Actions = {
 		return { ok: true, contactId: r.id, contactMsg: 'Cliente salvato in anagrafica.' };
 	},
 	/** "Inizia produzione": stato in produzione, prima lavorazione stampa, piano delle lavorazioni */
+	/** Integrazione: anteprima del ricalcolo (righe modificate → nuovo prezzo → differenza) */
+	integrazionePreview: async ({ request, params, locals: { supabase } }) => {
+		const f = await request.formData();
+		let inputs: ChangeInput[] = [];
+		try { inputs = JSON.parse(String(f.get('changes') ?? '[]')); } catch { return fail(400, { error: 'Modifiche non valide.' }); }
+		const r = await previewIntegration(supabase, params.group, inputs);
+		if ('error' in r) return fail(400, { error: r.error });
+		return { preview: r };
+	},
+	/** Integrazione: crea la scadenza, ferma l'ordine e manda l'email al cliente (o applica subito se non c'e' differenza) */
+	integrazione: async ({ request, params, url, locals }) => {
+		const f = await request.formData();
+		let inputs: ChangeInput[] = [];
+		try { inputs = JSON.parse(String(f.get('changes') ?? '[]')); } catch { return fail(400, { error: 'Modifiche non valide.' }); }
+		const amountRaw = String(f.get('amount') ?? '').replace(',', '.').trim();
+		const amount = amountRaw === '' ? null : Number(amountRaw);
+		if (amount !== null && !Number.isFinite(amount)) return fail(400, { error: 'Importo non valido.' });
+		const r = await requestIntegration(locals.supabase, params.group, inputs, amount, String(f.get('reason') ?? ''), await operatorName(locals.supabase, locals.user), url.origin);
+		if (r.error) return fail(400, { error: r.error });
+		return { ok: true, message: r.applied ? `Modifica applicata subito${(r.amount ?? 0) < 0 ? `: da rimborsare ${(-(r.amount ?? 0)).toFixed(2)} € al cliente (Stripe/PayPal)` : ', nessuna differenza da chiedere'}.` : `Richiesta inviata: il cliente deve pagare ${(r.amount ?? 0).toFixed(2)} €; l'ordine è fermo finché non arriva.` };
+	},
+	integrazioneAnnulla: async ({ params, locals }) => {
+		const e = await cancelIntegration(locals.supabase, params.group, await operatorName(locals.supabase, locals.user));
+		return e ? fail(400, { error: e }) : { ok: true, message: 'Richiesta di integrazione annullata: l’ordine riparte com’era.' };
+	},
 	produzione: async ({ params, locals }) => {
 		const { supabase } = locals;
 		const { error: e } = await supabase.from('orders').update({ status: 'in_produzione', prod_stage: 'stampa' }).eq('checkout_group', params.group).neq('status', 'annullato');

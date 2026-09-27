@@ -12,6 +12,7 @@
  */
 export const ORDER_STATUS: Record<string, { label: string; color: string; soft: string }> = {
 	attesa_pagamento: { label: 'In attesa di pagamento', color: '#b45309', soft: '#fef3c7' },
+	attesa_integrazione: { label: 'Attesa integrazione', color: '#b45309', soft: '#fef3c7' },
 	in_produzione: { label: 'In produzione', color: '#3b82f6', soft: '#e5f0ff' },
 	in_spedizione: { label: 'In spedizione', color: '#0d9488', soft: '#dcf9f4' },
 	spedito: { label: 'Spedito', color: '#16803c', soft: '#e4f9ea' },
@@ -27,7 +28,7 @@ export const ORDER_STATUS: Record<string, { label: string; color: string; soft: 
 	approvazione: { label: 'In approvazione (vecchio flusso)', color: '#6b7280', soft: '#eceef3' }
 };
 /** dal meno al piu' avanzato: lo stato di un ordine con piu' articoli e' quello dell'articolo piu' indietro */
-export const STATUS_RANK = ['in_attesa', 'attesa_file', 'attesa_prova', 'modifiche_richieste', 'approvazione', 'attesa_pagamento', 'in_produzione', 'pronto', 'in_spedizione', 'spedito', 'in_consegna', 'consegnato', 'annullato'];
+export const STATUS_RANK = ['in_attesa', 'attesa_file', 'attesa_prova', 'modifiche_richieste', 'approvazione', 'attesa_pagamento', 'attesa_integrazione', 'in_produzione', 'pronto', 'in_spedizione', 'spedito', 'in_consegna', 'consegnato', 'annullato'];
 /** gli stati che si possono assegnare a mano dalla scheda ordine */
 export const ACTIVE_STATUSES = ['attesa_pagamento', 'in_produzione', 'in_spedizione', 'spedito', 'in_consegna', 'consegnato', 'annullato'];
 export const LEGACY_STATUSES = ['pronto', 'in_attesa', 'attesa_file', 'attesa_prova', 'modifiche_richieste', 'approvazione'];

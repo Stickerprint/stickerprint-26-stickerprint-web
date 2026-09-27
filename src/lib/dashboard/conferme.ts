@@ -2,7 +2,8 @@
 import type { OrderGroup } from './orders';
 
 export type PaymentStatus = 'da_pagare' | 'pagato' | 'annullato';
-export interface OrderPayment { id: string; checkout_group: string; seq: number; method: string; due: string; amount: number; upfront: boolean; status: PaymentStatus; paid_at: string | null; provider: string | null; provider_ref: string | null; note: string | null; created_at: string }
+export interface OrderPayment { id: string; checkout_group: string; seq: number; method: string; due: string; amount: number; upfront: boolean; status: PaymentStatus; paid_at: string | null; provider: string | null; provider_ref: string | null; note: string | null; created_at: string; kind?: 'scadenza' | 'integrazione'; reason?: string | null; changes?: IntegrationChange[] | null; invoice_id?: string | null }
+export interface IntegrationChange { order_id: string; width_mm: number | null; height_mm: number | null; materiale: string | null; finitura: string | null; qty: number; total_net: number; total_gross: number; unit_net: number; label: string }
 export interface OrderConfirmation { checkout_group: string; token: string; sent_at: string | null; sent_subject: string | null; sent_message: string | null; sender_name: string | null; opened_count: number; opened_at: string | null; pdf_downloaded_at: string | null; unread: boolean; created_at: string }
 export interface OrderMessage { id: number; checkout_group: string; direction: 'in' | 'out'; kind: 'domanda' | 'errore' | 'risposta'; author: string | null; body: string; created_at: string }
 export const PAYMENT_STATUS: Record<PaymentStatus, { label: string; color: string; soft: string }> = {

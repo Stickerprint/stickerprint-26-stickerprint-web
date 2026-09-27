@@ -48,7 +48,11 @@
 						{@const payable = p.status !== 'pagato' && !riba}
 						<div class="qp__pay-row" class:is-paid={p.status === 'pagato'} class:is-due={p.upfront && p.status === 'da_pagare'}>
 							<div class="qp__pay-head">
-								<div><b>{money(p.amount)}</b><span>{paymentLabel(p.method)} · {p.upfront ? 'anticipato' : `scadenza ${it(p.due)}`}{#if payable && !p.upfront} · puoi saldarla anche subito{/if}</span></div>
+								{#if p.kind === 'integrazione'}
+									<div><b>{money(p.amount)}</b><span>✏️ Integrazione per la modifica dell'ordine{p.reason ? `: ${p.reason}` : ''}{#if p.status !== 'pagato'} · l'ordine riparte appena arriva{/if}</span></div>
+								{:else}
+									<div><b>{money(p.amount)}</b><span>{paymentLabel(p.method)} · {p.upfront ? 'anticipato' : `scadenza ${it(p.due)}`}{#if payable && !p.upfront} · puoi saldarla anche subito{/if}</span></div>
+								{/if}
 								{#if p.status === 'pagato'}<span class="qp__paid">✓ Pagato {p.paid_at ? it(p.paid_at) : ''}</span>{/if}
 							</div>
 							{#if payable}

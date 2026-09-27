@@ -30,7 +30,7 @@ export async function syncPayments(db: DB, group: string): Promise<OrderPayment[
 	const { data: existing } = await db.from('order_payments').select('*').eq('checkout_group', group).order('seq');
 	const paid = ((existing ?? []) as OrderPayment[]).filter((p) => p.status === 'pagato');
 	const paidSeq = new Set(paid.map((p) => p.seq));
-	await db.from('order_payments').delete().eq('checkout_group', group).neq('status', 'pagato');
+	await db.from('order_payments').delete().eq('checkout_group', group).neq('status', 'pagato').neq('kind', 'integrazione'); // le integrazioni aperte restano
 	const rows = terms.filter((t) => !paidSeq.has(t.seq)).map((t) => ({ ...t, checkout_group: group }));
 	if (rows.length) await db.from('order_payments').insert(rows);
 	return loadPayments(db, group);
@@ -115,8 +115,11 @@ export async function sendConfirmation(db: DB, group: string, origin: string, o:
 
 export async function setPaymentStatus(db: DB, group: string, seq: number, status: 'pagato' | 'da_pagare', operator: string | null, ref?: string | null, provider = 'manuale'): Promise<string | null> {
 	const patch = status === 'pagato' ? { status, paid_at: new Date().toISOString(), provider, provider_ref: ref || null, note: operator ? `segnato da ${operator}` : provider === 'stripe' || provider === 'paypal' ? 'incassato online' : provider === 'simulazione' ? 'pagamento simulato (prova)' : null } : { status, paid_at: null, provider: null, provider_ref: null, note: null };
-	const { error } = await db.from('order_payments').update(patch).eq('checkout_group', group).eq('seq', seq);
+	const { data: upd, error } = await db.from('order_payments').update(patch).eq('checkout_group', group).eq('seq', seq).select('*');
 	if (error) return error.message;
+	/* integrazione pagata: modifiche applicate, ordine ripartito, fattura a se' (vedi integrazioni.ts) */
+	const paidRow = (upd ?? [])[0] as OrderPayment | undefined;
+	if (status === 'pagato' && paidRow?.kind === 'integrazione') { const { settleIntegration } = await import('./integrazioni'); await settleIntegration(db, group, paidRow, operator); return null; }
 	/* ordine del sito ancora in attesa dell'incasso online: segnarlo pagato lo chiude come farebbe Stripe (fattura, email, produzione) */
 	if (status === 'pagato') { const fin = await finalizeCheckout(db, group, { provider, ref: ref || null }); if (fin.done) return null; }
 	const payments = await loadPayments(db, group);

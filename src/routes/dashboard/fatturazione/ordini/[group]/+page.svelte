@@ -10,6 +10,17 @@
 	let { data, form } = $props();
 	const g = $derived(data.group);
 	let editing = $state(false);
+	/* integrazione di pagamento: modifica delle righe → ricalcolo → richiesta al cliente */
+	let integ = $state(false);
+	let integRows = $state<Record<string, { width_mm: number | null; height_mm: number | null; materiale: string; finitura: string; qty: number }>>({});
+	let integAmount = $state('');
+	let integReason = $state('');
+	let integBusy = $state(false);
+	const MATERIALI = ['bianco', 'super', 'trasparente', 'olografico', 'glitterato', 'argento', 'oro'];
+	const FINITURE = ['nessuna', 'lucida', 'opaca', 'uv-lucida', 'uv-opaca'];
+	function openInteg() { integRows = Object.fromEntries(g.items.map((i) => [i.id, { width_mm: i.width_mm, height_mm: i.height_mm, materiale: i.materiale ?? 'bianco', finitura: i.finitura ?? 'nessuna', qty: i.qty }])); integAmount = ''; integReason = ''; integ = true; }
+	const integChanges = $derived(JSON.stringify(g.items.map((i) => ({ order_id: i.id, ...integRows[i.id] })).filter((c) => c.qty)));
+	const integOpen = $derived(data.payments.find((p) => p.kind === 'integrazione' && p.status === 'da_pagare'));
 	const st = (s: string) => ORDER_STATUS[s] ?? { label: s, color: '#6b7280', soft: '#eceef3' };
 	const addr = (a: Record<string, string> | null) => a ? [a.company, [a.first_name, a.last_name].filter(Boolean).join(' '), [a.street, a.street2].filter(Boolean).join(', '), [a.zip, a.city, a.province ? `(${a.province})` : ''].filter(Boolean).join(' '), COUNTRIES[a.country]?.name ?? a.country].filter(Boolean) : [];
 	const first = $derived(g.items[0]);
@@ -44,6 +55,48 @@
 {#if form?.error && !(form as { sendError?: boolean }).sendError}<p class="error">{form.error}</p>{/if}
 {#if form?.ok && form.message}<p class="success">{form.message}</p>{/if}
 
+
+{#if integOpen}
+	<div class="dcard" style="border-color:#f59e0b;background:#fffbeb;margin-top:12px">
+		<b>💶 Integrazione in attesa: {money(Number(integOpen.amount))}</b> · {integOpen.reason}
+		<div class="osub" style="margin-top:4px">L'ordine è fermo (fasi bloccate) finché il cliente non paga dalla sua pagina. Appena paga: modifiche applicate, fattura emessa e inviata, produzione ripartita.</div>
+		<form method="POST" action="?/integrazioneAnnulla" use:enhance style="margin-top:8px"><button class="btn btn--ghost btn--xs" type="submit">Annulla richiesta (l'ordine riparte com'era)</button></form>
+	</div>
+{/if}
+
+{#if integ}
+	<div class="dmodal-bg"><div class="dmodal dmodal--lg">
+		<h3>💶 Integrazione di pagamento · {g.number}</h3>
+		<p class="note">Cambia misura, materiale, finitura o quantità: il listino ricalcola e ti mostra la differenza rispetto a quanto il cliente ha già pagato. Poi invii la richiesta: lui paga dalla sua pagina ordine (carta, PayPal o bonifico).</p>
+		<div class="tscroll"><table class="dtable">
+			<thead><tr><th>Articolo</th><th>Larg. mm</th><th>Alt. mm</th><th>Materiale</th><th>Finitura</th><th>Q.tà</th><th style="text-align:right">Pagato</th></tr></thead>
+			<tbody>{#each g.items as it (it.id)}{#if integRows[it.id]}<tr>
+				<td><b>{it.product_name}</b><div class="osub">{it.forma}</div></td>
+				<td><input class="sel-sm" type="number" step="0.5" min="5" style="width:80px" bind:value={integRows[it.id].width_mm} /></td>
+				<td><input class="sel-sm" type="number" step="0.5" min="5" style="width:80px" bind:value={integRows[it.id].height_mm} /></td>
+				<td><select class="sel-sm" bind:value={integRows[it.id].materiale}>{#each MATERIALI as m (m)}<option value={m}>{m}</option>{/each}</select></td>
+				<td><select class="sel-sm" bind:value={integRows[it.id].finitura}>{#each FINITURE as f (f)}<option value={f}>{f}</option>{/each}</select></td>
+				<td><input class="sel-sm" type="number" min="1" style="width:90px" bind:value={integRows[it.id].qty} /></td>
+				<td style="text-align:right">{money(Number(it.total_gross))}</td>
+			</tr>{/if}{/each}</tbody>
+		</table></div>
+		<form method="POST" action="?/integrazionePreview" use:enhance={() => { integBusy = true; return async ({ update }) => { integBusy = false; await update({ reset: false }); }; }} style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+			<input type="hidden" name="changes" value={integChanges} />
+			<button class="btn btn--blue btn--xs" type="submit" disabled={integBusy}>🧮 Calcola la differenza</button>
+			{#if form?.preview}<span><b>Nuovo totale {money(form.preview.newGross)}</b> · già pagato {money(form.preview.paid)} → <b style="color:{form.preview.diff > 0 ? '#b45309' : '#15803d'}">differenza {money(form.preview.diff)}</b>{#if !form.preview.engine} <span class="osub">(proporzionale, nessun listino per questo prodotto)</span>{/if}</span>{/if}
+		</form>
+		{#if form?.preview}<ul class="osub" style="margin:8px 0 0 18px">{#each form.preview.changes as c (c.order_id)}<li>{c.label} · {money(c.total_gross)}</li>{/each}</ul>{/if}
+		<form method="POST" action="?/integrazione" use:enhance={() => { integBusy = true; return async ({ update }) => { integBusy = false; await update(); integ = false; }; }} style="margin-top:14px;display:grid;gap:10px">
+			<input type="hidden" name="changes" value={integChanges} />
+			<div class="row3">
+				<label>Importo da chiedere (€)<input name="amount" class="sel-sm" placeholder={form?.preview ? String(form.preview.diff.toFixed(2)) : 'dal ricalcolo'} bind:value={integAmount} /><small class="osub">vuoto = la differenza calcolata</small></label>
+				<label style="grid-column:span 2">Motivo (lo legge il cliente)<input name="reason" class="sel-sm" placeholder="es. misura 100×100 mm invece di 70×70" bind:value={integReason} /></label>
+			</div>
+			<div style="display:flex;gap:8px;justify-content:flex-end"><button type="button" class="btn btn--ghost btn--xs" onclick={() => (integ = false)}>Annulla</button><button class="btn btn--green" type="submit" disabled={integBusy || !form?.preview}>✉️ Invia la richiesta al cliente</button></div>
+		</form>
+	</div></div>
+{/if}
+
 {#if editing}
 	<OrderEditor draft={draftFromGroup(g, data.methods)} methods={data.methods} codes={data.codes} contacts={data.contacts} supabase={data.supabase} mode="edit" {form} title="Modifica ordine {g.number}" oncancel={() => (editing = false)} />
 {:else}
@@ -71,6 +124,7 @@
 		{#if canStart}<form method="POST" action="?/produzione" use:enhance><button class="btn btn--green btn--xs" type="submit" title="L'ordine va in produzione e compare subito nel reparto Stampa">▶ Metti in stampa</button></form>{/if}
 		<button type="button" class="btn btn--blue btn--xs" onclick={openSend} disabled={!g.email} title={g.email ? '' : 'L’ordine non ha un’email'}>✉️ {data.conf.sent_at ? 'Reinvia conferma' : 'Invia conferma'}</button>
 		<button type="button" class="btn btn--yellow btn--xs" onclick={() => (editing = true)}>✏️ Modifica</button>
+		{#if ['in_produzione', 'attesa_pagamento', 'attesa_integrazione', 'in_attesa'].includes(g.status)}<button type="button" class="btn btn--pink btn--xs" onclick={openInteg} title="Il cliente vuole misura, finitura o quantità diverse: ricalcolo e richiesta della differenza">💶 Integrazione</button>{/if}
 		<a class="btn btn--ghost btn--xs" href="/dashboard/fatturazione/ordini/nuovo?da={g.key}" title="Ordine nuovo, con numero nuovo, gia' compilato con questi dati">⧉ Duplica</a>
 		<a class="btn btn--ghost btn--xs" href="/dashboard/fatturazione/ordini/{g.key}/pdf" target="_blank" rel="noopener">⬇ PDF conferma</a>
 		<a class="btn btn--ghost btn--xs" href="/conferma/{data.conf.token}?anteprima=1" target="_blank" rel="noopener">🔗 Pagina del cliente</a>

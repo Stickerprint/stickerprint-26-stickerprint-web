@@ -28,6 +28,7 @@ export interface CreditTx { id: string; amount: number; kind: 'earn' | 'spend' |
 
 export const STATUS: Record<string, { label: string; cls: string }> = {
 	attesa_pagamento: { label: 'In attesa del pagamento', cls: 'st--wait' },
+	attesa_integrazione: { label: 'Integrazione da pagare', cls: 'st--wait' },
 	in_produzione: { label: 'In produzione', cls: 'st--prod' },
 	in_spedizione: { label: 'In spedizione', cls: 'st--ship' },
 	spedito: { label: 'Spedito', cls: 'st--ship' },
@@ -60,7 +61,7 @@ export function trackSteps(o: { status: string; prod_stage?: string | null; prod
 	else if (o.status === 'consegnato') cur = steps.length - 1;
 	return steps.map((s, i) => ({ label: labels[s] ?? s, state: i < cur ? 'done' : i === cur ? 'current' : 'todo' }));
 }
-export const OPEN_STATUSES: string[] = ['in_attesa', 'attesa_file', 'attesa_prova', 'modifiche_richieste', 'approvazione', 'attesa_pagamento', 'in_produzione', 'pronto', 'in_spedizione', 'spedito', 'in_consegna'];
+export const OPEN_STATUSES: string[] = ['in_attesa', 'attesa_file', 'attesa_prova', 'modifiche_richieste', 'approvazione', 'attesa_pagamento', 'attesa_integrazione', 'in_produzione', 'pronto', 'in_spedizione', 'spedito', 'in_consegna'];
 export const MATERIAL_LABEL: Record<string, string> = { bianco: 'Vinile bianco', super: 'Bianco super adesivo', olografico: 'Olografico', glitterato: 'Glitterato', trasparente: 'Trasparente', argento: 'Argento', oro: 'Oro' };
 export const productHref = (slug: string) => PRODUCT_ENGINES.find((p) => p.slug === slug)?.href ?? '/prodotti';
 export const eur = (v: number) => new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(v);
