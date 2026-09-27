@@ -166,9 +166,9 @@
 					<td style="text-align:right"><b>{money(g.net)}</b><div class="osub">{money(g.gross)} IVA incl.{#if paymentIcon(g.payment_method)} <img src={paymentIcon(g.payment_method)} alt={paymentLabel(g.payment_method)} title={paymentLabel(g.payment_method)} style="height:14px;vertical-align:middle" />{:else if g.payment_method} · {g.payment_method}{/if}</div></td>
 					<td>
 						<div class="row-actions">
-							<form method="POST" action="?/star" use:enhance><input type="hidden" name="group" value={g.key} /><input type="hidden" name="on" value={g.starred ? '0' : '1'} /><button type="submit" class="ibtn" title="Segna ordine">{g.starred ? '⭐' : '☆'}</button></form>
-							<a class="ibtn" href="/dashboard/fatturazione/ordini/nuovo?da={g.key}" title="Duplica: ordine nuovo con gli stessi dati">⧉</a>
-							<form method="POST" action="?/delete" use:enhance onsubmit={(e) => { if (!confirm(`Eliminare l'ordine ${g.number}?`)) e.preventDefault(); }}><input type="hidden" name="group" value={g.key} /><button type="submit" class="ibtn" title="Elimina">🗑️</button></form>
+							<form method="POST" action="?/star" use:enhance><input type="hidden" name="group" value={g.key} /><input type="hidden" name="on" value={g.starred ? '0' : '1'} /><button type="submit" class="ibtn" title="Segna ordine">{g.starred ? '⭐' : '☆'}<span class="ibtn__lbl">{g.starred ? 'Segnato' : 'Segna'}</span></button></form>
+							<a class="ibtn" href="/dashboard/fatturazione/ordini/nuovo?da={g.key}" title="Duplica: ordine nuovo con gli stessi dati">⧉<span class="ibtn__lbl">Duplica</span></a>
+							<form method="POST" action="?/delete" use:enhance onsubmit={(e) => { if (!confirm(`Eliminare l'ordine ${g.number}?`)) e.preventDefault(); }}><input type="hidden" name="group" value={g.key} /><button type="submit" class="ibtn" title="Elimina">🗑️<span class="ibtn__lbl">Elimina</span></button></form>
 						</div>
 					</td>
 				</tr>

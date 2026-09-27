@@ -45,6 +45,7 @@
 .quote-test { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; align-items: end; }
 .quote-test output { grid-column: 1 / -1; font-family: var(--font-display); font-weight: 800; font-size: 26px; }
 /* elementi solo telefono: nascosti sul desktop */
+.ibtn__lbl { display: none; }
 .dash__mtop, .dash__tabs, .dash__backdrop { display: none; }
 
 /* Ordini */
@@ -395,8 +396,16 @@ a.shipcal__day:hover { border-color: var(--navy); }
   .dash__burger { width: 44px; height: 44px; border: 0; border-radius: 12px; background: rgba(255,255,255,.1); color: #fff; font-size: 22px; line-height: 1; }
   .dash__mbrand img { width: 56px; height: auto; transform: rotate(-5deg); display: block; }
   .dash__mclock { text-align: right; line-height: 1.1; }
-  .dash__mclock .clock__time { font-size: 18px !important; color: #fff; }
-  .dash__mclock .clock__date { font-size: 10.5px !important; color: #c9ccec !important; }
+  .dash__mclock .clock__time { font-size: 18px !important; color: #fff !important; display: block; }
+  .dash__mclock .clock__date { font-size: 10.5px !important; color: #c9ccec !important; display: block; }
+  /* niente scorrimento laterale: tutto dentro lo schermo */
+  .dash__main, .dash__content { max-width: 100vw; overflow-x: hidden; }
+  .dash__content > * { min-width: 0; max-width: 100%; }
+  .grid3, .grid2, .riepilogo, .ship-head, .pr-two, .rq-detail { grid-template-columns: 1fr !important; }
+  .dcard { min-width: 0; overflow-wrap: anywhere; }
+  .obar .btn { flex: 1 1 calc(50% - 6px); }
+  .obar .osub { width: 100%; }
+  .lead, .osub { overflow-wrap: anywhere; }
   /* menu laterale → pannello a scomparsa da sinistra */
   .dash__side { position: fixed; top: 0; left: 0; bottom: 0; width: min(86vw, 320px); z-index: 80; transform: translateX(-102%); transition: transform .22s ease; box-shadow: 0 0 40px rgba(0,0,0,.35); padding-top: env(safe-area-inset-top); }
   .menu-open .dash__side { transform: none; }
@@ -444,7 +453,7 @@ a.shipcal__day:hover { border-color: var(--navy); }
   .dtable input[type=number] { max-width: none; }
   .dtable .row-actions { justify-content: flex-start; }
   /* Ordini: scheda studiata */
-  .otable tr.orow-main { grid-template-columns: 1fr auto; grid-template-areas: "num stato" "cust cust" "art art" "qty imp" "act act"; align-items: start; }
+  .otable tr.orow-main { grid-template-columns: 1fr auto; grid-template-areas: "num stato" "cust cust" "art art" "qty imp" "act act"; align-items: start; gap: 6px 12px; padding: 14px 16px; }
   .otable tr.orow-main td:nth-child(1) { display: none; }
   .otable tr.orow-main td:nth-child(2) { grid-area: num; }
   .otable tr.orow-main td:nth-child(3) { grid-area: cust; }
@@ -453,7 +462,14 @@ a.shipcal__day:hover { border-color: var(--navy); }
   .otable tr.orow-main td:nth-child(6) { grid-area: qty; align-self: center; font-weight: 700; }
   .otable tr.orow-main td:nth-child(7) { grid-area: stato; justify-self: end; text-align: right !important; }
   .otable tr.orow-main td:nth-child(8) { grid-area: imp; justify-self: end; text-align: right !important; }
-  .otable tr.orow-main td:nth-child(9) { grid-area: act; border-top: 1px solid var(--line); padding-top: 8px; margin-top: 4px; }
+  .otable tr.orow-main td:nth-child(3) { padding-top: 8px; border-top: 1px solid var(--line); }
+  .otable tr.orow-main td:nth-child(6) { padding-top: 8px; border-top: 1px solid var(--line); align-self: start; }
+  .otable tr.orow-main td:nth-child(8) { padding-top: 8px; border-top: 1px solid var(--line); }
+  .otable tr.orow-main td:nth-child(9) { grid-area: act; padding-top: 6px; }
+  .otable .row-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .otable .row-actions form { display: contents; }
+  .otable .ibtn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; width: 100%; padding: 9px 6px; border: 1px solid var(--line); border-radius: 10px; background: #fff; font-size: 15px; font-weight: 700; color: var(--ink); text-decoration: none; }
+  .otable .ibtn .ibtn__lbl { display: inline; font-size: 12.5px; }
   .otable .oid { font-size: 18px; }
   .ibtn { font-size: 20px; padding: 6px 10px; }
   .row-actions { gap: 10px; }

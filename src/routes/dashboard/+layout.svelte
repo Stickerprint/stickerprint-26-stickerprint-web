@@ -14,8 +14,8 @@
 	$effect(() => { void path; menuOpen = false; });
 	const tabs = $derived([
 		{ label: 'Ordini', icon: '🧾', href: '/dashboard/fatturazione/ordini', count: data.counts?.prove },
-		{ label: 'Stampa', icon: '🖨️', href: '/dashboard/produzione/reparto/stampa', count: data.counts?.stampa },
 		{ label: 'Spedizioni', icon: '🚀', href: '/dashboard/produzione/spedizioni', count: data.counts?.spedizione },
+		{ label: 'Aziende', icon: '🏢', href: '/dashboard/aziende/richieste', count: data.counts?.aziende },
 		{ label: 'Aiuto', icon: '💬', href: '/dashboard/supporto/ticket', count: data.counts?.supporto }
 	]);
 
