@@ -455,6 +455,8 @@ a.shipcal__day:hover { border-color: var(--navy); }
   .otable tr.orow-main td:nth-child(8) { grid-area: imp; justify-self: end; text-align: right !important; }
   .otable tr.orow-main td:nth-child(9) { grid-area: act; border-top: 1px solid var(--line); padding-top: 8px; margin-top: 4px; }
   .otable .oid { font-size: 18px; }
+  .ibtn { font-size: 20px; padding: 6px 10px; }
+  .row-actions { gap: 10px; }
   .otable .item-cell img, .otable .thumb-ph { width: 44px; height: 44px; }
   .otable tr.orow-sub { grid-template-columns: 1fr; margin-top: -6px; border-top-left-radius: 0; border-top-right-radius: 0; background: #fafbfe; }
   /* scheda ordine */
