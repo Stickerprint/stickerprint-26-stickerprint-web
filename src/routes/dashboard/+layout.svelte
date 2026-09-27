@@ -9,6 +9,15 @@
 	/* la pagina di login e la modalita' TV non hanno il menu' */
 	const isLogin = $derived(page.url.pathname === '/dashboard/login' || page.url.pathname === '/dashboard/produzione/tv');
 	const path = $derived(page.url.pathname);
+	/* telefono: il menu laterale diventa un pannello a scomparsa (☰), in basso la barra con le 5 voci piu' usate */
+	let menuOpen = $state(false);
+	$effect(() => { void path; menuOpen = false; });
+	const tabs = $derived([
+		{ label: 'Ordini', icon: '🧾', href: '/dashboard/fatturazione/ordini', count: data.counts?.prove },
+		{ label: 'Coda', icon: '📋', href: '/dashboard/produzione/coda', count: data.counts?.daAvviare },
+		{ label: 'Spedizioni', icon: '🚀', href: '/dashboard/produzione/spedizioni', count: data.counts?.spedizione },
+		{ label: 'Aiuto', icon: '💬', href: '/dashboard/supporto/ticket', count: data.counts?.supporto }
+	]);
 
 	// Menù dal documento del gestionale: PRODUZIONE e DOCUMENTI (qui "Fatturazione"), più le altre sezioni
 	const menu = $derived([
@@ -127,7 +136,14 @@
 {#if isLogin}
 	{@render children()}
 {:else}
-	<div class="dash">
+	<div class="dash" class:menu-open={menuOpen}>
+		<!-- telefono: barra in alto -->
+		<div class="dash__mtop">
+			<button type="button" class="dash__burger" aria-label="Menu" aria-expanded={menuOpen} onclick={() => (menuOpen = !menuOpen)}>{menuOpen ? '✕' : '☰'}</button>
+			<a class="dash__mbrand" href="/dashboard"><img src="/images/splogo-400.png" alt="Stickerprint" width="60" height="48" /></a>
+			<div class="dash__mclock"><LiveClock /></div>
+		</div>
+		<button type="button" class="dash__backdrop" aria-label="Chiudi menu" onclick={() => (menuOpen = false)}></button>
 		<aside class="dash__side">
 			<a class="dash__brand" href="/dashboard">
 				<img src="/images/splogo-400.png" alt="Stickerprint" width="120" height="96" />
@@ -166,6 +182,11 @@
 				{@render children()}
 			</div>
 		</div>
+		<!-- telefono: barra in basso con le voci piu' usate -->
+		<nav class="dash__tabs" aria-label="Sezioni principali">
+			{#each tabs as t (t.href)}<a href={t.href} class:is-active={active(t.href, false)}><span class="dash__tab-ico">{t.icon}{#if t.count}<i class="dash__tab-n">{t.count}</i>{/if}</span><span>{t.label}</span></a>{/each}
+			<button type="button" class:is-active={menuOpen} onclick={() => (menuOpen = !menuOpen)}><span class="dash__tab-ico">☰</span><span>Menu</span></button>
+		</nav>
 		{#if toasts.length}
 			<div class="toasts">
 				{#each toasts as t (t.id)}<a class="toast" href={t.href}>🛒 {t.text}</a>{/each}
