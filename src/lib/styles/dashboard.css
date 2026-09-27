@@ -394,8 +394,9 @@ a.shipcal__day:hover { border-color: var(--navy); }
   .dash__mtop { display: grid; grid-template-columns: 44px 1fr auto; align-items: center; gap: 10px; position: sticky; top: 0; z-index: 60; background: var(--navy); color: #fff; padding: 8px 12px; padding-top: calc(8px + env(safe-area-inset-top)); }
   .dash__burger { width: 44px; height: 44px; border: 0; border-radius: 12px; background: rgba(255,255,255,.1); color: #fff; font-size: 22px; line-height: 1; }
   .dash__mbrand img { width: 56px; height: auto; transform: rotate(-5deg); display: block; }
-  .dash__mclock { font-size: 12px; }
-  .dash__mclock b { font-size: 20px; }
+  .dash__mclock { text-align: right; line-height: 1.1; }
+  .dash__mclock .clock__time { font-size: 18px !important; color: #fff; }
+  .dash__mclock .clock__date { font-size: 10.5px !important; color: #c9ccec !important; }
   /* menu laterale → pannello a scomparsa da sinistra */
   .dash__side { position: fixed; top: 0; left: 0; bottom: 0; width: min(86vw, 320px); z-index: 80; transform: translateX(-102%); transition: transform .22s ease; box-shadow: 0 0 40px rgba(0,0,0,.35); padding-top: env(safe-area-inset-top); }
   .menu-open .dash__side { transform: none; }
