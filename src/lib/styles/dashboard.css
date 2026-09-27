@@ -403,8 +403,11 @@ a.shipcal__day:hover { border-color: var(--navy); }
   .dash__content > * { min-width: 0; max-width: 100%; }
   .grid3, .grid2, .riepilogo, .ship-head, .pr-two, .rq-detail { grid-template-columns: 1fr !important; }
   .dcard { min-width: 0; overflow-wrap: anywhere; }
-  .obar .btn { flex: 1 1 calc(50% - 6px); }
-  .obar .osub { width: 100%; }
+  .obar { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .obar > form { display: contents; }
+  .obar .btn { width: 100%; text-align: center; justify-content: center; }
+  .obar .osub, .obar > [style*="margin-left:auto"] { grid-column: 1 / -1; }
+  .ostate { width: 100%; }
   .lead, .osub { overflow-wrap: anywhere; }
   /* menu laterale → pannello a scomparsa da sinistra */
   .dash__side { position: fixed; top: 0; left: 0; bottom: 0; width: min(86vw, 320px); z-index: 80; transform: translateX(-102%); transition: transform .22s ease; box-shadow: 0 0 40px rgba(0,0,0,.35); padding-top: env(safe-area-inset-top); }
@@ -457,14 +460,13 @@ a.shipcal__day:hover { border-color: var(--navy); }
   .otable tr.orow-main td:nth-child(1) { display: none; }
   .otable tr.orow-main td:nth-child(2) { grid-area: num; }
   .otable tr.orow-main td:nth-child(3) { grid-area: cust; }
-  .otable tr.orow-main td:nth-child(4) { grid-area: art; }
   .otable tr.orow-main td:nth-child(5) { display: none; }
   .otable tr.orow-main td:nth-child(6) { grid-area: qty; align-self: center; font-weight: 700; }
   .otable tr.orow-main td:nth-child(7) { grid-area: stato; justify-self: end; text-align: right !important; }
   .otable tr.orow-main td:nth-child(8) { grid-area: imp; justify-self: end; text-align: right !important; }
   .otable tr.orow-main td:nth-child(3) { padding-top: 8px; border-top: 1px solid var(--line); }
-  .otable tr.orow-main td:nth-child(6) { padding-top: 8px; border-top: 1px solid var(--line); align-self: start; }
-  .otable tr.orow-main td:nth-child(8) { padding-top: 8px; border-top: 1px solid var(--line); }
+  .otable tr.orow-main td:nth-child(4) { grid-area: art; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+  .otable tr.orow-main td:nth-child(6) { align-self: start; }
   .otable tr.orow-main td:nth-child(9) { grid-area: act; padding-top: 6px; }
   .otable .row-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
   .otable .row-actions form { display: contents; }
@@ -477,7 +479,7 @@ a.shipcal__day:hover { border-color: var(--navy); }
   .otable tr.orow-sub { grid-template-columns: 1fr; margin-top: -6px; border-top-left-radius: 0; border-top-right-radius: 0; background: #fafbfe; }
   /* scheda ordine */
   .ohead { grid-template-columns: 1fr !important; }
-  .obar { gap: 6px; top: 60px; }
+  .obar { top: 60px; }
   .obar .btn { flex: 1 1 auto; text-align: center; }
   .obar > [style*="margin-left:auto"] { margin-left: 0 !important; width: 100%; }
   .oitem { grid-template-columns: 1fr; }
