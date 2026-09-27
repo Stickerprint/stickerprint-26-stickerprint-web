@@ -38,7 +38,7 @@ export const load: PageServerLoad = async ({ params, url, request }) => {
 		order: { number: g.number, status: g.status, created_at: g.created_at, delivery_date: g.delivery_date, ship_by: f.ship_by ?? null, lead_time: f.lead_time ?? null, shipping_method: g.shipping_method, net: g.net, gross: g.gross, customer: g.customer, first_name: f.billing?.first_name || f.shipping?.first_name || '' },
 		items: g.items.map((i) => ({ id: i.id, name: i.product_name, description: i.description || itemMeta(i), qty: i.qty, unit: Number(i.unit_net ?? Number(i.total_net) / i.qty), total: Number(i.total_net), image: thumbOf(i) ?? PRODUCTS[i.product_slug]?.gallery?.[0] ?? null, isMockup: !!thumbOf(i), category: CATS[i.product_slug]?.name ?? i.product_name })),
 		billing: addr(f.billing), shipping: addr(f.shipping), vat: f.billing?.vat ?? null,
-		payments: c.payments.map((p) => ({ seq: p.seq, method: p.method, due: p.due, amount: Number(p.amount), upfront: p.upfront, status: p.status, paid_at: p.paid_at })),
+		payments: c.payments.map((p) => ({ seq: p.seq, method: p.method, due: p.due, amount: Number(p.amount), upfront: p.upfront, status: p.status, paid_at: p.paid_at, kind: p.kind ?? 'scadenza', reason: p.reason ?? null })),
 		sender: c.conf.sender_name, messages: c.messages.map((m) => ({ id: m.id, direction: m.direction, kind: m.kind, author: m.author, body: m.body, created_at: m.created_at })),
 		bank: { iban: COMPANY.iban || null, name: COMPANY.name }, online: onlinePaymentsOn(), paypal: paypalConfigured(), simulation: !stripeConfigured() && onlinePaymentsOn(), paid, cancelled, ppError, stats
 	};
