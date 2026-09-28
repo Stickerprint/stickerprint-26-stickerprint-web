@@ -10,7 +10,8 @@ export interface FpaInvoice {
 const PAY_LABEL: Record<string, string> = { paypal: 'PayPal', stripe: 'carta di credito (Stripe)', test: 'test' };
 const esc = (s: string) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const n2 = (v: number) => (Math.round(v * 100) / 100).toFixed(2);
-const n8 = (v: number) => v.toFixed(8).replace(/0+$/, '').replace(/\.$/, '.00');
+/* da 2 a 8 decimali (lo schema vuole almeno 2: "8.2" viene scartato, "8.20" no) */
+const n8 = (v: number) => { const t = v.toFixed(8).replace(/0+$/, ''); const d = t.split('.')[1]?.length ?? 0; return d >= 2 ? t : v.toFixed(2); };
 const VAT = COMPANY.vatRate;
 
 /** XML FatturaPA (FPR12) per lo SDI, da inviare tramite Sibill. Progressivo = numero fattura senza prefisso. */
@@ -23,7 +24,9 @@ export function buildFatturaPaXml(inv: FpaInvoice, progressivo: string): { xml: 
 	const payMode = /bonifico|ricevuta/i.test(inv.payment_method ?? '') ? 'MP05' : 'MP08';
 	// righe: prodotti, express, sconto codice (negativo), credito Stickerprint come sconto (negativo, scorporato)
 	// le righe arrivano già al netto di sconti e credito (normalizeLines): in fattura non compaiono voci di sconto
-	const lines = inv.lines.map((l) => ({ d: l.description, q: l.qty, u: l.unit_net, t: l.total_net, ddt: l.ddt ?? null, ddtDate: l.ddt_date ?? null }));
+	// prezzo unitario = totale riga / quantita' con 8 decimali: lo SDI pretende Quantita x PrezzoUnitario = PrezzoTotale
+	// al centesimo (controllo 00423) e il prezzo arrotondato a 2 decimali del PDF non torna (50 x 0,64 = 32,00 contro 31,97)
+	const lines = inv.lines.map((l) => ({ d: l.description, q: l.qty, u: l.qty > 0 ? l.total_net / l.qty : l.unit_net, t: l.total_net, ddt: l.ddt ?? null, ddtDate: l.ddt_date ?? null }));
 	if (inv.express_net > 0) lines.push({ d: 'Produzione express (+30%)', q: 1, u: inv.express_net, t: inv.express_net, ddt: null, ddtDate: null });
 	const imponibile = lines.reduce((s, l) => s + l.t, 0);
 	const imposta = imponibile * VAT;
