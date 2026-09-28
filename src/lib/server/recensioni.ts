@@ -4,7 +4,7 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { sendEmail } from './email';
-import { reviewThanksEmail } from './email-templates';
+import { reviewRequestEmail, reviewThanksEmail } from './email-templates';
 import { invalidateReviews } from './reviews';
 
 type DB = SupabaseClient;
@@ -93,4 +93,27 @@ export async function linkReviewToRequest(db: DB, o: { orderId: string; groupOrd
 	if (o.checkoutGroup) ors.push(`checkout_group.eq.${o.checkoutGroup}`);
 	if (o.requestId && /^[0-9a-f-]{36}$/.test(o.requestId)) ors.push(`id.eq.${o.requestId}`);
 	await db.from('review_requests').update({ review_id: reviewId }).or(ors.join(',')).is('review_id', null);
+}
+
+/* ---------- richiesta di recensione (cron e dashboard usano questa) ---------- */
+type RigaOrdine = { id: string; number: string; checkout_group: string | null; user_id: string | null; email: string | null; shipping: { first_name?: string } | null; product_name: string; qty: number; preview_url?: string | null; proof_url?: string | null; mockup_url?: string | null };
+
+/** manda la richiesta di recensione per UN ordine (tutte le sue righe) e segna la data */
+export async function inviaRichiestaRecensione(db: DB, rows: RigaOrdine[], origin: string): Promise<{ ok: boolean; message: string }> {
+	const f = rows[0];
+	if (!f?.email) return { ok: false, message: 'Questo ordine non ha un indirizzo email.' };
+	const k = f.checkout_group ?? f.id;
+	const reqId = await createReviewRequest(db, { orderId: f.id, checkoutGroup: f.checkout_group ?? null, number: f.number, email: f.email, name: f.shipping?.first_name ?? null });
+	const q = reqId ? `?r=${reqId}` : '';
+	const href = f.user_id ? `${origin}/account/recensioni${q}` : `${origin}/recensione/${f.checkout_group ?? f.id}${q}`;
+	const mail = reviewRequestEmail({ name: f.shipping?.first_name ?? null, number: f.number, items: rows.map((r) => ({ name: r.product_name, qty: r.qty, preview: r.proof_url ?? r.preview_url ?? r.mockup_url ?? null })), href });
+	const html = reqId ? mail.html.replace('</body>', `<img src="${origin}/api/track/open/${reqId}" width="1" height="1" alt="" style="display:block;width:1px;height:1px;border:0;"></body>`) : mail.html;
+	const r = await sendEmail({ to: f.email, subject: mail.subject, html, tag: mail.tag, metadata: { order: f.number } });
+	if (!r.ok) {
+		if (reqId) await db.from('review_requests').delete().eq('id', reqId);
+		return { ok: false, message: `Postmark non ha accettato l'email: ${r.error ?? 'errore sconosciuto'}` };
+	}
+	await db.from('orders').update({ review_asked_at: new Date().toISOString() }).eq(f.checkout_group ? 'checkout_group' : 'id', k);
+	if (reqId && r.messageId) await db.from('review_requests').update({ message_id: r.messageId }).eq('id', reqId);
+	return { ok: true, message: `Richiesta di recensione inviata a ${f.email} per l'ordine ${f.number}.` };
 }

@@ -84,7 +84,7 @@ export interface OrderRow {
 	prod_stage: string | null; internal_notes: string | null; lamination: string | null; created_at: string; updated_at: string;
 	device: string | null; user_agent: string | null; proof_url: string | null; imposition_url: string | null; auto_proof: boolean;
 	payment_terms: { due: string; amount: number; method: string; xml_code: string }[] | null;
-	courier: string | null; shipped_at: string | null; delivered_at: string | null; parcels: number | null; weight_kg: number | null; ddt_id: string | null;
+	courier: string | null; shipped_at: string | null; delivered_at: string | null; review_asked_at?: string | null; parcels: number | null; weight_kg: number | null; ddt_id: string | null;
 	contact_id?: string | null; transmitted_at?: string | null; labels_generated_at?: string | null; tracking_number?: string | null; courier_label_path?: string | null; manifest_id?: string | null;
 	legacy_id?: number | null; shipping_courier?: string | null; shipping_status?: string | null; shipping_status_id?: number | null; shipping_detail?: string | null; shipping_place?: string | null; shipping_updated_at?: string | null; shipping_notified?: string[] | null;
 	lead_time?: string | null; ship_by?: string | null; proof_sent_at?: string | null; proof_reminded_at?: string | null; reprints?: number | null;
@@ -93,6 +93,8 @@ export interface OrderRow {
 export interface OrderGroup {
 	key: string; number: string; numbers: string[]; channel: string; country: string; customer: string; email: string;
 	created_at: string; delivery_date: string | null; status: string; starred: boolean; items: OrderRow[]; device: string | null;
+	/** quando e' partita la richiesta di recensione (null = mai chiesta) */
+	review_asked_at?: string | null; delivered_at?: string | null;
 	qty: number; net: number; gross: number; paid: number; express: boolean; payment_method: string | null; shipping_method: string | null;
 }
 export function groupOrders(rows: OrderRow[]): OrderGroup[] {
@@ -113,6 +115,7 @@ export function groupOrders(rows: OrderRow[]): OrderGroup[] {
 		return {
 			key, number: f.number, numbers: [...new Set(items.map((i) => i.number))], channel: f.channel, country: f.country ?? 'IT', customer, email: f.email ?? '',
 			created_at: f.created_at, delivery_date: f.delivery_date, status, starred: items.some((i) => i.starred), items, device: f.device,
+			review_asked_at: f.review_asked_at ?? null, delivered_at: f.delivered_at ?? null,
 			qty: items.reduce((s, i) => s + i.qty, 0), net: items.reduce((s, i) => s + Number(i.total_net), 0), gross: items.reduce((s, i) => s + Number(i.total_gross), 0),
 			paid: items.reduce((s, i) => s + Number(i.total_paid ?? 0), 0), express: items.some((i) => i.express), payment_method: f.payment_method, shipping_method: f.shipping_method
 		};

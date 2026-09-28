@@ -15,6 +15,8 @@
 	/* "Inizia produzione": ordini appena creati (manuali, o in attesa di prova del vecchio flusso) che non hanno ancora una coda di lavorazioni.
 	   Gli e-commerce pagati entrano da soli; quelli in attesa dell'anticipo si possono forzare (es. pagato a voce). */
 	let starting = $state<string | null>(null);
+	/* richiesta di recensione mandata a mano da qui */
+	let chiedo = $state<string | null>(null);
 	const canStart = (g: (typeof data.groups)[number]) => ['attesa_pagamento', 'in_attesa', 'attesa_file', 'attesa_prova', 'modifiche_richieste', 'approvazione'].includes(g.status) || (g.status === 'in_produzione' && !g.items[0].prod_stage);
 	let expanded = $state<Set<string>>(new Set());
 	const year = $derived(data.year);
@@ -158,6 +160,16 @@
 						{:else}
 							<span class="st" style="background:{st(g.status).soft};color:{st(g.status).color}">{st(g.status).label}</span>
 							{#if g.status === 'in_produzione' && first.prod_stage}<div class="osub">{PROD_STAGES[first.prod_stage] ?? first.prod_stage}</div>{/if}
+							{#if g.status === 'consegnato'}
+								{#if g.review_asked_at}
+									<div class="osub" title="Richiesta di recensione inviata">⭐ chiesta il {dmy(g.review_asked_at)}</div>
+								{:else}
+									<form method="POST" action="?/recensione" use:enhance={() => { chiedo = g.key; return async ({ update }) => { chiedo = null; await update(); }; }} style="margin-top:4px">
+										<input type="hidden" name="group" value={g.key} />
+										<button class="btn btn--ghost btn--xs" type="submit" disabled={chiedo === g.key} title="Manda adesso la richiesta di recensione">{chiedo === g.key ? '…' : '⭐ mai chiesta: manda'}</button>
+									</form>
+								{/if}
+							{/if}
 						{/if}
 					</td>
 					<td style="text-align:right"><b>{money(g.net)}</b><div class="osub">{money(g.gross)} IVA incl.{#if paymentIcon(g.payment_method)} <img src={paymentIcon(g.payment_method)} alt={paymentLabel(g.payment_method)} title={paymentLabel(g.payment_method)} style="height:14px;vertical-align:middle" />{:else if g.payment_method} · {g.payment_method}{/if}</div></td>
