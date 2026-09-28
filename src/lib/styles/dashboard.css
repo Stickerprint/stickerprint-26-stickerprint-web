@@ -390,7 +390,9 @@ a.shipcal__day:hover { border-color: var(--navy); }
    TELEFONO (iPhone): menu a scomparsa, barra in basso, tabelle come schede
    ========================================================================== */
 @media (max-width: 820px) {
-  .dash { grid-template-columns: 1fr; }
+  /* una colonna, due righe (barra + contenuto): senza `align-content: start` le pagine corte
+     facevano allungare la riga della barra blu fino a meta' schermo */
+  .dash { grid-template-columns: 1fr; grid-template-rows: auto 1fr; align-content: start; }
   /* barra in alto */
   .dash__mtop { display: grid; grid-template-columns: 44px 1fr auto; align-items: center; gap: 10px; position: sticky; top: 0; z-index: 60; background: var(--navy); color: #fff; padding: 8px 12px; padding-top: calc(8px + env(safe-area-inset-top)); }
   .dash__burger { width: 44px; height: 44px; border: 0; border-radius: 12px; background: rgba(255,255,255,.1); color: #fff; font-size: 22px; line-height: 1; }
@@ -438,7 +440,11 @@ a.shipcal__day:hover { border-color: var(--navy); }
   .month-cell { min-width: 58px; padding: 6px 2px; }
   .month-cell .mc-amt { display: none; }
   .stats5 { grid-template-columns: repeat(2, 1fr) !important; gap: 8px; }
-  .pr-kpis { grid-template-columns: repeat(2, 1fr) !important; }
+  .pr-kpis { grid-template-columns: repeat(3, 1fr) !important; gap: 8px; }
+  .pr-kpis:has(> :nth-child(4):last-child) { grid-template-columns: repeat(2, 1fr) !important; }
+  .pr-kpi { padding: 10px 10px; min-width: 0; }
+  .pr-kpi b { font-size: 22px; }
+  .pr-kpi span { font-size: 11px; line-height: 1.2; }
   .tabs { overflow-x: auto; flex-wrap: nowrap; padding-bottom: 4px; -webkit-overflow-scrolling: touch; }
   .tabs button, .tabs a { white-space: nowrap; }
   .year-bar { overflow-x: auto; }
@@ -456,18 +462,22 @@ a.shipcal__day:hover { border-color: var(--navy); }
   .dtable input[type=number] { max-width: none; }
   .dtable .row-actions { justify-content: flex-start; }
   /* Ordini: scheda studiata */
-  .otable tr.orow-main { grid-template-columns: 1fr auto; grid-template-areas: "num stato" "cust cust" "art art" "qty imp" "act act"; align-items: start; gap: 6px 12px; padding: 14px 16px; }
+  /* righe: numero · data · stato / cliente · email / prodotto · pezzi / importi / bottoni */
+  .otable tr.orow-main { grid-template-columns: 1fr auto; grid-template-areas: "num stato" "cust cust" "art qty" "imp imp" "act act"; align-items: start; gap: 6px 12px; padding: 14px 16px; }
   .otable tr.orow-main td:nth-child(1) { display: none; }
-  .otable tr.orow-main td:nth-child(2) { grid-area: num; }
-  .otable tr.orow-main td:nth-child(3) { grid-area: cust; }
+  .otable tr.orow-main td:nth-child(2) { grid-area: num; display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+  .otable tr.orow-main td:nth-child(2) .oid { flex: none; }
+  .otable tr.orow-main td:nth-child(2) .osub { flex: 1; text-align: center; white-space: nowrap; margin-top: 0; }
+  .otable tr.orow-main td:nth-child(3) { grid-area: cust; display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 2px 10px; padding-top: 8px; border-top: 1px solid var(--line); }
+  .otable tr.orow-main td:nth-child(3) .osub { margin: 0 0 0 auto; font-size: 12px; overflow-wrap: anywhere; text-align: right !important; }
+  .otable tr.orow-main td:nth-child(4) { grid-area: art; min-width: 0; }
   .otable tr.orow-main td:nth-child(5) { display: none; }
-  .otable tr.orow-main td:nth-child(6) { grid-area: qty; align-self: center; font-weight: 700; }
+  .otable tr.orow-main td:nth-child(6) { grid-area: qty; justify-self: end; align-self: start; font-weight: 700; white-space: nowrap; padding-top: 2px; }
   .otable tr.orow-main td:nth-child(7) { grid-area: stato; justify-self: end; text-align: right !important; }
-  .otable tr.orow-main td:nth-child(8) { grid-area: imp; justify-self: end; text-align: right !important; }
-  .otable tr.orow-main td:nth-child(3) { padding-top: 8px; border-top: 1px solid var(--line); }
-  .otable tr.orow-main td:nth-child(4) { grid-area: art; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
-  .otable tr.orow-main td:nth-child(6) { align-self: start; }
-  .otable tr.orow-main td:nth-child(9) { grid-area: act; padding-top: 6px; }
+  .otable tr.orow-main td:nth-child(8) { grid-area: imp; display: flex; justify-content: space-between; align-items: center; gap: 8px; padding-top: 8px; border-top: 1px solid var(--line); text-align: left !important; }
+  .otable tr.orow-main td:nth-child(8) b { font-size: 16px; }
+  .otable tr.orow-main td:nth-child(8) .osub { margin-top: 0; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+  .otable tr.orow-main td:nth-child(9) { grid-area: act; padding-top: 2px; }
   .otable .row-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
   .otable .row-actions form { display: contents; }
   .otable .ibtn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; width: 100%; padding: 9px 6px; border: 1px solid var(--line); border-radius: 10px; background: #fff; font-size: 15px; font-weight: 700; color: var(--ink); text-decoration: none; }
