@@ -95,8 +95,10 @@ export interface OrderGroup {
 	created_at: string; delivery_date: string | null; status: string; starred: boolean; items: OrderRow[]; device: string | null;
 	/** quando e' partita la richiesta di recensione (null = mai chiesta) */
 	review_asked_at?: string | null; delivered_at?: string | null;
-	qty: number; net: number; gross: number; paid: number; express: boolean; payment_method: string | null; shipping_method: string | null;
+	/** net/gross = quanto vale davvero l'ordine (listino meno codice sconto); listNet/listGross = prezzo di listino; discount = sconto codice (netto); credit = credito Stickerprint usato (IVA inclusa); paid = incassato */
+	qty: number; net: number; gross: number; listNet: number; listGross: number; discount: number; discountCode: string | null; credit: number; paid: number; express: boolean; payment_method: string | null; shipping_method: string | null;
 }
+const r2 = (v: number) => Math.round(v * 100) / 100;
 export function groupOrders(rows: OrderRow[]): OrderGroup[] {
 	const map = new Map<string, OrderRow[]>();
 	for (const r of rows) {
@@ -112,11 +114,14 @@ export function groupOrders(rows: OrderRow[]): OrderGroup[] {
 		// stato dell'ordine: il meno avanzato tra gli articoli
 		const order = STATUS_RANK;
 		const status = items.map((i) => i.status).sort((a, b) => order.indexOf(a) - order.indexOf(b))[0];
+		// totali: il listino degli articoli meno il codice sconto usato al checkout (es. STICKER10): e' quello che il cliente paga e che va in fattura
+		const listNet = r2(items.reduce((s, i) => s + Number(i.total_net), 0)), listGross = r2(items.reduce((s, i) => s + Number(i.total_gross), 0));
+		const discount = r2(items.reduce((s, i) => s + Number(i.discount_amount ?? 0), 0)), credit = r2(items.reduce((s, i) => s + Number(i.credit_used ?? 0), 0));
 		return {
 			key, number: f.number, numbers: [...new Set(items.map((i) => i.number))], channel: f.channel, country: f.country ?? 'IT', customer, email: f.email ?? '',
 			created_at: f.created_at, delivery_date: f.delivery_date, status, starred: items.some((i) => i.starred), items, device: f.device,
 			review_asked_at: f.review_asked_at ?? null, delivered_at: f.delivered_at ?? null,
-			qty: items.reduce((s, i) => s + i.qty, 0), net: items.reduce((s, i) => s + Number(i.total_net), 0), gross: items.reduce((s, i) => s + Number(i.total_gross), 0),
+			qty: items.reduce((s, i) => s + i.qty, 0), net: r2(listNet - discount), gross: r2(listGross - r2(discount * 1.22)), listNet, listGross, discount, discountCode: items.find((i) => i.discount_code)?.discount_code ?? null, credit,
 			paid: items.reduce((s, i) => s + Number(i.total_paid ?? 0), 0), express: items.some((i) => i.express), payment_method: f.payment_method, shipping_method: f.shipping_method
 		};
 	}).sort((a, b) => b.created_at.localeCompare(a.created_at));

@@ -172,7 +172,7 @@
 							{/if}
 						{/if}
 					</td>
-					<td style="text-align:right"><b>{money(g.net)}</b><div class="osub">{money(g.gross)} IVA incl.{#if paymentIcon(g.payment_method)} <img src={paymentIcon(g.payment_method)} alt={paymentLabel(g.payment_method)} title={paymentLabel(g.payment_method)} style="height:14px;vertical-align:middle" />{:else if g.payment_method} · {g.payment_method}{/if}</div></td>
+					<td style="text-align:right"><b>{money(g.net)}</b>{#if g.discount > 0}<div class="osub" style="color:#b45309">sconto {g.discountCode ?? ''} −{money(g.discount)}</div>{/if}<div class="osub">{money(g.gross)} IVA incl.{#if paymentIcon(g.payment_method)} <img src={paymentIcon(g.payment_method)} alt={paymentLabel(g.payment_method)} title={paymentLabel(g.payment_method)} style="height:14px;vertical-align:middle" />{:else if g.payment_method} · {g.payment_method}{/if}</div></td>
 					<td>
 						<div class="row-actions">
 							<form method="POST" action="?/star" use:enhance><input type="hidden" name="group" value={g.key} /><input type="hidden" name="on" value={g.starred ? '0' : '1'} /><button type="submit" class="ibtn" title="Segna ordine">{g.starred ? '⭐' : '☆'}<span class="ibtn__lbl">{g.starred ? 'Segnato' : 'Segna'}</span></button></form>

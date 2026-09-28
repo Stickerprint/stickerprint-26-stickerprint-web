@@ -220,9 +220,15 @@
 				{/if}
 			</div>
 			<div class="tot-box">
+				{#if g.discount > 0}
+					<div class="sumrow"><span>Listino</span><b>{money(g.listNet)}</b></div>
+					<div class="sumrow" style="color:#b45309"><span>Sconto {g.discountCode ?? ''}</span><b>−{money(g.discount)}</b></div>
+				{/if}
 				<div class="sumrow"><span>Imponibile</span><b>{money(g.net)}</b></div>
 				<div class="sumrow"><span>IVA 22%</span><b>{money(vat)}</b></div>
 				<div class="sumrow sumrow--tot"><span>Totale IVA inclusa</span><b>{money(g.gross)}</b></div>
+				{#if g.credit > 0}<div class="sumrow"><span>Credito Stickerprint usato</span><b>−{money(g.credit)}</b></div>{/if}
+				{#if g.paid > 0 && Math.abs(g.paid - g.gross + g.credit) > 0.01}<div class="sumrow"><span>Incassato (con spedizione)</span><b>{money(g.paid)}</b></div>{/if}
 			</div>
 		</div>
 	</div>
