@@ -102,7 +102,7 @@
 {:else}
 	<div class="ohead">
 		<div class="ohead__title">
-			<h1>Ordine {g.number}</h1>
+			<h1>Ordine {g.number}{#if g.discount > 0} <span class="disc-badge" title="Il cliente ha usato un codice sconto al checkout">🏷️ Codice sconto {g.discountCode ?? ''} · −{money(g.discount)}</span>{/if}</h1>
 			<p class="lead">{dmy(g.created_at)} · {g.customer} · <span title={CHANNEL_ICON[g.channel]?.label}>{CHANNEL_ICON[g.channel]?.icon} {CHANNEL_ICON[g.channel]?.label}</span>{#if g.device} · {DEVICE_ICON[g.device]} da {g.device}{/if} · {COUNTRIES[g.country]?.flag ?? ''} {COUNTRIES[g.country]?.name ?? g.country}</p>
 		</div>
 		<!-- stato: lo porta avanti la produzione (reparti) e la pagina Spedizioni; da qui si cambia solo nei casi eccezionali -->
@@ -282,3 +282,7 @@
 		</div>
 	{/if}
 {/if}
+
+<style>
+	.disc-badge { display:inline-block; vertical-align:middle; margin-left:10px; padding:4px 10px; border-radius:999px; background:#fef3c7; color:#92400e; font-size:13px; font-weight:800; }
+</style>
