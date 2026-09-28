@@ -17,7 +17,13 @@ const VAT = COMPANY.vatRate;
 /** XML FatturaPA (FPR12) per lo SDI, da inviare tramite Sibill. Progressivo = numero fattura senza prefisso. */
 export function buildFatturaPaXml(inv: FpaInvoice, progressivo: string): { xml: string; filename: string } {
 	const b = inv.billing ?? {};
-	const isCompany = !!b.vat;
+	// dati fiscali del cliente: P.IVA senza prefisso IT e solo cifre; codice fiscale pulito (spazi, minuscole, "IT" davanti).
+	// Con la P.IVA il codice fiscale va messo solo se e' quello dell'azienda (11 cifre): il CF personale del titolare
+	// scritto nel campo dell'azienda fa scartare la fattura allo SDI ("P.IVA e CF non coerenti")
+	const piva = String(b.vat ?? '').toUpperCase().replace(/^IT/, '').replace(/\D/g, '');
+	const isCompany = piva.length === 11;
+	const cfRaw = String(b.fiscal_code ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '').replace(/^IT(?=\d{11}$)/, '');
+	const cf = isCompany ? (/^\d{11}$/.test(cfRaw) ? cfRaw : '') : (/^[A-Z0-9]{16}$|^\d{11}$/.test(cfRaw) ? cfRaw : '');
 	const sdi = (b.sdi ?? '').trim().toUpperCase();
 	const pec = (b.pec ?? '').trim();
 	const codiceDest = sdi.length === 7 ? sdi : '0000000';
@@ -33,7 +39,7 @@ export function buildFatturaPaXml(inv: FpaInvoice, progressivo: string): { xml: 
 	const totale = imponibile + imposta;
 	const dettaglio = lines.map((l, i) => `<DettaglioLinee><NumeroLinea>${i + 1}</NumeroLinea><Descrizione>${esc(l.d).slice(0, 1000)}</Descrizione><Quantita>${n2(l.q)}</Quantita><PrezzoUnitario>${n8(l.u)}</PrezzoUnitario><PrezzoTotale>${n2(l.t)}</PrezzoTotale><AliquotaIVA>${n2(VAT * 100)}</AliquotaIVA></DettaglioLinee>`).join('');
 	const anagrafica = isCompany || b.company ? `<Denominazione>${esc(b.company || `${b.first_name ?? ''} ${b.last_name ?? ''}`.trim())}</Denominazione>` : `<Nome>${esc(b.first_name ?? '')}</Nome><Cognome>${esc(b.last_name ?? '')}</Cognome>`;
-	const fiscal = `${isCompany ? `<IdFiscaleIVA><IdPaese>${esc(b.country || 'IT')}</IdPaese><IdCodice>${esc(b.vat.replace(/^IT/i, ''))}</IdCodice></IdFiscaleIVA>` : ''}${b.fiscal_code ? `<CodiceFiscale>${esc(b.fiscal_code.toUpperCase())}</CodiceFiscale>` : ''}`;
+	const fiscal = `${isCompany ? `<IdFiscaleIVA><IdPaese>${esc((b.country || 'IT').toUpperCase())}</IdPaese><IdCodice>${piva}</IdCodice></IdFiscaleIVA>` : ''}${cf ? `<CodiceFiscale>${cf}</CodiceFiscale>` : ''}`;
 	// DDT collegati: uno per documento, con il riferimento alle righe che ne derivano
 	const ddtList = inv.ddt_numbers?.length ? inv.ddt_numbers : inv.ddt_number ? [inv.ddt_number] : [];
 	const ddt = ddtList.map((n) => {
