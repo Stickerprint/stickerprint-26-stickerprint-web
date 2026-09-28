@@ -18,6 +18,12 @@
 	/* la tendina si apre "sopra a tutto" (position: fixed, ancorata al bottone): dentro il riquadro della tabella, che ha lo
 	   scorrimento interno, veniva tagliata e bisognava scendere per vederla. Se sotto non c'e' spazio si apre verso l'alto. */
 	let menuPos = $state({ left: 0, top: 0 });
+	/* "Copia link": il link del tracking finisce negli appunti, pronto da incollare nella risposta al cliente */
+	let copied = $state<string | null>(null);
+	async function copyTracking(key: string, url: string) {
+		try { await navigator.clipboard.writeText(url); } catch { window.prompt('Copia il link del tracking:', url); return; }
+		copied = key; setTimeout(() => { if (copied === key) copied = null; }, 1800);
+	}
 	/* scorrendo (pagina o riquadri interni) la tendina si chiude: e' ancorata allo schermo, non al bottone */
 	$effect(() => { if (!openMenu) return; const close = () => (openMenu = null); document.addEventListener('scroll', close, true); return () => document.removeEventListener('scroll', close, true); });
 	function toggleMenu(e: MouseEvent, key: string) {
@@ -184,7 +190,7 @@
 						<td>
 							<b style="display:flex;align-items:center;gap:8px">{#if f.courier === 'Qapla'}<img class="courier-logo" src={COURIERS.Qapla.logo} alt="Qapla" />{/if}{info.how}</b>
 							<div class="osub">{info.sub}</div>
-							{#if f.tracking_url}<div class="osub"><a class="link" href={f.tracking_url} target="_blank" rel="noopener">↗ segui la spedizione</a></div>{/if}
+							{#if f.tracking_url}<div class="trk"><a class="btn btn--ghost btn--xs" href={f.tracking_url} target="_blank" rel="noopener">↗ Tracking</a><button type="button" class="btn btn--xs {copied === g.key ? 'btn--green' : 'btn--ghost'}" onclick={() => copyTracking(g.key, f.tracking_url!)}>{copied === g.key ? '✓ Copiato' : '⧉ Copia link'}</button></div>{/if}
 							{#if f.courier === 'Qapla' && !f.tracking_number && data.couriers?.length}
 								<!-- non ancora ritirato: si puo' rimandare a Qapla con un altro corriere (l'ordine con lo stesso riferimento viene aggiornato) -->
 								<form method="POST" action="?/ricorriere" use:enhance class="reship"><input type="hidden" name="group" value={g.key} /><select name="courier">{#each data.couriers as k (k.code)}<option value={k.code}>{k.name}</option>{/each}</select><button class="btn btn--ghost btn--xs" type="submit">↻ Rimanda</button></form>
@@ -254,5 +260,6 @@
 {/if}
 
 <style>
+	.trk { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
 	.reship { display: flex; gap: 6px; align-items: center; margin-top: 6px; } .reship select { padding: 4px 8px; border: 1px solid var(--line); border-radius: 8px; font: inherit; font-size: 12px; }
 </style>

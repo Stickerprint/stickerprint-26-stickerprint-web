@@ -71,14 +71,11 @@
 	const meseLabel = $derived(
 		meseRif === null ? `tutto il ${year}` : meseRif === 'prev' ? `prima del ${year}` : meseRif === 'next' ? `dopo il ${year}` : `${MONTHS[+meseRif]} ${year}`
 	);
-	const nelMese = (g: OrderGroup) => {
-		if (meseRif === null) return true;
-		const d = new Date(g.created_at), y = d.getFullYear();
-		return (y < year ? 'prev' : y > year ? 'next' : String(d.getMonth())) === meseRif;
-	};
-	/* TUTTI i riquadri parlano del mese di riferimento: scegliendo agosto si vedono i numeri di agosto */
+	/* TUTTI i riquadri parlano del mese di riferimento e dei filtri attivi (categoria, canale, stato, segnati, ricerca):
+	   scegliendo agosto e "solo manuali" si vedono ordini e fatturato di agosto dei soli manuali */
+	const filtriAttivi = $derived(search.trim() !== '' || cat !== 'all' || channel !== 'all' || status !== 'all' || star !== 'entrambi');
 	const stats = $derived.by(() => {
-		const mese = data.groups.filter(nelMese);
+		const mese = list;
 		const validi = mese.filter((g: OrderGroup) => g.status !== 'annullato');
 		return {
 			total: mese.length,
@@ -118,13 +115,13 @@
 	<button type="button" class="btn btn--xs {month === null ? 'btn--blue' : 'btn--ghost'}" onclick={() => (month = null)}>Tutti i mesi</button>
 </div>
 
-<p class="stats5-rif">Stai guardando <b>{meseLabel}</b>: riquadri, elenco e totali qui sotto sono solo di {meseLabel}.</p>
+<p class="stats5-rif">Stai guardando <b>{meseLabel}</b>{#if filtriAttivi} <b>con i filtri attivi</b>{/if}: riquadri, elenco e totali qui sotto sono solo di {meseLabel}{#if filtriAttivi} e degli ordini che passano i filtri{/if}.</p>
 <div class="stats5">
 	<div class="dcard stat5"><span class="ico" style="background:#fde7f1;color:#e0117f">📦</span><div><small>Ordini · {meseLabel}</small><b>{stats.total}</b><i>{stats.ecom} e-commerce · {stats.manuali} manuali</i></div></div>
 	<div class="dcard stat5"><span class="ico" style="background:#e5f0ff;color:#3b82f6">🖨️</span><div><small>In produzione</small><b>{stats.produzione}</b><i>di {meseLabel}</i></div></div>
 	<div class="dcard stat5"><span class="ico" style="background:#dcf9f4;color:#0d9488">🚚</span><div><small>In spedizione</small><b>{stats.spedizione}</b><i>di {meseLabel}</i></div></div>
 	<div class="dcard stat5"><span class="ico" style="background:#dcfce7;color:#15803d">✅</span><div><small>Consegnati</small><b>{stats.consegnati}</b><i>di {meseLabel}</i></div></div>
-	<div class="dcard stat5"><span class="ico" style="background:#fef6db;color:#c48a00">💶</span><div><small>Fatturato netto</small><b>{money(stats.net)}</b><i>{stats.netOrdini} ordini di {meseLabel}</i></div></div>
+	<div class="dcard stat5"><span class="ico" style="background:#fef6db;color:#c48a00">💶</span><div><small>Fatturato netto</small><b>{money(stats.net)}</b><i>{stats.netOrdini} {stats.netOrdini === 1 ? 'ordine' : 'ordini'} di {meseLabel}{#if filtriAttivi} · filtri attivi{/if}</i></div></div>
 </div>
 
 <div class="dcard filters">
