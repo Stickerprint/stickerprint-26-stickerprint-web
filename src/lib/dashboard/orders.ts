@@ -96,6 +96,8 @@ export interface OrderGroup {
 	/** quando e' partita la richiesta di recensione (null = mai chiesta) */
 	review_asked_at?: string | null; delivered_at?: string | null;
 	/** net/gross = quanto vale davvero l'ordine (listino meno codice sconto); listNet/listGross = prezzo di listino; discount = sconto codice (netto); credit = credito Stickerprint usato (IVA inclusa); paid = incassato */
+	/** data entro cui l'ordine deve partire (la piu' vicina tra gli articoli) */
+	shipBy: string | null;
 	qty: number; net: number; gross: number; listNet: number; listGross: number; discount: number; discountCode: string | null; credit: number; paid: number; express: boolean; payment_method: string | null; shipping_method: string | null;
 }
 const r2 = (v: number) => Math.round(v * 100) / 100;
@@ -121,6 +123,7 @@ export function groupOrders(rows: OrderRow[]): OrderGroup[] {
 			key, number: f.number, numbers: [...new Set(items.map((i) => i.number))], channel: f.channel, country: f.country ?? 'IT', customer, email: f.email ?? '',
 			created_at: f.created_at, delivery_date: f.delivery_date, status, starred: items.some((i) => i.starred), items, device: f.device,
 			review_asked_at: f.review_asked_at ?? null, delivered_at: f.delivered_at ?? null,
+			shipBy: items.map((i) => i.ship_by).filter(Boolean).sort()[0] ?? null,
 			qty: items.reduce((s, i) => s + i.qty, 0), net: r2(listNet - discount), gross: r2(listGross - r2(discount * 1.22)), listNet, listGross, discount, discountCode: items.find((i) => i.discount_code)?.discount_code ?? null, credit,
 			paid: items.reduce((s, i) => s + Number(i.total_paid ?? 0), 0), express: items.some((i) => i.express), payment_method: f.payment_method, shipping_method: f.shipping_method
 		};

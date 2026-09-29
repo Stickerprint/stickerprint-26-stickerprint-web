@@ -136,7 +136,7 @@
 
 <div class="dcard" style="overflow-x:auto;padding:0">
 	<table class="dtable otable">
-		<thead><tr><th></th><th>Ordine</th><th>Cliente</th><th>Articolo</th><th>Categoria</th><th>Q.tà</th><th>Stato</th><th style="text-align:right">Importo</th><th></th></tr></thead>
+		<thead><tr><th></th><th>Ordine</th><th>Cliente</th><th>Articolo</th><th>Categoria</th><th>Q.tà</th><th>Stato</th><th>Spedizione</th><th style="text-align:right">Importo</th><th></th></tr></thead>
 		<tbody>
 			{#each pageList as g (g.key)}
 				{@const first = g.items[0]}
@@ -158,7 +158,12 @@
 							<form method="POST" action="?/produzione" use:enhance={() => { starting = g.key; return async ({ update }) => { starting = null; await update(); }; }}><input type="hidden" name="group" value={g.key} /><button class="btn btn--green btn--xs" type="submit" disabled={starting === g.key} title="L'ordine va in produzione e compare subito nel reparto Stampa">{starting === g.key ? '…' : '▶ Metti in stampa'}</button></form>
 							{#if g.status === 'attesa_pagamento'}<div class="osub" style="margin-top:4px">in attesa dell'anticipo</div>{/if}
 						{:else}
-							<span class="st" style="background:{st(g.status).soft};color:{st(g.status).color}">{st(g.status).label}</span>
+							<!-- cambio stato al volo: la tendina ha i colori dello stato e invia da sola -->
+							<form method="POST" action="?/stato" use:enhance class="stform"><input type="hidden" name="group" value={g.key} />
+								<select name="status" class="st stsel" style="background:{st(g.status).soft};color:{st(g.status).color}" value={g.status} onchange={(e) => (e.currentTarget.form as HTMLFormElement).requestSubmit()} title="Cambia stato senza aprire l'ordine">
+									{#each (ACTIVE_STATUSES.includes(g.status) ? ACTIVE_STATUSES : [g.status, ...ACTIVE_STATUSES]) as k (k)}<option value={k}>{st(k).label}</option>{/each}
+								</select>
+							</form>
 							{#if g.status === 'in_produzione' && first.prod_stage}<div class="osub">{PROD_STAGES[first.prod_stage] ?? first.prod_stage}</div>{/if}
 							{#if g.status === 'consegnato'}
 								{#if g.review_asked_at}
@@ -172,7 +177,14 @@
 							{/if}
 						{/if}
 					</td>
-					<td style="text-align:right"><b>{money(g.net)}</b>{#if g.discount > 0}<div class="osub" style="color:#b45309">sconto {g.discountCode ?? ''} −{money(g.discount)}</div>{/if}<div class="osub">{money(g.gross)} IVA incl.{#if paymentIcon(g.payment_method)} <img src={paymentIcon(g.payment_method)} alt={paymentLabel(g.payment_method)} title={paymentLabel(g.payment_method)} style="height:14px;vertical-align:middle" />{:else if g.payment_method} · {g.payment_method}{/if}</div></td>
+					<td class="shipcol">
+						{#if g.shipBy}
+							{@const late = !['spedito', 'in_consegna', 'consegnato', 'annullato'].includes(g.status) && g.shipBy < new Date().toISOString().slice(0, 10)}
+							<b class:is-late={late} title={late ? 'Doveva partire entro questa data' : 'Deve partire entro questa data'}>{late ? '⚠ ' : ''}{dmy(g.shipBy)}</b>
+							{#if first.shipped_at}<div class="osub">partito {dmy(first.shipped_at)}</div>{:else}<div class="osub">entro</div>{/if}
+						{:else}<span class="osub">—</span>{/if}
+					</td>
+					<td style="text-align:right"><b>{money(g.net)}</b>{#if g.discount > 0}<div class="osub" style="color:#b45309">sconto {g.discountCode ?? ''} −{money(g.discount)}</div>{/if}<div class="osub">{money(g.gross)} IVA incl.</div>{#if paymentIcon(g.payment_method)}<div class="payrow"><img src={paymentIcon(g.payment_method)} alt={paymentLabel(g.payment_method)} title={paymentLabel(g.payment_method)} /></div>{:else if g.payment_method}<div class="osub">{paymentLabel(g.payment_method)}</div>{/if}</td>
 					<td>
 						<div class="row-actions">
 							<form method="POST" action="?/star" use:enhance><input type="hidden" name="group" value={g.key} /><input type="hidden" name="on" value={g.starred ? '0' : '1'} /><button type="submit" class="ibtn" title="Segna ordine">{g.starred ? '⭐' : '☆'}<span class="ibtn__lbl">{g.starred ? 'Segnato' : 'Segna'}</span></button></form>
@@ -188,19 +200,19 @@
 							<td><div class="item-cell">{#if it.preview_url || it.mockup_url}<img src={it.mockup_url ?? it.preview_url} alt="" />{/if}<div><b>{it.product_name}</b><div class="osub">{itemMeta(it)}</div></div></div></td>
 							<td><span class="cat" style="background:{CATS[it.product_slug]?.soft};color:{CATS[it.product_slug]?.color}">{CATS[it.product_slug]?.name ?? it.product_slug}</span></td>
 							<td>{it.qty.toLocaleString('it-IT')} pz</td>
-							<td><span class="st" style="background:{st(it.status).soft};color:{st(it.status).color}">{st(it.status).label}</span></td>
+							<td><span class="st" style="background:{st(it.status).soft};color:{st(it.status).color}">{st(it.status).label}</span></td><td></td>
 							<td style="text-align:right">{money(Number(it.total_net))}</td><td></td>
 						</tr>
 					{/each}
 				{/if}
 			{:else}
-				<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:30px">Nessun ordine corrisponde ai filtri selezionati.</td></tr>
+				<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:30px">Nessun ordine corrisponde ai filtri selezionati.</td></tr>
 			{/each}
 		</tbody>
 		{#if list.length}
 			<tfoot class="otot">
 				<tr>
-					<td colspan="7"><b>Totale {totals.n} {totals.n === 1 ? 'ordine' : 'ordini'}</b> con i filtri attivi{#if totals.cancelled} <span class="osub">({totals.cancelled} {totals.cancelled === 1 ? 'annullato escluso' : 'annullati esclusi'})</span>{/if}{#if pages > 1}<div class="osub">In questa pagina: {money(totals.pageNet)} imponibile · {money(totals.pageGross)} IVA inclusa</div>{/if}</td>
+					<td colspan="8"><b>Totale {totals.n} {totals.n === 1 ? 'ordine' : 'ordini'}</b> con i filtri attivi{#if totals.cancelled} <span class="osub">({totals.cancelled} {totals.cancelled === 1 ? 'annullato escluso' : 'annullati esclusi'})</span>{/if}{#if pages > 1}<div class="osub">In questa pagina: {money(totals.pageNet)} imponibile · {money(totals.pageGross)} IVA inclusa</div>{/if}</td>
 					<td style="text-align:right"><div class="otot__row"><span>Imponibile</span><b>{money(totals.net)}</b></div><div class="otot__row"><span>IVA</span><b>{money(totals.vat)}</b></div><div class="otot__row otot__row--tot"><span>Totale IVA inclusa</span><b>{money(totals.gross)}</b></div></td>
 					<td></td>
 				</tr>

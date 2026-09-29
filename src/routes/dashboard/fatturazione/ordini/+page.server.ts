@@ -1,5 +1,5 @@
 import { fail } from '@sveltejs/kit';
-import { groupOrders, type OrderRow } from '$lib/dashboard/orders';
+import { groupOrders, ORDER_STATUS, type OrderRow } from '$lib/dashboard/orders';
 import { ensurePlan, operatorName } from '$lib/server/produzione';
 import { inviaRichiestaRecensione } from '$lib/server/recensioni';
 import type { Actions, PageServerLoad } from './$types';
@@ -52,6 +52,21 @@ export const actions: Actions = {
 		if (rows[0].status !== 'consegnato') return fail(400, { error: 'La recensione si chiede solo sugli ordini consegnati.' });
 		const r = await inviaRichiestaRecensione(supabase, rows as never, url.origin);
 		return r.ok ? { ok: true, message: r.message } : fail(400, { error: r.message });
+	},
+	/** cambio stato veloce dalla tendina in lista (stessa logica della scheda ordine) */
+	stato: async ({ request, locals: { supabase, user } }) => {
+		const f = await request.formData();
+		const key = String(f.get('group') ?? ''); const status = String(f.get('status') ?? '');
+		if (!ORDER_STATUS[status]) return fail(400, { error: 'Stato non valido.' });
+		const rows = await righeDelGruppo(supabase, key);
+		if (!rows.length) return fail(404, { error: 'Ordine non trovato.' });
+		const patch: Record<string, unknown> = { status, prod_stage: status === 'in_produzione' ? 'stampa' : null };
+		if (status === 'consegnato') patch.delivered_at = new Date().toISOString();
+		if (status === 'spedito') patch.shipped_at = new Date().toISOString();
+		const { error } = await aggiornaGruppo(supabase, key, patch, rows);
+		if (error) return fail(400, { error: error.message });
+		await ensurePlan(supabase, (await righeDelGruppo(supabase, key)) as OrderRow[], await operatorName(supabase, user));
+		return { ok: true, message: `${groupOrders(rows)[0].number}: stato aggiornato a "${ORDER_STATUS[status].label}".` };
 	},
 	star: async ({ request, locals: { supabase } }) => {
 		const f = await request.formData();
