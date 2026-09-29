@@ -574,6 +574,10 @@
 	const mat = $derived(STRIP_MATERIALS.find((m) => m.id === matId) ?? STRIP_MATERIALS[0]);
 	const maxH = $derived(P.mode === 'fogli' ? mat.maxHSheets : mat.maxHLoose);
 	let stripH = $state(0);
+	/* regole del foglio: quelle del prodotto, ma si possono cambiare (un file pronto di etichette puo'
+	   dover seguire le regole dei resinati, e viceversa) */
+	let regoleFoglio = $state<'etichette' | 'resinati'>(P.sheetRules ?? 'etichette');
+	const regole = $derived(SHEET_RULES[regoleFoglio]);
 	/* il verso lo decide lo studio, ma l'operatore puo' forzarlo per vedere se guadagna spazio */
 	let versoPezzi = $state<Verso>('auto');
 	let versoFoglio = $state<Verso>('auto');
@@ -604,7 +608,7 @@
 			return { kind: 'multi' as const, r: layoutLoose(cutW, cutH, { stripW: pageW, stripH: H, margin, marginY, gap: sGap, qty: qtyDaFare, verso: versoFoglio }) };
 		}
 		if (P.mode === 'fogli') {
-			const rules = SHEET_RULES[P.sheetRules ?? 'etichette'];
+			const rules = regole;
 			const probe = layoutSheets(cutW, cutH, rules, { stripW: pageW, stripH: H, margin, marginY, sheetGap: sGap, sheets: 0, versoPezzi, versoFoglio });
 			if (!probe.ok || !probe.sheet) return { kind: 'fogli' as const, r: probe, sheets: 0 };
 			const want = qtyDaFare ? Math.ceil(qtyDaFare / probe.sheet.grid.n) : 0;
@@ -631,7 +635,7 @@
 			/* ogni foglio porta il suo passante attorno */
 			pages = r.strips.map((pg) => ({ ...pg, sheets: pg.pieces.map((q) => ({ x: q.x, y: q.y, w: q.rot ? art.cutH : art.cutW, h: q.rot ? art.cutW : art.cutH, rot: q.rot })) }));
 		} else if (P.mode === 'fogli') {
-			const rules = SHEET_RULES[P.sheetRules ?? 'etichette'];
+			const rules = regole;
 			const probe = layoutSheets(art.cutW, art.cutH, rules, { stripW: pageW, stripH: H, margin, marginY, sheetGap: sGap, sheets: 0, versoPezzi, versoFoglio });
 			if (!probe.ok || !probe.sheet) throw new Error(probe.error ?? 'Impaginazione non possibile');
 			const want = qtyDaFare ? Math.ceil(qtyDaFare / probe.sheet.grid.n) : 0;
@@ -1091,6 +1095,16 @@
 					{#if stripH > maxH}<em class="st-hint st-hint--warn">oltre i {maxH} mm consigliati per {P.mode === 'fogli' ? 'i fogli' : 'gli adesivi'}: decidi tu fin dove spingerti</em>
 					{:else}<em class="st-hint">vuoto = {maxH} mm, il consigliato; puoi alzarla quanto vuoi</em>{/if}</label>
 				<label class="st-field"><span>{MULTI ? 'Fogli da stampare' : P.mode === 'fogli' ? 'Etichette da stampare' : 'Pezzi da stampare'} <em>(vuoto = una striscia piena)</em></span><input class="input" type="number" min="1" step="1" bind:value={qty} placeholder="riempi la striscia" />{#if qtyDaFare}<em class="st-hint">ne preparo {qtyDaFare}: l’8% in piu&#39; per gli scarti</em>{/if}</label>
+				{#if P.mode === 'fogli' && !MULTI}
+					<div class="st-block">
+						<p class="st-label">Regole del foglio</p>
+						<div class="st-chips">
+							<button type="button" class="st-chip" class:is-on={regoleFoglio === 'etichette'} onclick={() => (regoleFoglio = 'etichette')}>Etichette · bordo {SHEET_RULES.etichette.margin} mm</button>
+							<button type="button" class="st-chip" class:is-on={regoleFoglio === 'resinati'} onclick={() => (regoleFoglio = 'resinati')}>Resinati · bordo {SHEET_RULES.resinati.margin} mm, multipli di 5</button>
+						</div>
+						<p class="st-note">Il foglio parte con le regole del prodotto. Con i resinati le etichette per foglio sono sempre multiple di 5 (resinatrice a 10 aghi) e il bordo è {SHEET_RULES.resinati.margin} mm.</p>
+					</div>
+				{/if}
 				<div class="st-block">
 					<p class="st-label">Verso sulla striscia</p>
 					<div class="st-chips">
@@ -1116,7 +1130,7 @@
 					<label class="st-field"><span>Condizione plotter passante</span><input class="input" type="number" min="1" max="8" step="1" bind:value={condThrough} /></label>
 					{#if P.mode === 'fogli'}
 						<label class="st-field"><span>Spazio fra i fogli (mm, minimo {MIN_SHEET_GAP})</span><input class="input" type="number" min={MIN_SHEET_GAP} step="0.5" bind:value={sheetGap} /></label>
-						<p class="st-note">Foglio: bordo {SHEET_RULES[P.sheetRules ?? 'etichette'].margin} mm, {SHEET_RULES[P.sheetRules ?? 'etichette'].gap} mm fra le etichette{SHEET_RULES[P.sheetRules ?? 'etichette'].mod5 ? ', multipli di 5 (resinatrice a 10 aghi)' : ''}.</p>
+						<p class="st-note">Foglio: bordo {regole.margin} mm, {regole.gap} mm fra le etichette{regole.mod5 ? ', multipli di 5 (resinatrice a 10 aghi)' : ''}.</p>
 					{:else}
 						<label class="st-field"><span>Spazio fra i pezzi, da taglio a taglio (mm)</span><input class="input" type="number" min="0" step="0.5" bind:value={gap} /></label>
 					{/if}
