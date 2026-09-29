@@ -136,6 +136,18 @@
 		<div class="dcard">
 			<h3>👤 Cliente</h3>
 			<p><b>{g.customer}</b><br />{#if g.email}<a class="link" href="mailto:{g.email}">{g.email}</a><br />{/if}{#if first.billing?.phone ?? first.shipping?.phone}{first.billing?.phone ?? first.shipping?.phone}{/if}</p>
+			{#if first.user_id}
+				<p class="osub">✅ Cliente registrato: vede l'ordine nella sua area personale.</p>
+			{:else}
+				<!-- ordine da ospite: se il cliente si e' registrato (magari con un'altra email) lo si collega qui -->
+				<details class="collega">
+					<summary class="osub">👤 Ordine da ospite (non collegato a un account) · collega a un account registrato</summary>
+					<form method="POST" action="?/collega" use:enhance style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
+						<input type="email" name="email" placeholder="email dell'account registrato" value={g.email} required style="flex:1;min-width:220px;padding:6px 10px;border:1px solid var(--line);border-radius:8px;font:inherit;font-size:13px" />
+						<button class="btn btn--ghost btn--xs" type="submit">Collega</button>
+					</form>
+				</details>
+			{/if}
 			<div class="row2">
 				<div><h4 class="h4">Fatturazione</h4><p class="small">{#each addr(first.billing) as l, k (k)}{l}<br />{/each}{#if first.billing?.vat}P.IVA {first.billing.vat}<br />{/if}{#if first.billing?.fiscal_code}C.F. {first.billing.fiscal_code}<br />{/if}{#if first.billing?.sdi}SDI {first.billing.sdi}{/if}</p></div>
 				<div><h4 class="h4">Spedizione</h4><p class="small">{#each addr(first.shipping) as l, k (k)}{l}<br />{/each}</p></div>

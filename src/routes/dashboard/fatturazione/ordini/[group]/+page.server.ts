@@ -175,6 +175,19 @@ export const actions: Actions = {
 		if (e) return fail(400, { error: e.message });
 		return { ok: true, message: 'Tracking salvato.' };
 	},
+	/** Collega l'ordine (tutte le righe del gruppo e la fattura) a un cliente registrato: serve quando un ospite si registra
+	    dopo con un'email diversa da quella scritta nel checkout. L'email dell'ordine diventa quella dell'account. */
+	collega: async ({ request, params, locals: { supabase } }) => {
+		const f = await request.formData();
+		const email = String(f.get('email') ?? '').trim().toLowerCase();
+		if (!email) return fail(400, { error: "Scrivi l'email dell'account." });
+		const { data: prof } = await supabase.from('profiles').select('id, email, full_name').ilike('email', email).maybeSingle();
+		if (!prof) return fail(400, { error: `Nessun account registrato con ${email}.` });
+		const { error: e1 } = await supabase.from('orders').update({ user_id: prof.id, email: prof.email }).eq('checkout_group', params.group);
+		if (e1) return fail(400, { error: e1.message });
+		await supabase.from('invoices').update({ user_id: prof.id, email: prof.email }).eq('checkout_group', params.group);
+		return { ok: true, message: `Ordine collegato all'account di ${prof.full_name || prof.email} (${prof.email}): ora lo vede in "I miei ordini".` };
+	},
 	delete: async ({ params, locals: { supabase } }) => {
 		const { error: e } = await supabase.from('orders').delete().eq('checkout_group', params.group);
 		if (e) return fail(400, { error: e.message });
