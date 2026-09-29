@@ -39,12 +39,15 @@ export interface SheetRules {
 	/** spazio minimo fra un'etichetta e l'altra */
 	gap: number;
 	/** resinatrice a 10 aghi: etichette per foglio multiple di 5 */
-	mod5: boolean;
+	/** resinatrice: quanti aghi ha la testa (null = nessun vincolo).
+	 *  Le etichette di una riga si dividono gli aghi, quindi le colonne devono stare nella testa
+	 *  (1, 2, 5 o 10 per una testa da 10) e il totale del foglio dev'essere un multiplo della testa. */
+	testa: number | null;
 }
 
 export const SHEET_RULES: Record<'resinati' | 'etichette', SheetRules> = {
-	resinati: { margin: 12.5, gap: 2, mod5: true },
-	etichette: { margin: 10, gap: 2, mod5: false }
+	resinati: { margin: 12.5, gap: 2, testa: 10 },
+	etichette: { margin: 10, gap: 2, testa: null }
 };
 
 /** A4 di riferimento e quanto ci si puo' allontanare ("circa A4") */
@@ -234,7 +237,7 @@ export function layoutSheets(cutW: number, cutH: number, rules: SheetRules, o: S
 		for (let c = 1; c <= maxC; c++)
 			for (let r = 1; r <= maxR; r++) {
 				const n = c * r;
-				if (rules.mod5 && n % 5) continue;
+				if (rules.testa && (rules.testa % c || n % rules.testa)) continue;
 				const g = grid(pw, ph, c, r, rules.gap, rot);
 				const sw = Math.round((g.w + 2 * rules.margin) * 10) / 10, sh = Math.round((g.h + 2 * rules.margin) * 10) / 10;
 				const sheet: SheetLayout = { w: sw, h: sh, grid: g, pieces: place(g, pw, ph, rules.gap, rules.margin, rules.margin), pw, ph, nearA4: a4Near(sw, sh, A4_TOL) };
@@ -249,7 +252,7 @@ export function layoutSheets(cutW: number, cutH: number, rules: SheetRules, o: S
 	}
 	const empty: SheetResult = { ok: false, sheet: null, across: 0, down: 0, sheetsPerStrip: 0, piecesPerStrip: 0, sheetRot: false, strips: [] };
 	if (!cands.length) {
-		return { ...empty, error: rules.mod5 ? `Con ${cutW.toFixed(1)}×${cutH.toFixed(1)} mm non entra un foglio con un multiplo di 5 etichette nella striscia ${o.stripW}×${o.stripH} mm.` : `L'etichetta (${cutW.toFixed(1)}×${cutH.toFixed(1)} mm) non entra in un foglio sulla striscia ${o.stripW}×${o.stripH} mm.` };
+		return { ...empty, error: rules.testa ? `Con ${cutW.toFixed(1)}×${cutH.toFixed(1)} mm non viene fuori un foglio adatto alla testa da ${rules.testa} aghi (colonne 1, 2, 5 o ${rules.testa} e totale multiplo di ${rules.testa}) nella striscia ${o.stripW}×${o.stripH} mm.` : `L'etichetta (${cutW.toFixed(1)}×${cutH.toFixed(1)} mm) non entra in un foglio sulla striscia ${o.stripW}×${o.stripH} mm.` };
 	}
 	const areaA4 = A4[0] * A4[1];
 	const near = cands.filter((c) => c.sheet.nearA4);

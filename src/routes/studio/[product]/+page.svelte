@@ -1100,9 +1100,9 @@
 						<p class="st-label">Regole del foglio</p>
 						<div class="st-chips">
 							<button type="button" class="st-chip" class:is-on={regoleFoglio === 'etichette'} onclick={() => (regoleFoglio = 'etichette')}>Etichette · bordo {SHEET_RULES.etichette.margin} mm</button>
-							<button type="button" class="st-chip" class:is-on={regoleFoglio === 'resinati'} onclick={() => (regoleFoglio = 'resinati')}>Resinati · bordo {SHEET_RULES.resinati.margin} mm, multipli di 5</button>
+							<button type="button" class="st-chip" class:is-on={regoleFoglio === 'resinati'} onclick={() => (regoleFoglio = 'resinati')}>Resinati · bordo {SHEET_RULES.resinati.margin} mm, testa da {SHEET_RULES.resinati.testa} aghi</button>
 						</div>
-						<p class="st-note">Il foglio parte con le regole del prodotto. Con i resinati le etichette per foglio sono sempre multiple di 5 (resinatrice a 10 aghi) e il bordo è {SHEET_RULES.resinati.margin} mm.</p>
+						<p class="st-note">Il foglio parte con le regole del prodotto. Con i resinati le etichette si dispongono sulla testa da {SHEET_RULES.resinati.testa} aghi: 1, 2, 5 o {SHEET_RULES.resinati.testa} per riga e totale del foglio multiplo di {SHEET_RULES.resinati.testa}; bordo {SHEET_RULES.resinati.margin} mm.</p>
 					</div>
 				{/if}
 				<div class="st-block">
@@ -1130,7 +1130,7 @@
 					<label class="st-field"><span>Condizione plotter passante</span><input class="input" type="number" min="1" max="8" step="1" bind:value={condThrough} /></label>
 					{#if P.mode === 'fogli'}
 						<label class="st-field"><span>Spazio fra i fogli (mm, minimo {MIN_SHEET_GAP})</span><input class="input" type="number" min={MIN_SHEET_GAP} step="0.5" bind:value={sheetGap} /></label>
-						<p class="st-note">Foglio: bordo {regole.margin} mm, {regole.gap} mm fra le etichette{regole.mod5 ? ', multipli di 5 (resinatrice a 10 aghi)' : ''}.</p>
+						<p class="st-note">Foglio: bordo {regole.margin} mm, {regole.gap} mm fra le etichette{regole.testa ? `, colonne che stanno nella testa da ${regole.testa} aghi e totale multiplo di ${regole.testa}` : ''}.</p>
 					{:else}
 						<label class="st-field"><span>Spazio fra i pezzi, da taglio a taglio (mm)</span><input class="input" type="number" min="0" step="0.5" bind:value={gap} /></label>
 					{/if}
