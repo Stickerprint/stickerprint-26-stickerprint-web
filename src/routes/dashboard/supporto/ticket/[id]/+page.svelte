@@ -9,7 +9,6 @@
 	let body = $state('');
 	let next = $state('attesa_cliente');
 	let sending = $state(false);
-	const useTemplate = (id: string) => { const tpl = data.templates.find((x) => x.id === id); if (tpl) body = (body ? body + '\n\n' : '') + tpl.body.replace('{nome}', t.name?.split(' ')[0] ?? ''); };
 	const submitAuto = (e: Event) => ((e.currentTarget as HTMLElement).closest('form') as HTMLFormElement).requestSubmit();
 </script>
 
@@ -37,10 +36,7 @@
 		<div class="dcard">
 			<h3>Rispondi al cliente</h3>
 			<form method="POST" action="?/rispondi" use:enhance={() => { sending = true; return async ({ update, result }) => { await update({ reset: false }); sending = false; if (result.type === 'success') body = ''; }; }} style="display:grid;gap:10px">
-				<div class="toolbar" style="gap:8px">
-					<select onchange={(e) => { useTemplate(e.currentTarget.value); e.currentTarget.value = ''; }} class="sel-sm"><option value="">📋 Inserisci una risposta pronta…</option>{#each data.templates as tpl (tpl.id)}<option value={tpl.id}>{tpl.title}</option>{/each}</select>
-					<a class="link" style="font-size:12px" href="/dashboard/supporto/risposte">gestisci ›</a>
-				</div>
+				
 				<textarea name="body" bind:value={body} rows="6" required placeholder="Ciao {t.name?.split(' ')[0] ?? ''}, …" style="padding:10px 12px;border:1px solid var(--line);border-radius:10px;font:inherit;font-size:14px"></textarea>
 				<div class="toolbar" style="gap:10px">
 					<label class="osub">Dopo l'invio <select name="next" bind:value={next} class="sel-sm"><option value="attesa_cliente">in attesa del cliente</option><option value="in_carico">resta in carico</option><option value="risolto">risolto</option><option value="chiuso">chiuso</option></select></label>

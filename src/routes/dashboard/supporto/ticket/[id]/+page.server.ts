@@ -1,5 +1,5 @@
 import { error, fail } from '@sveltejs/kit';
-import { getTicket, listTemplates, markTicketRead, noteTicket, replyTicket, ticketContext, updateTicket, type TicketStatus } from '$lib/server/helpdesk';
+import { getTicket, markTicketRead, noteTicket, replyTicket, ticketContext, updateTicket, type TicketStatus } from '$lib/server/helpdesk';
 import { operatorName } from '$lib/server/produzione';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -7,11 +7,11 @@ export const load: PageServerLoad = async ({ params, locals: { supabase } }) => 
 	const c = await getTicket(supabase, params.id);
 	if (!c) error(404, 'Richiesta non trovata');
 	await markTicketRead(supabase, c.ticket.id);
-	const [ctx, templates] = await Promise.all([ticketContext(supabase, c.ticket), listTemplates(supabase)]);
+	const ctx = await ticketContext(supabase, c.ticket);
 	// allegati: link firmati per un'ora
 	const files: Record<number, string> = {};
 	for (const m of c.messages) if (m.file_path) { const { data } = await supabase.storage.from('requests').createSignedUrl(m.file_path, 3600, { download: m.file_path.split('/').pop() }); if (data) files[m.id] = data.signedUrl; }
-	return { ...c, ...ctx, templates, files };
+	return { ...c, ...ctx, files };
 };
 
 export const actions: Actions = {

@@ -31,17 +31,14 @@
 			{ label: 'Modalità TV', href: '/dashboard/produzione/tv' },
 			{ label: 'Spedizioni', href: '/dashboard/produzione/spedizioni', count: data.counts?.spedizione }
 		] },
-		{ id: 'aziende', title: 'Aziende', items: [
-			{ label: 'Richieste', href: '/dashboard/aziende/richieste', count: data.counts?.aziende },
-			{ label: 'Preventivi', href: '/dashboard/aziende/preventivi', count: data.counts?.preventivi }
-		] },
-		{ id: 'supporto', title: 'Supporto', items: [
+		{ id: 'richieste', title: 'Richieste', items: [
+			{ label: 'Aziende', href: '/dashboard/aziende/richieste', count: data.counts?.aziende },
 			{ label: 'Richieste di aiuto', href: '/dashboard/supporto/ticket', count: data.counts?.supporto },
-			{ label: 'Risposte pronte', href: '/dashboard/supporto/risposte' },
 			{ label: 'Recensioni', href: '/dashboard/supporto/recensioni', count: data.counts?.recensioni }
 		] },
 		{ id: 'fatturazione', title: 'Fatturazione', items: [
 			{ label: 'Ordini', href: '/dashboard/fatturazione/ordini', count: data.counts?.prove },
+			{ label: 'Preventivi', href: '/dashboard/aziende/preventivi', count: data.counts?.preventivi },
 			{ label: 'DDT', href: '/dashboard/fatturazione/ddt' },
 			{ label: 'Fatture', href: '/dashboard/fatturazione/fatture', count: data.counts?.fatture }
 		] },
