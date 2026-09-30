@@ -35,6 +35,7 @@
 			if (r.error) { calc.error = r.error; return; }
 			calc.opts = r.opts;
 			if (r.forma) { calc.forma = r.forma; calc.materiale = r.materiale; calc.finitura = r.finitura; calc.net = r.net; calc.unitNet = r.unitNet; calc.description = r.description; }
+			else { /* senza misura: tendine gia' compilate con la prima scelta */ calc.forma ||= r.opts.shapes[0]?.id ?? ''; calc.materiale ||= r.opts.materials[0]?.id ?? ''; calc.finitura ||= r.opts.finishes[0]?.id ?? ''; }
 			if (calc.qty > 0 && r.minQty && calc.qty < r.minQty) calc.error = `Sul sito il minimo e' ${r.minQty} pz: il prezzo e' calcolato su ${calc.qty}.`;
 		} catch { calc.error = 'Listino non raggiungibile.'; } finally { calc.busy = false; }
 	}
@@ -104,11 +105,11 @@
 	<input type="hidden" name="payload" value={JSON.stringify(d)} />
 	{#if calc}
 		<div class="dmodal-bg" role="presentation" onclick={(e) => { if (e.target === e.currentTarget) calc = null; }}>
-			<div class="dmodal" style="width:560px">
+			<div class="dmodal" style="max-width:600px">
 				<h3>🧮 Prezzo dal listino del sito</h3>
 				{#if calc.opts}
 					<p class="osub">{PRODUCT_ENGINES.find((p) => p.slug === calc?.product)?.name}: stesso calcolo del configuratore pubblico, prezzi netti.</p>
-					<div class="dform" style="grid-template-columns:repeat(3,1fr)">
+					<div class="dform" style="grid-template-columns:repeat(3,minmax(0,1fr))">
 						<label>Larghezza (mm)<input type="number" min="1" bind:value={calc.w} onchange={calcRun} /></label>
 						<label>Altezza (mm)<input type="number" min="1" bind:value={calc.h} onchange={calcRun} /></label>
 						<label>Quantità<input type="number" min="1" list="calc-qty" bind:value={calc.qty} onchange={calcRun} /><datalist id="calc-qty">{#each calc.opts.quantities as q (q)}<option value={q}></option>{/each}</datalist></label>
