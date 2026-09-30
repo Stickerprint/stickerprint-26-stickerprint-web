@@ -4,6 +4,7 @@
 	import type { SupabaseClient } from '@supabase/supabase-js';
 	import { CATS, COUNTRIES, SHIPPING_METHODS, money } from '$lib/dashboard/orders';
 	import { computeTerms, type PaymentMethod } from '$lib/dashboard/payments';
+	import { PRODUCT_ENGINES } from '$lib/pricing/engine';
 	import { categoryOf, draftTotals, emptyItem, splitAmounts, termsForMethod, type OrderDraft, type ProductCode } from '$lib/dashboard/orderDraft';
 
 	export interface PickContact { id: string; kind: 'contact' | 'profile'; name: string; first_name: string; last_name: string; email: string; phone: string; street: string; city: string; zip: string; province: string; country: string; vat: string; fiscal_code: string; sdi: string; pec: string }
@@ -14,6 +15,37 @@
 	let d = $state<OrderDraft>(structuredClone($state.snapshot(draft)));
 	let saving = $state(false);
 	let uploadMsg = $state('');
+	/* calcolatore dal listino del sito: si apre sulla riga, chiede misura/materiale/quantita' e scrive prezzo e descrizione */
+	type Opt = { id: string; label: string };
+	let calc = $state<{ i: number; product: string; w: number; h: number; qty: number; forma: string; materiale: string; finitura: string; opts: { shapes: Opt[]; materials: Opt[]; finishes: Opt[]; quantities: number[] } | null; net: number; unitNet: number; description: string; busy: boolean; error: string } | null>(null);
+	const ENGINE_SLUGS = new Set(PRODUCT_ENGINES.map((p) => p.slug));
+	async function calcOpen(i: number) {
+		const it = d.items[i]; const cat = categoryOf(it.code, codes) ?? '';
+		if (!ENGINE_SLUGS.has(cat)) { calc = { i, product: cat, w: 0, h: 0, qty: Number(it.qty) || 0, forma: '', materiale: '', finitura: '', opts: null, net: 0, unitNet: 0, description: '', busy: false, error: cat ? 'Questa categoria non ha un listino sul sito.' : 'Metti prima un codice prodotto (es. STK).' }; return; }
+		/* misura gia' scritta nella descrizione (es. "50×30 mm" o "5x3 cm") */
+		const m = (it.description ?? '').match(/(\d+(?:[.,]\d+)?)\s*[x×]\s*(\d+(?:[.,]\d+)?)\s*(mm|cm)?/i);
+		const k = m && /cm/i.test(m[3] ?? '') ? 10 : 1;
+		calc = { i, product: cat, w: m ? Number(m[1].replace(',', '.')) * k : 0, h: m ? Number(m[2].replace(',', '.')) * k : 0, qty: Number(it.qty) || 0, forma: '', materiale: '', finitura: it.lamination === 'lucida' ? 'lucida' : it.lamination === 'opaca' ? 'opaca' : '', opts: null, net: 0, unitNet: 0, description: '', busy: false, error: '' };
+		await calcRun();
+	}
+	async function calcRun() {
+		if (!calc) return; calc.busy = true; calc.error = '';
+		try {
+			const r = await fetch('/dashboard/api/listino', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ product: calc.product, w: calc.w, h: calc.h, qty: calc.qty, forma: calc.forma, materiale: calc.materiale, finitura: calc.finitura }) }).then((x) => x.json());
+			if (r.error) { calc.error = r.error; return; }
+			calc.opts = r.opts;
+			if (r.forma) { calc.forma = r.forma; calc.materiale = r.materiale; calc.finitura = r.finitura; calc.net = r.net; calc.unitNet = r.unitNet; calc.description = r.description; }
+			if (calc.qty > 0 && r.minQty && calc.qty < r.minQty) calc.error = `Sul sito il minimo e' ${r.minQty} pz: il prezzo e' calcolato su ${calc.qty}.`;
+		} catch { calc.error = 'Listino non raggiungibile.'; } finally { calc.busy = false; }
+	}
+	function calcApply() {
+		if (!calc || !calc.unitNet) return;
+		const it = d.items[calc.i];
+		it.qty = calc.qty; it.price = lordi ? Math.round(calc.unitNet * 1.22 * 10000) / 10000 : calc.unitNet;
+		it.description = calc.description;
+		if (calc.finitura === 'lucida' || calc.finitura === 'opaca') it.lamination = calc.finitura; else if (calc.opts?.finishes.length) it.lamination = 'nessuna';
+		calc = null;
+	}
 	let pick = $state('');
 	let pickOpen = $state(false);
 	let autoAmounts = $state(true);
@@ -70,6 +102,38 @@
 
 <form id="order-editor" method="POST" action="?/save" class="editor" use:enhance={() => { saving = true; return async ({ update }) => { saving = false; await update({ reset: false }); }; }}>
 	<input type="hidden" name="payload" value={JSON.stringify(d)} />
+	{#if calc}
+		<div class="dmodal-bg" role="presentation" onclick={(e) => { if (e.target === e.currentTarget) calc = null; }}>
+			<div class="dmodal" style="width:560px">
+				<h3>🧮 Prezzo dal listino del sito</h3>
+				{#if calc.opts}
+					<p class="osub">{PRODUCT_ENGINES.find((p) => p.slug === calc?.product)?.name}: stesso calcolo del configuratore pubblico, prezzi netti.</p>
+					<div class="dform" style="grid-template-columns:repeat(3,1fr)">
+						<label>Larghezza (mm)<input type="number" min="1" bind:value={calc.w} onchange={calcRun} /></label>
+						<label>Altezza (mm)<input type="number" min="1" bind:value={calc.h} onchange={calcRun} /></label>
+						<label>Quantità<input type="number" min="1" list="calc-qty" bind:value={calc.qty} onchange={calcRun} /><datalist id="calc-qty">{#each calc.opts.quantities as q (q)}<option value={q}></option>{/each}</datalist></label>
+						<label>Sagoma<select bind:value={calc.forma} onchange={calcRun}>{#each calc.opts.shapes as o (o.id)}<option value={o.id}>{o.label}</option>{/each}</select></label>
+						<label>Materiale<select bind:value={calc.materiale} onchange={calcRun}>{#each calc.opts.materials as o (o.id)}<option value={o.id}>{o.label}</option>{/each}</select></label>
+						{#if calc.opts.finishes.length}<label>Finitura<select bind:value={calc.finitura} onchange={calcRun}>{#each calc.opts.finishes as o (o.id)}<option value={o.id}>{o.label}</option>{/each}</select></label>{/if}
+					</div>
+					{#if calc.error}<p class="osub" style="color:#b45309;margin-top:8px">{calc.error}</p>{/if}
+					<div class="tot-box" style="margin-top:12px">
+						{#if calc.busy}<p class="osub">Calcolo…</p>
+						{:else if calc.unitNet}
+							<div class="sumrow"><span>Prezzo unitario netto</span><b>{money(calc.unitNet)}</b></div>
+							<div class="sumrow sumrow--tot"><span>Totale netto · {calc.qty} pz</span><b>{money(calc.net)}</b></div>
+							<div class="sumrow"><span>IVA inclusa</span><b>{money(calc.net * 1.22)}</b></div>
+							<p class="osub">Descrizione: {calc.description}</p>
+						{:else}<p class="osub">Metti misura e quantità.</p>{/if}
+					</div>
+				{:else}<p class="osub" style="color:#b45309">{calc.error || 'Carico il listino…'}</p>{/if}
+				<div class="toolbar" style="margin-top:14px;justify-content:flex-end">
+					<button type="button" class="btn btn--ghost btn--xs" onclick={() => (calc = null)}>Annulla</button>
+					<button type="button" class="btn btn--blue btn--xs" disabled={!calc.unitNet || calc.busy} onclick={calcApply}>Usa questo prezzo{lordi ? ' (IVA inclusa)' : ''}</button>
+				</div>
+			</div>
+		</div>
+	{/if}
 	<datalist id="codes-list">{#each codes as c (c.id)}<option value={c.code}>{c.name}{c.description ? ' · ' + c.description : ''}</option>{/each}</datalist>
 	<div class="toolbar" style="justify-content:space-between">
 		<div><h1>{title}</h1><p class="lead">{labels.lead ?? (mode === 'create' ? 'Ordine inserito a mano (telefono, email, fiera). Entra subito in produzione.' : 'Modifica tutto l’ordine: cliente, articoli, spedizione e scadenze.')}</p></div>
@@ -126,7 +190,7 @@
 						<td><span class="cat" class:cat--none={!catOf(it.code)}>{catOf(it.code) || 'Codice non riconosciuto'}</span></td>
 						<td><input type="text" placeholder="es. 10×10 cm, PP lucido" bind:value={it.description} /></td>
 						<td><input type="number" min="1" bind:value={it.qty} style="max-width:90px" /></td>
-						<td><input type="number" min="0" step="0.0001" bind:value={it.price} style="max-width:110px" /></td>
+						<td><div style="display:flex;gap:4px;align-items:center"><input type="number" min="0" step="0.0001" bind:value={it.price} style="max-width:110px" /><button type="button" class="ibtn" title="Prezzo dal listino del sito (misura, materiale, quantita')" onclick={() => calcOpen(i)}>🧮</button></div></td>
 						<td><b>{money(Number(it.qty || 0) * Number(it.price || 0))}</b></td>
 						<td><select bind:value={it.lamination}><option value="nessuna">Nessuna</option><option value="lucida">Lucida</option><option value="opaca">Opaca</option></select></td>
 						<td>
