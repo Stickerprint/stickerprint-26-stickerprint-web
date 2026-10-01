@@ -114,9 +114,9 @@
 			{#each perProdotto as p (p.slug)}
 				<tr>
 					<td><span class="mg-dot" style="background:{CATS[p.slug]?.color ?? '#94a3b8'}"></span>{nomeProdotto(p.slug)}{#if p.senzaCosto} <small class="mg-muted">({p.senzaCosto} righe senza costo)</small>{/if}</td>
-					<td>{p.n}</td><td>{p.pezzi.toLocaleString('it-IT')}</td><td>{mqFmt(p.mq)}</td>
-					<td class="num">{money(p.ricavo)}</td><td class="num">{money(p.costo)}</td>
-					<td class="num"><b>{money(p.margine)}</b></td><td class="num"><span class="mg-pct {classeMargine(p.pct)}">{pctFmt(p.pct)}</span></td>
+					<td data-l="Ordini">{p.n}</td><td data-l="Pezzi">{p.pezzi.toLocaleString('it-IT')}</td><td data-l="Bobina">{mqFmt(p.mq)}</td>
+					<td class="num" data-l="Fatturato">{money(p.ricavo)}</td><td class="num" data-l="Costo">{money(p.costo)}</td>
+					<td class="num" data-l="Margine"><b>{money(p.margine)}</b></td><td class="num" data-l="Margine %"><span class="mg-pct {classeMargine(p.pct)}">{pctFmt(p.pct)}</span></td>
 				</tr>
 			{/each}
 		</tbody>
@@ -140,20 +140,20 @@
 			{#each list as o (o.key)}
 				<tr class="mg-row" class:is-open={aperti.has(o.key)}>
 					<td><button type="button" class="mg-exp" onclick={() => toggle(o.key)} aria-label="Dettaglio">{aperti.has(o.key) ? '▾' : '▸'}</button></td>
-					<td class="mg-nowrap">{dmy(o.created_at)}</td>
+					<td class="mg-nowrap" data-l="Data">{dmy(o.created_at)}</td>
 					<td class="mg-nowrap"><a class="link" href="/dashboard/fatturazione/ordini/{o.key}"><b>{o.number}</b></a> <span title={CHANNEL_ICON[o.channel]?.label}>{CHANNEL_ICON[o.channel]?.icon ?? ''}</span><br /><small class="mg-muted" style="color:{ORDER_STATUS[o.status]?.color}">{ORDER_STATUS[o.status]?.label ?? o.status}</small></td>
-					<td>{o.customer}</td>
-					<td>
+					<td data-l="Cliente">{o.customer}</td>
+					<td class="mg-prod">
 						{#each o.righe as r (r.id)}
 							<div class="mg-item"><span class="mg-dot" style="background:{CATS[r.product_slug]?.color ?? '#94a3b8'}"></span>{r.qty.toLocaleString('it-IT')} × {r.product_name} <small class="mg-muted">{r.misura}{#if r.materiale} · {r.materiale}{/if}{#if r.finitura && r.finitura !== 'nessuna'} · {r.finitura}{/if}</small>
 								{#if r.costo.stato === 'manca'}<span class="mg-flag is-manca" title={r.costo.motivo}>senza costo</span>{:else if r.costo.stato === 'stima'}<span class="mg-flag is-stima" title={r.costo.motivo}>stima</span>{/if}</div>
 						{/each}
 					</td>
-					<td class="mg-nowrap">{o.stato === 'manca' && o.mq === 0 ? '—' : mqFmt(o.mq)}</td>
-					<td class="num">{money(o.ricavo)}</td>
-					<td class="num">{o.stato === 'manca' ? '—' : money(o.costo)}</td>
-					<td class="num"><b>{o.stato === 'manca' ? '—' : money(o.margine)}</b></td>
-					<td class="num"><span class="mg-pct {classeMargine(o.marginePct)}">{pctFmt(o.marginePct)}</span></td>
+					<td class="mg-nowrap" data-l="Bobina">{o.stato === 'manca' && o.mq === 0 ? '—' : mqFmt(o.mq)}</td>
+					<td class="num" data-l="Fatturato">{money(o.ricavo)}</td>
+					<td class="num" data-l="Costo">{o.stato === 'manca' ? '—' : money(o.costo)}</td>
+					<td class="num" data-l="Margine"><b>{o.stato === 'manca' ? '—' : money(o.margine)}</b></td>
+					<td class="num" data-l="Margine %"><span class="mg-pct {classeMargine(o.marginePct)}">{pctFmt(o.marginePct)}</span></td>
 				</tr>
 				{#if aperti.has(o.key)}
 					<tr class="mg-detail"><td></td><td colspan="9">
@@ -246,5 +246,15 @@
 	.mg-come summary { cursor: pointer; font-size: 14px; }
 	.mg-come ol { margin: 12px 0 0 18px; font-size: 13.5px; line-height: 1.5; color: var(--ink-soft); display: grid; gap: 4px; }
 	@media (max-width: 1100px) { .mg-kpis { grid-template-columns: repeat(3, 1fr); } }
-	@media (max-width: 820px) { .mg-kpis { grid-template-columns: repeat(2, 1fr); } .mg-voci__tot { margin-left: 0; text-align: left; } }
+	@media (max-width: 820px) {
+		.mg-kpis { grid-template-columns: repeat(2, 1fr); }
+		.mg-voci__tot { margin-left: 0; text-align: left; }
+		/* telefono: la tabella diventa schede (dashboard.css) e l'intestazione sparisce, quindi ogni numero porta la sua etichetta */
+		.mg-table td[data-l]::before { content: attr(data-l); display: block; font-size: 10.5px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+		.mg-table td.mg-prod { grid-column: 1 / -1; }
+		.mg-table td:first-child:has(.mg-exp) { grid-column: 1 / -1; }
+		.mg-exp { padding: 4px 8px; border: 1px solid var(--line); border-radius: 8px; font-size: 13px; }
+		.mg-exp::after { content: ' dettaglio costi'; font-size: 12px; font-weight: 700; }
+		.mg-search { min-width: 0; width: 100%; }
+	}
 </style>
