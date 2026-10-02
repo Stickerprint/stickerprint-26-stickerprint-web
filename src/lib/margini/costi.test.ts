@@ -3,7 +3,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_ENGINES } from '$lib/pricing/engine';
-import { costoRiga, ricavoRiga, riepilogo, slugListino } from './costi';
+import { costoRiga, costoSpedizione, ricavoRiga, riepilogo, slugListino } from './costi';
 
 const E = DEFAULT_ENGINES;
 
@@ -77,6 +77,13 @@ describe('costoRiga', () => {
 		expect(slugListino('fogli')).toBe('fogli_adesivi');
 		expect(slugListino('adesivi-resinati')).toBe('adesivi_resinati');
 		expect(ricavoRiga({ total_net: '100.50', discount_amount: 10 })).toBe(90.5);
+	});
+
+	it('spedizione: 7,50 netti solo quando il corriere e\' a carico nostro', () => {
+		expect(costoSpedizione({ shipping_method: null, channel: 'ecommerce' })).toBe(7.5);
+		expect(costoSpedizione({ shipping_method: 'Corriere a carico del mittente', channel: 'manuale' })).toBe(7.5);
+		expect(costoSpedizione({ shipping_method: 'Corriere a carico del destinatario', channel: 'manuale' })).toBe(0);
+		expect(costoSpedizione({ shipping_method: 'Consegna diretta Stickerprint', channel: 'manuale' })).toBe(0);
 	});
 
 	it('riepilogo: le righe senza costo contano nel ricavo ma non nel margine', () => {

@@ -11,7 +11,9 @@
  *      (costo al kg × grammi per cm², dal listino dei resinati).
  * I costi unitari sono quelli di `pricing_engines` (quelli che si modificano da Preventivatori):
  * cambiando il costo di un materiale la', cambia il costo di produzione qui.
- * Manodopera, corriere e imballo NON sono dentro: si vedranno in un secondo passaggio.
+ * La SPEDIZIONE costa 7,50 € netti a ordine quando il corriere e' a carico nostro (ordini del sito e
+ * manuali "a carico del mittente"); con corriere a carico del destinatario o consegna diretta non costa.
+ * Manodopera e imballo NON sono dentro: si vedranno in un secondo passaggio.
  * Regola: non si inventa mai un numero. Se una riga non si puo' calcolare (manca la misura,
  * il prodotto non ha listino) il costo e' "manca", con il motivo scritto; se e' approssimato e' "stima".
  */
@@ -20,6 +22,14 @@ import { kitN } from '$lib/pricing/kit';
 import { KIT_CAVALLOTTO } from '$lib/studio/products';
 import { STRIP_MATERIALS, STRIP_OVERHEAD, SHEET_RULES, layoutLoose, layoutSheets, type Strip } from '$lib/studio/layout';
 import { MARKED_MARGIN, pageWidthFor } from '$lib/studio/graphtec';
+import { deliveryMode } from '$lib/dashboard/orders';
+
+/** quanto ci costa una spedizione con il nostro corriere, IVA esclusa (Mattia, 2/10/2026: 7,50 € + IVA) */
+export const COSTO_SPEDIZIONE_NETTO = 7.5;
+/** costo del corriere per un ordine (gruppo): solo se la spedizione e' a carico nostro */
+export function costoSpedizione(g: { shipping_method: string | null; channel: string }): number {
+	return deliveryMode(g) === 'ours' ? COSTO_SPEDIZIONE_NETTO : 0;
+}
 
 /** la riga d'ordine come sta in `orders` (solo i campi che servono) */
 export interface RigaCosto {

@@ -49,13 +49,13 @@
 
 	/* numeri in alto: solo gli ordini del periodo che passano i filtri */
 	const kpi = $derived.by(() => {
-		const k = { ordini: list.length, ecom: 0, manuali: 0, senzaCosto: 0, stime: 0, ricavo: 0, ricavoConCosto: 0, costo: 0, materiale: 0, stampa: 0, lamina: 0, resina: 0, mq: 0, pezzi: 0 };
+		const k = { ordini: list.length, ecom: 0, manuali: 0, senzaCosto: 0, stime: 0, ricavo: 0, ricavoConCosto: 0, costo: 0, materiale: 0, stampa: 0, lamina: 0, resina: 0, spedizioni: 0, spedizioniRicavo: 0, mq: 0, pezzi: 0 };
 		for (const o of list) {
 			o.channel === 'manuale' ? k.manuali++ : k.ecom++;
 			k.ricavo += o.ricavo; k.pezzi += o.qty;
 			if (o.stato === 'manca') { k.senzaCosto++; continue; }
 			if (o.stato === 'stima') k.stime++;
-			k.ricavoConCosto += o.ricavo; k.costo += o.costo; k.mq += o.mq;
+			k.ricavoConCosto += o.ricavo; k.costo += o.costo; k.mq += o.mq; k.spedizioni += o.extra.spedizioneCosto; k.spedizioniRicavo += o.extra.spedizioneRicavo + o.extra.expressRicavo;
 			for (const r of o.righe) { k.materiale += r.costo.materiale; k.stampa += r.costo.stampa; k.lamina += r.costo.lamina; k.resina += r.costo.resina; }
 		}
 		const margine = k.ricavoConCosto - k.costo;
@@ -79,7 +79,7 @@
 <svelte:head><title>Analisi margini | Dashboard Stickerprint</title></svelte:head>
 
 <div class="toolbar" style="justify-content:space-between">
-	<div><h1>Analisi margini {year}</h1><p class="lead">Ogni ordine, e-commerce e manuale, con quanto costa produrlo (materiale impaginato come nello Studio) e quanto ci resta. Manodopera, corriere e imballo non sono ancora dentro.</p></div>
+	<div><h1>Analisi margini {year}</h1><p class="lead">Ogni ordine, e-commerce e manuale, con quanto costa produrlo (materiale impaginato come nello Studio, più il corriere) e quanto ci resta. Manodopera e imballo non sono ancora dentro.</p></div>
 	<div class="year-bar">{#each data.years as y (y)}<a href="?anno={y}" class:is-active={y === data.year}>{y}</a>{/each}</div>
 </div>
 
@@ -97,8 +97,8 @@
 <p class="stats5-rif">Stai guardando <b>{meseLabel}</b>: riquadri, prodotti ed elenco qui sotto sono solo di {meseLabel} e degli ordini che passano i filtri. Importi netti, IVA esclusa.</p>
 
 <div class="mg-kpis">
-	<div class="mg-kpi"><small>Fatturato netto</small><b>{money(kpi.ricavo)}</b><i>{kpi.ordini} ordini · {kpi.ecom} e-commerce · {kpi.manuali} manuali</i></div>
-	<div class="mg-kpi"><small>Costo di produzione</small><b>{money(kpi.costo)}</b><i>materiale {money(kpi.materiale)} · inchiostro {money(kpi.stampa)}{#if kpi.lamina} · lamina {money(kpi.lamina)}{/if}{#if kpi.resina} · resina {money(kpi.resina)}{/if}</i></div>
+	<div class="mg-kpi"><small>Fatturato netto</small><b>{money(kpi.ricavo)}</b><i>{kpi.ordini} ordini · {kpi.ecom} e-commerce · {kpi.manuali} manuali{#if kpi.spedizioniRicavo} · di cui spedizioni ed express {money(kpi.spedizioniRicavo)}{/if}</i></div>
+	<div class="mg-kpi"><small>Costo di produzione</small><b>{money(kpi.costo)}</b><i>materiale {money(kpi.materiale)} · inchiostro {money(kpi.stampa)}{#if kpi.lamina} · lamina {money(kpi.lamina)}{/if}{#if kpi.resina} · resina {money(kpi.resina)}{/if} · corriere {money(kpi.spedizioni)}</i></div>
 	<div class="mg-kpi is-main {classeMargine(kpi.pct)}"><small>Margine</small><b>{money(kpi.margine)}</b><i>{#if kpi.senzaCosto}su {money(kpi.ricavoConCosto)} di ordini con costo calcolato{:else}sul fatturato di {meseLabel}{/if}</i></div>
 	<div class="mg-kpi {classeMargine(kpi.pct)}"><small>Margine %</small><b>{pctFmt(kpi.pct)}</b><i>costo medio {money(kpi.costoMedio)} per ordine</i></div>
 	<div class="mg-kpi"><small>Bobina consumata</small><b>{mqFmt(kpi.mq)}</b><i>{kpi.pezzi.toLocaleString('it-IT')} pezzi ordinati, +{Math.round(data.parametri.scarto * 100)}% di scarto</i></div>
@@ -106,7 +106,7 @@
 </div>
 
 <div class="dcard">
-	<h3>Per prodotto · {meseLabel}</h3>
+	<h3>Per prodotto · {meseLabel} <small class="mg-muted" style="font-weight:600">(solo le righe prodotto: corriere, spedizione addebitata ed express stanno sull'ordine)</small></h3>
 	{#if perProdotto.length === 0}<p class="osub">Nessun ordine in questo periodo.</p>{:else}
 	<table class="dtable mg-table">
 		<thead><tr><th>Prodotto</th><th>Ordini</th><th>Pezzi</th><th>Bobina</th><th class="num">Fatturato</th><th class="num">Costo</th><th class="num">Margine</th><th class="num">%</th></tr></thead>
@@ -181,6 +181,15 @@
 								{/if}
 							</div>
 						{/each}
+						<div class="mg-dett mg-dett--ord">
+							<div class="mg-dett__head"><b>Ordine intero</b>{#if o.extra.fattura} · fattura {o.extra.fattura}{/if}</div>
+							<div class="mg-voci">
+								<span>Corriere <b>{money(o.extra.spedizioneCosto)}</b><small>{o.extra.spedizioneCosto ? `a carico nostro, ${money(data.parametri.spedizione)} + IVA` : 'non a carico nostro'}</small></span>
+								<span>Spedizione addebitata <b>{money(o.extra.spedizioneRicavo)}</b><small>{o.extra.fattura ? 'dalla fattura' : 'nessuna fattura trovata'}</small></span>
+								{#if o.extra.expressRicavo}<span>Express <b>{money(o.extra.expressRicavo)}</b><small>dalla fattura</small></span>{/if}
+								<span class="mg-voci__tot">Totale ordine <b>{o.stato === 'manca' ? '—' : money(o.margine)}</b><small>ricavo {money(o.ricavo)} − costo {o.stato === 'manca' ? '—' : money(o.costo)}</small></span>
+							</div>
+						</div>
 					</td></tr>
 				{/if}
 			{:else}
@@ -196,8 +205,9 @@
 		<li>Ogni riga si impagina come nello Studio: bobina da {data.parametri.bobina / 10} cm, pezzi a {data.parametri.gap} mm l'uno dall'altro (fogli a {data.parametri.gapFogli} mm), crocini e codice a barre ai bordi, +{Math.round(data.parametri.scarto * 100)}% di pezzi per gli scarti. Resinati ed etichette vanno su fogli circa A4 (resinati: multipli di 10 aghi).</li>
 		<li><b>Materiale</b>: centimetri di bobina (strisce più 5 cm di stacco fra una e l'altra) × larghezza bobina × costo d'acquisto del vinile (€/m², senza ricarico).</li>
 		<li><b>Inchiostro</b>: area dei pezzi stampati × costo stampa €/m². <b>Lamina</b>: tutta la bobina consumata × costo lamina €/m² (solo se la riga è laminata; mai sul rilievo). <b>Resina</b>: cm² dei pezzi × costo al kg × grammi per cm².</li>
-		<li><b>Ricavo</b>: netto della riga meno il codice sconto, IVA esclusa (come nella scheda ordine). Margine = ricavo − costo.</li>
-		<li>Non dentro, per ora: manodopera, corriere, imballo, commissioni di pagamento, avvio macchina.</li>
+		<li><b>Corriere</b>: {money(data.parametri.spedizione)} + IVA per ogni ordine spedito a carico nostro (tutti quelli del sito, i manuali "a carico del mittente"); zero con corriere a carico del destinatario o consegna diretta.</li>
+		<li><b>Ricavo</b>: netto delle righe meno il codice sconto, più la spedizione addebitata al cliente e l'express presi dalla fattura, IVA esclusa. Margine = ricavo − costo.</li>
+		<li>Non dentro, per ora: manodopera, imballo, commissioni di pagamento, avvio macchina.</li>
 	</ol>
 	<table class="dtable mg-table" style="margin-top:8px">
 		<thead><tr><th>Listino</th><th>Stampa €/m²</th><th>Lamina €/m²</th><th>Resina €/cm²</th><th>Materiali (costo €/m²)</th></tr></thead>
@@ -234,6 +244,7 @@
 	.mg-detail td { background: #f8f9fc; padding: 4px 10px 14px; }
 	.mg-dett { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; margin-top: 6px; font-size: 13px; }
 	.mg-dett__head { margin-bottom: 4px; }
+	.mg-dett--ord { background: #f3f5ff; }
 	.mg-why { margin: 4px 0; font-size: 12.5px; color: #a16207; }
 	.mg-imp { margin: 4px 0 8px; font-size: 12.5px; color: var(--ink-soft); }
 	.mg-voci { display: flex; flex-wrap: wrap; gap: 8px 22px; }
