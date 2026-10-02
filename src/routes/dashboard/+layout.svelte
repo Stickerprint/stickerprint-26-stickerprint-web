@@ -42,6 +42,10 @@
 			{ label: 'DDT', href: '/dashboard/fatturazione/ddt' },
 			{ label: 'Fatture', href: '/dashboard/fatturazione/fatture', count: data.counts?.fatture }
 		] },
+		{ id: 'margini', title: 'Analisi margini', items: [
+			// costo di produzione e guadagno di ogni ordine (src/lib/margini/costi.ts)
+			{ label: 'Margini', href: '/dashboard/analisi-margini', exact: true }
+		] },
 		{ id: 'anagrafica', title: 'Anagrafica', items: [
 			{ label: 'Clienti', href: '/dashboard/anagrafica/clienti' },
 			{ label: 'Firma email', href: '/dashboard/firma' }
