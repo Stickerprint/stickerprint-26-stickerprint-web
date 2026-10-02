@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import { dev } from '$app/environment';
 import { env as privateEnv } from '$env/dynamic/private';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
@@ -79,7 +78,7 @@ const authGuard: Handle = async ({ event, resolve }) => {
 	   impronte dei token: il repository e' pubblico); tutti gli altri restano qui, nella loro area personale. */
 	if (path.startsWith('/proof/')) {
 		const token = path.slice(7).split('/')[0];
-		const h = token ? createHash('sha256').update(token).digest('hex').slice(0, 24) : '';
+		const h = token ? [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token)))].map((b) => b.toString(16).padStart(2, '0')).join('').slice(0, 24) : '';
 		if (OPEN_LEGACY_PROOFS.has(h)) redirect(302, `https://stickerprint.pages.dev${path}${event.url.search}`);
 		redirect(302, '/account/ordini');
 	}
