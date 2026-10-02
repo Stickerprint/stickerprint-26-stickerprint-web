@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { dev } from '$app/environment';
 import { env as privateEnv } from '$env/dynamic/private';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
@@ -72,8 +73,16 @@ const authGuard: Handle = async ({ event, resolve }) => {
 
 	const path = event.url.pathname;
 
-	// prove di stampa del vecchio sito: i link /proof/<token> gia' inviati continuano a funzionare la'
-	if (path.startsWith('/proof/')) redirect(302, `https://stickerprint.pages.dev${path}${event.url.search}`);
+	/* Prove di stampa del vecchio sito (/proof/<token> nelle email di prima del cambio). Il vecchio sito e' ancora acceso
+	   e ci si puo' ordinare: mandarci TUTTI i link vecchi ha fatto nascere due ordini la' (1/10/2026, clienti che hanno
+	   riaperto un'email di prova gia' approvata). Ora ci va solo chi ha una prova ANCORA da approvare (elenco chiuso,
+	   impronte dei token: il repository e' pubblico); tutti gli altri restano qui, nella loro area personale. */
+	if (path.startsWith('/proof/')) {
+		const token = path.slice(7).split('/')[0];
+		const h = token ? createHash('sha256').update(token).digest('hex').slice(0, 24) : '';
+		if (OPEN_LEGACY_PROOFS.has(h)) redirect(302, `https://stickerprint.pages.dev${path}${event.url.search}`);
+		redirect(302, '/account/ordini');
+	}
 
 	if (!session && PROTECTED_PREFIXES.some((p) => path.startsWith(p))) {
 		redirect(303, `/login?next=${encodeURIComponent(path)}`);
@@ -107,5 +116,8 @@ const securityHeaders: Handle = async ({ event, resolve }) => {
 	if (!isProductionHost(event.url.host) || isPrivatePath(event.url.pathname)) response.headers.set('X-Robots-Tag', 'noindex, nofollow');
 	return response;
 };
+
+/** prove del vecchio sito ancora in attesa dell'approvazione del cliente al 2/10/2026 (SPIT00235, 270, 286, 306, 321, 337, 360, 361) */
+const OPEN_LEGACY_PROOFS = new Set(['20147273cc8ab8b69eebbcb8', '28b067e47214272428591818', '7c7258e2bd828c6d93389e91', '90f4682156dcc304e4d9e564', '1bc9e664209f0025d5c2450b', '9f7ca5d2a91f0e5190fec332', '4648fe1d1325f20acb7b5883', '55ca1961fa661c86925b7038']);
 
 export const handle = sequence(supabase, locale, authGuard, securityHeaders);
