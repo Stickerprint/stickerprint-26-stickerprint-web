@@ -35,7 +35,9 @@ export const POST: RequestHandler = async ({ request }) => {
 	if (!email || !d.email_action_type) return json({ error: { http_code: 400, message: 'dati mancanti' } }, { status: 400 });
 	const kind = (['signup', 'recovery', 'magiclink', 'email_change', 'invite', 'reauthentication', 'email'].includes(d.email_action_type) ? d.email_action_type : 'signup') as AuthMailKind;
 	// il link torna sul sito: /auth/callback verifica token_hash+type (il redirect_to del sito contiene gia' ?next=...)
-	const base = d.redirect_to && d.redirect_to.startsWith(SITE) ? d.redirect_to : `${SITE}/auth/callback`;
+	// se Supabase ha sostituito il redirect del sito con il Site URL (home), il link deve comunque passare da /auth/callback
+	const nextDefault = kind === 'recovery' ? '/account/password' : '/account';
+	const base = d.redirect_to && d.redirect_to.startsWith(`${SITE}/auth/callback`) ? d.redirect_to : `${SITE}/auth/callback?next=${encodeURIComponent(nextDefault)}`;
 	const type = kind === 'email' ? 'signup' : kind;
 	const href = `${base}${base.includes('?') ? '&' : '?'}token_hash=${encodeURIComponent(d.token_hash ?? '')}&type=${encodeURIComponent(type)}`;
 	const meta = p.user?.user_metadata ?? {};
