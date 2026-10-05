@@ -30,18 +30,20 @@ export interface StudioProduct {
 	sheetRules?: 'resinati' | 'etichette';
 	/** foglio con piu' soggetti diversi nello stesso file del cliente */
 	multi?: boolean;
+	/** accetta il PDF gia' pronto del cliente, con il tracciato di taglio dentro (readyPdf.ts) */
+	pronti?: boolean;
 	/** non ancora pronto nello studio */
 	soon?: string;
 }
 
 export const STUDIO_PRODUCTS: StudioProduct[] = [
-	{ id: 'adesivi-personalizzati', engineSlug: 'adesivi_personalizzati', name: 'Adesivi personalizzati', img: '/images/prodotti/adesivi-personalizzati/1.webp', hint: 'Passante · pezzi sciolti', engineProduct: 'sticker', mode: 'sciolti', pieceCut: 'Passante' },
-	{ id: 'adesivi-resinati', engineSlug: 'adesivi_resinati', name: 'Adesivi resinati', img: '/images/prodotti/resinati/1.webp', hint: 'Mezzo taglio · fogli da 10 aghi', engineProduct: 'resinati', mode: 'fogli', pieceCut: 'CutContour', sheetCut: 'Passante', sheetRules: 'resinati' },
+	{ id: 'adesivi-personalizzati', engineSlug: 'adesivi_personalizzati', name: 'Adesivi personalizzati', img: '/images/prodotti/adesivi-personalizzati/1.webp', hint: 'Passante · pezzi sciolti', engineProduct: 'sticker', mode: 'sciolti', pieceCut: 'Passante', pronti: true },
+	{ id: 'adesivi-resinati', engineSlug: 'adesivi_resinati', name: 'Adesivi resinati', img: '/images/prodotti/resinati/1.webp', hint: 'Mezzo taglio · fogli da 10 aghi', engineProduct: 'resinati', mode: 'fogli', pieceCut: 'CutContour', sheetCut: 'Passante', sheetRules: 'resinati', pronti: true },
 	{ id: 'adesivi-rilievo', engineSlug: 'adesivi_rilievo', name: 'Adesivi in rilievo', img: '/images/prodotti/rilievo/1.webp', hint: 'Passante · pezzi sciolti', engineProduct: 'sticker', rilievo: true, mode: 'sciolti', pieceCut: 'Passante' },
-	{ id: 'etichette', engineSlug: 'etichette', name: 'Etichette in fogli', img: '/images/prodotti/etichette/1.webp', hint: 'Mezzo taglio · fogli circa A4', engineProduct: 'sticker', foglio: true, mode: 'fogli', pieceCut: 'CutContour', sheetCut: 'Passante', sheetRules: 'etichette' },
+	{ id: 'etichette', engineSlug: 'etichette', name: 'Etichette in fogli', img: '/images/prodotti/etichette/1.webp', hint: 'Mezzo taglio · fogli circa A4', engineProduct: 'sticker', foglio: true, mode: 'fogli', pieceCut: 'CutContour', sheetCut: 'Passante', sheetRules: 'etichette', pronti: true },
 	{ id: 'vetrofanie', engineSlug: 'vetrofanie', name: 'Vetrofanie', img: '/images/prodotti/vetrofanie/1.webp', hint: 'Passante · pezzi sciolti', engineProduct: 'sticker', vetro: true, mode: 'sciolti', pieceCut: 'Passante' },
 	{ id: 'kit-adesivi', engineSlug: 'adesivi_personalizzati', name: 'Kit di adesivi', img: '/images/prodotti/kit/1.webp', hint: 'Adesivi e cavallotto · passante', engineProduct: 'sticker', kit: true, mode: 'sciolti', pieceCut: 'Passante' },
-	{ id: 'fogli-adesivi', engineSlug: 'fogli_adesivi', name: 'Fogli di adesivi', img: '/images/prodotti/fogli/1.webp', hint: 'Mezzo taglio · foglio con passante', engineProduct: 'sticker', mode: 'fogli', pieceCut: 'CutContour', sheetCut: 'Passante', sheetRules: 'etichette', multi: true }
+	{ id: 'fogli-adesivi', engineSlug: 'fogli_adesivi', name: 'Fogli di adesivi', img: '/images/prodotti/fogli/1.webp', hint: 'Mezzo taglio · foglio con passante', engineProduct: 'sticker', mode: 'fogli', pieceCut: 'CutContour', sheetCut: 'Passante', sheetRules: 'etichette', pronti: true, multi: true }
 ];
 
 export const studioProduct = (id: string) => STUDIO_PRODUCTS.find((p) => p.id === id) ?? null;

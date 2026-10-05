@@ -487,9 +487,11 @@
 	});
 
 	/* ------------------------------------------------------------ file pronto dell'azienda */
-	/* solo etichette e resinati: PDF con il tracciato gia' definitivo, misure 1:1. Il tratto del
-	   cliente (di solito blu in sovrastampa) si toglie dalla grafica e rinasce CutContour */
-	const canReady = $derived(!!P.sheetRules && !P.soon);
+	/* PDF con il tracciato gia' definitivo, misure 1:1: il tratto del cliente (di solito blu in
+	   sovrastampa) si toglie dalla grafica e rinasce nella tinta di taglio del prodotto. Vale per i
+	   prodotti con `pronti`: a fogli diventa CutContour dentro il foglio, sui pezzi sciolti
+	   (personalizzati) diventa Passante e l'impaginato e' una striscia piena di sagome. */
+	const canReady = $derived(!!P.pronti && !P.soon);
 	let fonte = $state<'sito' | 'pronto'>('sito');
 	let readyInput = $state<HTMLInputElement | undefined>();
 	let readyBytes: Uint8Array | null = null;
@@ -868,7 +870,7 @@
 			<button type="button" class="st-drop" class:is-over={dragging} onclick={() => readyInput?.click()} disabled={readyBusy}>
 				<span class="st-drop__icon">⬆</span>
 				<span class="st-drop__t">{readyBusy ? 'Leggo il PDF…' : 'Trascina qui il PDF pronto del cliente'}</span>
-				<span class="st-drop__s">misure 1:1 · il tracciato di taglio del file diventa CutContour · solo etichette e resinati</span>
+				<span class="st-drop__s">misure 1:1 · il tracciato di taglio del file diventa {P.pieceCut} · {P.mode === 'fogli' ? 'impaginato in fogli' : 'sagome sciolte sulla striscia'}</span>
 			</button>
 			{#if readyErr}<p class="st-err">{readyErr}</p>{/if}
 			{#if readyChoice}
@@ -907,7 +909,7 @@
 					</div>
 					<div class="st-actions">
 						<button type="button" class="btn btn--pink st-act" disabled={!!busy} onclick={scaricaStampaTaglio}>{busy === 'print' ? 'Preparo il file…' : 'Scarica file di stampa e taglio'}<small>PDF vettoriale: grafica + tracciato {P.pieceCut}</small></button>
-						<button type="button" class="btn btn--green st-act" disabled={!!busy} onclick={() => (stripOpen = !stripOpen)} aria-expanded={stripOpen}>Genera file di stampa<small>fogli impaginati sulla striscia, crocini e codice a barre Graphtec</small></button>
+						<button type="button" class="btn btn--green st-act" disabled={!!busy} onclick={() => (stripOpen = !stripOpen)} aria-expanded={stripOpen}>Genera file di stampa<small>{P.mode === 'fogli' ? 'fogli impaginati sulla striscia' : 'striscia piena di sagome'}, crocini e codice a barre Graphtec</small></button>
 						{#if downloadErr}<p class="st-err">{downloadErr}</p>{/if}
 					</div>
 				</aside>

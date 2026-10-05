@@ -4,14 +4,35 @@
     {
       "name": "preview-static",
       "runtimeExecutable": "python3",
-      "runtimeArgs": ["-m", "http.server", "8788", "--bind", "127.0.0.1"],
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8788",
+        "--bind",
+        "127.0.0.1"
+      ],
       "port": 8788
     },
     {
       "name": "dev",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "--", "--port", "5173"],
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--",
+        "--port",
+        "5173"
+      ],
       "port": 5173
+    },
+    {
+      "name": "dev-studio",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "STUDIO_DEV_OPEN=1 npm run dev -- --port 5174"
+      ],
+      "port": 5174
     }
   ]
 }
