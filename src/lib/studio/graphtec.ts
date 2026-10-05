@@ -31,13 +31,18 @@ export const MARK = {
 	/** lunghezza dei bracci (esterna) */
 	arm: 20.5,
 	/** altezza del codice a barre (sul bordo della pagina) */
-	barH: 9,
+	barH: 11,
 	/** barra nera piena accanto al codice */
 	blockW: 50,
 	/** spazio fra barra nera e codice */
 	blockGap: 7,
-	narrow: 0.4,
-	wide: 1.0
+	/* Barre piu' grosse di quelle di Cutting Master (erano 0.4 / 1.0): sulle strisce stampate con la
+	   Roland UV il sensore del Graphtec non riusciva a leggere il codice. Il rapporto largo/stretto
+	   resta 2.5 (il Code 39 si legge sulle proporzioni, non sulle misure), quindi il codice e' lo
+	   stesso: cambia solo quanto nero vede il sensore. Il codice si allunga di circa 19 mm e resta
+	   largamente dentro la striscia anche sulla bobina da 57 cm. */
+	narrow: 0.5,
+	wide: 1.25
 };
 
 /** colore di crocini e codici: il nero ricco usato da Cutting Master negli EPS */
