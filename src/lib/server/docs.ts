@@ -48,7 +48,7 @@ export async function buildLabelsPdf(orders: (LabelOrder & { parcels: number; co
 	return pdf.save();
 }
 
-export interface DdtData { number: string; issued_at: string; order_number: string; customer: Record<string, string>; shipping: Record<string, string>; lines: { description: string; qty: number; unit_net: number; total_net: number }[]; parcels: number; weight_kg: number | null; causale: string; trasporto: string; subtotal_net: number; vat_amount: number; total_gross: number; notes?: string | null }
+export interface DdtData { number: string; issued_at: string; order_number: string; customer: Record<string, string>; shipping: Record<string, string>; lines: { code?: string | null; description: string; qty: number; unit_net: number; total_net: number }[]; parcels: number; weight_kg: number | null; causale: string; trasporto: string; subtotal_net: number; vat_amount: number; total_gross: number; notes?: string | null }
 
 function docHeader(page: PDFPage, font: PDFFont, bold: PDFFont, logo: Awaited<ReturnType<PDFDocument['embedPng']>>, title: string, number: string, date: string) {
 	const M = 48; const top = 800;
@@ -65,6 +65,8 @@ function docHeader(page: PDFPage, font: PDFFont, bold: PDFFont, logo: Awaited<Re
 }
 const addrLines = (a: Record<string, string>) => [a.company, [a.first_name, a.last_name].filter(Boolean).join(' '), [a.street, a.street2].filter(Boolean).join(', '), [a.zip, a.city, a.province ? `(${a.province})` : ''].filter(Boolean).join(' '), a.country && a.country !== 'IT' ? a.country : 'Italia', a.vat ? `P.IVA ${a.vat}` : '', a.fiscal_code ? `C.F. ${a.fiscal_code}` : ''].filter(Boolean);
 const eur = (v: number) => `${v.toFixed(2).replace('.', ',')} €`;
+/** prezzo unitario: fino a 4 decimali, mai meno di 2 (0,295 €) */
+export const eurUnit = (v: number) => `${v.toFixed(4).replace(/0+$/, '').replace(/\.(\d)$/, '.$10').replace(/\.$/, '.00').replace('.', ',')} €`;
 
 /* ---------- tabella condivisa: colonne fisse, testo a capo, righe centrate in verticale ---------- */
 export interface TableCol { label: string; width: number; align?: 'left' | 'right' | 'center'; bold?: boolean; maxLines?: number }
@@ -135,7 +137,7 @@ export function drawTotals(page: PDFPage, font: PDFFont, bold: PDFFont, y: numbe
 	}
 	return y;
 }
-export const DOC_COLS = (font?: PDFFont): TableCol[] => [{ label: 'Descrizione', width: 302, maxLines: 3 }, { label: 'Q.tà', width: 50, align: 'right' }, { label: 'Prezzo unit.', width: 70, align: 'right' }, { label: 'Imponibile', width: 77, align: 'right', bold: true }];
+export const DOC_COLS = (font?: PDFFont): TableCol[] => [{ label: 'Codice', width: 58, bold: true }, { label: 'Descrizione', width: 244, maxLines: 3 }, { label: 'Q.tà', width: 50, align: 'right' }, { label: 'Prezzo unit.', width: 70, align: 'right' }, { label: 'Imponibile', width: 77, align: 'right', bold: true }];
 
 /** Documento di trasporto A4 */
 export async function buildDdtPdf(d: DdtData): Promise<Uint8Array> {
@@ -151,7 +153,7 @@ export async function buildDdtPdf(d: DdtData): Promise<Uint8Array> {
 	for (let i = 0; i < Math.max(L.length, R.length); i++) { if (L[i]) t(L[i], M, y, i === 0 ? 11 : 10, i === 0 ? bold : font); if (R[i]) t(R[i], 320, y, i === 0 ? 11 : 10, i === 0 ? bold : font); y -= 13; }
 	y -= 10;
 	t(`Ordine ${d.order_number} · Causale: ${d.causale} · Trasporto: ${d.trasporto} · Colli: ${d.parcels}${d.weight_kg ? ` · Peso: ${d.weight_kg} kg` : ''}`, M, y, 9, font, gray); y -= 22;
-	y = drawTable({ page, x: M, y: y + 6, cols: DOC_COLS(), rows: d.lines.map((l) => [l.description, String(l.qty), eur(l.unit_net), eur(l.total_net)]), font, bold });
+	y = drawTable({ page, x: M, y: y + 6, cols: DOC_COLS(), rows: d.lines.map((l) => [l.code ?? '', l.description, String(l.qty), eurUnit(l.unit_net), eur(l.total_net)]), font, bold });
 	y -= 18;
 	y = drawTotals(page, font, bold, y, [['Imponibile', eur(d.subtotal_net)], ['IVA 22%', eur(d.vat_amount)], ['Totale', eur(d.total_gross), true]]);
 	if (d.notes) { y -= 8; t(`Note: ${d.notes}`.slice(0, 120), M, y, 9, font, gray); }
@@ -160,7 +162,7 @@ export async function buildDdtPdf(d: DdtData): Promise<Uint8Array> {
 	return pdf.save();
 }
 
-export interface OrderDocData { kind?: 'ordine' | 'preventivo'; valid_until?: string | null; lead_time?: string | null; number: string; numbers: string[]; issued_at: string; customer: Record<string, string>; shipping: Record<string, string>; email: string | null; lines: { description: string; qty: number; unit_net: number; total_net: number }[]; subtotal_net: number; vat_amount: number; total_gross: number; payment_method: string; payment_terms: { due: string; amount: number; method: string }[]; shipping_method: string; delivery_date: string | null; notes?: string | null }
+export interface OrderDocData { kind?: 'ordine' | 'preventivo'; valid_until?: string | null; lead_time?: string | null; number: string; numbers: string[]; issued_at: string; customer: Record<string, string>; shipping: Record<string, string>; email: string | null; lines: { code?: string | null; description: string; qty: number; unit_net: number; total_net: number }[]; subtotal_net: number; vat_amount: number; total_gross: number; payment_method: string; payment_terms: { due: string; amount: number; method: string }[]; shipping_method: string; delivery_date: string | null; notes?: string | null }
 
 /** Conferma d'ordine A4: articoli, riepilogo con totali e scadenze di pagamento */
 export async function buildOrderPdf(d: OrderDocData): Promise<Uint8Array> {
@@ -179,7 +181,7 @@ export async function buildOrderPdf(d: OrderDocData): Promise<Uint8Array> {
 	y -= 8;
 	for (const line of wrapText(font, `Spedizione: ${d.shipping_method}${d.delivery_date ? ` · prevista il ${new Date(d.delivery_date).toLocaleDateString('it-IT')}` : ''}${d.lead_time ? ` · Tempi: ${d.lead_time}` : ''}`, 9, 499, 3)) { t(line, M, y, 9, font, gray); y -= 12; }
 	y -= 10;
-	y = drawTable({ page, x: M, y: y + 6, cols: DOC_COLS(), rows: d.lines.map((l) => [l.description, l.qty.toLocaleString('it-IT'), eur(l.unit_net), eur(l.total_net)]), font, bold });
+	y = drawTable({ page, x: M, y: y + 6, cols: DOC_COLS(), rows: d.lines.map((l) => [l.code ?? '', l.description, l.qty.toLocaleString('it-IT'), eurUnit(l.unit_net), eur(l.total_net)]), font, bold });
 	y -= 14;
 	if (d.notes) { for (const line of wrapText(font, `Note: ${d.notes}`, 9, 499, 3)) { t(line, M, y, 9, font, gray); y -= 12; } }
 	if (quote) {

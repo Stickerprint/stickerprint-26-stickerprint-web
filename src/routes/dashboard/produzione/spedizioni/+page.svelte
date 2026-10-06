@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import { ORDER_STATUS, COUNTRIES, COURIERS, deliveryMode, dmy, money, itemMeta, thumbOf, CATS } from '$lib/dashboard/orders';
+	import { ORDER_STATUS, COUNTRIES, COURIERS, deliveryMode, dmy, money, moneyUnit, itemMeta, thumbOf, CATS } from '$lib/dashboard/orders';
 	import ItemsCell from '$lib/components/dashboard/ItemsCell.svelte';
 	let { data, form } = $props();
 	const st = (s: string) => ORDER_STATUS[s] ?? { label: s, color: '#6b7280', soft: '#eceef3' };
@@ -232,7 +232,7 @@
 							<td><div class="item-cell">{#if thumbOf(it)}<img src={thumbOf(it)} alt="" />{/if}<div><b>{it.product_name}</b><div class="osub">{itemMeta(it)}</div></div></div></td>
 							<td>{it.qty.toLocaleString('it-IT')}</td>
 							<td><input type="number" min="1" class="sel-sm" style="width:100px" bind:value={ddtQty[it.id]} /></td>
-							<td>{money(unit)}</td>
+							<td>{moneyUnit(unit)}</td>
 							<td style="text-align:right"><b>{money(unit * Number(ddtQty[it.id] ?? it.qty))}</b></td>
 						</tr>
 					{/each}

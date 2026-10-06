@@ -1,6 +1,6 @@
 import { qaplaCouriers } from '$lib/server/couriers/qapla';
 import { fail } from '@sveltejs/kit';
-import { groupOrders, itemMeta, deliveryMode, thumbOf, type OrderRow } from '$lib/dashboard/orders';
+import { groupOrders, itemMeta, deliveryMode, thumbOf, CATS, type OrderRow } from '$lib/dashboard/orders';
 import { generateLabels } from '$lib/server/shipping';
 import { sendEmail } from '$lib/server/email';
 import { shippingUpdateEmail } from '$lib/server/email-templates';
@@ -80,7 +80,7 @@ async function makeDdt(supabase: Db, group: string, f: FormData, forceMode?: 'ou
 	const courier = mode === 'direct' ? 'Consegna diretta' : mode === 'customer' ? 'Corriere del destinatario' : (first.courier ?? 'Qapla');
 	const trasporto = mode === 'direct' ? 'Consegna diretta Stickerprint' : mode === 'customer' ? 'Corriere a carico del destinatario' : `Corriere a carico del mittente (${courier})`;
 	const { data: num } = await supabase.rpc('next_ddt_number');
-	const lines = g.items.map((i) => ({ description: `${i.product_name}${itemMeta(i) ? ' · ' + itemMeta(i) : ''}`, qty: i.qty, unit_net: r2(Number(i.unit_net ?? Number(i.total_net) / i.qty)), total_net: r2(Number(i.total_net)) }));
+	const lines = g.items.map((i) => ({ code: i.product_code ?? CATS[i.product_slug]?.code ?? null, description: `${i.product_name}${itemMeta(i) ? ' · ' + itemMeta(i) : ''}`, qty: i.qty, unit_net: r2(Number(i.unit_net ?? Number(i.total_net) / i.qty)), total_net: r2(Number(i.total_net)) }));
 	const subtotal = r2(lines.reduce((s, l) => s + l.total_net, 0));
 	// ordini e-commerce: la fattura esiste già, il DDT resta collegato e non è da fatturare
 	const { data: inv } = g.channel === 'manuale' ? { data: null } : await supabase.from('invoices').select('id').eq('checkout_group', group).limit(1).maybeSingle();

@@ -2,7 +2,7 @@
 	import { enhance } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
 	import OrderEditor from '$lib/components/dashboard/OrderEditor.svelte';
-	import { ORDER_STATUS, ACTIVE_STATUSES, PROD_STAGES, CATS, COUNTRIES, money, dmy, itemMeta, thumbOf, DEVICE_ICON, CHANNEL_ICON } from '$lib/dashboard/orders';
+	import { ORDER_STATUS, ACTIVE_STATUSES, PROD_STAGES, CATS, COUNTRIES, money, moneyUnit, dmy, itemMeta, thumbOf, DEVICE_ICON, CHANNEL_ICON } from '$lib/dashboard/orders';
 	const statusOptions = (cur: string) => (ACTIVE_STATUSES.includes(cur) ? ACTIVE_STATUSES : [cur, ...ACTIVE_STATUSES]);
 	import { draftFromGroup } from '$lib/dashboard/orderDraft';
 	import { studioOrderHref } from '$lib/studio/products';
@@ -193,7 +193,7 @@
 							<span class="cat" style="background:{CATS[it.product_slug]?.soft};color:{CATS[it.product_slug]?.color}">{CATS[it.product_slug]?.name ?? it.product_slug}</span>
 						</div>
 						<div class="sumrow"><span>Quantità</span><b>{it.qty.toLocaleString('it-IT')} pz</b></div>
-						<div class="sumrow"><span>Prezzo unitario</span><b>{money(Number(it.unit_net ?? Number(it.total_net) / it.qty))}</b></div>
+						<div class="sumrow"><span>Prezzo unitario</span><b>{moneyUnit(Number(it.unit_net ?? Number(it.total_net) / it.qty))}</b></div>
 						<div class="sumrow"><span>Imponibile</span><b>{money(Number(it.total_net))}</b></div>
 						<div class="ofiles">
 							{#if data.files[it.id] && studioOrderHref(it.product_slug, it.id)}<a class="btn btn--blue btn--xs" href={studioOrderHref(it.product_slug, it.id)} target="_blank" rel="noopener">Passa il file su Stickerprint Studio</a>{/if}
