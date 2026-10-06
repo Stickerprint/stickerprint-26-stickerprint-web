@@ -768,6 +768,14 @@
 		if (!dlDir) return null;
 		return (await grantDataLink(dlDir)) ? dlDir : null;
 	}
+	/* Nome del file di taglio. Porta il numero d'ordine, ma SEMPRE seguito dal codice Graphtec:
+	   lo stesso ordine si lavora anche in piu' riprese (due soggetti, una ristampa) e con il solo
+	   numero d'ordine il secondo taglio cancellava il primo nella cartella di Data Link Server,
+	   lasciando una striscia stampata con un codice a barre che il plotter non trovava piu'
+	   (successo sull'ordine SP00397 il 6/10/2026). */
+	const nomeXpf = (id: string, i: number, totale: number) =>
+		numeroOrdine ? `${baseName()}${totale > 1 ? `-${i + 1}` : ''}_${id}.xpf` : `SP_${id}.xpf`;
+
 	/* scrive il taglio in Data Link Server; se la cartella non c'e' scarica il file, cosi' non si perde */
 	async function consegnaTaglio(dir: DataLinkDir | null) {
 		sent = ''; sentErr = '';
@@ -777,7 +785,7 @@
 			try {
 				for (const [i, j] of jobs.entries()) {
 					const x = buildXpf(j);
-					const nome = numeroOrdine ? `${baseName()}${jobs.length > 1 ? `-${i + 1}` : ''}.xpf` : `SP_${j.id}.xpf`;
+					const nome = nomeXpf(j.id, i, jobs.length);
 					await writeXpf(dir, nome, x);
 					await archivia(nome, x);
 				}
@@ -787,7 +795,7 @@
 		} else sentErr = 'Cartella di Data Link Server non collegata.';
 		for (const [i, j] of jobs.entries()) {
 			const x = buildXpf(j);
-			const nome = numeroOrdine ? `${baseName()}${jobs.length > 1 ? `-${i + 1}` : ''}.xpf` : `SP_${j.id}.xpf`;
+			const nome = nomeXpf(j.id, i, jobs.length);
 			download(new Blob([x as BlobPart], { type: 'application/octet-stream' }), nome);
 			await archivia(nome, x);
 		}
