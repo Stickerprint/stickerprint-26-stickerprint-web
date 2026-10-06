@@ -1,7 +1,7 @@
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import { COMPANY } from './company';
 import { LOGO_PNG_B64 } from './logo-b64';
-import { DOC_COLS, drawTable, drawTotals, wrapText, eurUnit } from './docs';
+import { DOC_COLS, drawTable, drawTotals, wrapText, eur, eurUnit } from './docs';
 
 export interface InvoiceLine { code?: string | null; description: string; qty: number; unit_net: number; total_net: number; ddt?: string | null; ddt_date?: string | null }
 export interface InvoiceData {
@@ -38,7 +38,6 @@ export function normalizeLines(lines: InvoiceLine[], discountNet: number, credit
 }
 export const PAYMENT_TEXT: Record<string, string> = { paypal: 'PayPal', stripe: 'Carta di credito (Stripe)', test: 'Test' };
 
-const eur = (v: number) => `${v.toFixed(2).replace('.', ',')} €`;
 
 /** Genera il PDF della fattura (A4) */
 export async function buildInvoicePdf(inv: InvoiceData): Promise<Uint8Array> {

@@ -35,7 +35,7 @@ export interface Quote {
 
 export interface QuoteMessage { id: number; quote_id: string; direction: 'in' | 'out'; author: string | null; body: string; created_at: string }
 const itLong = (d: string | null) => (d ? new Date(d + 'T12:00:00').toLocaleDateString('it-IT', { day: 'numeric', month: 'long' }) : null);
-const eur = (v: number) => new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(v);
+const eur = (v: number) => new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR', useGrouping: 'always' }).format(v);
 /** Email di invio proposta dallo staff: si modifica prima di mandarla (mai a freddo) */
 export function defaultQuoteEmail(q: Pick<Quote, 'number' | 'draft' | 'total_gross' | 'valid_until'>, sender: string | null): { subject: string; body: string } {
 	const c = q.draft.customer;

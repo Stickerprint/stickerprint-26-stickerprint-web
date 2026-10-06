@@ -14,6 +14,7 @@ import { estimatedShipDate, formatItDate } from '$lib/utils/shipping';
 import { ensurePlan } from './produzione';
 import type { OrderRow } from '$lib/dashboard/orders';
 import { cancelPaymentIntent, expireCheckoutSession } from './stripe';
+import { eur } from './docs';
 
 type DB = SupabaseClient;
 export interface CheckoutItem { product: string; productName: string; forma: string; materiale: string; finitura: string | null; w: number; h: number; qty: number; gross: number; previewUrl: string | null }
@@ -111,12 +112,12 @@ export async function finalizeCheckout(db: DB, group: string, o: { provider: str
 	try { const { data: prows } = await db.from('orders').select('*').eq('checkout_group', group); await ensurePlan(db, (prows ?? []) as OrderRow[]); } catch (e) { console.error('pianificazione produzione', e); }
 
 	const origin = PUBLIC_SITE_URL || 'https://stickerprint.it';
-	const mail = orderConfirmationEmail({ name: p.firstName, numbers: p.numbers, invoiceNumber: invoice.number, total: `${p.toPay.toFixed(2).replace('.', ',')} €`, lines: p.emailLines.map((l, i) => ({ name: l.description, qty: l.qty, preview: p.items[i]?.previewUrl ?? null })), shipDate: formatItDate(estimatedShipDate(p.express ? 3 : 5)), accountUrl: p.userId ? `${origin}/account/ordini` : null });
+	const mail = orderConfirmationEmail({ name: p.firstName, numbers: p.numbers, invoiceNumber: invoice.number, total: eur(p.toPay), lines: p.emailLines.map((l, i) => ({ name: l.description, qty: l.qty, preview: p.items[i]?.previewUrl ?? null })), shipDate: formatItDate(estimatedShipDate(p.express ? 3 : 5)), accountUrl: p.userId ? `${origin}/account/ordini` : null });
 	sendEmail({ to: p.email, ...mail, attachments: pdfB64 ? [{ name: `${invoice.number}.pdf`, content: pdfB64, contentType: 'application/pdf' }] : undefined })
 		.then((r) => { if (r.ok && !r.skipped) db.from('invoices').update({ sent_at: new Date().toISOString() }).eq('number', invoice.number).then(() => {}); })
 		.catch((e) => console.error('[checkout] email', e));
 	/* avviso interno via email (oltre alla notifica push): chi ha ordinato, cosa, quanto, e il link alla scheda in dashboard */
-	sendEmail({ to: OWNER_EMAIL, ...ownerNotifyEmail({ title: `Nuovo ordine ${p.numbers[0]} · ${p.toPay.toFixed(2).replace('.', ',')} €`, lines: [`Cliente: ${p.firstName} ${p.lastName} (${p.email})`, ...p.emailLines.map((l) => `${l.qty} × ${l.description}`), `Pagamento: ${p.payment}${p.express ? ' · express' : ''}`, `Totale incassato: ${p.toPay.toFixed(2).replace('.', ',')} € · fattura ${invoice.number}`], href: `${origin}/dashboard/fatturazione/ordini/${encodeURIComponent(group)}` }) }).catch((e) => console.error('[checkout] avviso interno', e));
-	pushStaff({ title: `Nuovo ordine ${p.numbers[0]}`, body: `${p.firstName} ${p.lastName} · ${p.emailLines.length} ${p.emailLines.length === 1 ? 'articolo' : 'articoli'} · ${p.toPay.toFixed(2)} €${o.provider === 'stripe' ? ' · pagato con carta' : o.provider === 'paypal' ? ' · pagato con PayPal' : ''}`, url: `/dashboard/fatturazione/ordini/${group}`, tag: p.numbers[0] }).catch((e) => console.error('[push]', e));
+	sendEmail({ to: OWNER_EMAIL, ...ownerNotifyEmail({ title: `Nuovo ordine ${p.numbers[0]} · ${eur(p.toPay)}`, lines: [`Cliente: ${p.firstName} ${p.lastName} (${p.email})`, ...p.emailLines.map((l) => `${l.qty} × ${l.description}`), `Pagamento: ${p.payment}${p.express ? ' · express' : ''}`, `Totale incassato: ${eur(p.toPay)} · fattura ${invoice.number}`], href: `${origin}/dashboard/fatturazione/ordini/${encodeURIComponent(group)}` }) }).catch((e) => console.error('[checkout] avviso interno', e));
+	pushStaff({ title: `Nuovo ordine ${p.numbers[0]}`, body: `${p.firstName} ${p.lastName} · ${p.emailLines.length} ${p.emailLines.length === 1 ? 'articolo' : 'articoli'} · ${eur(p.toPay)}${o.provider === 'stripe' ? ' · pagato con carta' : o.provider === 'paypal' ? ' · pagato con PayPal' : ''}`, url: `/dashboard/fatturazione/ordini/${group}`, tag: p.numbers[0] }).catch((e) => console.error('[push]', e));
 	return { done: true, payload: p, invoice: invoice.number };
 }

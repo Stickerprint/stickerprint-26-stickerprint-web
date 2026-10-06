@@ -10,6 +10,7 @@ import { PUBLIC_SITE_URL } from '$env/static/public';
 import { groupOrders, CATS, type OrderRow } from '$lib/dashboard/orders';
 import type { IntegrationChange, OrderPayment } from '$lib/dashboard/conferme';
 import { MATERIAL_LABEL } from '$lib/account';
+import { eur } from './docs';
 import { loadEngine } from './pricing';
 import { quoteWith, PRODUCT_ENGINES } from '$lib/pricing/engine';
 import { getConfirmation, loadGroup, loadPayments } from './conferme';
@@ -21,7 +22,6 @@ import { integrationRequestEmail, integrationInvoiceEmail, OWNER_EMAIL, ownerNot
 
 type DB = SupabaseClient;
 const r2 = (v: number) => Math.round(v * 100) / 100;
-const eur = (v: number) => `${v.toFixed(2).replace('.', ',')} €`;
 
 export interface ChangeInput { order_id: string; width_mm?: number | null; height_mm?: number | null; materiale?: string | null; finitura?: string | null; qty?: number | null }
 

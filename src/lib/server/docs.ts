@@ -64,9 +64,11 @@ function docHeader(page: PDFPage, font: PDFFont, bold: PDFFont, logo: Awaited<Re
 	page.drawText(nd, { x: 547 - bold.widthOfTextAtSize(nd, 11), y: top - 76, size: 11, font: bold, color: navy });
 }
 const addrLines = (a: Record<string, string>) => [a.company, [a.first_name, a.last_name].filter(Boolean).join(' '), [a.street, a.street2].filter(Boolean).join(', '), [a.zip, a.city, a.province ? `(${a.province})` : ''].filter(Boolean).join(' '), a.country && a.country !== 'IT' ? a.country : 'Italia', a.vat ? `P.IVA ${a.vat}` : '', a.fiscal_code ? `C.F. ${a.fiscal_code}` : ''].filter(Boolean);
-const eur = (v: number) => `${v.toFixed(2).replace('.', ',')} €`;
+// Numeri all'italiana: punto per le migliaia, virgola per i decimali (141.400,00 €)
+const fmtIt = (v: number, min: number, max: number) => new Intl.NumberFormat('it-IT', { minimumFractionDigits: min, maximumFractionDigits: max, useGrouping: 'always' }).format(v);
+export const eur = (v: number) => `${fmtIt(v, 2, 2)} €`;
 /** prezzo unitario: fino a 4 decimali, mai meno di 2 (0,295 €) */
-export const eurUnit = (v: number) => `${v.toFixed(4).replace(/0+$/, '').replace(/\.(\d)$/, '.$10').replace(/\.$/, '.00').replace('.', ',')} €`;
+export const eurUnit = (v: number) => `${fmtIt(v, 2, 4)} €`;
 
 /* ---------- tabella condivisa: colonne fisse, testo a capo, righe centrate in verticale ---------- */
 export interface TableCol { label: string; width: number; align?: 'left' | 'right' | 'center'; bold?: boolean; maxLines?: number }
@@ -153,7 +155,7 @@ export async function buildDdtPdf(d: DdtData): Promise<Uint8Array> {
 	for (let i = 0; i < Math.max(L.length, R.length); i++) { if (L[i]) t(L[i], M, y, i === 0 ? 11 : 10, i === 0 ? bold : font); if (R[i]) t(R[i], 320, y, i === 0 ? 11 : 10, i === 0 ? bold : font); y -= 13; }
 	y -= 10;
 	t(`Ordine ${d.order_number} · Causale: ${d.causale} · Trasporto: ${d.trasporto} · Colli: ${d.parcels}${d.weight_kg ? ` · Peso: ${d.weight_kg} kg` : ''}`, M, y, 9, font, gray); y -= 22;
-	y = drawTable({ page, x: M, y: y + 6, cols: DOC_COLS(), rows: d.lines.map((l) => [l.code ?? '', l.description, String(l.qty), eurUnit(l.unit_net), eur(l.total_net)]), font, bold });
+	y = drawTable({ page, x: M, y: y + 6, cols: DOC_COLS(), rows: d.lines.map((l) => [l.code ?? '', l.description, l.qty.toLocaleString('it-IT'), eurUnit(l.unit_net), eur(l.total_net)]), font, bold });
 	y -= 18;
 	y = drawTotals(page, font, bold, y, [['Imponibile', eur(d.subtotal_net)], ['IVA 22%', eur(d.vat_amount)], ['Totale', eur(d.total_gross), true]]);
 	if (d.notes) { y -= 8; t(`Note: ${d.notes}`.slice(0, 120), M, y, 9, font, gray); }
