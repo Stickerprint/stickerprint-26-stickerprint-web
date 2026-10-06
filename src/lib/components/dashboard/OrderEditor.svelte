@@ -47,6 +47,14 @@
 		if (calc.finitura === 'lucida' || calc.finitura === 'opaca') it.lamination = calc.finitura; else if (calc.opts?.finishes.length) it.lamination = 'nessuna';
 		calc = null;
 	}
+	/* riordino delle righe: trascina la maniglia ⠿ (o usa le frecce sul telefono). L'ordine delle righe e' quello del PDF */
+	let dragFrom = $state<number | null>(null);
+	let dragOver = $state<number | null>(null);
+	function moveItem(from: number, to: number) {
+		if (from === to || from < 0 || to < 0 || from >= d.items.length || to >= d.items.length) return;
+		const arr = [...d.items]; const [row] = arr.splice(from, 1); arr.splice(to, 0, row); d.items = arr;
+	}
+	function onDrop(i: number) { if (dragFrom !== null) moveItem(dragFrom, i); dragFrom = null; dragOver = null; }
 	let pick = $state('');
 	let pickOpen = $state(false);
 	let autoAmounts = $state(true);
@@ -183,10 +191,14 @@
 	<div class="dcard" style="overflow-x:auto">
 		<h3>📦 Articoli <label style="display:flex;gap:8px;align-items:center;font-size:13px;font-weight:700"><input type="checkbox" checked={lordi} onchange={(e) => (d.price_type = (e.currentTarget as HTMLInputElement).checked ? 'lordi' : 'netti')} /> Inserisci prezzi lordi (IVA inclusa)</label></h3>
 		<table class="dtable">
-			<thead><tr><th>Codice</th><th>Categoria</th><th>Descrizione (misura, materiale, finitura)</th><th>Q.tà</th><th>Prezzo unit.</th><th>Totale</th><th>Laminazione</th><th>Mockup</th><th></th></tr></thead>
+			<thead><tr><th style="width:26px"></th><th>Codice</th><th>Categoria</th><th>Descrizione (misura, materiale, finitura)</th><th>Q.tà</th><th>Prezzo unit.</th><th>Totale</th><th>Laminazione</th><th>Mockup</th><th></th></tr></thead>
 			<tbody>
 				{#each d.items as it, i (i)}
-					<tr>
+					<tr class="drow" class:is-over={dragOver === i && dragFrom !== null && dragFrom !== i} class:is-drag={dragFrom === i} ondragover={(e) => { e.preventDefault(); dragOver = i; }} ondragleave={() => { if (dragOver === i) dragOver = null; }} ondrop={(e) => { e.preventDefault(); onDrop(i); }}>
+						<td class="dhandle">
+							<span class="grip" role="button" tabindex="-1" aria-label="Trascina per spostare la riga" draggable="true" title="Trascina per spostare la riga" ondragstart={(e) => { dragFrom = i; e.dataTransfer?.setData('text/plain', String(i)); if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move'; }} ondragend={() => { dragFrom = null; dragOver = null; }}>⠿</span>
+							<span class="arrows"><button type="button" class="ibtn" title="Sposta su" disabled={i === 0} onclick={() => moveItem(i, i - 1)}>▲</button><button type="button" class="ibtn" title="Sposta giù" disabled={i === d.items.length - 1} onclick={() => moveItem(i, i + 1)}>▼</button></span>
+						</td>
 						<td><input type="text" list="codes-list" maxlength="12" placeholder="es. ADR01" bind:value={it.code} onchange={() => applyCode(i)} style="max-width:110px;text-transform:uppercase" />{#if it.number}<div class="osub">{it.number}</div>{/if}</td>
 						<td><span class="cat" class:cat--none={!catOf(it.code)}>{catOf(it.code) || 'Codice non riconosciuto'}</span></td>
 						<td><input type="text" placeholder="es. 10×10 cm, PP lucido" bind:value={it.description} /></td>
@@ -240,3 +252,14 @@
 		<button class="btn btn--green" type="submit" formaction="?/save" disabled={saving}>💾 {labels.save ?? 'Salva ordine'}</button>
 	</div>
 </form>
+
+<style>
+	.dhandle { white-space: nowrap; width: 26px; padding-left: 4px !important; padding-right: 0 !important; }
+	.grip { cursor: grab; color: #9aa0b4; font-size: 18px; user-select: none; display: inline-block; padding: 4px 2px; }
+	.grip:active { cursor: grabbing; }
+	.arrows { display: none; }
+	.arrows .ibtn { font-size: 11px; padding: 2px 4px; }
+	tr.is-over td { box-shadow: inset 0 3px 0 var(--blue); }
+	tr.is-drag { opacity: .45; }
+	@media (max-width: 820px) { .grip { display: none; } .arrows { display: inline-flex; flex-direction: column; } }
+</style>
