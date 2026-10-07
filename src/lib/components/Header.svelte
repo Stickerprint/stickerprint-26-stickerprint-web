@@ -1,11 +1,15 @@
 <script lang="ts">
 	import type { User } from '@supabase/supabase-js';
 	import { page } from '$app/state';
+	import { logoSrc } from '$lib/logo';
 
 	let { user, avatar = null }: { user: User | null; avatar?: string | null } = $props();
 	/* foto profilo illeggibile o rimossa: si mostrano le iniziali invece dell'icona rotta */
 	let avatarKo = $state(false);
 	$effect(() => { avatar; avatarKo = false; });
+	/* logo stagionale (Halloween fino al 31/10): si ricontrolla ogni minuto, così a mezzanotte cambia anche senza ricaricare */
+	let logo = $state(logoSrc());
+	$effect(() => { const t = setInterval(() => (logo = logoSrc()), 60_000); return () => clearInterval(t); });
 	let open = $state(false);
 	let cart = $state(0);
 	$effect(() => {
@@ -101,7 +105,7 @@
 		</div>
 
 		<a class="header__logo" href="/" aria-label="Stickerprint, home">
-			<img src="/images/splogo-400.png" alt="Stickerprint" width="400" height="320" />
+			<img src={logo} alt="Stickerprint" width="400" height="320" />
 		</a>
 
 		<div class="header__right">
@@ -145,7 +149,7 @@
 	<div class="mobile-menu" role="dialog" aria-label="Menu">
 		<!-- barra propria: logo e X, cosi' il menu copre tutto lo schermo e si chiude da qui -->
 		<div class="mobile-menu__bar container">
-			<a href="/" aria-label="Stickerprint, home"><img src="/images/splogo-400.png" alt="Stickerprint" width="400" height="320" /></a>
+			<a href="/" aria-label="Stickerprint, home"><img src={logo} alt="Stickerprint" width="400" height="320" /></a>
 			<button type="button" class="mobile-menu__close" aria-label="Chiudi il menu" onclick={() => (open = false)}>
 				<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 6l12 12M18 6L6 18" /></svg>
 			</button>
