@@ -1,7 +1,7 @@
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import { COMPANY } from './company';
 import { LOGO_PNG_B64 } from './logo-b64';
-import { DOC_COLS, drawTable, drawTotals, wrapText, eur, eurUnit } from './docs';
+import { DOC_COLS, drawTable, drawTotals, wrapText, eur, eurUnit, qtyFmt } from './docs';
 
 export interface InvoiceLine { code?: string | null; description: string; qty: number; unit_net: number; total_net: number; ddt?: string | null; ddt_date?: string | null }
 export interface InvoiceData {
@@ -81,7 +81,7 @@ export async function buildInvoicePdf(inv: InvoiceData): Promise<Uint8Array> {
 
 	// tabella righe (colonne fisse, testo a capo, righe centrate)
 	const colTot = 547;
-	const rows: [string, string, string, string, string, string | null][] = inv.lines.map((l) => [l.code ?? '', l.description, l.qty.toLocaleString('it-IT'), eurUnit(l.unit_net), eur(l.total_net), l.ddt ? `DDT ${l.ddt}${l.ddt_date ? ' del ' + new Date(l.ddt_date).toLocaleDateString('it-IT') : ''}` : null]);
+	const rows: [string, string, string, string, string, string | null][] = inv.lines.map((l) => [l.code ?? '', l.description, qtyFmt(l.qty), eurUnit(l.unit_net), eur(l.total_net), l.ddt ? `DDT ${l.ddt}${l.ddt_date ? ' del ' + new Date(l.ddt_date).toLocaleDateString('it-IT') : ''}` : null]);
 	if (inv.express_net > 0) rows.push(['', 'Produzione express (+30%)', '1', eur(inv.express_net), eur(inv.express_net), null]);
 	const multiDdt = new Set(rows.map((r) => r[4]).filter(Boolean)).size > 1;
 	y = drawTable({ page, x: M, y: y + 6, cols: DOC_COLS(), rows: rows.map(([c, d, q, u, t, ddt]) => [c, multiDdt && ddt ? `${d} (${ddt})` : d, q, u, t]), font, bold });

@@ -66,6 +66,7 @@ function docHeader(page: PDFPage, font: PDFFont, bold: PDFFont, logo: Awaited<Re
 const addrLines = (a: Record<string, string>) => [a.company, [a.first_name, a.last_name].filter(Boolean).join(' '), [a.street, a.street2].filter(Boolean).join(', '), [a.zip, a.city, a.province ? `(${a.province})` : ''].filter(Boolean).join(' '), a.country && a.country !== 'IT' ? a.country : 'Italia', a.vat ? `P.IVA ${a.vat}` : '', a.fiscal_code ? `C.F. ${a.fiscal_code}` : ''].filter(Boolean);
 // Numeri all'italiana: punto per le migliaia, virgola per i decimali (141.400,00 €)
 const fmtIt = (v: number, min: number, max: number) => new Intl.NumberFormat('it-IT', { minimumFractionDigits: min, maximumFractionDigits: max, useGrouping: 'always' }).format(v);
+export const qtyFmt = (v: number) => new Intl.NumberFormat('it-IT', { useGrouping: 'always', maximumFractionDigits: 0 }).format(v);
 export const eur = (v: number) => `${fmtIt(v, 2, 2)} €`;
 /** prezzo unitario: fino a 4 decimali, mai meno di 2 (0,295 €) */
 export const eurUnit = (v: number) => `${fmtIt(v, 2, 4)} €`;
@@ -141,6 +142,8 @@ export function drawTotals(page: PDFPage, font: PDFFont, bold: PDFFont, y: numbe
 }
 export const DOC_COLS = (font?: PDFFont): TableCol[] => [{ label: 'Codice', width: 58, bold: true }, { label: 'Descrizione', width: 244, maxLines: 3 }, { label: 'Q.tà', width: 50, align: 'right' }, { label: 'Prezzo unit.', width: 70, align: 'right' }, { label: 'Imponibile', width: 77, align: 'right', bold: true }];
 
+const DDT_COLS: TableCol[] = [{ label: 'Codice', width: 70, bold: true }, { label: 'Descrizione', width: 369, maxLines: 3 }, { label: 'Q.tà', width: 60, align: 'right', bold: true }];
+
 /** Documento di trasporto A4 */
 export async function buildDdtPdf(d: DdtData): Promise<Uint8Array> {
 	const pdf = await PDFDocument.create();
@@ -155,9 +158,10 @@ export async function buildDdtPdf(d: DdtData): Promise<Uint8Array> {
 	for (let i = 0; i < Math.max(L.length, R.length); i++) { if (L[i]) t(L[i], M, y, i === 0 ? 11 : 10, i === 0 ? bold : font); if (R[i]) t(R[i], 320, y, i === 0 ? 11 : 10, i === 0 ? bold : font); y -= 13; }
 	y -= 10;
 	t(`Ordine ${d.order_number} · Causale: ${d.causale} · Trasporto: ${d.trasporto} · Colli: ${d.parcels}${d.weight_kg ? ` · Peso: ${d.weight_kg} kg` : ''}`, M, y, 9, font, gray); y -= 22;
-	y = drawTable({ page, x: M, y: y + 6, cols: DOC_COLS(), rows: d.lines.map((l) => [l.code ?? '', l.description, l.qty.toLocaleString('it-IT'), eurUnit(l.unit_net), eur(l.total_net)]), font, bold });
-	y -= 18;
-	y = drawTotals(page, font, bold, y, [['Imponibile', eur(d.subtotal_net)], ['IVA 22%', eur(d.vat_amount)], ['Totale', eur(d.total_gross), true]]);
+	// sul DDT niente prezzi (Mattia, 7/10/2026): solo codice, descrizione e quantità
+	y = drawTable({ page, x: M, y: y + 6, cols: DDT_COLS, rows: d.lines.map((l) => [l.code ?? '', l.description, qtyFmt(l.qty)]), font, bold });
+	y -= 14;
+	t(`Totale pezzi: ${qtyFmt(d.lines.reduce((s, l) => s + Number(l.qty || 0), 0))}`, M, y, 9.5, bold); y -= 6;
 	if (d.notes) { y -= 8; t(`Note: ${d.notes}`.slice(0, 120), M, y, 9, font, gray); }
 	t('Firma del vettore ______________________      Firma del destinatario ______________________', M, 70, 9, font, gray);
 	t('Documento generato da stickerprint.it', M, 40, 8, font, gray);
@@ -183,7 +187,7 @@ export async function buildOrderPdf(d: OrderDocData): Promise<Uint8Array> {
 	y -= 8;
 	for (const line of wrapText(font, `Spedizione: ${d.shipping_method}${d.delivery_date ? ` · prevista il ${new Date(d.delivery_date).toLocaleDateString('it-IT')}` : ''}${d.lead_time ? ` · Tempi: ${d.lead_time}` : ''}`, 9, 499, 3)) { t(line, M, y, 9, font, gray); y -= 12; }
 	y -= 10;
-	y = drawTable({ page, x: M, y: y + 6, cols: DOC_COLS(), rows: d.lines.map((l) => [l.code ?? '', l.description, l.qty.toLocaleString('it-IT'), eurUnit(l.unit_net), eur(l.total_net)]), font, bold });
+	y = drawTable({ page, x: M, y: y + 6, cols: DOC_COLS(), rows: d.lines.map((l) => [l.code ?? '', l.description, qtyFmt(l.qty), eurUnit(l.unit_net), eur(l.total_net)]), font, bold });
 	y -= 14;
 	if (d.notes) { for (const line of wrapText(font, `Note: ${d.notes}`, 9, 499, 3)) { t(line, M, y, 9, font, gray); y -= 12; } }
 	if (quote) {
