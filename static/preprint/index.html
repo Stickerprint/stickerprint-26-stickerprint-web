@@ -3817,6 +3817,21 @@ function rilievoMask(){
         for(const i of px){const x=i%w-cx,y=((i/w)|0)-cy;const d=Math.sqrt(x*x+y*y);if(d<r0)r0=d;if(d>r1)r1=d;bins[((Math.atan2(y,x)+Math.PI)/(2*Math.PI)*36|0)%36]=1;}
         let ang=0;for(let b=0;b<36;b++)ang+=bins[b];arco=(r1-r0)<0.2*r&&ang>=5;}
       if(sottile||arco){for(const i of px){bg[i]=1;bgOf[i]=kf;}}}}}
+  /* ---- 1d. CODA BIANCA DEL CIELO (OUTDOOR TRAILBUSTERS, 7/10/2026) ----
+     Il cielo sfuma fino al bianco: la parte quasi bianca (luminosita' >= 240, neutra) attaccata alla
+     campitura del cielo e' ancora cielo, non grafica (la fascia chiara all'orizzonte, la neve). Prima
+     veniva confrontata con il cielo azzurro e usciva in rilievo. Si allarga dal cielo passo passo solo
+     sui pixel quasi bianchi: un soggetto bianco (il fantasma) ha il suo contorno scuro e la crescita
+     non lo attraversa. */
+  {const seen=new Uint8Array(N);
+   for(let k=1;k<cols.length;k++){const rg=plateReg[k];if(!rg||!rg.m||!rg.m.cielo)continue;
+     /* pila propria (quella condivisa e' lunga N: con i pixel del cielo piu' quelli nuovi traboccava) */
+     const pila=rg.px.slice();
+     while(pila.length){const i=pila.pop();const x=i%w,y=(i/w)|0;
+       for(const j of [x>0?i-1:-1,x<w-1?i+1:-1,y>0?i-w:-1,y<h-1?i+w:-1]){if(j<0||seen[j]||!inArt[j]||bg[j])continue;seen[j]=1;
+         const q=j*4,r=db[q],g=db[q+1],b=db[q+2];
+         /* quasi bianco o pastello chiarissimo (la sfumatura passa per un celeste pallido prima del bianco) */
+         if(0.299*r+0.587*g+0.114*b>=230&&Math.max(r,g,b)-Math.min(r,g,b)<=45){bg[j]=1;bgOf[j]=k;pila.push(j);}}}}}
   /* ---- 2. rilievo: pixel che si staccano dallo sfondo piu' vicino ---- */
   const nearest=new Int32Array(N);const q=new Int32Array(N);let qh=0,qt=0;
   /* si parte dai pixel di sfondo INTERNI (a 2 px dal confine): quelli sul confine sono
@@ -3994,7 +4009,7 @@ function rilievoMask(){
   g.putImageData(im,0,0);
   /* spessore locale (distanza dal bordo del rilievo), usato solo dal vecchio mockup 3D */
   const md=new Float32Array(N);{const inv=new Uint8Array(N);for(let i=0;i<N;i++)inv[i]=R[i]?0:1;const dd2=edt2d(inv,w,h);for(let i=0;i<N;i++)if(R[i])md[i]=Math.sqrt(dd2[i]);}
-  S.ril={key,canvas:c,w,h,frac,on:R,md,dbg:{bg,nearest,db,inArt,linee,mono,fileBg,regioni:regioni.map(r=>({area:+(r.px.length/artArea).toFixed(3),touch:r.touch,tf:+r.touchFrac.toFixed(2),plate:r.plate,col:r.col.map(Math.round),lum:r.lum,box:r.box,m:r.m||null,gd:r.geoDbg||null}))}};
+  S.ril={key,canvas:c,w,h,frac,on:R,md,dbg:{bg,bgOf,nearest,db,inArt,dNon,linee,mono,fileBg,regioniRaw:S.rilDebugRaw?regioni:null,regioni:regioni.map(r=>({area:+(r.px.length/artArea).toFixed(3),touch:r.touch,tf:+r.touchFrac.toFixed(2),plate:r.plate,col:r.col.map(Math.round),lum:r.lum,box:r.box,m:r.m||null,gd:r.geoDbg||null}))}};
   try{console.debug('[rilievo] '+Math.round(frac*100)+'% del disegno in rilievo, '+w+'x'+h+' in '+Math.round(performance.now()-t0)+' ms');}catch(e){}
   return S.ril;}
 
