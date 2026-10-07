@@ -3643,10 +3643,11 @@ function rilievoMask(){
   const dNon=(()=>{const nonArt=new Uint8Array(N);for(let i=0;i<N;i++)nonArt[i]=inArt[i]?0:1;return edt2d(nonArt,w,h);})();
   const px=[];const regioni=[];   // regioni di colore uniforme abbastanza grandi
   for(let s0=0;s0<N;s0++){if(vis[s0]||!inArt[s0])continue;
-    let top=0;st[top++]=s0;vis[s0]=1;px.length=0;let touch=false;let r=0,g=0,b=0,nBordo=0,nPerim=0;
+    let top=0;st[top++]=s0;vis[s0]=1;px.length=0;let touch=false;let r=0,g=0,b=0,nBordo=0,nPerim=0,lMin=999,lMax=-1;
     /* la regione cresce a passo locale piccolo sull'immagine sfocata: una sfumatura graduale
        (il disco con la luce al centro) passa, un bordo netto (scritta, pallino) la ferma */
     while(top){const i=st[--top];px.push(i);const p=i*4;r+=db[p];g+=db[p+1];b+=db[p+2];const x=i%w,y=(i/w)|0;
+      {const l=0.299*db[p]+0.587*db[p+1]+0.114*db[p+2];if(l<lMin)lMin=l;if(l>lMax)lMax=l;}
       const fuori=dNon[i]<=9;
       if(fuori){touch=true;nBordo++;}
       let perim=fuori;
@@ -3656,7 +3657,7 @@ function rilievoMask(){
       if(perim)nPerim++;}
     if(px.length<0.02*artArea)continue;
     let x0=w,y0=h,x1=0,y1=0;for(const i of px){const x=i%w,y=(i/w)|0;if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;}
-    regioni.push({px:px.slice(),touch,touchFrac:nPerim?nBordo/nPerim:0,col:[r/px.length,g/px.length,b/px.length],box:[x0,y0,x1,y1],plate:false});}
+    regioni.push({px:px.slice(),touch,touchFrac:nPerim?nBordo/nPerim:0,col:[r/px.length,g/px.length,b/px.length],box:[x0,y0,x1,y1],plate:false,lum:[Math.round(lMin),Math.round(lMax)]});}
   const dcc=(a,c)=>Math.abs(a[0]-c[0])+Math.abs(a[1]-c[1])+Math.abs(a[2]-c[2]);
   /* misure di una regione: raggio massimo inscritto (compattezza) e area dei 'buchi' che
      racchiude (altra grafica dentro di lei) */
@@ -3667,7 +3668,7 @@ function rilievoMask(){
     /* ELEMENTI ADIACENTI: quanti gruppi di pixel di altro colore (di almeno lo 0,05% del disegno)
        confinano con la regione dentro il suo riquadro. Una placca ne ha molti (lettere, figure);
        un soggetto pieno (un sole, un pesce) pochi. Si contano anche gli elementi che sporgono. */
-    const qq=new Int32Array(bwid*bhei);const minB=0.0005*artArea;let nBuchi=0,buchi=0,buchiC=0;
+    const qq=new Int32Array(bwid*bhei);const minB=0.0005*artArea;let nBuchi=0,buchi=0,buchiC=0,maxB=0;
     for(let k0=0;k0<mark.length;k0++){if(mark[k0])continue;const gx=k0%bwid+x0,gy=((k0/bwid)|0)+y0;if(!inArt[gy*w+gx]){mark[k0]=2;continue;}
       let area=0,adiac=false;let hh=0;qq[hh++]=k0;mark[k0]=3;let ex0=bwid,ey0=bhei,ex1=0,ey1=0;
       while(hh){const k=qq[--hh];area++;const x=k%bwid,y=(k/bwid)|0;if(x<ex0)ex0=x;if(x>ex1)ex1=x;if(y<ey0)ey0=y;if(y>ey1)ey1=y;
@@ -3679,8 +3680,8 @@ function rilievoMask(){
         /* conta solo gli elementi COMPATTI (lettere, figure, pallini): una linea sottile e lunga
            (le piume incise in una campitura) e' disegno della campitura stessa, non un elemento sopra */
         const ew=ex1-ex0+1,eh=ey1-ey0+1;const compatto=Math.max(ew,eh)/Math.max(1,Math.min(ew,eh))<3&&area/(ew*eh)>=0.25;
-        if(area>=minB&&compatto){nBuchi++;buchiC+=area;}}}
-    return {rmax:Math.sqrt(md),buchi,nBuchi,buchiC};};
+        if(area>=minB&&compatto){nBuchi++;buchiC+=area;if(area>maxB)maxB=area;}}}
+    return {rmax:Math.sqrt(md),buchi,nBuchi,buchiC,maxB};};
   /* FONDALE GEOMETRICO: il bordo esterno della regione (contro il fuori o contro un altro
      sfondo) sta su un cerchio/ellisse o sul suo rettangolo. Il maiale davanti al disco ha il
      bordo irregolare; il disco, anche se coperto per meta', no. */
@@ -3737,7 +3738,7 @@ function rilievoMask(){
        if(Math.abs(db[p]-cr)+Math.abs(db[p+1]-cg)+Math.abs(db[p+2]-cb)<=60)vicini++;}
      mono=vicini>=0.9*nInk;}}
   for(const rg of regioni){if((mono&&!rg.touch)||rg.plate||rg.px.length<Aedge)continue;
-    const {rmax,nBuchi,buchiC}=misura(rg);const compat=rmax/Math.sqrt(rg.px.length);rg.m={rmax:Math.round(rmax),compat:+compat.toFixed(3),nBuchi,bc:+(buchiC/rg.px.length).toFixed(3),R0:Math.round(R0)};
+    const {rmax,nBuchi,buchiC,maxB}=misura(rg);const compat=rmax/Math.sqrt(rg.px.length);rg.m={rmax:Math.round(rmax),compat:+compat.toFixed(3),nBuchi,bc:+(buchiC/rg.px.length).toFixed(3),mb:+(maxB/rg.px.length).toFixed(3),R0:Math.round(R0)};
     /* Una placca e' sfondo perche' CONTIENE altra grafica: almeno 6 buchi apprezzabili (le
        lettere di una scritta, gli elementi di uno stemma). Un pesce nero con un occhio e
        due denti, un sole pieno, una scritta grassa NON sono placche: vanno in rilievo. */
@@ -3749,6 +3750,16 @@ function rilievoMask(){
     /* una campitura che arriva al taglio con un bordo IRREGOLARE (la sagoma stessa del soggetto:
        il maiale, il pesce) e' placca solo se contiene MOLTA grafica (>=6 elementi: la macchia
        GBZ con lettere, boccali, pallini); un fondale geometrico o interno basta con 3 */
+    /* FONDALE SFUMATO (cielo dietro il fantasma di OUTDOOR TRAILBUSTERS, 7/10/2026): una campitura
+       interna che SFUMA fino quasi al bianco (luminosita' che varia di almeno 60 e arriva a 230) e che
+       ha sopra figure grandi (almeno il 40% della sua area) e' il cielo o il bagliore dietro il
+       soggetto: sfondo, anche se il suo bordo e' irregolare (montagne, cornice a catena). Una lettera
+       cromata sfuma anche lei ma non ha niente sopra; un disco piatto dietro un maiale non sfuma.
+       Le figure sopra devono essere GRANDI (una da sola almeno un quarto della campitura) e la
+       campitura compatta: il corpo sfumato delle lettere di PALETA, allungato e pieno di riflessi
+       piccoli, non e' un cielo. */
+    const sfumato=rg.lum&&(rg.lum[1]-rg.lum[0])>=60&&rg.lum[1]>=230;
+    if(!rg.touch&&sfumato&&compat>=0.15&&buchiC>=0.4*rg.px.length&&maxB>=0.25*rg.px.length){rg.m.cielo=true;segnaPlacca(rg);continue;}
     const geo=geometrica(rg);const molti=nBuchi>=3&&buchiC>=0.06*rg.px.length;
     const contiene=(molti&&(geo||!rg.touch||nBuchi>=6))||(buchiC>=0.4*rg.px.length&&geo);rg.m.geo=geo;
     /* sul bordo del disegno: spessa, compatta, con almeno un quarto del perimetro sul bordo */
@@ -3983,7 +3994,7 @@ function rilievoMask(){
   g.putImageData(im,0,0);
   /* spessore locale (distanza dal bordo del rilievo), usato solo dal vecchio mockup 3D */
   const md=new Float32Array(N);{const inv=new Uint8Array(N);for(let i=0;i<N;i++)inv[i]=R[i]?0:1;const dd2=edt2d(inv,w,h);for(let i=0;i<N;i++)if(R[i])md[i]=Math.sqrt(dd2[i]);}
-  S.ril={key,canvas:c,w,h,frac,on:R,md,dbg:{bg,nearest,db,inArt,linee,mono,fileBg,regioni:regioni.map(r=>({area:+(r.px.length/artArea).toFixed(3),touch:r.touch,tf:+r.touchFrac.toFixed(2),plate:r.plate,col:r.col.map(Math.round),box:r.box,m:r.m||null,gd:r.geoDbg||null}))}};
+  S.ril={key,canvas:c,w,h,frac,on:R,md,dbg:{bg,nearest,db,inArt,linee,mono,fileBg,regioni:regioni.map(r=>({area:+(r.px.length/artArea).toFixed(3),touch:r.touch,tf:+r.touchFrac.toFixed(2),plate:r.plate,col:r.col.map(Math.round),lum:r.lum,box:r.box,m:r.m||null,gd:r.geoDbg||null}))}};
   try{console.debug('[rilievo] '+Math.round(frac*100)+'% del disegno in rilievo, '+w+'x'+h+' in '+Math.round(performance.now()-t0)+' ms');}catch(e){}
   return S.ril;}
 
