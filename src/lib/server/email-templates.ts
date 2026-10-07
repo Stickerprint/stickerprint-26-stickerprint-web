@@ -234,7 +234,7 @@ export function quoteAcceptedEmail(o: { name?: string | null; number: string; or
 
 /* ---------- Helpdesk ---------- */
 export function aziendeReceivedEmail(o: { name?: string | null; company?: string | null }) {
-	return { subject: 'Richiesta ricevuta: ti rispondiamo entro 24 ore', tag: 'aziende-received', html: layoutHtml(`Richiesta ${hl('ricevuta')} 🙌`, `<p>Ciao ${esc(o.name || '')},</p><p>la tua richiesta${o.company ? ` per <b>${esc(o.company)}</b>` : ''} è arrivata in laboratorio. Ti rispondiamo <b>entro 24 ore</b> con una proposta su misura: prezzi, tempi e, se serve, qualche domanda sul file.</p><p>Nel frattempo prova a dare un’occhiata alle domande frequenti dalla <a href="${SITE}/support" style="color:#1d6bf3;font-weight:700;">pagina di supporto</a>: spesso la risposta è già lì.</p><p>Grazie per averci contattato.</p>`, { label: 'Vai al sito', href: 'https://stickerprint.it/aziende' }) };
+	return { subject: 'Richiesta ricevuta: ti rispondiamo entro 24 ore', tag: 'aziende-received', html: layoutHtml(`Richiesta ${hl('ricevuta')} 🙌`, `<p>Ciao ${esc(o.name || '')},</p><p>la tua richiesta${o.company ? ` per <b>${esc(o.company)}</b>` : ''} è arrivata in laboratorio. Ti rispondiamo <b>entro 24 ore</b> con una proposta su misura: prezzi, tempi e, se serve, qualche domanda sul file.</p><p>Grazie per averci contattato.</p>`, { label: 'Vai al sito', href: 'https://stickerprint.it/aziende' }) };
 }
 export function ticketReceivedEmail(o: { name?: string | null; number: string; href: string }) {
 	const n = esc(o.number);
