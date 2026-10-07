@@ -25,6 +25,7 @@
     "@fontsource/rubik": "^5.3.0",
     "@supabase/ssr": "^0.6.1",
     "@supabase/supabase-js": "^2.50.0",
+    "@vercel/functions": "^3.9.11",
     "pdf-lib": "^1.17.1",
     "web-push": "^3.6.7"
   }
