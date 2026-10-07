@@ -1,5 +1,5 @@
 import { error, fail } from '@sveltejs/kit';
-import { getTicket, markTicketRead, noteTicket, replyTicket, ticketContext, updateTicket, type TicketStatus } from '$lib/server/helpdesk';
+import { getTicket, markTicketRead, noteTicket, replyTicket, signedFiles, ticketContext, updateTicket, uploadStaffFiles, type TicketStatus } from '$lib/server/helpdesk';
 import { operatorName } from '$lib/server/produzione';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -9,8 +9,7 @@ export const load: PageServerLoad = async ({ params, locals: { supabase } }) => 
 	await markTicketRead(supabase, c.ticket.id);
 	const ctx = await ticketContext(supabase, c.ticket);
 	// allegati: link firmati per un'ora
-	const files: Record<number, string> = {};
-	for (const m of c.messages) if (m.file_path) { const { data } = await supabase.storage.from('requests').createSignedUrl(m.file_path, 3600, { download: m.file_path.split('/').pop() }); if (data) files[m.id] = data.signedUrl; }
+	const files = await signedFiles(supabase, c.messages, 3600, true);
 	return { ...c, ...ctx, files };
 };
 
@@ -18,7 +17,9 @@ export const actions: Actions = {
 	rispondi: async ({ request, params, url, locals }) => {
 		const f = await request.formData();
 		const op = await operatorName(locals.supabase, locals.user);
-		const e = await replyTicket(locals.supabase, params.id, String(f.get('body') ?? ''), op, url.origin, (String(f.get('next') ?? '') || 'attesa_cliente') as TicketStatus);
+		const up = await uploadStaffFiles(locals.supabase, params.id, f.getAll('files').filter((x): x is File => x instanceof File));
+		if (!up.ok) return fail(400, { error: up.error });
+		const e = await replyTicket(locals.supabase, params.id, String(f.get('body') ?? ''), op, url.origin, (String(f.get('next') ?? '') || 'attesa_cliente') as TicketStatus, up.files);
 		return e ? fail(400, { error: e }) : { ok: true, message: 'Risposta inviata.' };
 	},
 	nota: async ({ request, params, locals }) => {

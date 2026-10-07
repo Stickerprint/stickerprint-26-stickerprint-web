@@ -23,7 +23,7 @@
 				<div class="hd-msg hd-msg--{m.direction}">
 					<div class="hd-msg__head"><b>{m.direction === 'in' ? 'Tu' : 'Stickerprint'}</b><span class="note">{when(m.created_at)}</span></div>
 					<div class="hd-msg__body">{m.body}</div>
-					{#if m.file_path && data.files[m.id]}<a class="link" style="font-size:13px" href={data.files[m.id]} target="_blank" rel="noopener">📎 Allegato</a>{/if}
+					{#if data.files[m.id]?.length}<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px">{#each data.files[m.id] as f (f.href)}<a class="link" style="font-size:13px" href={f.href} target="_blank" rel="noopener">📎 {f.name}</a>{/each}</div>{/if}
 				</div>
 			{/each}
 		</div>

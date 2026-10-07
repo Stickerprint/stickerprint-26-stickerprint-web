@@ -1,6 +1,6 @@
 import { error, fail } from '@sveltejs/kit';
 import { adminClient } from '$lib/server/admin';
-import { customerReply, getTicketByToken } from '$lib/server/helpdesk';
+import { customerReply, getTicketByToken, signedFiles } from '$lib/server/helpdesk';
 import type { Actions, PageServerLoad } from './$types';
 
 /** Pagina pubblica della richiesta: il cliente vede la conversazione e risponde (anche con un allegato) */
@@ -9,8 +9,7 @@ export const load: PageServerLoad = async ({ params }) => {
 	if (!db) error(503, 'Servizio non disponibile');
 	const c = await getTicketByToken(db, params.token);
 	if (!c) error(404, 'Richiesta non trovata');
-	const files: Record<number, string> = {};
-	for (const m of c.messages) if (m.file_path) { const { data } = await db.storage.from('requests').createSignedUrl(m.file_path, 3600); if (data) files[m.id] = data.signedUrl; }
+	const files = await signedFiles(db, c.messages, 3600, true);
 	return { ticket: { number: c.ticket.number, status: c.ticket.status, name: c.ticket.name, order_number: c.ticket.order_number, created_at: c.ticket.created_at }, messages: c.messages, files };
 };
 

@@ -240,9 +240,10 @@ export function ticketReceivedEmail(o: { name?: string | null; number: string; h
 	const n = esc(o.number);
 	return { subject: `Richiesta ${o.number} ricevuta: ci pensiamo noi`, tag: 'ticket-received', html: layoutHtml(`Richiesta ${n} ${hl('ricevuta')} 🙌`, `<p>Ciao ${esc(o.name || '')},</p><p>la tua richiesta è arrivata in laboratorio con il numero <b>${n}</b>. Ti rispondiamo entro 24 ore. Puoi seguire la conversazione e aggiungere dettagli dal link qui sotto.</p><p>Nel frattempo prova a dare un’occhiata alle domande frequenti dalla <a href="${SITE}/support" style="color:#1d6bf3;font-weight:700;">pagina di supporto</a>: spesso la risposta è già lì.</p><p>Grazie per averci contattato.</p>`, { label: 'Vedi la richiesta', href: o.href }) };
 }
-export function ticketReplyEmail(o: { name?: string | null; number: string; body: string; author?: string | null; href: string }) {
+export function ticketReplyEmail(o: { name?: string | null; number: string; body: string; author?: string | null; href: string; attachments?: { name: string; href: string }[] }) {
 	const n = esc(o.number);
-	return { subject: `Re: richiesta ${o.number}`, tag: 'ticket-reply', html: layoutHtml(`Novità sulla richiesta ${n} 💬`, `<p>Ciao ${esc(o.name || '')},</p><div style="white-space:pre-wrap;background:#f4f5fa;padding:14px 16px;border-radius:10px;">${esc(o.body)}</div>${o.author ? `<p style="margin-top:10px;color:#8e92b0;font-size:13px;">${esc(o.author)} · Stickerprint</p>` : ''}<p>Per rispondere usa il bottone: la conversazione resta tutta in un posto.</p>`, { label: 'Rispondi', href: o.href }) };
+	const att = o.attachments?.length ? `<p style="margin-top:12px;">📎 In allegato trovi ${o.attachments.map((a) => `<a href="${a.href}" style="color:#1d6bf3;font-weight:700;">${esc(a.name)}</a>`).join(', ')}: ${o.attachments.length === 1 ? 'lo' : 'li'} trovi anche nella pagina della richiesta.</p>` : '';
+	return { subject: `Re: richiesta ${o.number}`, tag: 'ticket-reply', html: layoutHtml(`Novità sulla richiesta ${n} 💬`, `<p>Ciao ${esc(o.name || '')},</p><div style="white-space:pre-wrap;background:#f4f5fa;padding:14px 16px;border-radius:10px;">${esc(o.body)}</div>${att}${o.author ? `<p style="margin-top:10px;color:#8e92b0;font-size:13px;">${esc(o.author)} · Stickerprint</p>` : ''}<p>Per rispondere usa il bottone: la conversazione resta tutta in un posto.</p>`, { label: 'Rispondi', href: o.href }) };
 }
 
 /* ---------- Ordine nato da un preventivo confermato dal cliente (email automatica) ---------- */
