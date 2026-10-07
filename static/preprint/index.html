@@ -1489,6 +1489,7 @@ function autoSegment(){
   S.cands=r.cands;S.ctx0=r.ctx;
   try{verifyAtWork();}catch(e){console.warn('verifica saltata',e);}
   S.chosen=S.cands.length?0:-1;
+  S.sceltaUtente=false;S.cropAuto=false;
   paintAlts();}
 /* Con la SAGOMA lo sfondo va tolto sempre: chi sceglie die-cut non può
    ritrovarsi un rettangolo. La rete di sicurezza "tieni tutto" serve solo
@@ -1496,7 +1497,17 @@ function autoSegment(){
    Il disegno non si perde lo stesso, perché viene rimesso dentro la sagoma
    ritagliato sul tracciato (vedi buildCut / inkLayer). */
 function geoIdx(){
-  if($('shp').value!=='diecut')return S.chosen;
+  if($('shp').value!=='diecut'){
+    /* ETICHETTA IMPAGINATA SU UN FOGLIO (THE BULL, 7/10/2026): il file e' un disegno piccolo in
+       mezzo a un grande sfondo uniforme (meno del 60% dell'immagine, niente sul bordo). La rete di
+       sicurezza "tieni tutto" vince (lo sfondo a grana di carta da' punteggi bassi a tutti), ma
+       dentro un rettangolo o un tondo il cliente vedrebbe la sua etichetta minuscola in un campo
+       bianco: si tiene il disegno scontornato, come con la sagoma. Se il cliente ha scelto lui
+       dalla barra ("Rimetti il file com'era") non si tocca. Con la sagoma non cambia niente. */
+    if(!S.sceltaUtente&&S.chosen>=0&&S.cands[S.chosen]&&S.cands[S.chosen].st.kind==='intero'){
+      const i=S.cands.findIndex(c=>c.st.kind!=='intero');
+      if(i>=0&&S.cands[i].keptPct<=0.6&&(S.cands[i].borderTouch||0)<=0.05){S.chosen=i;S.cropAuto=true;}}
+    return S.chosen;}
   if(S.chosen>=0&&S.cands[S.chosen]&&S.cands[S.chosen].st.kind!=='intero')return S.chosen;
   const i=S.cands.findIndex(c=>c.st.kind!=='intero');
   return i>=0?i:S.chosen;}
@@ -1755,7 +1766,12 @@ function computeMask(){
   let m=null,src='';
   if(S.lineSeed){m=lineMask();src='taglio lungo la linea scelta';}
   if(!m&&S.seeds.length){m=manualMask();src='sfondo scelto a mano ('+S.seeds.length+' punti)';}
-  if(!m){m=applyChosen();src='scontorno automatico'+(S.chosen>=0?' · '+S.cands[S.chosen].label:'');}
+  if(!m){m=applyChosen();src='scontorno automatico'+(S.chosen>=0?' · '+S.cands[S.chosen].label:'');
+    /* etichetta scontornata in automatico dentro una forma geometrica (geoIdx): la grana della carta
+       lascia qualche macchiolina isolata lontano dal disegno, e il riquadro del disegno si allarga
+       fino a li' (BOURBON: l'etichetta usciva piccola nel rettangolo). Via i pezzetti sotto lo 0,03%
+       dell'immagine (un quadratino di 20 px su un file da 1500): un elemento vero e' piu' grande */
+    if(S.cropAuto)m=despeckle(m,w,h,0.0003);}
   /* Lo sfondo, per definizione, sta FUORI dal disegno. Se lo scontorno ha
      tolto qualcosa che il disegno racchiude — il tratto nero fra le gambe
      su un fondo nero, le controforme delle lettere — quella non è sfondo,
@@ -3911,6 +3927,31 @@ function rilievoMask(){
      for(let t=1;t<=Lv-a+1;t++){const yy=y+t;if(yy>=h)break;if(R[yy*w+x]){b=t;break;}}
      if(b&&a+b-1<=Lv)add.push(i);}
    for(const i of add)R[i]=1;}
+  /* ---- 2c. CORNICE SOTTILE LUNGO IL BORDO (THE BULL, 7/10/2026) ----
+     Un filetto o una fascia sottile che corre lungo un lato del pezzo a ridosso del taglio e' la
+     cornice dell'etichetta, non grafica: Mattia la vuole piatta (in rilievo scritte e filetto
+     centrale, la cornice argento no). Si riconosce cosi': tutti i suoi pixel stanno entro 2 mm dal
+     bordo esterno, e' lunga almeno 3/4 di un lato del disegno ed e' sottile (area entro quella di
+     una fascia di 1,2 mm lungo il suo riquadro). Una scritta vicina al bordo non e' lunga quanto un
+     lato; una cornice spessa e' una placca e segue le regole sopra. */
+  /* scala VERA del pezzo (mm per pixel di lavoro): S.art.w e' la larghezza in mm di TUTTA l'immagine
+     di lavoro (S.mw pixel), quindi si divide per S.mw. (mmpx qui sopra divide per S.bbox.w, la
+     larghezza del solo disegno: su un file con molto sfondo attorno esce il doppio del vero.
+     Le soglie delle regole precedenti sono tarate su quel valore e non si toccano.) */
+  const mmpxV=(S.art&&S.art.w&&S.mw)?(S.art.w/S.mw)/kx:mmpx;
+  {const dMax=(2/mmpxV)*(2/mmpxV), spess=1.2/mmpxV; const lab=new Int32Array(N);let n=0;
+   for(let s0=0;s0<N;s0++){if(lab[s0]||!R[s0])continue;n++;lab[s0]=n;let top=0;st[top++]=s0;px.length=0;let x0=w,x1=0,y0=h,y1=0,vicino=true;
+     while(top){const i=st[--top];px.push(i);const x=i%w,y=(i/w)|0;if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;if(dNon[i]>dMax)vicino=false;
+       for(const j of [x>0?i-1:-1,x<w-1?i+1:-1,y>0?i-w:-1,y<h-1?i+w:-1]){if(j<0||lab[j]||!R[j])continue;lab[j]=n;st[top++]=j;}}
+     const cw=x1-x0+1,ch=y1-y0+1;if(cw<0.75*bw||ch<0.75*bh)continue;
+     /* ANELLO RETTANGOLARE: quasi tutti i pixel stanno a ridosso del proprio riquadro. Le corna
+        a linea di BLECK o il contorno di una figura sagomata seguono anche loro il bordo del
+        pezzo, ma hanno il riquadro pieno di tratti lontani dai lati: restano in rilievo */
+     let aderenti=0;for(const i of px){const x=i%w,y=(i/w)|0;if(Math.min(x-x0,x1-x,y-y0,y1-y)<=spess)aderenti++;}
+     const sottile=px.length<=2*(cw+ch)*spess, rett=aderenti>=0.9*px.length;
+     if(S.rilDebugCornice)console.debug('[cornice] '+JSON.stringify({area:px.length,cw,ch,bw:Math.round(bw),bh:Math.round(bh),vicino,sottile,rett,aderenti,spess:Math.round(spess),dMax:Math.round(dMax)}));
+     if(!vicino||!sottile||!rett)continue;
+     for(const i of px)R[i]=0;}}
   /* ---- 3. pulizia minima ---- */
   {const Amin=Math.max(4,Math.round((0.35/mmpx)*(0.35/mmpx))), Ahole=Math.max(4,Math.round((0.2/mmpx)*(0.2/mmpx)));
    const lab=new Int32Array(N);
@@ -4820,12 +4861,12 @@ function bgFixBar(){
     if(cutIdx<0){box.innerHTML='';return;}
     box.innerHTML='<div class="fixbar">Dentro la forma vedi il file <b>com\'è</b>, con il suo fondo.'+
       '<button id="bgSwap">Voglio solo il disegno, senza fondo</button></div>';
-    $('bgSwap').onclick=()=>{S.chosen=cutIdx;S.seeds=[];S.lineSeed=null;refresh(true);};
+    $('bgSwap').onclick=()=>{S.chosen=cutIdx;S.sceltaUtente=true;S.seeds=[];S.lineSeed=null;refresh(true);};
   }else{
     if(keepIdx<0){box.innerHTML='';return;}
     box.innerHTML='<div class="fixbar">Dentro la forma ho messo <b>solo il disegno</b>, senza il suo fondo.'+
       '<button id="bgSwap">Rimetti il file com\'era</button></div>';
-    $('bgSwap').onclick=()=>{S.chosen=keepIdx;S.seeds=[];S.lineSeed=null;refresh(true);};
+    $('bgSwap').onclick=()=>{S.chosen=keepIdx;S.sceltaUtente=true;S.seeds=[];S.lineSeed=null;refresh(true);};
   }}
 
 /* ---- due sezioni: adesivi personalizzati / adesivi resinati ---- */
