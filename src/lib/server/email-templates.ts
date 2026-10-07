@@ -99,7 +99,7 @@ export function contactAutoReplyEmail(opts: { name: string }) {
 		tag: 'auto-reply',
 		html: layout(
 			`Grazie ${esc(opts.name)}, ci pensiamo noi.`,
-			`<p>La tua richiesta è arrivata in laboratorio. Ti rispondiamo di solito entro un giorno lavorativo.</p>`
+			`<p>La tua richiesta è arrivata in laboratorio. Ti rispondiamo entro 24 ore.</p>`
 		)
 	};
 }
@@ -233,9 +233,12 @@ export function quoteAcceptedEmail(o: { name?: string | null; number: string; or
 }
 
 /* ---------- Helpdesk ---------- */
+export function aziendeReceivedEmail(o: { name?: string | null; company?: string | null }) {
+	return { subject: 'Richiesta ricevuta: ti rispondiamo entro 24 ore', tag: 'aziende-received', html: layoutHtml(`Richiesta ${hl('ricevuta')} 🙌`, `<p>Ciao ${esc(o.name || '')},</p><p>la tua richiesta${o.company ? ` per <b>${esc(o.company)}</b>` : ''} è arrivata in laboratorio. Ti rispondiamo <b>entro 24 ore</b> con una proposta su misura: prezzi, tempi e, se serve, qualche domanda sul file.</p><p>Nel frattempo ti ringrazio per averci contattato.</p>`, { label: 'Vai al sito', href: 'https://stickerprint.it/aziende' }) };
+}
 export function ticketReceivedEmail(o: { name?: string | null; number: string; href: string }) {
 	const n = esc(o.number);
-	return { subject: `Richiesta ${o.number} ricevuta: ci pensiamo noi`, tag: 'ticket-received', html: layoutHtml(`Richiesta ${n} ${hl('ricevuta')} 🙌`, `<p>Ciao ${esc(o.name || '')},</p><p>la tua richiesta è arrivata in laboratorio con il numero <b>${n}</b>. Di solito rispondiamo entro un giorno lavorativo. Puoi seguire la conversazione e aggiungere dettagli dal link qui sotto.<br>Nel frattempo ti ringrazio per averci contattato.</p>`, { label: 'Vedi la richiesta', href: o.href }) };
+	return { subject: `Richiesta ${o.number} ricevuta: ci pensiamo noi`, tag: 'ticket-received', html: layoutHtml(`Richiesta ${n} ${hl('ricevuta')} 🙌`, `<p>Ciao ${esc(o.name || '')},</p><p>la tua richiesta è arrivata in laboratorio con il numero <b>${n}</b>. Ti rispondiamo entro 24 ore. Puoi seguire la conversazione e aggiungere dettagli dal link qui sotto.<br>Nel frattempo ti ringrazio per averci contattato.</p>`, { label: 'Vedi la richiesta', href: o.href }) };
 }
 export function ticketReplyEmail(o: { name?: string | null; number: string; body: string; author?: string | null; href: string }) {
 	const n = esc(o.number);

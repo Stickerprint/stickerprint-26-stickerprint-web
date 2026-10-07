@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createTicket } from './helpdesk';
 import { sendEmail } from './email';
-import { OWNER_EMAIL, ownerNotifyEmail } from './email-templates';
+import { OWNER_EMAIL, ownerNotifyEmail, aziendeReceivedEmail } from './email-templates';
 import { pushStaff } from './push';
 
 /** Salva una richiesta dai form del sito (aziende, supporto, resi) con eventuale allegato. */
@@ -31,6 +31,7 @@ export async function saveRequest(
 	const { error } = await supabase.from('contact_requests').insert({ kind, ...fields, file_path });
 	if (error) return { ok: false, error: 'Richiesta non salvata, riprova tra poco.' };
 	await Promise.all([
+		sendEmail({ to: fields.email, ...aziendeReceivedEmail({ name: fields.name, company: fields.company }) }),
 		sendEmail({ to: OWNER_EMAIL, ...ownerNotifyEmail({ title: `Nuova richiesta aziendale da ${fields.company || fields.name || fields.email}`, lines: [`${fields.name ?? ''} · ${fields.email}${fields.phone ? ' · ' + fields.phone : ''}`, fields.message.slice(0, 300)], href: `${origin}/dashboard/aziende/richieste` }) }),
 		pushStaff({ title: `Richiesta aziendale: ${fields.company || fields.name || fields.email}`, body: fields.message.slice(0, 120), url: '/dashboard/aziende/richieste', tag: 'aziende' })
 	]);
