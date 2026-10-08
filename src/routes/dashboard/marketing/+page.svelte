@@ -1,133 +1,93 @@
 <script lang="ts">
 	import Manca from '$lib/components/marketing/Manca.svelte';
-	import Stat from '$lib/components/marketing/Stat.svelte';
-	import Avvisi from '$lib/components/marketing/Avvisi.svelte';
-	import { num, euro, segno, dataLunga, ora, quandoRelativo, statoContenuto, TIPO_ATTIVITA } from '$lib/marketing/formato';
-	let { data } = $props();
-
-	const social = $derived(data.configurato && data.social.ok && data.social.collegato ? data.social : null);
-	const campagne = $derived(data.configurato && data.campagne.ok && data.campagne.collegato ? data.campagne : null);
-	const budget = $derived(data.configurato && data.budget.ok ? data.budget.budget : null);
-	const quotaMeta = $derived(budget?.canali.meta ?? null);
-	const spesaMeta = $derived(campagne?.budget?.spesa?.meta?.valore ?? null);
-	const conteggi = $derived(data.configurato && data.contenuti.ok ? data.contenuti.conteggi : null);
-	const daApprovare = $derived(data.configurato && data.contenuti.ok ? data.contenuti.contenuti.filter((c) => c.status === 'in_attesa').slice(0, 4) : []);
-	const motivoSocial = $derived(!data.configurato ? '' : !data.social.ok ? data.social.errore : !data.social.collegato ? data.social.motivo : '');
-	const motivoCampagne = $derived(!data.configurato ? '' : !data.campagne.ok ? data.campagne.errore : !data.campagne.collegato ? data.campagne.motivo : '');
+	import Kpi from '$lib/components/marketing/Kpi.svelte';
+	import Giorni from '$lib/components/marketing/Giorni.svelte';
+	import Consigli from '$lib/components/marketing/Consigli.svelte';
+	import { num, euro, segno } from '$lib/marketing/formato';
+	import { NOME_CANALE, NOME_BREVE, roas, cpa } from '$lib/marketing/ads-tipi';
+	let { data, form } = $props();
+	const PERIODI = [7, 14, 30, 90];
+	const collegati = $derived(data.canali.filter((c) => c.configurato));
+	/* spesa di tutti i canali, giorno per giorno */
+	const giorniTotali = $derived.by(() => {
+		const m = new Map<string, { giorno: string; spesa: number; clic: number; conversioni: number }>();
+		for (const c of data.canali) for (const g of c.dati?.giorni ?? []) { const x = m.get(g.giorno) ?? { giorno: g.giorno, spesa: 0, clic: 0, conversioni: 0 }; x.spesa += g.spesa; x.clic += g.clic; x.conversioni += g.conversioni; m.set(g.giorno, x); }
+		return [...m.values()].sort((a, b) => a.giorno.localeCompare(b.giorno));
+	});
+	const primaTotale = $derived.by(() => {
+		const xs = data.canali.map((c) => c.dati?.prima).filter(Boolean);
+		if (!xs.length) return null;
+		const s = { spesa: 0, impressioni: 0, clic: 0, conversioni: 0, valore: null as number | null };
+		for (const x of xs) { s.spesa += x!.spesa; s.impressioni += x!.impressioni; s.clic += x!.clic; s.conversioni += x!.conversioni; if (x!.valore != null) s.valore = (s.valore ?? 0) + x!.valore; }
+		return s;
+	});
+	const PIATT: Record<string, string> = { instagram: 'Instagram', facebook: 'Facebook', audience_network: 'Audience Network', messenger: 'Messenger', threads: 'Threads' };
+	const mese = (m: string) => new Date(m + '-01T12:00:00').toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
 </script>
 
 <svelte:head><title>Marketing | Dashboard Stickerprint</title></svelte:head>
 
 <div class="toolbar" style="justify-content:space-between">
-	<div><h1>Marketing</h1><p class="lead">La parte social di Stickerprint, curata da PERIZ Marketing: i numeri sono quelli veri di Meta, letti adesso.</p></div>
-	{#if data.configurato && data.brand.ok}
-		{#if data.brand.meta.collegato}<span class="pill pill--on">Meta collegato</span>{:else}<span class="pill pill--off">Meta non collegato</span>{/if}
-	{/if}
+	<div><h1>Marketing · Panoramica</h1><p class="lead">Tutti i canali insieme: Meta (Instagram e Facebook), Google Ads e TikTok Ads, letti adesso dalle piattaforme. I consigli vengono dalle regole della dashboard e dall'assistente.</p></div>
+	<div class="mk-periodo">{#each PERIODI as p (p)}<a href="?giorni={p}" class:is-active={data.giorni === p}>{p} giorni</a>{/each}</div>
 </div>
+{#if form?.errore}<div class="mk-err">{form.errore}</div>{/if}
+{#if form?.ok}<div class="mk-ok">{form.messaggio}</div>{/if}
 
-{#if !data.configurato}
-	<Manca titolo="Collegamento con PERIZ Marketing non configurato" testo="Manca PERIZ_API_KEY nelle variabili d'ambiente del sito (Vercel → Settings → Environment Variables). La chiave si crea dalla dashboard PERIZ, scheda Collegamenti del brand Stickerprint, e si vede in chiaro una volta sola." />
+{#if !collegati.length}
+	<Manca titolo="Nessun canale pubblicitario collegato" testo="Per ogni canale servono le chiavi su Vercel (Settings → Environment Variables). Apri le pagine Meta, Google Ads e TikTok Ads qui a sinistra: ognuna dice esattamente quali variabili mancano e dove si prendono. Le istruzioni passo passo sono in docs/marketing-interno.md." />
 {:else}
-	{#if !data.brand.ok}<div class="mk-err">{data.brand.errore}</div>{/if}
+	{#if data.totale}
+		<section>
+			<h3 class="h4" style="margin-bottom:10px">Ultimi {data.giorni} giorni, tutti i canali</h3>
+			<Kpi kpi={data.totale.kpi} prima={primaTotale} spesaMese={collegati.reduce((s, c) => s + (c.dati?.spesaMese ?? 0), 0)} valoreStimato={data.analisi.some((a) => a.kpi.valoreStimato)} />
+		</section>
+	{/if}
 
-	<section>
-		<h3 class="h4" style="margin-bottom:10px">Ultimi 30 giorni su Instagram e Facebook</h3>
-		{#if social}
-			<div class="mk-stats">
-				<Stat etichetta="Copertura" valore={num(social.kpi.copertura)} delta={segno(social.kpi.variazioneCopertura)} />
-				<Stat etichetta="Interazioni" valore={num(social.kpi.interazioni)} nota="like e commenti dei post veri" />
-				<Stat etichetta="Follower" valore={num(social.kpi.follower)} nota={social.kpi.nuoviFollower != null ? `${social.kpi.nuoviFollower >= 0 ? '+' : ''}${num(social.kpi.nuoviFollower)} nuovi nel periodo` : ''} />
-				<Stat etichetta="Spesa ADV del mese" valore={euro(spesaMeta, 2)} nota={quotaMeta != null ? `su ${euro(quotaMeta)} di quota Meta` : ''} />
-			</div>
-			<div style="height:10px"></div>
-			<Avvisi avvisi={social.avvisi} />
-		{:else}
-			<Manca titolo="Numeri social non disponibili" testo={motivoSocial} />
-		{/if}
-	</section>
-
-	<div class="mk-grid2">
-		<div class="dcard">
-			<h3>Contenuti</h3>
-			{#if conteggi}
-				<div class="mk-lista">
-					<div class="mk-riga"><span>Da approvare</span><b>{conteggi.in_attesa}</b></div>
-					<div class="mk-riga"><span>Modifiche richieste</span><b>{conteggi.modifiche_richieste}</b></div>
-					<div class="mk-riga"><span>Da programmare</span><b>{conteggi.approvato}</b></div>
-					<div class="mk-riga"><span>Programmati</span><b>{conteggi.programmato}</b></div>
-					<div class="mk-riga"><span>Pubblicati</span><b>{conteggi.pubblicato}</b></div>
-					{#if conteggi.errori}<div class="mk-riga" style="color:#b3261e"><span>Pubblicazioni non riuscite</span><b>{conteggi.errori}</b></div>{/if}
+	<div class="mk-canali">
+		{#each data.canali as c (c.canale)}
+			{@const a = data.analisi.find((x) => x.canale === c.canale)}
+			<div class="dcard mk-canale">
+				<div class="mk-canale__testa">
+					<h3>{NOME_CANALE[c.canale]}</h3>
+					{#if !c.configurato}<span class="pill pill--off">non collegato</span>{:else if c.errore}<span class="pill pill--off">errore</span>{:else}<span class="pill pill--on">collegato</span>{/if}
 				</div>
-				<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
-					<a class="btn btn--sm btn--yellow" href="/dashboard/marketing/approvazioni">Approvazioni{#if conteggi.in_attesa} ({conteggi.in_attesa}){/if}</a>
-					<a class="btn btn--sm btn--ghost" href="/dashboard/marketing/programmazione">Programmazione</a>
-				</div>
-			{:else if data.contenuti.ok === false}
-				<div class="mk-err">{data.contenuti.errore}</div>
-			{/if}
-		</div>
-
-		<div class="dcard">
-			<h3>Budget di {budget?.mese ?? 'questo mese'}</h3>
-			{#if budget}
-				{#if budget.totale != null || quotaMeta != null}
-					<div class="mk-lista">
-						{#if budget.totale != null}<div class="mk-riga"><span>Tetto per tutto</span><b>{euro(budget.totale)}</b></div>{/if}
-						<div class="mk-riga"><span>Quota Meta</span><b>{euro(quotaMeta)}</b></div>
-						<div class="mk-riga"><span>Speso su Meta dal 1° del mese</span><b>{campagne ? euro(spesaMeta, 2) : '—'}</b></div>
-						{#if budget.canali.tiktok != null}<div class="mk-riga"><span>Quota TikTok<small>TikTok Ads non è collegato: quota decisa, spesa non leggibile</small></span><b>{euro(budget.canali.tiktok)}</b></div>{/if}
+				{#if !c.configurato}
+					<p class="mk-nota">Mancano su Vercel: {c.mancanti.join(', ')}. <a href="/dashboard/marketing/{c.canale}">Vedi come collegarlo →</a></p>
+				{:else if c.errore}
+					<div class="mk-err">{c.errore}</div>
+				{:else if c.dati && a}
+					<div class="mk-canale__num">
+						<div><small>Spesa</small><b>{euro(c.dati.kpi.spesa)}</b>{#if c.dati.prima?.spesa}<span class="mk-delta">{segno(((c.dati.kpi.spesa - c.dati.prima.spesa) / c.dati.prima.spesa) * 100)} vs prima</span>{/if}</div>
+						<div><small>Ordini</small><b>{num(c.dati.kpi.conversioni)}</b>{#if cpa(c.dati.kpi) != null}<span class="mk-delta">{euro(cpa(c.dati.kpi), 2)} l'uno</span>{/if}</div>
+						<div><small>Ritorno</small><b>{a.kpi.roas != null ? `${a.kpi.roas.toFixed(1)}×` : '—'}</b>{#if a.kpi.valoreStimato}<span class="mk-delta">stimato</span>{:else if roas(c.dati.kpi) == null}<span class="mk-delta">valore non misurato</span>{/if}</div>
+						<div><small>Campagne attive</small><b>{c.dati.campagne.filter((x) => x.stato === 'attiva').length}</b><span class="mk-delta">su {c.dati.campagne.length}</span></div>
 					</div>
-					{#if quotaMeta && spesaMeta != null}
-						<div class="mk-prog" style="margin-top:10px"><i style="width:{Math.min(100, Math.round((spesaMeta / quotaMeta) * 100))}%"></i></div>
+					{#if c.dati.piattaforme && Object.keys(c.dati.piattaforme).length}
+						<div class="mk-canale__piatt">{#each Object.entries(c.dati.piattaforme).sort((x, y) => y[1].spesa - x[1].spesa) as [p, x] (p)}<span><b>{PIATT[p] ?? p}</b> {euro(x.spesa)}{x.conversioni ? ` · ${num(x.conversioni)} ordini` : ''}</span>{/each}</div>
 					{/if}
-				{:else}
-					<p class="mk-nota">Nessun budget mensile impostato. Si decide in <a class="link" href="/dashboard/marketing/budget">Budget & ADV</a>.</p>
+					<div class="mk-lista">
+						{#if a.migliori[0]}<div class="mk-riga"><span><span class="mk-chip mk-chip--green">Rende meglio</span> {a.migliori[0].nome}</span><b>{a.migliori[0].roas != null ? `${a.migliori[0].roas.toFixed(1)}×` : `${a.migliori[0].conversioni} ord.`}</b></div>{/if}
+						{#if a.daSpegnere.length}<div class="mk-riga"><span><span class="mk-chip mk-chip--pink">Da spegnere</span> {a.daSpegnere.map((g) => g.nome).join(', ')}</span><b>{euro(a.daSpegnere.reduce((s, g) => s + g.spesa, 0))}</b></div>{/if}
+						<div class="mk-riga"><span>Budget consigliato</span><b>{euro(a.budget.propostoMese)}/mese</b></div>
+					</div>
+					<a class="btn btn--sm btn--ghost" href="/dashboard/marketing/{c.canale}">Apri {NOME_BREVE[c.canale]} →</a>
 				{/if}
-				{#if !campagne && motivoCampagne}<p class="mk-nota" style="margin-top:10px">Spesa non leggibile: {motivoCampagne}</p>{/if}
-				{#if budget.avviso}<p class="mk-nota">{budget.avviso}</p>{/if}
-			{:else if data.budget.ok === false}
-				<div class="mk-err">{data.budget.errore}</div>
-			{/if}
-		</div>
+			</div>
+		{/each}
 	</div>
 
-	<div class="mk-grid2">
-		<div class="dcard">
-			<h3>In attesa della tua approvazione</h3>
-			{#if daApprovare.length}
-				<div class="mk-lista">
-					{#each daApprovare as c (c.id)}
-						<a class="mk-riga" href="/dashboard/marketing/approvazioni" style="text-decoration:none;color:inherit">
-							<span>{c.title}<small>{c.content_type ?? ''}{#if c.respond_by} · risposta entro il {dataLunga(c.respond_by)}{/if}</small></span>
-							<span class="mk-chip {statoContenuto(c.status).classe}">{statoContenuto(c.status).label}</span>
-						</a>
-					{/each}
-				</div>
-			{:else}
-				<p class="mk-nota">Niente da approvare adesso.</p>
-			{/if}
-		</div>
+	<Consigli report={data.report} assistente={data.assistente} mostraCanale />
 
-		<div class="dcard">
-			<h3>Prossimo appuntamento</h3>
-			{#if data.prossimo}
-				<p style="margin:0;font-size:15px"><b>{data.prossimo.title}</b></p>
-				<p class="mk-nota">{TIPO_ATTIVITA[data.prossimo.type] ?? data.prossimo.type} · {dataLunga(data.prossimo.date)}{#if data.prossimo.time} alle {ora(data.prossimo.time)}{/if}</p>
-				{#if data.prossimo.notes}<p class="mk-nota">{data.prossimo.notes}</p>{/if}
-			{:else}
-				<p class="mk-nota">Nessun appuntamento fissato. <a class="link" href="/dashboard/marketing/appuntamenti">Chiedine uno</a>.</p>
-			{/if}
-			<h3 style="margin-top:18px">Ultime notifiche</h3>
-			{#if data.notifiche.ok && data.notifiche.notifiche.length}
-				<div class="mk-lista">
-					{#each data.notifiche.notifiche.slice(0, 4) as n (n.id)}
-						<div class="mk-riga" class:non-letta={!n.letta_at}><span>{n.titolo}<small>{n.testo ?? ''}</small></span><small>{quandoRelativo(n.created_at)}</small></div>
-					{/each}
-				</div>
-				<a class="link" href="/dashboard/marketing/notifiche" style="font-size:13px">Tutte le notifiche →</a>
-			{:else}
-				<p class="mk-nota">Nessuna notifica.</p>
-			{/if}
+	{#if giorniTotali.length}<Giorni giorni={giorniTotali} titolo="Spesa giorno per giorno, tutti i canali" />{/if}
+
+	{#if data.mesi.length}
+		<div class="dcard" style="padding:0;overflow-x:auto">
+			<table class="dtable mk-mesi">
+				<thead><tr><th>Mese</th><th>Spesa</th><th>Clic</th><th>Ordini</th><th>Costo per ordine</th><th>Ritorno</th></tr></thead>
+				<tbody>{#each data.mesi as m (m.mese)}<tr><td><b style="text-transform:capitalize">{mese(m.mese)}</b></td><td>{euro(m.spesa)}</td><td>{num(m.clic)}</td><td>{num(m.conversioni)}</td><td>{m.conversioni ? euro(m.spesa / m.conversioni, 2) : '—'}</td><td>{m.valore != null && m.spesa ? `${(m.valore / m.spesa).toFixed(1)}×` : '—'}</td></tr>{/each}</tbody>
+			</table>
+			<p class="mk-nota" style="padding:10px 16px">Storico salvato ogni notte dal sito (tabella ads_giorni): parte dal giorno in cui i canali sono stati collegati.</p>
 		</div>
-	</div>
+	{/if}
 {/if}

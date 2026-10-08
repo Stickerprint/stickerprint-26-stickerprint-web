@@ -52,17 +52,13 @@
 			{ label: 'Firma email', href: '/dashboard/firma' }
 		] },
 		{ id: 'marketing', title: 'Marketing', items: [
-			// Dati dalla dashboard PERIZ Marketing (src/lib/server/periz.ts)
+			// Area interna: canali letti dalle piattaforme (src/lib/server/ads/), consigli dalle regole + assistente
 			{ label: 'Panoramica', href: '/dashboard/marketing', exact: true },
-			{ label: 'Programmazione', href: '/dashboard/marketing/programmazione' },
-			{ label: 'Budget & ADV', href: '/dashboard/marketing/budget' },
-			{ label: 'Contenuti', href: '/dashboard/marketing/contenuti' },
-			{ label: 'Risultati', href: '/dashboard/marketing/risultati' },
-			{ label: 'Google Analytics', href: '/dashboard/marketing/analytics' },
+			{ label: 'Meta (Instagram e Facebook)', href: '/dashboard/marketing/meta' },
+			{ label: 'Google Ads', href: '/dashboard/marketing/google' },
 			{ label: 'TikTok Ads', href: '/dashboard/marketing/tiktok' },
-			{ label: 'Approvazioni', href: '/dashboard/marketing/approvazioni', count: data.counts?.approvazioni },
-			{ label: 'Appuntamenti', href: '/dashboard/marketing/appuntamenti' },
-			{ label: 'Notifiche', href: '/dashboard/marketing/notifiche', count: data.counts?.notifiche }
+			{ label: 'Sito (Google Analytics)', href: '/dashboard/marketing/analytics' },
+			{ label: 'Impostazioni', href: '/dashboard/marketing/impostazioni' }
 		] },
 		{ id: 'blog', title: 'Blog', items: [{ label: 'Articoli', href: '/dashboard/blog' }] },
 		{ id: 'preventivatori', title: 'Preventivatori', items: PRODUCT_ENGINES.map((p) => ({ label: p.name, href: `/dashboard/preventivatori/${p.slug}` })) },
