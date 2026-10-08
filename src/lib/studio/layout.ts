@@ -15,6 +15,8 @@
 /** verso di un pezzo o di un foglio sulla striscia */
 export type Verso = 'auto' | 'dritto' | 'girato';
 const versi = (v: Verso | undefined) => (v === 'dritto' ? [false] : v === 'girato' ? [true] : [false, true]);
+/** gli stessi versi, per chi impagina fuori di qui (montaggio di piu' soggetti) */
+export const versiDi = versi;
 
 export interface StripMaterial {
 	id: string;
@@ -63,6 +65,8 @@ export interface Placement {
 	y: number;
 	/** ruotato di 90 gradi */
 	rot: boolean;
+	/** quale soggetto, quando sulla striscia ce n'e' piu' d'uno (manca = il primo) */
+	a?: number;
 }
 
 export interface Grid {

@@ -478,7 +478,7 @@
 		const pagina = singleStrip(art);
 		/* foglio di adesivi: attorno al foglio ci va il passante */
 		if (MULTI) pagina.sheets = [{ x: art.bleed, y: art.bleed, w: art.cutW, h: art.cutH, rot: false }];
-		const bytes = await buildPdf({ title: `${jobName} — stampa e taglio`, art, pages: [pagina], pieceCut: P.pieceCut, sheetCut: MULTI ? P.sheetCut : undefined });
+		const bytes = await buildPdf({ title: `${jobName} — stampa e taglio`, arts: [art], pages: [pagina], pieceCut: P.pieceCut, sheetCut: MULTI ? P.sheetCut : undefined });
 		/* il PDF del pezzo singolo: con l'ordine si chiama come lui, con la parola che lo distingue
 		   dall'impaginato che va in macchina */
 		const nome = numeroOrdine ? `${baseName()}_singolo.pdf` : `${baseName()}_stampa-taglio.pdf`;
@@ -657,7 +657,7 @@
 			if (!id) { id = newJobId(taken); taken.add(id); bySig.set(sig, id); }
 			return id;
 		});
-		const bytes = await buildPdf({ title: `${jobName} — ${mat.label}`, art, pages, pieceCut: P.pieceCut, sheetCut: P.mode === 'fogli' ? P.sheetCut : undefined, graphtecIds: ids });
+		const bytes = await buildPdf({ title: `${jobName} — ${mat.label}`, arts: [art], pages, pieceCut: P.pieceCut, sheetCut: P.mode === 'fogli' ? P.sheetCut : undefined, graphtecIds: ids });
 		const n = pages.reduce((a, s) => a + s.pieces.length, 0);
 		lastJob = { ids, pages, art: { pathD: art.pathD, cutW: art.cutW, cutH: art.cutH }, name: baseName() };
 		sent = '';
