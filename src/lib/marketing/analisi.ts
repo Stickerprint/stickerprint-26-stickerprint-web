@@ -25,6 +25,8 @@ export const VERDETTO: Record<Verdetto, { etichetta: string; chip: string }> = {
 export interface Giudizio {
 	canale: Canale; id: string; nome: string; stato: Campagna['stato'];
 	verdetto: Verdetto; motivo: string;
+	/** true se la campagna punta agli ordini (vendite/conversioni) */
+	vendita: boolean;
 	/** quanto rende rispetto all'obiettivo: 1 = esattamente l'obiettivo */
 	punteggio: number | null;
 	spesa: number; conversioni: number; valore: number | null; valoreStimato: boolean;
@@ -65,7 +67,7 @@ export function giudica(c: Campagna, o: Obiettivi, giorni: number): Giudizio {
 	const costo = c.conversioni > 0 ? c.spesa / c.conversioni : null;
 	const cpaMax = cpaObiettivo(o);
 	const punteggio = ritorno != null ? ritorno / o.roasTarget : null;
-	const base = { canale: c.canale, id: c.id, nome: c.nome, stato: c.stato, punteggio, spesa: c.spesa, conversioni: c.conversioni, valore, valoreStimato: stimato, roas: ritorno, cpa: costo, budgetGiorno: c.budgetGiorno };
+	const base = { canale: c.canale, id: c.id, nome: c.nome, stato: c.stato, vendita: obiettivoVendita(c.obiettivo), punteggio, spesa: c.spesa, conversioni: c.conversioni, valore, valoreStimato: stimato, roas: ritorno, cpa: costo, budgetGiorno: c.budgetGiorno };
 	const eur = (v: number) => v.toLocaleString('it-IT', { maximumFractionDigits: 0 }) + ' €';
 	const ordini = (n: number) => `${n.toLocaleString('it-IT', { maximumFractionDigits: 0 })} ${n === 1 ? 'ordine' : 'ordini'}`;
 
@@ -121,7 +123,9 @@ export function analizzaCanale(d: CanaleDati, o: Obiettivi): AnalisiCanale {
 	const budgetGiorno = r2(attive.reduce((s, g) => s + (g.budgetGiorno ?? 0), 0));
 	const spesaGiorno = r2(d.kpi.spesa / giorni);
 	/* dove le campagne non hanno un budget giornaliero (budget sui gruppi) si parte dalla spesa reale al giorno */
-	const propostoGiorno = r2(attive.reduce((s, g) => s + (g.budgetProposto ?? (g.budgetGiorno == null ? (g.verdetto === 'spegni' ? 0 : g.spesa / giorni * (g.verdetto === 'scala' ? 1.25 : 1)) : g.budgetGiorno)), 0));
+	const fattore = (g: Giudizio) => (g.verdetto === 'spegni' ? 0 : g.verdetto === 'scala' ? 1.25 : g.verdetto === 'osserva' && g.vendita && g.punteggio != null && g.punteggio < 0.8 ? 0.8 : 1);
+	const baseGiorno = (g: Giudizio) => (g.budgetGiorno != null && g.spesa / giorni >= g.budgetGiorno * 0.5 ? g.budgetGiorno : g.spesa / giorni);
+	const propostoGiorno = r2(attive.reduce((s, g) => s + baseGiorno(g) * fattore(g), 0));
 	const quota = o.quote[d.canale] ?? null;
 	const propostoMese = r1(propostoGiorno * 30.4);
 	const nScala = attive.filter((g) => g.verdetto === 'scala').length, nSpegni = attive.filter((g) => g.verdetto === 'spegni').length;
@@ -136,7 +140,7 @@ export function analizzaCanale(d: CanaleDati, o: Obiettivi): AnalisiCanale {
 		canale: d.canale, periodo: d.periodo,
 		kpi: conRitorno(d.kpi, o), prima: d.prima ? conRitorno(d.prima, o) : null,
 		giudizi,
-		migliori: giudizi.filter((g) => g.stato === 'attiva' && g.conversioni > 0).sort(perPunteggio).slice(0, 3),
+		migliori: giudizi.filter((g) => g.stato === 'attiva' && g.conversioni > 0 && g.vendita).sort(perPunteggio).slice(0, 3),
 		daSpegnere: giudizi.filter((g) => g.verdetto === 'spegni'),
 		daContinuare: giudizi.filter((g) => g.verdetto === 'continua' || g.verdetto === 'scala'),
 		daOsservare: giudizi.filter((g) => g.verdetto === 'osserva'),
@@ -173,7 +177,7 @@ export function analizzaTutto(canali: AnalisiCanale[], o: Obiettivi): AnalisiTot
 	const periodo = canali[0]?.periodo ?? null;
 	return {
 		periodo, kpi, canali,
-		migliori: tuttiGiudizi.filter((g) => g.stato === 'attiva' && g.conversioni > 0).sort(perPunteggio).slice(0, 5),
+		migliori: tuttiGiudizi.filter((g) => g.stato === 'attiva' && g.conversioni > 0 && g.vendita).sort(perPunteggio).slice(0, 5),
 		daSpegnere: tuttiGiudizi.filter((g) => g.verdetto === 'spegni'),
 		daContinuare: tuttiGiudizi.filter((g) => g.verdetto === 'continua' || g.verdetto === 'scala').sort(perPunteggio),
 		budget: { righe, totaleGiorno, totaleMese: r1(righe.reduce((s, r) => s + r.propostoMese, 0)), tetto: tetto ?? null, motivo }
