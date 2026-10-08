@@ -46,7 +46,7 @@ export async function getTiktok(periodo: Periodo, opts: { prima?: boolean } = {}
 	const byCamp = new Map(perCamp.map((r) => [String(r.dimensions.campaign_id), r.metrics]));
 	const lista: Campagna[] = camp.filter((c) => c.operation_status !== 'DELETE').map((c): Campagna => {
 		const mode = String(c.budget_mode ?? '');
-		const budget = c.budget != null ? num(c.budget) : null;
+		const budget = c.budget != null && num(c.budget) > 0 ? num(c.budget) : null;
 		return {
 			canale: 'tiktok', id: String(c.campaign_id), nome: String(c.campaign_name ?? ''), statoOriginale: String(c.operation_status ?? ''),
 			stato: c.operation_status === 'ENABLE' ? 'attiva' : c.operation_status === 'DISABLE' ? 'in_pausa' : 'altro',

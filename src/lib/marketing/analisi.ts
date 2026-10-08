@@ -47,6 +47,8 @@ export interface AnalisiTotale {
 }
 
 const r2 = (v: number) => Math.round(v * 100) / 100;
+/** Campagne che puntano agli ordini (vendite/conversioni): si giudicano sul ritorno. Le altre (visite al profilo, traffico, interazioni, notorietà) sul costo per clic. */
+export const obiettivoVendita = (obiettivo: string) => /sales|vendit|conversion|purchase|acquist|catalog|app promotion/i.test(obiettivo);
 const r1 = (v: number) => Math.round(v);
 export const cpaObiettivo = (o: Obiettivi) => (o.cpaTarget && o.cpaTarget > 0 ? o.cpaTarget : o.valoreOrdine / Math.max(0.1, o.roasTarget));
 
@@ -67,6 +69,9 @@ export function giudica(c: Campagna, o: Obiettivi, giorni: number): Giudizio {
 	const eur = (v: number) => v.toLocaleString('it-IT', { maximumFractionDigits: 0 }) + ' €';
 	const ordini = (n: number) => `${n.toLocaleString('it-IT', { maximumFractionDigits: 0 })} ${n === 1 ? 'ordine' : 'ordini'}`;
 
+	if (c.stato === 'attiva' && c.spesa === 0 && c.conversioni === 0) {
+		return { ...base, verdetto: 'ferma', budgetProposto: null, motivo: 'Risulta attiva ma non ha speso nulla nel periodo (budget finito o pubblicazione conclusa): non pesa sui conti.' };
+	}
 	if (c.stato !== 'attiva') {
 		const bene = punteggio != null && punteggio >= 0.8 && c.conversioni >= 2;
 		return { ...base, verdetto: 'ferma', budgetProposto: null, motivo: bene ? `È in pausa ma quando girava rendeva ${ritorno!.toFixed(1)}× (${ordini(c.conversioni)} con ${eur(c.spesa)}): vale la pena riattivarla.` : c.spesa > 0 ? `In pausa: ha speso ${eur(c.spesa)} nel periodo${c.conversioni ? ` per ${ordini(c.conversioni)}` : ' senza ordini'}.` : 'In pausa, non ha speso nel periodo.' };
@@ -74,6 +79,13 @@ export function giudica(c: Campagna, o: Obiettivi, giorni: number): Giudizio {
 	const pocaSpesa = Math.max(20, cpaMax * 1.5);
 	if (c.spesa < pocaSpesa) {
 		return { ...base, verdetto: 'osserva', budgetProposto: c.budgetGiorno, motivo: `Ha speso solo ${eur(c.spesa)} in ${giorni} giorni: troppo poco per giudicarla. Lasciala girare e ricontrolla tra una settimana.` };
+	}
+	if (!obiettivoVendita(c.obiettivo)) {
+		/* visibilità: niente verdetto sugli ordini; si guarda quanto costa un clic e si segnala se per caso porta anche vendite */
+		const cpcV = c.clic ? c.spesa / c.clic : null;
+		const extra = c.conversioni ? ` Ha portato anche ${ordini(c.conversioni)}${ritorno != null ? ` (ritorno ${ritorno.toFixed(1)}×)` : ''}.` : '';
+		if (cpcV == null || cpcV > 0.6) return { ...base, verdetto: 'osserva', budgetProposto: c.budgetGiorno, motivo: `Campagna di visibilità (${c.obiettivo}): ${eur(c.spesa)} spesi per ${c.clic.toLocaleString('it-IT')} clic${cpcV != null ? `, ${cpcV.toFixed(2).replace('.', ',')} € l'uno` : ''}: caro per questo tipo di campagna. Controlla pubblico e creatività.${extra}` };
+		return { ...base, verdetto: 'continua', budgetProposto: c.budgetGiorno, motivo: `Campagna di visibilità (${c.obiettivo}): va giudicata su clic e follower, non sugli ordini. ${eur(c.spesa)} per ${c.clic.toLocaleString('it-IT')} clic a ${cpcV.toFixed(2).replace('.', ',')} € l'uno, un buon prezzo.${extra}` };
 	}
 	if (c.conversioni === 0) {
 		if (c.spesa >= cpaMax * 3) return { ...base, verdetto: 'spegni', budgetProposto: 0, motivo: `${eur(c.spesa)} spesi senza nemmeno un ordine (con ${eur(cpaMax)} a ordine ne sarebbero dovuti arrivare almeno ${Math.floor(c.spesa / cpaMax)}). Mettila in pausa o rifalla da capo.` };

@@ -48,3 +48,17 @@ describe('budget', () => {
 		expect(t.migliori[0].canale).toBe('meta');
 	});
 });
+
+describe('casi visti sui dati veri di Meta (8/10/2026)', () => {
+	it('una campagna di visibilità non si giudica sugli ordini', () => {
+		const g = giudica(camp({ obiettivo: 'engagement', spesa: 659, clic: 8032, conversioni: 1, valore: 39 }), o, 30);
+		expect(g.verdetto).toBe('continua'); expect(g.motivo).toContain('visibilità');
+	});
+	it('una campagna attiva senza spesa nel periodo non è "da osservare"', () => {
+		const g = giudica(camp({ obiettivo: 'link clicks', spesa: 0, budgetGiorno: null }), o, 30);
+		expect(g.verdetto).toBe('ferma');
+	});
+	it('una campagna vendite che rende 4× va spinta', () => {
+		expect(giudica(camp({ obiettivo: 'sales', spesa: 606, clic: 2471, conversioni: 29, valore: 2515, budgetGiorno: null }), o, 30).verdetto).toBe('scala');
+	});
+});

@@ -67,7 +67,7 @@ export async function getGoogleAds(periodo: Periodo, opts: { prima?: boolean } =
 	const lista: Campagna[] = campagne.map((r): Campagna => {
 		const cmp = r.campaign!; const b = r.campaignBudget;
 		if (b?.resourceName) budgetRes.set(cmp.id, { res: b.resourceName, condiviso: Boolean(b.explicitlyShared) });
-		const giornaliero = b?.amountMicros ? eur(b.amountMicros) : null;
+		const giornaliero = b?.amountMicros && eur(b.amountMicros) > 0 ? eur(b.amountMicros) : null;
 		return {
 			canale: 'google', id: cmp.id, nome: cmp.name, statoOriginale: cmp.status,
 			stato: cmp.status === 'ENABLED' ? 'attiva' : cmp.status === 'PAUSED' ? 'in_pausa' : 'altro',

@@ -69,17 +69,17 @@ export async function getMeta(periodo: Periodo, opts: { prima?: boolean } = {}):
 		tutte<Insight>(`${act()}/insights`, { level: 'account', fields: 'spend', time_range: range(mese) })
 	]);
 	const byCamp = new Map(perCamp.map((i) => [String(i.campaign_id), i]));
-	const piattDi = (xs: Insight[]) => { const o: Record<string, Risultati> = {}; for (const i of xs) o[String(i.publisher_platform ?? 'altro')] = ris(i); return o; };
+	const piattDi = (xs: Insight[]) => { const o: Record<string, Risultati> = {}; for (const i of xs) { const r = ris(i); if (r.spesa > 0 || r.conversioni > 0) o[String(i.publisher_platform ?? 'altro')] = r; } return o; };
 	const piattPerCamp = new Map<string, Insight[]>();
 	for (const i of perPiattCamp) { const id = String(i.campaign_id); if (!piattPerCamp.has(id)) piattPerCamp.set(id, []); piattPerCamp.get(id)!.push(i); }
 	const lista: Campagna[] = campagne.filter((c) => c.effective_status !== 'DELETED' && c.effective_status !== 'ARCHIVED').map((c): Campagna => {
 		const r = ris(byCamp.get(c.id));
-		const giornaliero = c.daily_budget ? num(c.daily_budget) / 100 : null;
+		const giornaliero = c.daily_budget && num(c.daily_budget) > 0 ? num(c.daily_budget) / 100 : null;
 		return {
 			canale: 'meta', id: c.id, nome: c.name, statoOriginale: c.effective_status,
 			stato: c.effective_status === 'ACTIVE' ? 'attiva' : c.effective_status === 'PAUSED' || c.effective_status === 'CAMPAIGN_PAUSED' ? 'in_pausa' : 'altro',
 			obiettivo: c.objective.replace(/^OUTCOME_/, '').toLowerCase().replace(/_/g, ' '),
-			budgetGiorno: giornaliero, budgetTotale: c.lifetime_budget ? num(c.lifetime_budget) / 100 : null, budgetModificabile: giornaliero != null,
+			budgetGiorno: giornaliero, budgetTotale: c.lifetime_budget && num(c.lifetime_budget) > 0 ? num(c.lifetime_budget) / 100 : null, budgetModificabile: giornaliero != null,
 			...r, piattaforme: piattDi(piattPerCamp.get(c.id) ?? [])
 		};
 	}).sort((x, y) => y.spesa - x.spesa);
