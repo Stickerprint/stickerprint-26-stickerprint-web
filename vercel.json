@@ -11,6 +11,10 @@
 		{
 			"path": "/api/marketing/snapshot",
 			"schedule": "0 5 * * *"
+		},
+		{
+			"path": "/api/margini/rating",
+			"schedule": "15 5 * * *"
 		}
 	]
 }

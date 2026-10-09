@@ -234,3 +234,78 @@
 	.mg-ads__row .mg-barrow__track, .mg-ads__off { grid-column: 1 / -1; grid-row: 2; }
 	.mg-ads__off { justify-self: start; }
 }
+
+/* ==========================================================================
+   Riepilogo: margine a sinistra, rating a destra, grafici verticali affiancati
+   ========================================================================== */
+/* la seconda riga prende lo spazio in piu' del rating, cosi' sotto il margine non resta un buco */
+.mg-riep { display: grid; grid-template-columns: minmax(0, 1fr) 320px; grid-template-rows: auto 1fr; grid-template-areas: 'hero rt' 'resto rt'; gap: 16px; align-items: start; }
+.mg-riep__hero { grid-area: hero; display: grid; gap: 12px; min-width: 0; container-type: inline-size; }
+.mg-riep__resto { grid-area: resto; display: grid; gap: 16px; min-width: 0; container-type: inline-size; }
+.mg-duo { display: grid; gap: 16px; }
+@container (min-width: 600px) { .mg-duo { grid-template-columns: 1.5fr 1fr; } }
+/* quattro riquadri: in fila se c'e' posto, altrimenti due per due (mai tre piu' uno) */
+.mg-riep .mg-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@container (min-width: 720px) { .mg-riep .mg-tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.mg-ads__why { margin: 0; font-size: 12px; color: var(--muted); }
+details.mg-ads__why summary { cursor: pointer; list-style: none; }
+details.mg-ads__why summary::-webkit-details-marker { display: none; }
+details.mg-ads__why[open] summary { margin-bottom: 4px; }
+.mg-ads__wait { display: flex; gap: 18px; align-items: end; justify-content: space-around; height: 110px; padding: 0 20px; }
+.mg-ads__wait i { flex: 1; max-width: 34px; border-radius: 4px 4px 0 0; background: #dde3f3; animation: mg-pulse 1.2s ease-in-out infinite; }
+.mg-ads__wait i:nth-child(1) { height: 70%; } .mg-ads__wait i:nth-child(2) { height: 40%; } .mg-ads__wait i:nth-child(3) { height: 20%; }
+@media (prefers-reduced-motion: reduce) { .mg-ads__wait i { animation: none; } }
+
+/* ---------------- rating ---------------- */
+.mg-rt { grid-area: rt; --rc: #475569; --rb: #eef0f3; background: #fff; border: 1px solid var(--line); border-top: 6px solid var(--rc); border-radius: 18px; padding: 16px 18px 18px; display: grid; gap: 10px; min-width: 0; }
+.mg-rt__head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.mg-rt__head small { font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.mg-rt__stato { padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; background: #fef3c7; color: #92400e; }
+.mg-rt__stato.is-def { background: var(--navy); color: #fff; }
+.mg-rt__lettera { justify-self: stretch; text-align: center; padding: 14px 8px 10px; border-radius: 14px; background: var(--rb); color: var(--rc); font-family: var(--font-display); font-weight: 900; font-size: clamp(76px, 9vw, 112px); line-height: 1; letter-spacing: -0.03em; }
+.mg-rt__giudizio { margin: 0; text-align: center; font-size: 14px; color: var(--ink-soft); }
+.mg-rt__giudizio b { color: var(--rc); font-size: 16px; }
+.mg-rt__scala { display: grid; grid-template-columns: repeat(10, 1fr); gap: 2px; }
+.mg-rt__scala span { text-align: center; padding: 3px 0; border-radius: 4px; font-size: 9.5px; font-weight: 800; background: var(--b); color: var(--c); opacity: .45; }
+.mg-rt__scala span.is-on { opacity: 1; outline: 2px solid var(--c); outline-offset: 1px; }
+.mg-rt__when { margin: 0; font-size: 12.5px; color: var(--muted); line-height: 1.45; }
+.mg-rt__comp { margin: 0; display: grid; gap: 8px; }
+.mg-rt__comp div { display: grid; gap: 3px; }
+.mg-rt__comp dt { font-size: 13px; font-weight: 700; color: var(--ink-soft); display: flex; justify-content: space-between; gap: 8px; }
+.mg-rt__comp dt small { font-weight: 600; color: var(--muted); font-size: 11.5px; text-align: right; }
+.mg-rt__comp dd { margin: 0; display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; }
+.mg-rt__comp dd b { font-size: 12px; font-variant-numeric: tabular-nums; }
+.mg-rt__track { height: 8px; border-radius: 999px; background: #eef0f6; overflow: hidden; }
+.mg-rt__track i { display: block; height: 100%; border-radius: 999px; background: var(--rc); }
+.mg-rt__aff { margin: 0; padding: 7px 10px; border-radius: 10px; font-size: 12px; background: #f6f7fb; color: var(--ink-soft); }
+.mg-rt__aff.is-bassa { background: #fff4e5; color: #92400e; }
+.mg-rt__report { display: grid; gap: 6px; padding-top: 10px; border-top: 1px solid var(--line); }
+.mg-rt__report h3 { margin: 4px 0 0; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.mg-rt__report ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.mg-rt__report li { position: relative; padding-left: 22px; font-size: 13.5px; line-height: 1.45; }
+.mg-rt__report li::before { position: absolute; left: 0; top: 0; font-weight: 900; }
+.mg-rt__report .is-pro li::before { content: '✓'; color: #15803d; }
+.mg-rt__report .is-contro li::before { content: '✕'; color: #b42318; }
+.mg-rt__report p { margin: 0; font-size: 13.5px; line-height: 1.55; }
+.mg-rt__report .mg-rt__firma { font-size: 11.5px; color: var(--muted); }
+.mg-rt__ok { margin: 0; font-size: 12.5px; color: #166534; font-weight: 700; }
+.mg-rt__btn { width: 100%; justify-content: center; }
+.mg-rt__mesi { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; padding-top: 8px; border-top: 1px solid var(--line); }
+.mg-rt__mesi button { --c: #94a3b8; --b: #f3f4f8; display: grid; gap: 0; justify-items: center; padding: 4px 0; border-radius: 8px; border: 1px dashed transparent; background: var(--b); color: var(--c); font: inherit; cursor: pointer; }
+.mg-rt__mesi button.is-def { border-style: solid; }
+.mg-rt__mesi button:not(.is-def) { border-color: var(--c); }
+.mg-rt__mesi button:disabled { cursor: default; opacity: .5; border-color: transparent; }
+.mg-rt__mesi button.is-on { outline: 2px solid var(--ink); outline-offset: 1px; }
+.mg-rt__mesi small { font-size: 10px; font-weight: 700; color: var(--muted); }
+.mg-rt__mesi b { font-family: var(--font-display); font-size: 13px; }
+.mg-rt__nota { margin: 0; font-size: 11.5px; color: var(--muted); }
+
+@media (max-width: 1100px) {
+	.mg-riep { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; grid-template-areas: 'hero' 'rt' 'resto'; }
+}
+@media (max-width: 820px) {
+	.mg-riep { gap: 12px; }
+	.mg-duo { gap: 12px; }
+	.mg-rt { padding: 14px; }
+	.mg-rt__lettera { font-size: 88px; }
+}
