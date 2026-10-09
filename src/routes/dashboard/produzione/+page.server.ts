@@ -39,7 +39,7 @@ export const load: PageServerLoad = async ({ locals: { supabase } }) => {
 		const key = pl ? `${slug}:${pl}` : slug;
 		const title = `${PRODOTTO[slug] ?? r.product_name}${pl ? ` con plastifica ${pl}` : ''}`;
 		const b = blocchi.get(key) ?? { key, title, items: [], pezzi: 0 };
-		const size = r.width_mm && r.height_mm ? `${r.width_mm}×${r.height_mm} mm` : (r.description ?? '').match(/\d+\s*[x×]\s*\d+\s*(mm|cm)/i)?.[0].replace(/\s+/g, '').replace('x', '×') ?? '—';
+		const size = r.width_mm && r.height_mm ? `${r.width_mm}×${r.height_mm} mm` : (r.description ?? '').match(/\d+(?:[.,]\d+)?\s*[x×]\s*\d+(?:[.,]\d+)?\s*(?:mm|cm)/i)?.[0].replace(/\s+/g, '').replace(/x/i, '×') ?? '—';
 		const mat = r.materiale ? (MATERIAL_LABEL[r.materiale] ?? r.materiale) : (r.description ?? '').split(',')[1]?.trim() || '—';
 		b.items.push({ id: r.id, group: r.checkout_group ?? r.id, number: r.number, customer: r.customer_name ?? r.email ?? '', thumb: thumbOf(r), product: r.product_name, size, material: mat, forma: r.forma, qty: r.qty, express: !!r.express, shipBy: r.ship_by ?? null, status: r.status, studio: studioOrderHref(r.product_slug, r.id), notes: r.notes ?? null, manual: r.channel === 'manuale' });
 		b.pezzi += r.qty;
