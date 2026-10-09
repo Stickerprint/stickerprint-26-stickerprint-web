@@ -2,12 +2,15 @@
 	import '$lib/styles/margini.css';
 	import { page } from '$app/state';
 	import { afterNavigate, goto, replaceState } from '$app/navigation';
+	import { enhance } from '$app/forms';
+	import Colonne from '$lib/components/margini/Colonne.svelte';
+	import { calcolaRating, grado, SCALA, type Rating } from '$lib/margini/rating';
 	import { CATS, MONTHS, CHANNEL_ICON, dmy } from '$lib/dashboard/orders';
 	import { totali, materiali, perProdotto, perMese } from '$lib/margini/aggrega';
 	import { euro, perc, mq, metri, grammi, pezzi, mm, classeMargine } from '$lib/margini/formato';
 	import type { OrdineMargine } from '$lib/margini/tipi';
 	import { conDato, spesaPeriodo, type SpesaAds } from '$lib/margini/ads';
-	let { data } = $props();
+	let { data, form } = $props();
 
 	type Vista = 'riepilogo' | 'materiale' | 'ordini' | 'prodotti';
 	const VISTE: { id: Vista; label: string; icon: string }[] = [
@@ -63,14 +66,12 @@
 	const mat = $derived(materiali(delPeriodo, nomeProdotto));
 	const prodotti = $derived(perProdotto(delPeriodo));
 	const mesi = $derived(perMese(data.ordini.filter((o: OrdineMargine) => canale === 'tutti' || (canale === 'manuale') === (o.channel === 'manuale')), data.year));
-	const maxMese = $derived(Math.max(1, ...mesi.map((m) => m.fatturato)));
 
 	/* "Dove va ogni euro": ogni voce in percentuale del fatturato con il costo calcolato */
 	const voci = $derived([
 		{ label: 'Vinile', v: t.costo.vinile }, { label: 'Inchiostro', v: t.costo.stampa }, { label: 'Lamina', v: t.costo.lamina },
 		{ label: 'Resina', v: t.costo.resina }, { label: 'Corriere', v: t.costo.corriere }
 	].filter((x) => x.v > 0));
-	const quota = (v: number) => (t.calcolato > 0 ? Math.max(0, Math.min(100, (v / t.calcolato) * 100)) : 0);
 	/* pubblicità: arriva dopo gli ordini; null finché le piattaforme non rispondono */
 	let ads = $state<SpesaAds | null>(null);
 	let adsCarico = $state(true);
@@ -89,7 +90,6 @@
 	const netto = $derived(t.margine - adsSottratta);
 	const nettoPct = $derived(t.calcolato > 0 ? Math.round((netto / t.calcolato) * 1000) / 10 : null);
 	const sito = $derived(totali(data.ordini.filter((o: OrdineMargine) => o.channel !== 'manuale' && (periodo === 'anno' || new Date(o.created_at).getMonth() === Number(periodo)))));
-	const maxAds = $derived(Math.max(0.01, ...adsCanali.map((c) => c.spesa)));
 	/* mese per mese: il margine di ogni mese meno la pubblicità di quel mese */
 	const mesiNetti = $derived(mesi.map((x) => {
 		const margine = Math.round((x.margine - (conAds && ads ? adsMese(x.mese) : 0)) * 100) / 100;
@@ -123,6 +123,63 @@
 	const dettaglio = (o: OrdineMargine) => `/dashboard/analisi-margini/ordine/${encodeURIComponent(o.key)}?torna=${encodeURIComponent(query + (filtro !== 'tutti' ? `&filtro=${filtro}` : ''))}`;
 	const misura = (r: OrdineMargine['righe'][number]) => (r.costo.lettura ? `${mm(r.costo.lettura.w)}×${mm(r.costo.lettura.h)} mm` : '');
 	const maxV = (l: { m2: number }[]) => Math.max(0.0001, ...l.map((x) => x.m2));
+
+	/* numeri sopra le colonne: corti, il valore preciso sta nel titolo */
+	/* nomi corti sotto le colonne strette (il nome intero sta nel titolo) */
+	const CORTO: Record<string, string> = { Inchiostro: 'Stampa', Pubblicità: 'Ads' };
+	const compatto = (v: number) => (Math.abs(v) >= 1000 ? `${(v / 1000).toLocaleString('it-IT', { maximumFractionDigits: 1 })}k €` : `${Math.round(v)} €`);
+	const colonneEuro = $derived([
+		...[...voci, ...(adsSottratta > 0 ? [{ label: 'Pubblicità', v: adsSottratta }] : [])].map((x) => ({ id: x.label, label: CORTO[x.label] ?? x.label, v: t.calcolato > 0 ? (x.v / t.calcolato) * 100 : 0, sopra: compatto(x.v), sotto: t.calcolato > 0 ? perc(Math.round((x.v / t.calcolato) * 1000) / 10) : '—', titolo: `${x.label}: ${euro(x.v)}` })),
+		{ id: 'margine', label: 'Margine', v: nettoPct ?? 0, sopra: compatto(netto), sotto: perc(nettoPct), forte: true, titolo: `Margine: ${euro(netto)}` }
+	]);
+	const colonneAds = $derived(adsCanali.map((c) => {
+		const ok = c.stato === 'ok' || c.stato === 'storico';
+		return { id: c.canale, label: c.canale === 'meta' ? 'Meta' : c.canale === 'google' ? 'Google' : 'TikTok', v: ok ? c.spesa : 0, vuota: !ok, sopra: ok ? compatto(c.spesa) : 'n.c.', sotto: ok ? (sito.fatturato > 0 ? `${perc(Math.round((c.spesa / sito.fatturato) * 1000) / 10)} sito` : '') : c.stato === 'errore' ? 'errore' : 'non collegato', titolo: ok ? `${c.nome}: ${euro(c.spesa)}` : (c.motivo ?? '') };
+	}));
+	const colonneMesi = $derived(mesiNetti.map((m) => ({
+		id: String(m.mese), label: MONTHS[m.mese], v: m.fatturato, v2: m.conDati ? m.margine : null,
+		sopra: m.conDati ? compatto(m.margine) : '', sotto: m.ordini ? perc(m.marginePct) : '',
+		attiva: periodo === String(m.mese),
+		titolo: m.ordini ? `${MESI[m.mese]}: fatturato ${euro(m.fatturato)}, margine ${euro(m.margine)}` : m.conDati ? `${MESI[m.mese]}: nessun ordine, solo pubblicità (${euro(-m.margine)})` : `${MESI[m.mese]}: nessun ordine`,
+		onclick: m.ordini ? () => (periodo = String(m.mese)) : undefined
+	})));
+
+	/* ---------------- rating ---------------- */
+	const pad2 = (n: number) => String(n).padStart(2, '0');
+	/* mese del rating: quello scelto; con "Anno" l'ultimo mese che ne ha uno (o il mese in corso) */
+	const meseRating = $derived.by(() => {
+		if (periodo !== 'anno') return `${data.year}-${pad2(Number(periodo) + 1)}`;
+		const salvati = Object.keys(data.rating.perMese).sort();
+		if (salvati.length) return salvati[salvati.length - 1];
+		return data.year === Number(data.oggi.mese.slice(0, 4)) ? data.oggi.mese : `${data.year}-12`;
+	});
+	const meseRatingIdx = $derived(Number(meseRating.slice(5, 7)) - 1);
+	const salvato = $derived(data.rating.perMese[meseRating] ?? null);
+	const giorniDel = (k: string) => new Date(Number(k.slice(0, 4)), Number(k.slice(5, 7)), 0).getDate();
+	/* senza rating salvato: anteprima calcolata qui con le stesse regole (il commento arriva con l'aggiornamento) */
+	const anteprima = $derived.by((): Rating | null => {
+		if (salvato || meseRating > data.oggi.mese) return null;
+		const delMese = (i: number) => data.ordini.filter((o: OrdineMargine) => new Date(o.created_at).getMonth() === i);
+		const cur = delMese(meseRatingIdx);
+		if (!cur.length) return null;
+		const tc = totali(cur), sc = totali(cur.filter((o: OrdineMargine) => o.channel !== 'manuale'));
+		const adsM = ads && conDato(ads).length ? adsMese(meseRatingIdx) : null;
+		const prev = meseRatingIdx > 0 ? delMese(meseRatingIdx - 1) : [];
+		const tp = totali(prev);
+		const adsP = ads && conDato(ads).length ? adsMese(meseRatingIdx - 1) : 0;
+		return calcolaRating({
+			mese: meseRating, giorniMese: giorniDel(meseRating), giorniTrascorsi: meseRating < data.oggi.mese ? giorniDel(meseRating) : data.oggi.giorno,
+			ordini: tc.ordini, ordiniSito: tc.sito, daCompletare: tc.daCompletare, fatturato: tc.fatturato, calcolato: tc.calcolato, costoProduzione: tc.costo.totale, ads: adsM, fatturatoSito: sc.fatturato,
+			prima: prev.length ? { calcolato: tp.calcolato, fatturato: tp.fatturato, giorni: giorniDel(`${data.year}-${pad2(meseRatingIdx)}`), margineNettoPct: tp.calcolato > 0 ? Math.round(((tp.calcolato - tp.costo.totale - adsP) / tp.calcolato) * 1000) / 10 : null } : null
+		});
+	});
+	const rt = $derived(salvato ? salvato.dati.rating : anteprima);
+	const g = $derived(rt ? grado(rt.lettera) : null);
+	const meseRatingLabel = $derived(`${MESI[meseRatingIdx]} ${meseRating.slice(0, 4)}`);
+	const dataIt = (d: string) => new Date(d).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
+	const prossimoLunedi = $derived.by(() => { const d = new Date(data.oggi.iso + 'T12:00:00'); d.setDate(d.getDate() + (((8 - d.getDay()) % 7) || 7)); return dataIt(d.toISOString()); });
+	const mesiRating = $derived(Array.from({ length: 12 }, (_, i) => { const k = `${data.year}-${pad2(i + 1)}`; const r = data.rating.perMese[k]; return { k, i, lettera: r?.lettera ?? null, definitivo: !!r?.definitivo }; }));
+	let generando = $state(false);
 </script>
 
 <svelte:head><title>Analisi margini | Dashboard Stickerprint</title></svelte:head>
@@ -160,83 +217,121 @@
 		<div class="mg-card mg-empty"><b>Nessun ordine in {periodoLabel}</b><span>Cambia mese o canale qui sopra.</span></div>
 	{:else if vista === 'riepilogo'}
 		<!-- ================= RIEPILOGO ================= -->
-		<section class="mg-hero {classeMargine(nettoPct)}">
-			<small>Margine{conAds && ads ? ' dopo la pubblicità' : ''} · {periodoLabel}</small>
-			<div class="mg-hero__row"><b>{euro(netto)}</b><span class="mg-pill {classeMargine(nettoPct)}">{perc(nettoPct)}</span></div>
-			<p>su {euro(t.calcolato)} di fatturato netto: {euro(t.costo.totale)} di produzione e corriere{#if conAds}{#if ads}, {euro(adsTot)} di pubblicità{:else if adsCarico}, pubblicità in arrivo…{/if}{/if}</p>
-			{#if t.daCompletare}<button type="button" class="mg-hero__warn" onclick={() => vaiOrdini('manca')}>⚠️ {t.daCompletare} {t.daCompletare === 1 ? 'ordine' : 'ordini'} senza misura, fuori dal margine ({euro(t.fatturato - t.calcolato)}) › completali</button>{/if}
-		</section>
-
-		<div class="mg-tiles">
-			<div class="mg-tile"><small>Fatturato netto</small><b>{euro(t.fatturato)}</b><span>{t.ordini} ordini · {t.sito} sito · {t.manuali} manuali</span></div>
-			<div class="mg-tile"><small>Costi</small><b>{euro(t.costo.totale + adsSottratta)}</b><span>materiale {euro(t.costo.totale - t.costo.corriere)} · corriere {euro(t.costo.corriere)}{#if adsSottratta} · pubblicità {euro(adsSottratta)}{/if}</span></div>
-			<button type="button" class="mg-tile mg-tile--link" onclick={() => { vista = 'materiale'; window.scrollTo({ top: 0 }); }}><small>Bobina usata</small><b>{metri(mat.bobinaMm)}</b><span>{mq(mat.bobinaM2)} · resa {perc(mat.resaPct)} ›</span></button>
-			<div class="mg-tile"><small>Pezzi stampati</small><b>{pezzi(mat.pezziDaFare)}</b><span>{pezzi(mat.pezzi)} ordinati + scarto</span></div>
-		</div>
-
-		<section class="mg-card">
-			<h2>Dove va ogni euro</h2>
-			<p class="mg-note">Su {euro(t.calcolato)} incassati (ordini con il costo calcolato).</p>
-			<div class="mg-bars">
-				{#each [...voci, ...(adsSottratta > 0 ? [{ label: 'Pubblicità', v: adsSottratta }] : [])] as x (x.label)}
-					<div class="mg-barrow"><span class="mg-barrow__l">{x.label}</span><span class="mg-barrow__track"><i style="width:{quota(x.v)}%"></i></span><span class="mg-barrow__v">{euro(x.v)} <small>{t.calcolato > 0 ? perc(Math.round((x.v / t.calcolato) * 1000) / 10) : '—'}</small></span></div>
-				{/each}
-				<div class="mg-barrow is-strong"><span class="mg-barrow__l">Margine</span><span class="mg-barrow__track"><i style="width:{quota(netto)}%"></i></span><span class="mg-barrow__v">{euro(netto)} <small>{perc(nettoPct)}</small></span></div>
-			</div>
-		</section>
-
-		<section class="mg-card mg-ads">
-			<header class="mg-ads__head">
-				<h2>Pubblicità · {periodoLabel}</h2>
-				{#if ads}<b class="mg-ads__tot">{euro(adsTot)}</b>{/if}
-			</header>
-			{#if adsCarico}
-				<p class="mg-note">Leggo la spesa da Meta, Google e TikTok…</p>
-				<div class="mg-ads__rows" aria-hidden="true">{#each ['Meta', 'Google', 'TikTok'] as n (n)}<div class="mg-ads__row is-loading"><span class="mg-ads__name">{n}</span><span class="mg-barrow__track"><i></i></span><span class="mg-ads__v">…</span></div>{/each}</div>
-			{:else if !ads}
-				<p class="mg-why">⚠️ Spesa pubblicitaria non disponibile in questo momento: ricarica la pagina tra poco.</p>
-			{:else}
-				<div class="mg-ads__rows">
-					{#each adsCanali as c (c.canale)}
-						<div class="mg-ads__row">
-							<span class="mg-ads__name">{c.nome}</span>
-							{#if c.stato === 'ok' || c.stato === 'storico'}
-								<span class="mg-barrow__track"><i style="width:{(c.spesa / maxAds) * 100}%"></i></span>
-								<span class="mg-ads__v">{euro(c.spesa)}{#if sito.fatturato > 0}<small>{perc(Math.round((c.spesa / sito.fatturato) * 1000) / 10)} del fatturato sito</small>{/if}</span>
-							{:else}
-								<span class="mg-ads__off">{c.stato === 'non_collegato' ? 'non collegato' : 'errore'}</span>
-								<span class="mg-ads__v">—</span>
-							{/if}
-							{#if c.motivo}<p class="mg-ads__why is-{c.stato}">{c.motivo}</p>{/if}
-						</div>
-					{/each}
+		<div class="mg-riep">
+			<div class="mg-riep__hero">
+				<section class="mg-hero {classeMargine(nettoPct)}">
+					<small>Margine{conAds && ads ? ' dopo la pubblicità' : ''} · {periodoLabel}</small>
+					<div class="mg-hero__row"><b>{euro(netto)}</b><span class="mg-pill {classeMargine(nettoPct)}">{perc(nettoPct)}</span></div>
+					<p>su {euro(t.calcolato)} di fatturato netto: {euro(t.costo.totale)} di produzione e corriere{#if conAds}{#if ads}, {euro(adsTot)} di pubblicità{:else if adsCarico}, pubblicità in arrivo…{/if}{/if}</p>
+					{#if t.daCompletare}<button type="button" class="mg-hero__warn" onclick={() => vaiOrdini('manca')}>⚠️ {t.daCompletare} {t.daCompletare === 1 ? 'ordine' : 'ordini'} senza misura, fuori dal margine ({euro(t.fatturato - t.calcolato)}) › completali</button>{/if}
+				</section>
+				<div class="mg-tiles">
+					<div class="mg-tile"><small>Fatturato netto</small><b>{euro(t.fatturato)}</b><span>{t.ordini} ordini · {t.sito} sito · {t.manuali} manuali</span></div>
+					<div class="mg-tile"><small>Costi</small><b>{euro(t.costo.totale + adsSottratta)}</b><span>materiale {euro(t.costo.totale - t.costo.corriere)} · corriere {euro(t.costo.corriere)}{#if adsSottratta} · pubblicità {euro(adsSottratta)}{/if}</span></div>
+					<button type="button" class="mg-tile mg-tile--link" onclick={() => { vista = 'materiale'; window.scrollTo({ top: 0 }); }}><small>Bobina usata</small><b>{metri(mat.bobinaMm)}</b><span>{mq(mat.bobinaM2)} · resa {perc(mat.resaPct)} ›</span></button>
+					<div class="mg-tile"><small>Pezzi stampati</small><b>{pezzi(mat.pezziDaFare)}</b><span>{pezzi(mat.pezzi)} ordinati + scarto</span></div>
 				</div>
-				{#if adsTot > 0}
-					<dl class="mg-list">
-						<div><dt>Pubblicità per ordine del sito <small>{sito.ordini} ordini dal sito in {periodoLabel}</small></dt><dd>{sito.ordini ? euro(adsTot / sito.ordini) : '—'}</dd></div>
-						<div><dt>Fatturato del sito per ogni euro speso <small>{euro(sito.fatturato)} ÷ {euro(adsTot)}</small></dt><dd>{euro(sito.fatturato / adsTot)}</dd></div>
-						<div><dt>Pubblicità sul fatturato totale</dt><dd>{t.fatturato > 0 ? perc(Math.round((adsTot / t.fatturato) * 1000) / 10) : '—'}</dd></div>
-					</dl>
-				{/if}
-				<p class="mg-note">{#if conAds}La spesa è tolta dal margine qui sopra.{:else}Con il filtro <b>Manuali</b> la pubblicità non si toglie dal margine: porta clienti al sito.{/if} Importi IVA esclusa come li riportano le piattaforme. <a class="link" href="/dashboard/marketing">Campagne in Marketing ›</a></p>
-			{/if}
-		</section>
+			</div>
 
-		{#if periodo === 'anno'}
-			<section class="mg-card">
-				<h2>Mese per mese</h2>
-				<p class="mg-note">Barra: fatturato del mese, parte scura: margine{conAds && ads ? ' dopo la pubblicità' : ''}. Tocca un mese per aprirlo.</p>
-				<div class="mg-months">
-					{#each mesiNetti as m (m.mese)}
-						<button type="button" disabled={!m.ordini} class:has-dati={m.conDati} title={!m.ordini && m.conDati ? 'Nessun ordine, solo spesa pubblicitaria' : undefined} onclick={() => (periodo = String(m.mese))}>
-							<span class="mg-months__l">{MONTHS[m.mese]}</span>
-							<span class="mg-months__track"><i style="width:{(m.fatturato / maxMese) * 100}%"><u style="width:{m.fatturato > 0 ? Math.max(0, Math.min(100, (m.margine / m.fatturato) * 100)) : 0}%"></u></i></span>
-							<span class="mg-months__v">{m.conDati ? euro(m.margine) : '—'} <small>{m.ordini ? perc(m.marginePct) : m.conDati ? 'pubblicità' : ''}</small></span>
+			<!-- RATING: a destra sul computer, subito dopo il margine sul telefono -->
+			<aside class="mg-rt" style={g ? `--rc:${g.colore};--rb:${g.sfondo}` : ''} aria-label="Rating di {meseRatingLabel}">
+				<header class="mg-rt__head">
+					<small>Rating · {meseRatingLabel}</small>
+					{#if salvato}<span class="mg-rt__stato" class:is-def={salvato.definitivo}>{salvato.definitivo ? 'Definitivo' : 'Provvisorio'}</span>{:else if rt}<span class="mg-rt__stato">Anteprima</span>{/if}
+				</header>
+				{#if rt && g}
+					<div class="mg-rt__lettera" aria-label="Rating {rt.lettera}">{rt.lettera}</div>
+					<p class="mg-rt__giudizio"><b>{rt.giudizio}</b> · {rt.punteggio.toLocaleString('it-IT')} punti su 100</p>
+					<div class="mg-rt__scala" aria-hidden="true">{#each SCALA as x (x.lettera)}<span class:is-on={x.lettera === rt.lettera} style="--c:{x.colore};--b:{x.sfondo}">{x.lettera}</span>{/each}</div>
+					<p class="mg-rt__when">
+						{#if salvato?.definitivo}Mese chiuso: lettera definitiva, dati fino al {new Date(salvato.dati_fino_al).toLocaleDateString('it-IT')}.
+						{:else if salvato}Aggiornato {dataIt(salvato.generato_il)} con i dati fino al {new Date(salvato.dati_fino_al).toLocaleDateString('it-IT')}. Prossimo aggiornamento {prossimoLunedi}; a fine mese diventa definitivo.
+						{:else}Calcolata adesso con le stesse regole: il report scritto arriva con il primo aggiornamento del lunedì.{/if}
+					</p>
+					<dl class="mg-rt__comp">
+						{#each rt.componenti as c (c.id)}
+							<div title={c.nota ?? undefined}>
+								<dt>{c.nome}<small>{c.valore}</small></dt>
+								<dd><span class="mg-rt__track"><i style="width:{(c.punti / c.max) * 100}%"></i></span><b>{c.punti.toLocaleString('it-IT')}/{c.max}</b></dd>
+							</div>
+						{/each}
+					</dl>
+					<p class="mg-rt__aff is-{rt.affidabilita}">Affidabilità {rt.affidabilita}: {rt.motivoAffidabilita}</p>
+
+					{#if salvato}
+						<div class="mg-rt__report">
+							<h3>Pro</h3>
+							<ul class="is-pro">{#each salvato.pro as x, i (i)}<li>{x}</li>{/each}</ul>
+							<h3>Contro</h3>
+							<ul class="is-contro">{#each salvato.contro as x, i (i)}<li>{x}</li>{/each}</ul>
+							<h3>Considerazioni finali</h3>
+							<p>{salvato.considerazioni}</p>
+							<p class="mg-rt__firma">{salvato.autore === 'assistente' ? `Scritto dall'assistente (${salvato.modello}) sui numeri del mese: la lettera la decidono le regole.` : `Scritto dalle regole${salvato.dati.avviso ? ` (${salvato.dati.avviso})` : ''}.`}</p>
+						</div>
+					{/if}
+				{:else}
+					<p class="mg-note">Nessun ordine in {meseRatingLabel}: niente da valutare.</p>
+				{/if}
+
+				{#if form?.ratingErrore}<p class="mg-why">⚠️ {form.ratingErrore}</p>{/if}
+				{#if form?.ratingOk}<p class="mg-rt__ok">{form.ratingOk}</p>{/if}
+				{#if rt && !salvato?.definitivo && meseRating <= data.oggi.mese}
+					<form method="POST" action="?/rating" use:enhance={() => { generando = true; return async ({ update }) => { await update({ reset: false }); generando = false; }; }}>
+						<input type="hidden" name="mese" value={meseRating} />
+						<button class="btn btn--ghost btn--xs mg-rt__btn" type="submit" disabled={generando}>{generando ? 'Scrivo il report… (fino a un minuto)' : meseRating < data.oggi.mese ? 'Chiudi il mese: rating definitivo' : salvato ? 'Aggiorna adesso' : 'Scrivi il report adesso'}</button>
+					</form>
+				{/if}
+
+				<div class="mg-rt__mesi" aria-label="Rating dei mesi del {data.year}">
+					{#each mesiRating as m (m.k)}
+						<button type="button" class:is-on={m.k === meseRating} class:is-def={m.definitivo} style={m.lettera ? `--c:${grado(m.lettera).colore};--b:${grado(m.lettera).sfondo}` : ''} disabled={!m.lettera && !mesi[m.i].ordini} onclick={() => (periodo = String(m.i))} title={m.lettera ? `${MESI[m.i]}: ${m.lettera}${m.definitivo ? ' definitivo' : ' provvisorio'}` : MESI[m.i]}>
+							<small>{MONTHS[m.i]}</small><b>{m.lettera ?? '·'}</b>
 						</button>
 					{/each}
 				</div>
-			</section>
-		{/if}
+				<p class="mg-rt__nota">Il rating guarda tutta l'azienda, sito e manuali. Margine con materiale, corriere e pubblicità: manodopera, imballo e commissioni non sono ancora dentro.</p>
+			</aside>
+
+			<div class="mg-riep__resto">
+				<div class="mg-duo">
+					<section class="mg-card">
+						<h2>Dove va ogni euro</h2>
+						<p class="mg-note">In % di {euro(t.calcolato)} incassati (ordini con il costo calcolato). Stampa = inchiostro, Ads = pubblicità.</p>
+						<Colonne colonne={colonneEuro} etichetta="Ripartizione del fatturato fra costi e margine" />
+					</section>
+
+					<section class="mg-card mg-ads">
+						<header class="mg-ads__head">
+							<h2>Pubblicità</h2>
+							{#if ads}<b class="mg-ads__tot">{euro(adsTot)}</b>{/if}
+						</header>
+						{#if adsCarico}
+							<p class="mg-note">Leggo la spesa da Meta, Google e TikTok…</p>
+							<div class="mg-ads__wait" aria-hidden="true"><i></i><i></i><i></i></div>
+						{:else if !ads}
+							<p class="mg-why">⚠️ Spesa pubblicitaria non disponibile in questo momento: ricarica la pagina tra poco.</p>
+						{:else}
+							<Colonne colonne={colonneAds} altezza={110} etichetta="Spesa pubblicitaria per canale" />
+							{#each adsCanali.filter((c) => c.motivo) as c (c.canale)}<details class="mg-ads__why is-{c.stato}"><summary><b>{c.canale === 'meta' ? 'Meta' : c.canale === 'google' ? 'Google' : 'TikTok'}</b>: {c.stato === 'storico' ? 'dallo storico notturno' : c.stato === 'non_collegato' ? 'non collegato' : 'errore'} · perché?</summary>{c.motivo}</details>{/each}
+							{#if adsTot > 0}
+								<dl class="mg-list">
+									<div><dt>Per ordine del sito <small>{sito.ordini} ordini dal sito</small></dt><dd>{sito.ordini ? euro(adsTot / sito.ordini) : '—'}</dd></div>
+									<div><dt>Fatturato sito per 1 € speso</dt><dd>{euro(sito.fatturato / adsTot)}</dd></div>
+									<div><dt>Sul fatturato totale</dt><dd>{t.fatturato > 0 ? perc(Math.round((adsTot / t.fatturato) * 1000) / 10) : '—'}</dd></div>
+								</dl>
+							{/if}
+							<p class="mg-note">{#if conAds}Tolta dal margine.{:else}Con il filtro <b>Manuali</b> non si toglie dal margine.{/if} IVA esclusa. <a class="link" href="/dashboard/marketing">Campagne ›</a></p>
+						{/if}
+					</section>
+				</div>
+
+				<section class="mg-card">
+					<h2>Mese per mese · {data.year}</h2>
+					<p class="mg-note">Colonna chiara: fatturato del mese. Colonna scura: margine{conAds && ads ? ' dopo la pubblicità' : ''}; sotto lo zero, in rosso, se negativo. Tocca un mese per aprirlo.</p>
+					<Colonne colonne={colonneMesi} altezza={170} fitta etichetta="Fatturato e margine mese per mese" />
+				</section>
+			</div>
+		</div>
 	{:else if vista === 'materiale'}
 		<!-- ================= MATERIALE ================= -->
 		<p class="mg-note">Ogni riga è impaginata come nello Studio: bobina da {data.parametri.bobina / 10} cm, crocini e codice a barre, +{Math.round(data.parametri.scarto * 100)}% di pezzi per gli scarti, 5 cm di stacco fra le strisce. Ogni ordine è contato da solo: stampando più ordini sulla stessa bobina si consuma un po' meno. {#if mat.senzaConsumo}<b>{mat.senzaConsumo} {mat.senzaConsumo === 1 ? 'riga' : 'righe'} senza misura non {mat.senzaConsumo === 1 ? 'è contata' : 'sono contate'}.</b>{/if}</p>
