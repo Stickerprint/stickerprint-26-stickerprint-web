@@ -79,7 +79,7 @@
 	.df-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 	.df-head { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 12px; }
 	.df-size { font-size: 19px; font-weight: 900; line-height: 1.1; letter-spacing: -.01em; }
-	.df-mat { font-size: 14px; font-weight: 800; color: var(--c); }
+	.df-mat { font-size: 14px; font-weight: 800; color: var(--c); line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 	.df-body .osub { font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 	.df-notes { font-size: 11px; color: #92400e; background: #fffbeb; border-radius: 8px; padding: 3px 7px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 	.df-actions { display: flex; align-items: center; justify-content: space-between; gap: 6px; flex-wrap: wrap; padding-top: 4px; }

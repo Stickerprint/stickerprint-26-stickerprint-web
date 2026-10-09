@@ -42,7 +42,7 @@ export const load: PageServerLoad = async ({ locals: { supabase } }) => {
 		const size = r.width_mm && r.height_mm ? `${r.width_mm}×${r.height_mm} mm` : (r.description ?? '').match(/\d+(?:[.,]\d+)?\s*[x×]\s*\d+(?:[.,]\d+)?\s*(?:mm|cm)/i)?.[0].replace(/\s+/g, '').replace(/x/i, '×') ?? '—';
 		/* ordini manuali: il materiale sta nella descrizione, dopo la misura ("Etichette 41,8x42,5 mm, bianco lucido" → "bianco lucido") */
 		const descr = (r.description ?? '').replace(/\d+(?:[.,]\d+)?\s*[x×]\s*\d+(?:[.,]\d+)?\s*(?:mm|cm)/i, '').replace(/(\d),(\d)/g, '$1.$2');
-		const mat = r.materiale ? (MATERIAL_LABEL[r.materiale] ?? r.materiale) : descr.split(/[,·]/).map((x) => x.trim()).filter(Boolean)[1] || descr.split(/[,·]/).map((x) => x.trim()).filter(Boolean)[0] || '—';
+		const mat = r.materiale ? (MATERIAL_LABEL[r.materiale] ?? r.materiale) : descr.split(/[,·]/).map((x) => x.trim()).filter(Boolean).join(' · ') || '—';
 		b.items.push({ id: r.id, group: r.checkout_group ?? r.id, number: r.number, customer: r.customer_name ?? r.email ?? '', thumb: thumbOf(r), product: r.product_name, size, material: mat, forma: r.forma, qty: r.qty, express: !!r.express, shipBy: r.ship_by ?? null, status: r.status, studio: studioOrderHref(r.product_slug, r.id), notes: r.notes ?? null, manual: r.channel === 'manuale' });
 		b.pezzi += r.qty;
 		blocchi.set(key, b);
