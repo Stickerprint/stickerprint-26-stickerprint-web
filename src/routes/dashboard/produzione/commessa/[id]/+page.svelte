@@ -1,7 +1,6 @@
 <script lang="ts">
 	import '$lib/styles/produzione.css';
 	import { enhance } from '$app/forms';
-	import ProdNav from '$lib/components/produzione/ProdNav.svelte';
 	import RiskChip from '$lib/components/produzione/RiskChip.svelte';
 	import PhaseBar from '$lib/components/produzione/PhaseBar.svelte';
 	import { fmtMin, fmtWhen, fmtDay, fmtTime, fmtAgo } from '$lib/production/format';
@@ -21,14 +20,13 @@
 </script>
 
 <svelte:head><title>Commessa {j.order_number} | Produzione</title></svelte:head>
-<p class="lead" style="margin:0 0 8px"><a class="link" href="/dashboard/produzione/reparto/stampa">← Stampa</a></p>
+<p class="lead" style="margin:0 0 8px"><a class="link" href="/dashboard/produzione">← Da fare oggi</a></p>
 {#if form?.error}<p class="error">{form.error}</p>{/if}
 <div class="pv-head">
 	<div>
 		<h1>Commessa {j.order_number} <span class="jstate jstate--{j.status}" style="vertical-align:middle;font-size:12px">{JOB_LABEL[j.status]}</span></h1>
 		<p class="lead">{data.group.customer}{#if data.group.email} · {data.group.email}{/if} · ordine del {dmy(data.group.created_at)}{#if j.paid_at} · pagato {fmtWhen(j.paid_at, now, cal)}{/if} · <a class="link" href="/dashboard/fatturazione/ordini/{data.group.key}">scheda ordine ›</a></p>
 	</div>
-	<ProdNav />
 </div>
 
 <div class="grid3" style="grid-template-columns:1.2fr 1fr 1fr;align-items:stretch">

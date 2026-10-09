@@ -7,7 +7,7 @@
 
 	let { data, children } = $props();
 	/* la pagina di login e la modalita' TV non hanno il menu' */
-	const isLogin = $derived(page.url.pathname === '/dashboard/login' || page.url.pathname === '/dashboard/produzione/tv');
+	const isLogin = $derived(page.url.pathname === '/dashboard/login');
 	const path = $derived(page.url.pathname);
 	/* telefono: il menu laterale diventa un pannello a scomparsa (☰), in basso la barra con le 5 voci piu' usate */
 	let menuOpen = $state(false);
@@ -20,15 +20,9 @@
 	]);
 
 	// Menù dal documento del gestionale: PRODUZIONE e DOCUMENTI (qui "Fatturazione"), più le altre sezioni
-	const menu = $derived([
+	const menu = $derived<{ id: string; title: string; items: { label: string; href: string; exact?: boolean; count?: number }[] }[]>([
 		{ id: 'produzione', title: 'Produzione', items: [
-			{ label: 'Riepilogo', href: '/dashboard/produzione', exact: true },
-			{ label: 'Stampa', href: '/dashboard/produzione/reparto/stampa', count: data.counts?.stampa },
-			{ label: 'Laminazione', href: '/dashboard/produzione/reparto/laminazione', count: data.counts?.laminazione },
-			{ label: 'Taglio', href: '/dashboard/produzione/reparto/taglio', count: data.counts?.taglio },
-			{ label: 'Resinatura', href: '/dashboard/produzione/reparto/resinatura', count: data.counts?.resinatura },
-			{ label: 'Macchinari', href: '/dashboard/produzione/macchinari' },
-			{ label: 'Modalità TV', href: '/dashboard/produzione/tv' },
+			{ label: 'Da fare oggi', href: '/dashboard/produzione', exact: true, count: data.counts?.daFare },
 			{ label: 'Spedizioni', href: '/dashboard/produzione/spedizioni', count: data.counts?.spedizione }
 		] },
 		{ id: 'richieste', title: 'Richieste', items: [
