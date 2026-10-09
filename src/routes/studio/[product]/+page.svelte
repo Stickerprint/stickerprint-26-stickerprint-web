@@ -5,6 +5,7 @@
 	import { showFinishStep, showMaterialStep, minForShape, startSize, sizeProposals, roundHalf, proportionalSize, sizeRule } from '$lib/pricing/engine';
 	import { KIT_CAVALLOTTO } from '$lib/studio/products';
 	import { STRIP_MATERIALS, SHEET_RULES, layoutLoose, layoutSheets, type Strip, type Verso } from '$lib/studio/layout';
+	import { angoliVivi, smussa } from '$lib/studio/smussa';
 	import { MARKED_MARGIN, pageWidthFor, DEFAULT_COND, markRects, barcodeRects } from '$lib/studio/graphtec';
 	import { pickDataLink, savedDataLink, grantDataLink, takenJobIds, writeXpf, type DataLinkDir } from '$lib/studio/datalink';
 	import { pickArchivio, savedArchivio, grantArchivio, salvaNellArchivio, type ArchivioDir } from '$lib/studio/archivio';
@@ -385,7 +386,7 @@
 		if (fonte === 'pronto') {
 			if (!ready) return;
 			const r = ritoccato ? await rifinisci(ready.pathD, 1) : { d: ready.pathD, nodes: (ready.pathD.match(/[MLCZmlcz]/g) ?? []).length };
-			lentePaths = [{ d: r.d }]; lenteNodi = r.nodes; prontoPath = ritoccato ? r.d : '';
+			lentePaths = [{ d: prontoFinale(r.d) }]; lenteNodi = r.nodes; prontoPath = ritoccato ? r.d : '';
 			return;
 		}
 		if (!geomBase) return;
@@ -448,7 +449,7 @@
 			/* file pronto: grafica vettoriale del cliente 1:1, il suo tracciato diventa la tinta di taglio */
 			if (!ready) throw new Error('Carica prima il PDF pronto.');
 			traceInfo = `Tracciato del cliente: ${ready.paths} ${ready.paths === 1 ? 'tracciato' : 'tracciati'} · grafica vettoriale`;
-			const dPronto = ritoccato ? (prontoPath || (await rifinisci(ready.pathD, 1)).d) : ready.pathD;
+			const dPronto = prontoFinale(ritoccato ? (prontoPath || (await rifinisci(ready.pathD, 1)).d) : ready.pathD);
 			return { pdfPage: { bytes: ready.cleaned, bboxPt: ready.bboxPt }, cutW: ready.cutW, cutH: ready.cutH, bleed: 1, pathD: dPronto };
 		}
 		const t = await traccia();
@@ -502,6 +503,16 @@
 	let readyErr = $state('');
 	let readyPreview = $state('');
 
+	/* SMUSSO degli angoli vivi (file pronti): in resinatura uno spigolo e' un punto debole, la resina
+	   ci si accumula e il pezzo si scheggia. Il tracciato del cliente resta quello: si arrotondano
+	   solo gli spigoli, di quanti millimetri lo decide l'operatore col cursore. */
+	let smusso = $state(0);
+	const vivi = $derived(ready ? angoliVivi(ready.pathD) : []);
+	/* non si smussa piu' di quanto reggano i tratti piu' corti attorno allo spigolo */
+	const smussoMax = $derived(vivi.length ? Math.max(0.5, Math.round(Math.min(...vivi.map((v) => v.max)) * 10) / 10) : 0);
+	/** il tracciato del file pronto come va in stampa: ritocco dei selettori + smusso degli spigoli */
+	const prontoFinale = (d: string) => (smusso > 0 && vivi.length ? smussa(d, Math.min(smusso, smussoMax)) : d);
+
 	async function pickReady(f: File | null | undefined) {
 		if (!f) return;
 		if (!/\.pdf$/i.test(f.name) && f.type !== 'application/pdf') { readyErr = 'Serve un PDF con il tracciato di taglio.'; return; }
@@ -514,7 +525,7 @@
 
 	async function analizza(forced?: string) {
 		if (!readyBytes) return;
-		readyBusy = true; readyErr = ''; readyChoice = null; ready = null; readyPreview = ''; downloadErr = '';
+		readyBusy = true; readyErr = ''; readyChoice = null; ready = null; readyPreview = ''; downloadErr = ''; smusso = 0;
 		try {
 			const { analyzeReadyPdf, NeedChoice } = await import('$lib/studio/readyPdf');
 			try {
@@ -899,7 +910,7 @@
 					{#if readyPreview}
 						<div class="st-ready__art">
 							<img src={readyPreview} alt="Anteprima del file pronto" />
-							<svg viewBox="-1 -1 {ready.cutW + 2} {ready.cutH + 2}" preserveAspectRatio="xMidYMid meet"><path d={ready.pathD} fill="none" stroke={cutColor(P.pieceCut)} stroke-width={Math.max(ready.cutW, ready.cutH) / 250} /></svg>
+							<svg viewBox="-1 -1 {ready.cutW + 2} {ready.cutH + 2}" preserveAspectRatio="xMidYMid meet"><path d={prontoFinale(ready.pathD)} fill="none" stroke={cutColor(P.pieceCut)} stroke-width={Math.max(ready.cutW, ready.cutH) / 250} /></svg>
 						</div>
 					{:else}<p class="st-note">Preparo l’anteprima…</p>{/if}
 					<div class="st-bar">
@@ -915,6 +926,25 @@
 						<p class="st-note">Taglio <b>{ready.cutW.toFixed(2)} × {ready.cutH.toFixed(2)} mm</b> (1:1) · {ready.paths} {ready.paths === 1 ? 'tracciato' : 'tracciati'}</p>
 						<p class="st-note">Riconosciuto da: {ready.reason}. Nel file di stampa diventa <b>{P.pieceCut}</b>; il tratto originale è tolto dalla grafica.</p>
 					</div>
+
+					<!-- angoli vivi: compaiono solo se ce ne sono davvero -->
+					{#if vivi.length}
+						<div class="st-block">
+							<p class="st-label">Smussa angoli vivi</p>
+							<p class="st-note">Il file ha <b>{vivi.length} {vivi.length === 1 ? 'angolo vivo' : 'angoli vivi'}</b>{#if vivi.length}, il più chiuso di <b>{Math.min(...vivi.map((v) => v.gradi))}°</b>{/if}. In resinatura uno spigolo è un punto debole: la resina ci si accumula e il pezzo si scheggia.</p>
+							<div class="st-smu">
+								<input class="st-smu__r" type="range" min="0" max={smussoMax} step="0.1" bind:value={smusso} aria-label="Quanto smussare gli angoli vivi" />
+								<span class="st-smu__v" class:is-on={smusso > 0}>{smusso > 0 ? `${smusso.toFixed(1)} mm` : 'spigoli'}</span>
+							</div>
+							<div class="st-smu__q">
+								<button type="button" class="st-chip" class:is-on={smusso === 0} onclick={() => (smusso = 0)}>Lascia gli spigoli</button>
+								{#each [1, 2, 3] as q (q)}
+									{#if q <= smussoMax}<button type="button" class="st-chip" class:is-on={Math.abs(smusso - q) < 0.05} onclick={() => (smusso = q)}>{q} mm</button>{/if}
+								{/each}
+							</div>
+							<p class="st-note">Oltre {smussoMax} mm gli spigoli si mangerebbero i tratti vicini. Si toccano solo gli angoli: il resto del tracciato del cliente resta identico.</p>
+						</div>
+					{/if}
 					<div class="st-actions">
 						<button type="button" class="btn btn--pink st-act" disabled={!!busy} onclick={scaricaStampaTaglio}>{busy === 'print' ? 'Preparo il file…' : 'Scarica file di stampa e taglio'}<small>PDF vettoriale: grafica + tracciato {P.pieceCut}</small></button>
 						<button type="button" class="btn btn--green st-act" disabled={!!busy} onclick={() => (stripOpen = !stripOpen)} aria-expanded={stripOpen}>Genera file di stampa<small>{P.mode === 'fogli' ? 'fogli impaginati sulla striscia' : 'striscia piena di sagome'}, crocini e codice a barre Graphtec</small></button>
