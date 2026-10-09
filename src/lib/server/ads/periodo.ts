@@ -14,3 +14,14 @@ export function periodoPrima(p: Periodo): Periodo {
 	const n = nGiorni(p); const fine = piuGiorni(new Date(p.da + 'T12:00:00'), -1);
 	return { da: isoData(piuGiorni(fine, -(n - 1))), a: isoData(fine) };
 }
+/** Il periodo spezzato in mesi di calendario (il primo e l'ultimo tagliati sulle date del periodo). */
+export function mesiDi(p: Periodo): Periodo[] {
+	const out: Periodo[] = [];
+	for (let y = Number(p.da.slice(0, 4)), m = Number(p.da.slice(5, 7)); `${y}-${String(m).padStart(2, '0')}` <= p.a.slice(0, 7); m === 12 ? (y++, (m = 1)) : m++) {
+		const mm = String(m).padStart(2, '0');
+		const ultimo = String(new Date(y, m, 0).getDate()).padStart(2, '0');
+		const da = `${y}-${mm}-01`, a = `${y}-${mm}-${ultimo}`;
+		out.push({ da: da < p.da ? p.da : da, a: a > p.a ? p.a : a });
+	}
+	return out;
+}

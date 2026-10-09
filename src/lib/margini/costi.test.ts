@@ -178,3 +178,16 @@ describe('somme', () => {
 		expect(mesi[3]).toMatchObject({ ordini: 1, margine: 0, marginePct: null });
 	});
 });
+
+describe('pubblicità', () => {
+	it('spesa del periodo: un mese o tutto l\'anno, solo i canali con un dato', async () => {
+		const { spesaPeriodo, conDato } = await import('./ads');
+		const mesi = Array.from({ length: 12 }, (_, i) => i + 1);
+		const c = { canale: 'meta' as const, nome: 'Meta', stato: 'ok' as const, motivo: null, mesi };
+		expect(spesaPeriodo(c, '9')).toBe(10);
+		expect(spesaPeriodo(c, 'anno')).toBe(78);
+		const s = { anno: 2026, aggiornato: '', canali: [c, { ...c, canale: 'google' as const, stato: 'non_collegato' as const }, { ...c, canale: 'tiktok' as const, stato: 'storico' as const }] };
+		expect(conDato(s).map((x) => x.canale)).toEqual(['meta', 'tiktok']);
+		expect(conDato(null)).toEqual([]);
+	});
+});

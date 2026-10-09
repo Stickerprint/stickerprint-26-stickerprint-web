@@ -94,7 +94,8 @@ export function perProdotto(ordini: OrdineMargine[]): VoceProdotto[] {
 }
 
 /** fatturato e margine di ogni mese dell'anno (0 = gennaio) */
-export function perMese(ordini: OrdineMargine[], anno: number): { mese: number; ordini: number; fatturato: number; margine: number; marginePct: number | null }[] {
+/** `calcolato` = fatturato degli ordini con il costo completo (base della percentuale) */
+export function perMese(ordini: OrdineMargine[], anno: number): { mese: number; ordini: number; fatturato: number; calcolato: number; margine: number; marginePct: number | null }[] {
 	const out = Array.from({ length: 12 }, (_, mese) => ({ mese, ordini: 0, fatturato: 0, calcolato: 0, costo: 0 }));
 	for (const o of ordini) {
 		const d = new Date(o.created_at);
@@ -103,5 +104,5 @@ export function perMese(ordini: OrdineMargine[], anno: number): { mese: number; 
 		b.ordini++; b.fatturato += o.ricavo.totale;
 		if (o.margine != null) { b.calcolato += o.ricavo.totale; b.costo += o.costo.totale; }
 	}
-	return out.map((b) => ({ mese: b.mese, ordini: b.ordini, fatturato: r2(b.fatturato), margine: r2(b.calcolato - b.costo), marginePct: pct(b.calcolato - b.costo, b.calcolato) }));
+	return out.map((b) => ({ mese: b.mese, ordini: b.ordini, fatturato: r2(b.fatturato), calcolato: r2(b.calcolato), margine: r2(b.calcolato - b.costo), marginePct: pct(b.calcolato - b.costo, b.calcolato) }));
 }

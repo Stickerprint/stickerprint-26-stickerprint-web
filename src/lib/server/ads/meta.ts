@@ -106,3 +106,11 @@ export async function metaStato(id: string, on: boolean): Promise<void> {
 	await post(id, { status: on ? 'ACTIVE' : 'PAUSED' });
 	cache = new Map();
 }
+
+/** Spesa mese per mese (yyyy-mm → euro) fra due date: una chiamata sola, per l'Analisi margini */
+export async function metaSpesaMesi(p: Periodo): Promise<Record<string, number>> {
+	const righe = await tutte<Insight>(`${act()}/insights`, { level: 'account', fields: 'spend', time_increment: 'monthly', time_range: range(p) });
+	const out: Record<string, number> = {};
+	for (const i of righe) { const k = String(i.date_start ?? '').slice(0, 7); if (k) out[k] = (out[k] ?? 0) + num(i.spend); }
+	return out;
+}
