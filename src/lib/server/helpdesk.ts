@@ -9,7 +9,7 @@ import { pushStaff } from './push';
 import { groupOrders, type OrderGroup, type OrderRow } from '$lib/dashboard/orders';
 
 export * from '$lib/dashboard/helpdesk';
-import { OPEN_TICKET, TICKET_KIND, TICKET_STATUS, type Ticket, type TicketKind, type TicketMessage, type TicketStatus, type ReplyTemplate } from '$lib/dashboard/helpdesk';
+import { OPEN_TICKET, TICKET_KIND, TICKET_STATUS, type Ticket, type TicketKind, type TicketMessage, type TicketStatus, type ReplyTemplate, type TicketFile } from '$lib/dashboard/helpdesk';
 type DB = SupabaseClient;
 
 /** Nuovo ticket dai moduli pubblici (supporto, reso): salva, avvisa il cliente con il link e lo staff */
@@ -54,13 +54,58 @@ export async function getTicketByToken(db: DB, token: string): Promise<{ ticket:
 }
 export async function markTicketRead(db: DB, id: string) { await db.from('tickets').update({ unread: false }).eq('id', id).eq('unread', true); }
 
-/** Risposta dello staff: messaggio in uscita + email al cliente con il link alla conversazione */
-export async function replyTicket(db: DB, id: string, body: string, author: string | null, origin: string, nextStatus: TicketStatus = 'attesa_cliente'): Promise<string | null> {
+/** Allegati di un messaggio (file_path storico + files): link firmati, per dashboard, pagina pubblica ed email */
+export function messageFiles(m: TicketMessage): TicketFile[] {
+	const out: TicketFile[] = [];
+	if (m.file_path) out.push({ path: m.file_path, name: m.file_path.split('/').pop() ?? 'allegato' });
+	for (const f of m.files ?? []) if (f?.path && !out.some((x) => x.path === f.path)) out.push(f);
+	return out;
+}
+export async function signedFiles(db: DB, messages: TicketMessage[], ttlSec = 3600, download = false): Promise<Record<number, { name: string; href: string }[]>> {
+	const out: Record<number, { name: string; href: string }[]> = {};
+	for (const m of messages) {
+		for (const f of messageFiles(m)) {
+			const { data } = await db.storage.from('requests').createSignedUrl(f.path, ttlSec, download ? { download: f.name } : undefined);
+			if (data) (out[m.id] ??= []).push({ name: f.name, href: data.signedUrl });
+		}
+	}
+	return out;
+}
+
+/** Carica gli allegati della risposta dello staff nel bucket requests (max 25 MB l'uno, 5 file) */
+export async function uploadStaffFiles(db: DB, ticketId: string, files: File[]): Promise<{ ok: true; files: TicketFile[] } | { ok: false; error: string }> {
+	const out: TicketFile[] = [];
+	for (const file of files.filter((f) => f instanceof File && f.size > 0).slice(0, 5)) {
+		if (file.size > 25 * 1024 * 1024) return { ok: false, error: `${file.name} supera i 25 MB.` };
+		const ext = (file.name.split('.').pop() ?? 'bin').toLowerCase().replace(/[^a-z0-9]/g, '') || 'bin';
+		const path = `support/out/${ticketId}/${Date.now()}-${crypto.randomUUID().slice(0, 6)}.${ext}`;
+		const { error } = await (adminClient() ?? db).storage.from('requests').upload(path, file, { contentType: file.type || undefined });
+		if (error) return { ok: false, error: `Allegato non caricato: ${error.message}` };
+		out.push({ path, name: file.name, size: file.size, type: file.type || undefined });
+	}
+	return { ok: true, files: out };
+}
+
+/** Risposta dello staff: messaggio in uscita + email al cliente con il link alla conversazione (e gli allegati) */
+export async function replyTicket(db: DB, id: string, body: string, author: string | null, origin: string, nextStatus: TicketStatus = 'attesa_cliente', files: TicketFile[] = []): Promise<string | null> {
 	if (!body.trim()) return 'Scrivi la risposta.';
 	const c = await getTicket(db, id);
 	if (!c) return 'Ticket non trovato.';
-	await db.from('ticket_messages').insert({ ticket_id: id, direction: 'out', author, body: body.trim() });
-	const r = await sendEmail({ to: c.ticket.email, ...ticketReplyEmail({ name: c.ticket.name, number: c.ticket.number, body: body.trim(), author, href: `${origin}/assistenza/${c.ticket.token}` }) });
+	await db.from('ticket_messages').insert({ ticket_id: id, direction: 'out', author, body: body.trim(), file_path: files[0]?.path ?? null, files: files.length ? files : null });
+	/* allegati: link validi 30 giorni nell'email e, se stanno nei 8 MB complessivi, anche il file stesso in allegato */
+	const store = (adminClient() ?? db).storage.from('requests');
+	const links: { name: string; href: string }[] = [];
+	const attachments: { name: string; content: string; contentType: string }[] = [];
+	let tot = 0;
+	for (const f of files) {
+		const { data: s } = await store.createSignedUrl(f.path, 30 * 24 * 3600, { download: f.name });
+		if (s) links.push({ name: f.name, href: s.signedUrl });
+		if ((f.size ?? 0) + tot <= 8 * 1024 * 1024) {
+			const { data: blob } = await store.download(f.path);
+			if (blob) { const bytes = new Uint8Array(await blob.arrayBuffer()); let bin = ''; for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000)); attachments.push({ name: f.name, content: btoa(bin), contentType: f.type || blob.type || 'application/octet-stream' }); tot += bytes.length; }
+		}
+	}
+	const r = await sendEmail({ to: c.ticket.email, ...ticketReplyEmail({ name: c.ticket.name, number: c.ticket.number, body: body.trim(), author, href: `${origin}/assistenza/${c.ticket.token}`, attachments: links }), attachments: attachments.length ? attachments : undefined });
 	if (!r.ok) return r.error ?? 'Email non inviata.';
 	await db.from('tickets').update({ status: nextStatus, unread: false, last_message_at: new Date().toISOString(), updated_at: new Date().toISOString(), assigned: c.ticket.assigned ?? author, closed_at: nextStatus === 'chiuso' ? new Date().toISOString() : null }).eq('id', id);
 	return null;

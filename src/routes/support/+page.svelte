@@ -11,7 +11,7 @@
 
 <section class="section container center" style="padding-bottom:8px">
 	<h1 style="font-size:clamp(34px,4.5vw,56px)">Le domande <span class="hl hl--yellow">più frequenti.</span></h1>
-	<p class="lead" style="margin-top:12px">Cerca qui la risposta. Se non la trovi, scrivici: rispondiamo in giornata.</p>
+	<p class="lead" style="margin-top:12px">Cerca qui la risposta. Se non la trovi, scrivici: rispondiamo entro 24 ore.</p>
 	<a class="support__mail" style="margin-top:20px" href="/support/email">Manda un’email al servizio clienti</a>
 	{#if cats.length}
 		<div class="faq-cats" role="tablist" aria-label="Argomenti">

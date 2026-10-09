@@ -60,11 +60,16 @@ export interface Artwork {
 	pathD: string;
 	/** adesivi in rilievo: le zone in rilievo, in tracciato, tinta RDG_GLOSS (mm, come pathD) */
 	glossD?: string;
+	/** tinta di taglio di QUESTO soggetto: serve quando sulla striscia ce n'e' piu' d'uno
+	    (un foglio di etichette mezzo-tagliate accanto a sagome passanti). Senza, vale quella del lavoro. */
+	pieceCut?: CutSpot;
 }
 
 export interface PdfJob {
 	title: string;
-	art: Artwork;
+	/** i soggetti stampati sulla striscia: di solito uno, piu' d'uno quando si monta un ordine intero.
+	    Ogni pezzo dice a quale appartiene con `Placement.a` (manca = il primo). */
+	arts: Artwork[];
 	/** una pagina per striscia (o una sola pagina per il file singolo) */
 	pages: Strip[];
 	/** taglio sui pezzi */
@@ -76,15 +81,16 @@ export interface PdfJob {
 }
 
 interface Res {
-	img: PDFRef;
-	/** la grafica e' una pagina PDF vettoriale (non un'immagine) */
-	vector?: boolean;
+	/** una grafica per soggetto, nello stesso ordine di `PdfJob.arts` */
+	imgs: PDFRef[];
+	/** per ogni soggetto: la grafica e' una pagina PDF vettoriale (non un'immagine) */
+	vector: boolean[];
 	cs: Record<CutSpot, PDFRef>;
 	gloss: PDFRef;
 	gs: PDFRef;
 }
 
-function setupResources(pdf: PDFDocument, imgRef: PDFRef): Res {
+function setupResources(pdf: PDFDocument, imgs: PDFRef[], vector: boolean[]): Res {
 	const ctx = pdf.context;
 	const cs = {} as Record<CutSpot, PDFRef>;
 	for (const name of Object.keys(SPOTS) as CutSpot[]) {
@@ -96,7 +102,7 @@ function setupResources(pdf: PDFDocument, imgRef: PDFRef): Res {
 	const gloss = ctx.register(ctx.obj([PDFName.of('Separation'), PDFName.of(GLOSS.name), PDFName.of('DeviceCMYK'), fnG]));
 	// sovrastampa: il tracciato non buca la grafica sotto
 	const gs = ctx.register(ctx.obj({ Type: 'ExtGState', OP: true, op: true, OPM: 1 }));
-	return { img: imgRef, cs, gloss, gs };
+	return { imgs, vector, cs, gloss, gs };
 }
 
 /*
@@ -104,46 +110,66 @@ function setupResources(pdf: PDFDocument, imgRef: PDFRef): Res {
  * Illustrator e gli altri programmi li aprono come due gruppi, da selezionare o separare con un clic).
  */
 function drawPage(page: PDFPage, job: PdfJob, strip: Strip, res: Res, pageIndex: number, font: PDFFont) {
-	const { art } = job;
 	const ctx = page.doc.context;
 	const W = strip.w * PT, H = strip.h * PT;
-	const tw = art.cutW + 2 * art.bleed, th = art.cutH + 2 * art.bleed, b = art.bleed;
-	const segs = parsePath(art.pathD);
 	// sistema di riferimento in millimetri con la y verso il basso
 	const mm = () => op(Op.ConcatTransformationMatrix, PT, 0, 0, -PT, 0, H);
+	/* i pezzi divisi per soggetto: `a` dice quale grafica usa ogni pezzo (manca = la prima) */
+	const perSoggetto = job.arts.map((_, i) => strip.pieces.filter((p) => (p.a ?? 0) === i));
+	const nome = (i: number) => `Im${i}`;
 
 	// 1. gruppo GRAFICA
 	const artOps: PDFOperator[] = [mm()];
-	for (const p of strip.pieces) {
-		artOps.push(op(Op.PushGraphicsState), op(Op.ConcatTransformationMatrix, ...pieceMatrix(p, art.cutW, art.cutH)));
-		// immagine: quadrato unitario; pagina PDF del cliente: punti tipografici con la y verso l'alto
-		if (res.vector) artOps.push(op(Op.ConcatTransformationMatrix, 1 / PT, 0, 0, -1 / PT, -b, art.cutH + b));
-		else artOps.push(op(Op.ConcatTransformationMatrix, tw, 0, 0, -th, -b, -b + th));
-		artOps.push(op(Op.DrawObject, PDFName.of('Im')), op(Op.PopGraphicsState));
-	}
-	const artForm = ctx.register(ctx.formXObject(artOps, { BBox: [0, 0, W, H], Resources: { XObject: { Im: res.img } } }));
+	const risorse: Record<string, PDFRef> = {};
+	job.arts.forEach((art, i) => {
+		if (!perSoggetto[i].length) return;
+		risorse[nome(i)] = res.imgs[i];
+		const tw = art.cutW + 2 * art.bleed, th = art.cutH + 2 * art.bleed, b = art.bleed;
+		for (const p of perSoggetto[i]) {
+			artOps.push(op(Op.PushGraphicsState), op(Op.ConcatTransformationMatrix, ...pieceMatrix(p, art.cutW, art.cutH)));
+			// immagine: quadrato unitario; pagina PDF del cliente: punti tipografici con la y verso l'alto
+			if (res.vector[i]) artOps.push(op(Op.ConcatTransformationMatrix, 1 / PT, 0, 0, -1 / PT, -b, art.cutH + b));
+			else artOps.push(op(Op.ConcatTransformationMatrix, tw, 0, 0, -th, -b, -b + th));
+			artOps.push(op(Op.DrawObject, PDFName.of(nome(i))), op(Op.PopGraphicsState));
+		}
+	});
+	const artForm = ctx.register(ctx.formXObject(artOps, { BBox: [0, 0, W, H], Resources: { XObject: risorse } }));
 
 	/* 1-bis. gruppo RILIEVO (adesivi in rilievo): le zone in rilievo in tinta piatta RDG_GLOSS.
 	   Deve essere vettoriale, altrimenti la Roland non lo legge; sta SOTTO la grafica. */
 	let glossForm: PDFRef | null = null;
-	if (art.glossD) {
-		const gsegs = parsePath(art.glossD);
+	if (job.arts.some((a) => a.glossD)) {
 		const gOps: PDFOperator[] = [mm(), op(Op.NonStrokingColorspace, PDFName.of(GLOSS.name)), op(Op.NonStrokingColorN, 1)];
-		for (const p of strip.pieces) {
-			gOps.push(op(Op.PushGraphicsState), op(Op.ConcatTransformationMatrix, ...pieceMatrix(p, art.cutW, art.cutH)));
-			gOps.push(...pathOps(gsegs), op(Op.FillEvenOdd), op(Op.PopGraphicsState));
-		}
+		job.arts.forEach((art, i) => {
+			if (!art.glossD) return;
+			const gsegs = parsePath(art.glossD);
+			for (const p of perSoggetto[i]) {
+				gOps.push(op(Op.PushGraphicsState), op(Op.ConcatTransformationMatrix, ...pieceMatrix(p, art.cutW, art.cutH)));
+				gOps.push(...pathOps(gsegs), op(Op.FillEvenOdd), op(Op.PopGraphicsState));
+			}
+		});
 		glossForm = ctx.register(ctx.formXObject(gOps, { BBox: [0, 0, W, H], Resources: { ColorSpace: { [GLOSS.name]: res.gloss } } }));
 	}
 
-	// 2. gruppo TAGLIO, in sovrastampa
+	// 2. gruppo TAGLIO, in sovrastampa: una passata per tinta, cosi' il file resta ordinato
 	const cs: Record<string, PDFRef> = {};
 	for (const n of Object.keys(res.cs) as CutSpot[]) cs[n] = res.cs[n];
 	const cutOps: PDFOperator[] = [mm(), op(Op.SetGraphicsStateParams, PDFName.of('GS')), op(Op.SetLineWidth, CUT_LINE), op(Op.SetLineJoinStyle, 1)];
-	cutOps.push(op(Op.StrokingColorspace, PDFName.of(job.pieceCut)), op(Op.StrokingColorN, 1));
-	for (const p of strip.pieces) {
-		cutOps.push(op(Op.PushGraphicsState), op(Op.ConcatTransformationMatrix, ...pieceMatrix(p, art.cutW, art.cutH)));
-		cutOps.push(...pathOps(segs), op(Op.StrokePath), op(Op.PopGraphicsState));
+	const tinte = new Map<CutSpot, number[]>();
+	job.arts.forEach((art, i) => {
+		if (!perSoggetto[i].length) return;
+		const t = art.pieceCut ?? job.pieceCut;
+		tinte.set(t, [...(tinte.get(t) ?? []), i]);
+	});
+	for (const [tinta, quali] of tinte) {
+		cutOps.push(op(Op.StrokingColorspace, PDFName.of(tinta)), op(Op.StrokingColorN, 1));
+		for (const i of quali) {
+			const art = job.arts[i], segs = parsePath(art.pathD);
+			for (const p of perSoggetto[i]) {
+				cutOps.push(op(Op.PushGraphicsState), op(Op.ConcatTransformationMatrix, ...pieceMatrix(p, art.cutW, art.cutH)));
+				cutOps.push(...pathOps(segs), op(Op.StrokePath), op(Op.PopGraphicsState));
+			}
+		}
 	}
 	if (job.sheetCut && strip.sheets?.length) {
 		cutOps.push(op(Op.StrokingColorspace, PDFName.of(job.sheetCut)), op(Op.StrokingColorN, 1));
@@ -167,6 +193,7 @@ function drawPage(page: PDFPage, job: PdfJob, strip: Strip, res: Res, pageIndex:
 		/* niente scritte accanto ai codici: il Code 39 vuole almeno 10 moduli (4 mm) di bianco ai lati,
 		   una scritta a 3 mm ne impediva la lettura. Cutting Master non ne mette. */
 	}
+	void font;
 	const nGloss = glossForm ? node.newXObject('Rilievo', glossForm) : null;
 	const nArt = node.newXObject('Grafica', artForm);
 	const nCut = node.newXObject('Taglio', cutForm);
@@ -183,18 +210,21 @@ export async function buildPdf(job: PdfJob): Promise<Uint8Array> {
 	pdf.setTitle(job.title);
 	pdf.setCreator('Stickerprint Studio');
 	pdf.setProducer('Stickerprint Studio');
-	let res: Res;
-	if (job.art.pdfPage) {
-		// pagina del cliente ritagliata attorno al taglio, con l'abbondanza: resta vettoriale
-		const src = await PDFDocument.load(job.art.pdfPage.bytes, { ignoreEncryption: true });
-		const [x0, y0, x1, y1] = job.art.pdfPage.bboxPt, bp = job.art.bleed * PT;
-		const emb = await pdf.embedPage(src.getPage(0), { left: x0 - bp, bottom: y0 - bp, right: x1 + bp, top: y1 + bp });
-		res = { ...setupResources(pdf, emb.ref), vector: true };
-	} else {
-		if (!job.art.png) throw new Error('Manca la grafica da stampare.');
-		const img = await pdf.embedPng(job.art.png);
-		res = setupResources(pdf, img.ref);
+	const imgs: PDFRef[] = [], vector: boolean[] = [];
+	for (const art of job.arts) {
+		if (art.pdfPage) {
+			// pagina del cliente ritagliata attorno al taglio, con l'abbondanza: resta vettoriale
+			const src = await PDFDocument.load(art.pdfPage.bytes, { ignoreEncryption: true });
+			const [x0, y0, x1, y1] = art.pdfPage.bboxPt, bp = art.bleed * PT;
+			const emb = await pdf.embedPage(src.getPage(0), { left: x0 - bp, bottom: y0 - bp, right: x1 + bp, top: y1 + bp });
+			imgs.push(emb.ref); vector.push(true);
+		} else {
+			if (!art.png) throw new Error('Manca la grafica da stampare.');
+			const img = await pdf.embedPng(art.png);
+			imgs.push(img.ref); vector.push(false);
+		}
 	}
+	const res = setupResources(pdf, imgs, vector);
 	const font = await pdf.embedFont(StandardFonts.Helvetica);
 	job.pages.forEach((strip, i) => {
 		const page = pdf.addPage([strip.w * PT, strip.h * PT]);

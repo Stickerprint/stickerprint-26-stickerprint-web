@@ -32,7 +32,7 @@ export const actions: Actions = {
 		if (inv.xml_generated_at) return fail(400, { error: 'XML già generato: la fattura non si può più modificare.' });
 		let e: Edit;
 		try { e = JSON.parse(String((await request.formData()).get('payload') ?? '')); } catch { return fail(400, { error: 'Dati non leggibili.' }); }
-		const lines = (e.lines ?? []).filter((l) => l.description && Number(l.qty) > 0).map((l) => ({ description: String(l.description).trim(), qty: Number(l.qty), unit_net: Math.round(Number(l.unit_net) * 10000) / 10000, total_net: r2(Number(l.qty) * Number(l.unit_net)), ddt: l.ddt ?? null, ddt_date: l.ddt_date ?? null }));
+		const lines = (e.lines ?? []).filter((l) => l.description && Number(l.qty) > 0).map((l) => ({ code: l.code ? String(l.code).trim().toUpperCase().slice(0, 12) : null, description: String(l.description).trim(), qty: Number(l.qty), unit_net: Math.round(Number(l.unit_net) * 10000) / 10000, total_net: r2(Number(l.qty) * Number(l.unit_net)), ddt: l.ddt ?? null, ddt_date: l.ddt_date ?? null }));
 		if (!lines.length) return fail(400, { error: 'La fattura deve avere almeno una riga.' });
 		const subtotal = r2(lines.reduce((s, l) => s + l.total_net, 0));
 		const vat = r2(subtotal * VAT);

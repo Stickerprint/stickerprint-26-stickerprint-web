@@ -25,5 +25,5 @@ export function detectLocale(country: string | null, acceptLanguage: string | nu
 }
 export function formatMoney(amountEur: number, locale: Locale, decimals = 2): string {
 	const value = locale.currency === 'USD' ? amountEur * USD_RATE : amountEur;
-	return new Intl.NumberFormat(locale.lang === 'it' ? 'it-IT' : 'en-US', { style: 'currency', currency: locale.currency, minimumFractionDigits: decimals, maximumFractionDigits: decimals }).format(value);
+	return new Intl.NumberFormat(locale.lang === 'it' ? 'it-IT' : 'en-US', { style: 'currency', currency: locale.currency, useGrouping: 'always', minimumFractionDigits: decimals, maximumFractionDigits: decimals }).format(value);
 }

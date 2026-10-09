@@ -36,6 +36,10 @@ export const MARK = {
 	blockW: 50,
 	/** spazio fra barra nera e codice */
 	blockGap: 7,
+	/* ATTENZIONE: queste tre misure sono quelle di Cutting Master e non si toccano.
+	   Il 5/10/2026 le abbiamo ingrossate (0.5 / 1.25 / 11) per provare a far leggere i codici sulle
+	   strisce stampate con la Roland UV: il plotter ha smesso di leggerli del tutto. Il lettore del
+	   Graphtec non decodifica il Code 39 sulle sole proporzioni, si aspetta proprio queste misure. */
 	narrow: 0.4,
 	wide: 1.0
 };
@@ -150,6 +154,9 @@ export interface XpfGroup {
 	cutW: number;
 	cutH: number;
 	pieces: Placement[];
+	/** condizione del plotter per questo gruppo (1 mezzo taglio, 3 passante); senza, quella del lavoro.
+	    Serve quando sulla stessa striscia ci sono etichette mezzo-tagliate e sagome passanti. */
+	cond?: number;
 }
 
 export interface XpfJob {
@@ -192,9 +199,14 @@ export function xpfCommands(j: XpfJob): string {
 	const out: string[] = ['\x1b.v:TC1007,4,20', 'TB99', 'TB57,1,1', 'TB59,1,1', 'TB50,0', 'TB51,200', 'TB52,2', 'TB54,0,0', 'TB55,1', 'TB44,0,0,0', `TB24,${distX},${distY}`, 'TB99'];
 	let first = true;
 	if (j.pieceCond) {
-		out.push(`&100,100,100,^0,0,\\0,0,J${j.pieceCond}`, 'L0,B0');
-		first = false;
+		let cond = 0;
 		for (const g of gruppi(j)) {
+			const cnd = g.cond ?? j.pieceCond;
+			if (cnd !== cond) {
+				out.push(first ? `&100,100,100,^0,0,\\0,0,J${cnd}` : `J${cnd}`, 'L0,B0');
+				first = false;
+				cond = cnd;
+			}
 			const segs = parsePath(g.pathD);
 			const tf = (p: Placement, x: number, y: number): [number, number] => (p.rot ? [p.x + g.cutH - y, p.y + x] : [p.x + x, p.y + y]);
 			for (const p of g.pieces) {

@@ -175,7 +175,7 @@
 		<div class="card" style="padding:28px">
 			<h3 style="margin-bottom:14px">Iniziamo da qui.</h3>
 			{#if form?.ok}
-				<p class="success">Richiesta ricevuta. Ti rispondiamo a breve con una proposta su misura.</p>
+				<p class="success">Richiesta ricevuta! Ti rispondiamo entro 24 ore con una proposta su misura. Ti abbiamo mandato anche un’email di conferma.</p>
 			{:else}
 				<form class="form2" method="POST" enctype="multipart/form-data" use:enhance={() => { sending = true; return async ({ update }) => { sending = false; await update(); }; }}>
 					<div class="row">

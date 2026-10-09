@@ -1,8 +1,8 @@
 /** Analisi margini: come si scrivono numeri, superfici e lunghezze (sempre in italiano). */
-const it = (v: number, dec = 0, max = dec) => v.toLocaleString('it-IT', { minimumFractionDigits: dec, maximumFractionDigits: max });
+const it = (v: number, dec = 0, max = dec) => v.toLocaleString('it-IT', { useGrouping: 'always', minimumFractionDigits: dec, maximumFractionDigits: max });
 
-export const euro = (v: number) => new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(v);
-export const euro0 = (v: number) => new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(v);
+export const euro = (v: number) => new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR', useGrouping: 'always' }).format(v);
+export const euro0 = (v: number) => new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR', useGrouping: 'always', maximumFractionDigits: 0 }).format(v);
 export const perc = (v: number | null | undefined) => (v == null ? '—' : `${it(v, 0, 1)}%`);
 export const mq = (v: number) => `${it(v, 0, v < 10 ? 2 : 1)} m²`;
 /** millimetri di bobina in metri lineari (sotto il metro: centimetri) */

@@ -6,14 +6,14 @@
 	let sending = $state(false);
 </script>
 
-<Seo title="Scrivi al servizio clienti | Stickerprint" description="Hai una domanda su un ordine, un file o una spedizione? Scrivi al servizio clienti Stickerprint: ti rispondiamo per email in giornata, dal lunedì al venerdì." />
+<Seo title="Scrivi al servizio clienti | Stickerprint" description="Hai una domanda su un ordine, un file o una spedizione? Scrivi al servizio clienti Stickerprint: ti rispondiamo per email entro 24 ore." />
 
 <section class="section container" style="max-width:720px">
 	<h1 style="font-size:clamp(30px,4vw,46px)">Scrivi al servizio clienti</h1>
-	<p class="lead" style="margin-top:10px">Ti rispondiamo in giornata, dal lunedì al venerdì. Se riguarda un ordine, indica il numero: facciamo prima.</p>
+	<p class="lead" style="margin-top:10px">Ti rispondiamo entro 24 ore. Se riguarda un ordine, indica il numero: facciamo prima.</p>
 	<div class="card" style="padding:28px;margin-top:22px">
 		{#if form?.ok}
-			<p class="success">Messaggio ricevuto. Ti rispondiamo al più presto all’indirizzo indicato.</p>
+			<p class="success">Messaggio ricevuto! Ti rispondiamo entro 24 ore all’indirizzo indicato. Ti abbiamo mandato anche un’email di conferma con il numero della richiesta.</p>
 		{:else}
 			<form class="form2" method="POST" enctype="multipart/form-data" use:enhance={() => { sending = true; return async ({ update }) => { sending = false; await update(); }; }}>
 				<div class="row">

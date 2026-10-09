@@ -1,5 +1,5 @@
 /**
- * Stickerprint Studio — file PRONTI dei clienti aziendali (etichette e resinati).
+ * Stickerprint Studio — file PRONTI dei clienti aziendali (etichette, resinati, adesivi sagomati).
  *
  * I clienti mandano un PDF vettoriale con l'etichetta in scala 1:1 e il tracciato di taglio
  * disegnato sopra (di solito un tratto sottile in ciano pieno, a volte in sovrastampa o in una

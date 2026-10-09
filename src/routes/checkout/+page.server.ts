@@ -9,6 +9,7 @@ import { quoteWith, PRODUCT_ENGINES } from '$lib/pricing/engine';
 import { kitQuote, kitN } from '$lib/pricing/kit';
 import { checkDiscount } from '$lib/server/discount';
 import { normalizeLines, type InvoiceLine } from '$lib/server/invoice';
+import { CATS } from '$lib/dashboard/orders';
 import { estimatedShipDate, formatItDate } from '$lib/utils/shipping';
 import { MATERIAL_LABEL } from '$lib/account';
 import { createCheckoutSession, createPaymentIntent, stripeConfigured } from '$lib/server/stripe';
@@ -210,7 +211,7 @@ export const actions: Actions = {
 			}
 			if (error) return fail(400, { error: `Ordine non registrato: ${error.message}` });
 			if (!numbers.includes(row.number)) numbers.push(row.number);
-			invLines.push({ description: l.product === 'campioni' ? `Kit campioni` : l.product === 'kit_adesivi' ? `Kit di adesivi (${kitN(l.forma)} adesivi da ${l.w} mm, ${MATERIAL_LABEL[l.materiale] ?? l.materiale}${l.finitura && l.finitura !== 'nessuna' ? ', lamina ' + l.finitura : ''})` : `${name} ${l.forma} ${MATERIAL_LABEL[l.materiale] ?? l.materiale}${l.finitura && l.finitura !== 'nessuna' ? ' lamina ' + l.finitura : ''} ${l.w}×${l.h} mm`, qty: l.qty, unit_net: r2(l.baseNet / l.qty), total_net: l.baseNet });
+			invLines.push({ code: CATS[l.product]?.code ?? null, description: l.product === 'campioni' ? `Kit campioni` : l.product === 'kit_adesivi' ? `Kit di adesivi (${kitN(l.forma)} adesivi da ${l.w} mm, ${MATERIAL_LABEL[l.materiale] ?? l.materiale}${l.finitura && l.finitura !== 'nessuna' ? ', lamina ' + l.finitura : ''})` : `${name} ${l.forma} ${MATERIAL_LABEL[l.materiale] ?? l.materiale}${l.finitura && l.finitura !== 'nessuna' ? ' lamina ' + l.finitura : ''} ${l.w}×${l.h} mm`, qty: l.qty, unit_net: r2(l.baseNet / l.qty), total_net: l.baseNet });
 			items.push({ product: l.product, productName: name, forma: l.forma, materiale: l.materiale, finitura: l.finitura ?? null, w: l.w, h: l.h, qty: Number(l.qty), gross: l.gross, previewUrl: l.previewUrl ?? null });
 			autoProof.push(auto);
 		}

@@ -11,7 +11,7 @@ export const PAYMENT_STATUS: Record<PaymentStatus, { label: string; color: strin
 	pagato: { label: 'Pagato', color: '#15803d', soft: '#dcfce7' },
 	annullato: { label: 'Annullato', color: '#6b7280', soft: '#e5e7eb' }
 };
-const eur = (v: number) => new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(v);
+const eur = (v: number) => new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR', useGrouping: 'always' }).format(v);
 const itLong = (d: string | null) => (d ? new Date(d + 'T12:00:00').toLocaleDateString('it-IT', { day: 'numeric', month: 'long' }) : '');
 /** somma delle scadenze anticipate ancora da pagare */
 export const upfrontDue = (payments: OrderPayment[]) => payments.filter((p) => p.upfront && p.status === 'da_pagare').reduce((a, p) => a + Number(p.amount), 0);

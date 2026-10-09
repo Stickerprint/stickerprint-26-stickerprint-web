@@ -7,9 +7,10 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { PUBLIC_SITE_URL } from '$env/static/public';
-import { groupOrders, type OrderRow } from '$lib/dashboard/orders';
+import { groupOrders, CATS, type OrderRow } from '$lib/dashboard/orders';
 import type { IntegrationChange, OrderPayment } from '$lib/dashboard/conferme';
 import { MATERIAL_LABEL } from '$lib/account';
+import { eur } from './docs';
 import { loadEngine } from './pricing';
 import { quoteWith, PRODUCT_ENGINES } from '$lib/pricing/engine';
 import { getConfirmation, loadGroup, loadPayments } from './conferme';
@@ -21,7 +22,6 @@ import { integrationRequestEmail, integrationInvoiceEmail, OWNER_EMAIL, ownerNot
 
 type DB = SupabaseClient;
 const r2 = (v: number) => Math.round(v * 100) / 100;
-const eur = (v: number) => `${v.toFixed(2).replace('.', ',')} €`;
 
 export interface ChangeInput { order_id: string; width_mm?: number | null; height_mm?: number | null; materiale?: string | null; finitura?: string | null; qty?: number | null }
 
@@ -131,7 +131,7 @@ export async function settleIntegration(db: DB, group: string, payment: OrderPay
 	const number = (invNum as string) ?? `SPF-${Date.now()}`;
 	const today = new Date().toISOString().slice(0, 10);
 	const bill = (first.billing ?? first.shipping ?? {}) as Record<string, string>;
-	const lines = [{ description: `Integrazione ordine ${g.number}: ${payment.reason ?? 'modifica dell’ordine'}`.slice(0, 200), qty: 1, unit_net: net, total_net: net }];
+	const lines = [{ code: first.product_code ?? CATS[first.product_slug]?.code ?? null, description: `Integrazione ordine ${g.number}: ${payment.reason ?? 'modifica dell’ordine'}`.slice(0, 200), qty: 1, unit_net: net, total_net: net }];
 	const method = payment.provider === 'paypal' ? 'PayPal' : payment.provider === 'stripe' ? 'Carta di credito (Stripe)' : 'Bonifico bancario';
 	const terms = [{ due: today, amount, method, xml_code: payment.provider === 'stripe' || payment.provider === 'paypal' ? 'MP08' : 'MP05' }];
 	const inv = { number, issued_at: today, email: g.email, billing: bill, lines, subtotal_net: net, discount_net: 0, express_net: 0, credit_used: 0, vat_amount: vat, total_gross: amount, to_pay: amount, payment_method: method, orders: g.numbers, payment_terms: terms, notes: null };

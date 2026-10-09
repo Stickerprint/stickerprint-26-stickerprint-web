@@ -1,13 +1,13 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
-	import { COUNTRIES, money, dmy } from '$lib/dashboard/orders';
+	import { COUNTRIES, money, moneyUnit, dmy } from '$lib/dashboard/orders';
 	import { paymentIcon, paymentLabel } from '$lib/dashboard/payments';
 	let { data, form } = $props();
 	const inv = $derived(data.inv);
 	let editing = $state(false);
 	let saving = $state(false);
-	interface Line { description: string; qty: number; unit_net: number; ddt?: string | null; ddt_date?: string | null }
+	interface Line { code?: string | null; description: string; qty: number; unit_net: number; ddt?: string | null; ddt_date?: string | null }
 	interface Term { method: string; due: string; amount: number; xml_code: string }
 	let e = $state({ issued_at: '', email: '', billing: {} as Record<string, string>, lines: [] as Line[], terms: [] as Term[], notes: '' });
 	function startEdit() {
@@ -96,10 +96,11 @@
 		<div class="dcard" style="overflow-x:auto">
 			<h3>📦 Righe</h3>
 			<table class="dtable">
-				<thead><tr><th>Descrizione</th><th>DDT</th><th>Q.tà</th><th>Prezzo unit.</th><th style="text-align:right">Imponibile</th><th></th></tr></thead>
+				<thead><tr><th>Codice</th><th>Descrizione</th><th>DDT</th><th>Q.tà</th><th>Prezzo unit.</th><th style="text-align:right">Imponibile</th><th></th></tr></thead>
 				<tbody>
 					{#each e.lines as l, i (i)}
 						<tr>
+							<td><input type="text" bind:value={l.code} maxlength="12" style="max-width:90px;text-transform:uppercase" placeholder="STK" /></td>
 							<td><input type="text" bind:value={l.description} /></td>
 							<td><span class="osub">{l.ddt ?? '—'}</span></td>
 							<td><input type="number" min="1" bind:value={l.qty} style="max-width:100px" /></td>
@@ -161,9 +162,9 @@
 	<div class="dcard" style="overflow-x:auto">
 		<h3>📦 Righe</h3>
 		<table class="dtable">
-			<thead><tr><th>Descrizione</th><th>DDT</th><th>Q.tà</th><th>Prezzo unit.</th><th style="text-align:right">Imponibile</th></tr></thead>
+			<thead><tr><th>Codice</th><th>Descrizione</th><th>DDT</th><th>Q.tà</th><th>Prezzo unit.</th><th style="text-align:right">Imponibile</th></tr></thead>
 			<tbody>
-				{#each inv.lines ?? [] as l, i (i)}<tr><td>{l.description}</td><td class="osub">{l.ddt ?? '—'}</td><td>{Number(l.qty).toLocaleString('it-IT')}</td><td>{money(Number(l.unit_net))}</td><td style="text-align:right"><b>{money(Number(l.total_net))}</b></td></tr>{/each}
+				{#each inv.lines ?? [] as l, i (i)}<tr><td><b>{l.code ?? ''}</b></td><td>{l.description}</td><td class="osub">{l.ddt ?? '—'}</td><td>{Number(l.qty).toLocaleString('it-IT')}</td><td>{moneyUnit(Number(l.unit_net))}</td><td style="text-align:right"><b>{money(Number(l.total_net))}</b></td></tr>{/each}
 				{#if Number(inv.express_net) > 0}<tr><td>Produzione express (+30%)</td><td></td><td>1</td><td>{money(Number(inv.express_net))}</td><td style="text-align:right"><b>{money(Number(inv.express_net))}</b></td></tr>{/if}
 			</tbody>
 		</table>

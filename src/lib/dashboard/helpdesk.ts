@@ -21,7 +21,8 @@ export interface Ticket {
 	subject: string | null; complaint_reason: string | null; contact_id: string | null; request_id: string | null; token: string; unread: boolean; assigned: string | null;
 	last_message_at: string; closed_at: string | null; created_at: string; updated_at: string;
 }
-export interface TicketMessage { id: number; ticket_id: string; direction: 'in' | 'out' | 'note'; author: string | null; body: string; file_path: string | null; created_at: string }
+export interface TicketMessage { id: number; ticket_id: string; direction: 'in' | 'out' | 'note'; author: string | null; body: string; file_path: string | null; files?: TicketFile[] | null; created_at: string }
+export interface TicketFile { path: string; name: string; size?: number; type?: string }
 export interface ReplyTemplate { id: string; title: string; body: string; sort: number; kind?: 'supporto' | 'preventivo'; subject?: string | null }
 
 /** ore di attesa del cliente: dall'ultimo messaggio in entrata senza risposta */

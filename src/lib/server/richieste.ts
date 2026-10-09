@@ -128,7 +128,7 @@ export async function quotePdf(q: Quote): Promise<Uint8Array> {
 	const sh = d.ship_same !== false ? billing : { company: d.shipping.name || c.name, first_name: '', last_name: '', street: d.shipping.address, city: d.shipping.city, zip: d.shipping.cap, province: d.shipping.province, country: d.shipping.country, vat: '' };
 	return buildOrderPdf({
 		kind: 'preventivo', valid_until: q.valid_until, lead_time: d.lead_time?.trim() || null, number: q.number + (q.version > 1 ? ` rev. ${q.version}` : ''), numbers: [q.number], issued_at: q.created_at, customer: billing, shipping: sh, email: c.email || null,
-		lines: d.items.filter((i) => Number(i.qty) > 0).map((i) => { const unit = lordi ? Number(i.price) / 1.22 : Number(i.price); return { description: `${i.code ? i.code + ' · ' : ''}${i.description}`.trim(), qty: Number(i.qty), unit_net: unit, total_net: Math.round(unit * Number(i.qty) * 100) / 100 }; }),
+		lines: d.items.filter((i) => Number(i.qty) > 0).map((i) => { const unit = lordi ? Number(i.price) / 1.22 : Number(i.price); return { code: i.code ? String(i.code).toUpperCase() : null, description: String(i.description ?? '').trim(), qty: Number(i.qty), unit_net: unit, total_net: Math.round(unit * Number(i.qty) * 100) / 100 }; }),
 		subtotal_net: t.net, vat_amount: t.iva, total_gross: t.tot, payment_method: [...new Set((d.terms ?? []).map((x) => x.method))].join(' + ') || '', payment_terms: (d.terms ?? []).map((x) => ({ due: x.due, amount: x.amount, method: x.method })),
 		shipping_method: d.ship_method, delivery_date: d.ship_date || null, notes: d.notes?.replace(/^Richiesta dal sito:.*$/s, '') || null
 	});

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import { ORDER_STATUS, COUNTRIES, COURIERS, deliveryMode, dmy, money, itemMeta, thumbOf, CATS } from '$lib/dashboard/orders';
+	import { ORDER_STATUS, COUNTRIES, COURIERS, deliveryMode, dmy, money, moneyUnit, itemMeta, thumbOf, CATS } from '$lib/dashboard/orders';
 	import ItemsCell from '$lib/components/dashboard/ItemsCell.svelte';
 	let { data, form } = $props();
 	const st = (s: string) => ORDER_STATUS[s] ?? { label: s, color: '#6b7280', soft: '#eceef3' };
@@ -185,7 +185,7 @@
 					{@const f = g.items[0]}
 					{@const info = shipInfo(g)}
 					<tr>
-						<td><a class="oid" href="/dashboard/fatturazione/ordini/{g.key}">{g.number}</a><div class="osub"><b>{g.customer}</b></div><div class="osub">{g.qty.toLocaleString('it-IT')} pz · {money(g.gross)} · {g.channel === 'manuale' ? '✏️ manuale' : '🛒 e-commerce'}</div></td>
+						<td><div class="ship-ord"><div class="ship-thumbs">{#each g.items.slice(0, 3) as it (it.id)}{#if thumbOf(it)}<img src={thumbOf(it)} alt="" title="{it.product_name} · {itemMeta(it)}" />{:else}<span class="thumb-ph" style="background:{CATS[it.product_slug]?.soft ?? '#eceef3'}">{CATS[it.product_slug]?.code ?? '?'}</span>{/if}{/each}{#if g.items.length > 3}<span class="osub">+{g.items.length - 3}</span>{/if}</div><div><a class="oid" href="/dashboard/fatturazione/ordini/{g.key}">{g.number}</a><div class="osub"><b>{g.customer}</b></div><div class="osub">{g.qty.toLocaleString('it-IT')} pz · {money(g.gross)} · {g.channel === 'manuale' ? '✏️ manuale' : '🛒 e-commerce'}</div></div></div></td>
 						<td>{COUNTRIES[g.country]?.flag ?? ''} {ship.city ?? ''} {ship.province ? `(${ship.province})` : ''}<div class="osub">{ship.zip ?? ''}</div></td>
 						<td>
 							<b style="display:flex;align-items:center;gap:8px">{#if f.courier === 'Qapla'}<img class="courier-logo" src={COURIERS.Qapla.logo} alt="Qapla" />{/if}{info.how}</b>
@@ -232,7 +232,7 @@
 							<td><div class="item-cell">{#if thumbOf(it)}<img src={thumbOf(it)} alt="" />{/if}<div><b>{it.product_name}</b><div class="osub">{itemMeta(it)}</div></div></div></td>
 							<td>{it.qty.toLocaleString('it-IT')}</td>
 							<td><input type="number" min="1" class="sel-sm" style="width:100px" bind:value={ddtQty[it.id]} /></td>
-							<td>{money(unit)}</td>
+							<td>{moneyUnit(unit)}</td>
 							<td style="text-align:right"><b>{money(unit * Number(ddtQty[it.id] ?? it.qty))}</b></td>
 						</tr>
 					{/each}
@@ -260,6 +260,10 @@
 {/if}
 
 <style>
+	/* ordini spediti: le foto degli articoli accanto al numero d'ordine */
+	.ship-ord { display: flex; gap: 10px; align-items: flex-start; }
+	.ship-thumbs { display: flex; flex-wrap: wrap; gap: 4px; width: 120px; flex: 0 0 auto; align-items: center; }
+	.ship-thumbs img, .ship-thumbs .thumb-ph { width: 56px; height: 56px; border-radius: 10px; object-fit: contain; background: #fff; border: 1px solid var(--line); display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; color: var(--muted); }
 	.trk { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
 	.reship { display: flex; gap: 6px; align-items: center; margin-top: 6px; } .reship select { padding: 4px 8px; border: 1px solid var(--line); border-radius: 8px; font: inherit; font-size: 12px; }
 </style>

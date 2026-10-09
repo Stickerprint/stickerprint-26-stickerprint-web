@@ -9,6 +9,8 @@
 	let body = $state('');
 	let next = $state('attesa_cliente');
 	let sending = $state(false);
+	let allegati = $state<string[]>([]);
+	let fileInput = $state<HTMLInputElement | null>(null);
 	const submitAuto = (e: Event) => ((e.currentTarget as HTMLElement).closest('form') as HTMLFormElement).requestSubmit();
 </script>
 
@@ -27,7 +29,7 @@
 					<div class="hd-msg hd-msg--{m.direction}">
 						<div class="hd-msg__head"><b>{m.direction === 'in' ? (m.author ?? t.email) : m.direction === 'out' ? `${m.author ?? 'Stickerprint'} · risposta` : `${m.author ?? 'staff'} · nota interna`}</b><span class="osub">{fmtWhen(m.created_at)} · {fmtAgo(m.created_at)}</span></div>
 						<div class="hd-msg__body">{m.body}</div>
-						{#if m.file_path}<a class="btn btn--ghost btn--xs" style="margin-top:6px" href={data.files[m.id] ?? '#'}>📎 Allegato</a>{/if}
+						{#if data.files[m.id]?.length}<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">{#each data.files[m.id] as f (f.href)}<a class="btn btn--ghost btn--xs" href={f.href}>📎 {f.name}</a>{/each}</div>{/if}
 					</div>
 				{/each}
 			</div>
@@ -35,14 +37,16 @@
 
 		<div class="dcard">
 			<h3>Rispondi al cliente</h3>
-			<form method="POST" action="?/rispondi" use:enhance={() => { sending = true; return async ({ update, result }) => { await update({ reset: false }); sending = false; if (result.type === 'success') body = ''; }; }} style="display:grid;gap:10px">
+			<form method="POST" action="?/rispondi" enctype="multipart/form-data" use:enhance={() => { sending = true; return async ({ update, result }) => { await update({ reset: false }); sending = false; if (result.type === 'success') { body = ''; allegati = []; if (fileInput) fileInput.value = ''; } }; }} style="display:grid;gap:10px">
 				
 				<textarea name="body" bind:value={body} rows="6" required placeholder="Ciao {t.name?.split(' ')[0] ?? ''}, …" style="padding:10px 12px;border:1px solid var(--line);border-radius:10px;font:inherit;font-size:14px"></textarea>
 				<div class="toolbar" style="gap:10px">
 					<label class="osub">Dopo l'invio <select name="next" bind:value={next} class="sel-sm"><option value="attesa_cliente">in attesa del cliente</option><option value="in_carico">resta in carico</option><option value="risolto">risolto</option><option value="chiuso">chiuso</option></select></label>
 					<button class="btn btn--blue btn--xs" type="submit" disabled={sending || !body.trim()}>✉ Invia via email</button>
-					<span class="osub">Il cliente riceve il testo e un link per rispondere.</span>
+					<label class="btn btn--ghost btn--xs" style="cursor:pointer">📎 Allega file<input bind:this={fileInput} name="files" type="file" multiple accept="image/*,.pdf,.zip,.ai,.svg,.eps" hidden onchange={() => (allegati = [...(fileInput?.files ?? [])].map((x) => x.name))} /></label>
+					<span class="osub">Il cliente riceve il testo{allegati.length ? ' e gli allegati' : ''} via email e un link per rispondere.</span>
 				</div>
+				{#if allegati.length}<div style="display:flex;flex-wrap:wrap;gap:6px">{#each allegati as a (a)}<span class="tag2 tag2--soft">📎 {a}</span>{/each}</div>{/if}
 			</form>
 			<form method="POST" action="?/nota" use:enhance class="pr-block" style="margin-top:12px">
 				<input name="body" placeholder="Nota interna (non la vede il cliente)…" required />

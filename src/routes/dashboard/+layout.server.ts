@@ -1,7 +1,6 @@
 import { redirect } from '@sveltejs/kit';
 import { PUBLIC_VAPID_KEY } from '$env/static/public';
 import type { LayoutServerLoad } from './$types';
-import { periz, perizConfigurato } from '$lib/server/periz';
 import { aziendeCounts } from '$lib/server/richieste';
 import { supportoCounts } from '$lib/server/helpdesk';
 import { confirmCounts } from '$lib/server/conferme';
@@ -9,7 +8,6 @@ import { invoiceCounts } from '$lib/server/fatture';
 import { pendingReviews } from '$lib/server/recensioni';
 
 /** Tutta l'area /dashboard richiede un profilo staff o admin. */
-const perizCache = { at: 0, busy: false, approvazioni: 0, notifiche: 0 };
 const countsCache: { at: number; value: Record<string, number> | null } = { at: 0, value: null };
 
 async function menuCounts(supabase: App.Locals['supabase']): Promise<Record<string, number>> {
@@ -29,17 +27,6 @@ async function menuCounts(supabase: App.Locals['supabase']): Promise<Record<stri
 	if (az.nuove) counts.aziende = az.nuove;
 	if (az.daSollecitare) counts.preventivi = az.daSollecitare;
 	if (sup.daLeggere) counts.supporto = sup.daLeggere;
-	// la dashboard PERIZ (servizio esterno): valori in memoria, aggiornati in sottofondo ogni 5 minuti, mai attesi
-	if (perizConfigurato()) {
-		if (Date.now() - perizCache.at > 5 * 60 * 1000 && !perizCache.busy) {
-			perizCache.busy = true;
-			Promise.all([periz.contenuti(), periz.notifiche(50)]).then(([c, n]) => {
-				perizCache.approvazioni = c.ok ? (c.conteggi.in_attesa ?? 0) : 0; perizCache.notifiche = n.ok ? (n.nonLette ?? 0) : 0; perizCache.at = Date.now();
-			}).catch(() => {}).finally(() => { perizCache.busy = false; });
-		}
-		if (perizCache.approvazioni) counts.approvazioni = perizCache.approvazioni;
-		if (perizCache.notifiche) counts.notifiche = perizCache.notifiche;
-	}
 	return counts;
 }
 

@@ -1,6 +1,7 @@
 import { fail } from '@sveltejs/kit';
 import { groupOrders, ORDER_STATUS, type OrderRow } from '$lib/dashboard/orders';
 import { ensurePlan, operatorName } from '$lib/server/produzione';
+import { righeDelGruppo, aggiornaGruppo, cambiaStato } from '$lib/server/ordini-gruppo';
 import { inviaRichiestaRecensione } from '$lib/server/recensioni';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -17,20 +18,6 @@ export const load: PageServerLoad = async ({ url, locals: { supabase } }) => {
 /* La "chiave" di un ordine e' il checkout_group, ma gli ordini che non ce l'hanno (manuali e quelli
    vecchi) sono identificati dall'id della riga: le azioni devono cercare in tutti e due i modi,
    altrimenti rispondono "ordine non trovato". */
-const UUID = /^[0-9a-f-]{36}$/i;
-async function righeDelGruppo(supabase: App.Locals['supabase'], key: string): Promise<OrderRow[]> {
-	const { data } = await supabase.from('orders').select('*').eq('checkout_group', key);
-	if (data?.length) return data as OrderRow[];
-	if (!UUID.test(key)) return [];
-	const { data: uno } = await supabase.from('orders').select('*').eq('id', key);
-	return (uno ?? []) as OrderRow[];
-}
-/** aggiorna tutte le righe dell'ordine, qualunque sia la chiave */
-async function aggiornaGruppo(supabase: App.Locals['supabase'], key: string, patch: Record<string, unknown>, rows: OrderRow[]) {
-	const ids = rows.map((r) => r.id);
-	return supabase.from('orders').update(patch).in('id', ids);
-}
-
 export const actions: Actions = {
 	/** "Inizia produzione": l'ordine entra nella coda (stato in produzione, prima lavorazione stampa, piano delle lavorazioni creato) */
 	produzione: async ({ request, locals: { supabase, user } }) => {
@@ -56,17 +43,8 @@ export const actions: Actions = {
 	/** cambio stato veloce dalla tendina in lista (stessa logica della scheda ordine) */
 	stato: async ({ request, locals: { supabase, user } }) => {
 		const f = await request.formData();
-		const key = String(f.get('group') ?? ''); const status = String(f.get('status') ?? '');
-		if (!ORDER_STATUS[status]) return fail(400, { error: 'Stato non valido.' });
-		const rows = await righeDelGruppo(supabase, key);
-		if (!rows.length) return fail(404, { error: 'Ordine non trovato.' });
-		const patch: Record<string, unknown> = { status, prod_stage: status === 'in_produzione' ? 'stampa' : null };
-		if (status === 'consegnato') patch.delivered_at = new Date().toISOString();
-		if (status === 'spedito') patch.shipped_at = new Date().toISOString();
-		const { error } = await aggiornaGruppo(supabase, key, patch, rows);
-		if (error) return fail(400, { error: error.message });
-		await ensurePlan(supabase, (await righeDelGruppo(supabase, key)) as OrderRow[], await operatorName(supabase, user));
-		return { ok: true, message: `${groupOrders(rows)[0].number}: stato aggiornato a "${ORDER_STATUS[status].label}".` };
+		const r = await cambiaStato(supabase, user, String(f.get('group') ?? ''), String(f.get('status') ?? ''));
+		return r.ok ? { ok: true, message: r.message } : fail(r.code, { error: r.error });
 	},
 	star: async ({ request, locals: { supabase } }) => {
 		const f = await request.formData();

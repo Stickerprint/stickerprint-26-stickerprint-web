@@ -129,7 +129,9 @@ export function groupOrders(rows: OrderRow[]): OrderGroup[] {
 		};
 	}).sort((a, b) => b.created_at.localeCompare(a.created_at));
 }
-export const money = (v: number) => new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(v);
+export const money = (v: number) => new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR', useGrouping: 'always' }).format(v);
+/** prezzo unitario: fino a 4 decimali (0,295 €), mai meno di 2 */
+export const moneyUnit = (v: number) => new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR', useGrouping: 'always', minimumFractionDigits: 2, maximumFractionDigits: 4 }).format(v);
 export const dmy = (d: string | null) => (d ? new Intl.DateTimeFormat('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(d)) : '—');
 export function itemMeta(i: OrderRow): string {
 	if (i.description) return i.description;

@@ -89,3 +89,38 @@
 	.mk-week { grid-template-columns: repeat(2, 1fr); }
 	.mk-bars { height: 110px; }
 }
+
+/* ---- area Marketing interna (8/10/2026) ---- */
+.mk-periodo { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.mk-periodo a { background: #fff; border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; font-size: 12.5px; font-weight: 700; color: var(--ink); text-decoration: none; }
+.mk-periodo a.is-active { background: var(--navy); color: #fff; border-color: var(--navy); }
+.mk-consigli { display: grid; gap: 16px; }
+.mk-consigli__testa { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; flex-wrap: wrap; }
+.mk-consigli__testa h3 { margin: 0 0 2px; }
+.mk-verdetti { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+.mk-verdetto { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; display: grid; gap: 8px; align-content: start; background: #fafbfe; }
+.mk-verdetto h4 { margin: 0; }
+.mk-vriga { display: grid; gap: 2px; font-size: 13px; padding-bottom: 8px; border-bottom: 1px dashed var(--line); }
+.mk-vriga:last-child { border-bottom: 0; padding-bottom: 0; }
+.mk-vriga small { color: var(--muted); font-size: 12px; line-height: 1.5; }
+.mk-budget h4, .mk-testo h4 { margin: 0 0 8px; }
+.mk-tbudget td, .mk-tbudget th { font-size: 13px; }
+.mk-testo { border-top: 1px solid var(--line); padding-top: 14px; font-size: 14px; line-height: 1.65; }
+.mk-testo h4 { margin-top: 12px; }
+.mk-testo p { margin: 0 0 8px; }
+.mk-testo ul { margin: 0 0 8px; padding-left: 20px; }
+.mk-testo li { margin-bottom: 4px; }
+.mk-vbtn { background: none; border: 0; padding: 0; cursor: pointer; }
+.mk-link { background: none; border: 0; padding: 0; color: var(--blue-deep); font-weight: 700; cursor: pointer; font-size: 12px; text-decoration: underline; }
+.mk-piatt { display: inline-block; margin-right: 8px; }
+.mk-riga-pausa td { opacity: .72; }
+.mk-canali { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+.mk-canale { display: grid; gap: 10px; align-content: start; }
+.mk-canale__testa { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.mk-canale__testa h3 { margin: 0; }
+.mk-canale__num { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.mk-canale__num div { display: grid; gap: 2px; }
+.mk-canale__num small { font-size: 11px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
+.mk-canale__num b { font-family: var(--font-display); font-size: 20px; }
+.mk-canale__piatt { display: flex; gap: 10px; flex-wrap: wrap; font-size: 12px; color: var(--ink-soft); }
+.mk-mesi td, .mk-mesi th { font-size: 13px; }

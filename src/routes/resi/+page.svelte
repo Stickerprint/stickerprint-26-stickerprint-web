@@ -25,7 +25,7 @@
 		</div>
 		<div class="card" style="padding:28px">
 			{#if form?.ok}
-				<p class="success">Segnalazione ricevuta. La analizziamo e ti rispondiamo a breve.</p>
+				<p class="success">Segnalazione ricevuta! La analizziamo e ti rispondiamo entro 24 ore. Ti abbiamo mandato anche un’email di conferma con il numero della richiesta.</p>
 			{:else}
 				<form class="form2" method="POST" enctype="multipart/form-data" use:enhance={() => { sending = true; return async ({ update }) => { sending = false; await update(); }; }}>
 					<label>Indirizzo email*<input name="email" type="email" required /></label>

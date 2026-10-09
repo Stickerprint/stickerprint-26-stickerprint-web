@@ -1489,6 +1489,7 @@ function autoSegment(){
   S.cands=r.cands;S.ctx0=r.ctx;
   try{verifyAtWork();}catch(e){console.warn('verifica saltata',e);}
   S.chosen=S.cands.length?0:-1;
+  S.sceltaUtente=false;S.cropAuto=false;
   paintAlts();}
 /* Con la SAGOMA lo sfondo va tolto sempre: chi sceglie die-cut non può
    ritrovarsi un rettangolo. La rete di sicurezza "tieni tutto" serve solo
@@ -1496,7 +1497,17 @@ function autoSegment(){
    Il disegno non si perde lo stesso, perché viene rimesso dentro la sagoma
    ritagliato sul tracciato (vedi buildCut / inkLayer). */
 function geoIdx(){
-  if($('shp').value!=='diecut')return S.chosen;
+  if($('shp').value!=='diecut'){
+    /* ETICHETTA IMPAGINATA SU UN FOGLIO (THE BULL, 7/10/2026): il file e' un disegno piccolo in
+       mezzo a un grande sfondo uniforme (meno del 60% dell'immagine, niente sul bordo). La rete di
+       sicurezza "tieni tutto" vince (lo sfondo a grana di carta da' punteggi bassi a tutti), ma
+       dentro un rettangolo o un tondo il cliente vedrebbe la sua etichetta minuscola in un campo
+       bianco: si tiene il disegno scontornato, come con la sagoma. Se il cliente ha scelto lui
+       dalla barra ("Rimetti il file com'era") non si tocca. Con la sagoma non cambia niente. */
+    if(!S.sceltaUtente&&S.chosen>=0&&S.cands[S.chosen]&&S.cands[S.chosen].st.kind==='intero'){
+      const i=S.cands.findIndex(c=>c.st.kind!=='intero');
+      if(i>=0&&S.cands[i].keptPct<=0.6&&(S.cands[i].borderTouch||0)<=0.05){S.chosen=i;S.cropAuto=true;}}
+    return S.chosen;}
   if(S.chosen>=0&&S.cands[S.chosen]&&S.cands[S.chosen].st.kind!=='intero')return S.chosen;
   const i=S.cands.findIndex(c=>c.st.kind!=='intero');
   return i>=0?i:S.chosen;}
@@ -1755,7 +1766,12 @@ function computeMask(){
   let m=null,src='';
   if(S.lineSeed){m=lineMask();src='taglio lungo la linea scelta';}
   if(!m&&S.seeds.length){m=manualMask();src='sfondo scelto a mano ('+S.seeds.length+' punti)';}
-  if(!m){m=applyChosen();src='scontorno automatico'+(S.chosen>=0?' · '+S.cands[S.chosen].label:'');}
+  if(!m){m=applyChosen();src='scontorno automatico'+(S.chosen>=0?' · '+S.cands[S.chosen].label:'');
+    /* etichetta scontornata in automatico dentro una forma geometrica (geoIdx): la grana della carta
+       lascia qualche macchiolina isolata lontano dal disegno, e il riquadro del disegno si allarga
+       fino a li' (BOURBON: l'etichetta usciva piccola nel rettangolo). Via i pezzetti sotto lo 0,03%
+       dell'immagine (un quadratino di 20 px su un file da 1500): un elemento vero e' piu' grande */
+    if(S.cropAuto)m=despeckle(m,w,h,0.0003);}
   /* Lo sfondo, per definizione, sta FUORI dal disegno. Se lo scontorno ha
      tolto qualcosa che il disegno racchiude — il tratto nero fra le gambe
      su un fondo nero, le controforme delle lettere — quella non è sfondo,
@@ -3627,10 +3643,11 @@ function rilievoMask(){
   const dNon=(()=>{const nonArt=new Uint8Array(N);for(let i=0;i<N;i++)nonArt[i]=inArt[i]?0:1;return edt2d(nonArt,w,h);})();
   const px=[];const regioni=[];   // regioni di colore uniforme abbastanza grandi
   for(let s0=0;s0<N;s0++){if(vis[s0]||!inArt[s0])continue;
-    let top=0;st[top++]=s0;vis[s0]=1;px.length=0;let touch=false;let r=0,g=0,b=0,nBordo=0,nPerim=0;
+    let top=0;st[top++]=s0;vis[s0]=1;px.length=0;let touch=false;let r=0,g=0,b=0,nBordo=0,nPerim=0,lMin=999,lMax=-1;
     /* la regione cresce a passo locale piccolo sull'immagine sfocata: una sfumatura graduale
        (il disco con la luce al centro) passa, un bordo netto (scritta, pallino) la ferma */
     while(top){const i=st[--top];px.push(i);const p=i*4;r+=db[p];g+=db[p+1];b+=db[p+2];const x=i%w,y=(i/w)|0;
+      {const l=0.299*db[p]+0.587*db[p+1]+0.114*db[p+2];if(l<lMin)lMin=l;if(l>lMax)lMax=l;}
       const fuori=dNon[i]<=9;
       if(fuori){touch=true;nBordo++;}
       let perim=fuori;
@@ -3640,7 +3657,7 @@ function rilievoMask(){
       if(perim)nPerim++;}
     if(px.length<0.02*artArea)continue;
     let x0=w,y0=h,x1=0,y1=0;for(const i of px){const x=i%w,y=(i/w)|0;if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;}
-    regioni.push({px:px.slice(),touch,touchFrac:nPerim?nBordo/nPerim:0,col:[r/px.length,g/px.length,b/px.length],box:[x0,y0,x1,y1],plate:false});}
+    regioni.push({px:px.slice(),touch,touchFrac:nPerim?nBordo/nPerim:0,col:[r/px.length,g/px.length,b/px.length],box:[x0,y0,x1,y1],plate:false,lum:[Math.round(lMin),Math.round(lMax)]});}
   const dcc=(a,c)=>Math.abs(a[0]-c[0])+Math.abs(a[1]-c[1])+Math.abs(a[2]-c[2]);
   /* misure di una regione: raggio massimo inscritto (compattezza) e area dei 'buchi' che
      racchiude (altra grafica dentro di lei) */
@@ -3651,7 +3668,7 @@ function rilievoMask(){
     /* ELEMENTI ADIACENTI: quanti gruppi di pixel di altro colore (di almeno lo 0,05% del disegno)
        confinano con la regione dentro il suo riquadro. Una placca ne ha molti (lettere, figure);
        un soggetto pieno (un sole, un pesce) pochi. Si contano anche gli elementi che sporgono. */
-    const qq=new Int32Array(bwid*bhei);const minB=0.0005*artArea;let nBuchi=0,buchi=0,buchiC=0;
+    const qq=new Int32Array(bwid*bhei);const minB=0.0005*artArea;let nBuchi=0,buchi=0,buchiC=0,maxB=0;
     for(let k0=0;k0<mark.length;k0++){if(mark[k0])continue;const gx=k0%bwid+x0,gy=((k0/bwid)|0)+y0;if(!inArt[gy*w+gx]){mark[k0]=2;continue;}
       let area=0,adiac=false;let hh=0;qq[hh++]=k0;mark[k0]=3;let ex0=bwid,ey0=bhei,ex1=0,ey1=0;
       while(hh){const k=qq[--hh];area++;const x=k%bwid,y=(k/bwid)|0;if(x<ex0)ex0=x;if(x>ex1)ex1=x;if(y<ey0)ey0=y;if(y>ey1)ey1=y;
@@ -3663,8 +3680,8 @@ function rilievoMask(){
         /* conta solo gli elementi COMPATTI (lettere, figure, pallini): una linea sottile e lunga
            (le piume incise in una campitura) e' disegno della campitura stessa, non un elemento sopra */
         const ew=ex1-ex0+1,eh=ey1-ey0+1;const compatto=Math.max(ew,eh)/Math.max(1,Math.min(ew,eh))<3&&area/(ew*eh)>=0.25;
-        if(area>=minB&&compatto){nBuchi++;buchiC+=area;}}}
-    return {rmax:Math.sqrt(md),buchi,nBuchi,buchiC};};
+        if(area>=minB&&compatto){nBuchi++;buchiC+=area;if(area>maxB)maxB=area;}}}
+    return {rmax:Math.sqrt(md),buchi,nBuchi,buchiC,maxB};};
   /* FONDALE GEOMETRICO: il bordo esterno della regione (contro il fuori o contro un altro
      sfondo) sta su un cerchio/ellisse o sul suo rettangolo. Il maiale davanti al disco ha il
      bordo irregolare; il disco, anche se coperto per meta', no. */
@@ -3721,7 +3738,7 @@ function rilievoMask(){
        if(Math.abs(db[p]-cr)+Math.abs(db[p+1]-cg)+Math.abs(db[p+2]-cb)<=60)vicini++;}
      mono=vicini>=0.9*nInk;}}
   for(const rg of regioni){if((mono&&!rg.touch)||rg.plate||rg.px.length<Aedge)continue;
-    const {rmax,nBuchi,buchiC}=misura(rg);const compat=rmax/Math.sqrt(rg.px.length);rg.m={rmax:Math.round(rmax),compat:+compat.toFixed(3),nBuchi,bc:+(buchiC/rg.px.length).toFixed(3),R0:Math.round(R0)};
+    const {rmax,nBuchi,buchiC,maxB}=misura(rg);const compat=rmax/Math.sqrt(rg.px.length);rg.m={rmax:Math.round(rmax),compat:+compat.toFixed(3),nBuchi,bc:+(buchiC/rg.px.length).toFixed(3),mb:+(maxB/rg.px.length).toFixed(3),R0:Math.round(R0)};
     /* Una placca e' sfondo perche' CONTIENE altra grafica: almeno 6 buchi apprezzabili (le
        lettere di una scritta, gli elementi di uno stemma). Un pesce nero con un occhio e
        due denti, un sole pieno, una scritta grassa NON sono placche: vanno in rilievo. */
@@ -3733,6 +3750,16 @@ function rilievoMask(){
     /* una campitura che arriva al taglio con un bordo IRREGOLARE (la sagoma stessa del soggetto:
        il maiale, il pesce) e' placca solo se contiene MOLTA grafica (>=6 elementi: la macchia
        GBZ con lettere, boccali, pallini); un fondale geometrico o interno basta con 3 */
+    /* FONDALE SFUMATO (cielo dietro il fantasma di OUTDOOR TRAILBUSTERS, 7/10/2026): una campitura
+       interna che SFUMA fino quasi al bianco (luminosita' che varia di almeno 60 e arriva a 230) e che
+       ha sopra figure grandi (almeno il 40% della sua area) e' il cielo o il bagliore dietro il
+       soggetto: sfondo, anche se il suo bordo e' irregolare (montagne, cornice a catena). Una lettera
+       cromata sfuma anche lei ma non ha niente sopra; un disco piatto dietro un maiale non sfuma.
+       Le figure sopra devono essere GRANDI (una da sola almeno un quarto della campitura) e la
+       campitura compatta: il corpo sfumato delle lettere di PALETA, allungato e pieno di riflessi
+       piccoli, non e' un cielo. */
+    const sfumato=rg.lum&&(rg.lum[1]-rg.lum[0])>=60&&rg.lum[1]>=230;
+    if(!rg.touch&&sfumato&&compat>=0.15&&buchiC>=0.4*rg.px.length&&maxB>=0.25*rg.px.length){rg.m.cielo=true;segnaPlacca(rg);continue;}
     const geo=geometrica(rg);const molti=nBuchi>=3&&buchiC>=0.06*rg.px.length;
     const contiene=(molti&&(geo||!rg.touch||nBuchi>=6))||(buchiC>=0.4*rg.px.length&&geo);rg.m.geo=geo;
     /* sul bordo del disegno: spessa, compatta, con almeno un quarto del perimetro sul bordo */
@@ -3790,6 +3817,21 @@ function rilievoMask(){
         for(const i of px){const x=i%w-cx,y=((i/w)|0)-cy;const d=Math.sqrt(x*x+y*y);if(d<r0)r0=d;if(d>r1)r1=d;bins[((Math.atan2(y,x)+Math.PI)/(2*Math.PI)*36|0)%36]=1;}
         let ang=0;for(let b=0;b<36;b++)ang+=bins[b];arco=(r1-r0)<0.2*r&&ang>=5;}
       if(sottile||arco){for(const i of px){bg[i]=1;bgOf[i]=kf;}}}}}
+  /* ---- 1d. CODA BIANCA DEL CIELO (OUTDOOR TRAILBUSTERS, 7/10/2026) ----
+     Il cielo sfuma fino al bianco: la parte quasi bianca (luminosita' >= 240, neutra) attaccata alla
+     campitura del cielo e' ancora cielo, non grafica (la fascia chiara all'orizzonte, la neve). Prima
+     veniva confrontata con il cielo azzurro e usciva in rilievo. Si allarga dal cielo passo passo solo
+     sui pixel quasi bianchi: un soggetto bianco (il fantasma) ha il suo contorno scuro e la crescita
+     non lo attraversa. */
+  {const seen=new Uint8Array(N);
+   for(let k=1;k<cols.length;k++){const rg=plateReg[k];if(!rg||!rg.m||!rg.m.cielo)continue;
+     /* pila propria (quella condivisa e' lunga N: con i pixel del cielo piu' quelli nuovi traboccava) */
+     const pila=rg.px.slice();
+     while(pila.length){const i=pila.pop();const x=i%w,y=(i/w)|0;
+       for(const j of [x>0?i-1:-1,x<w-1?i+1:-1,y>0?i-w:-1,y<h-1?i+w:-1]){if(j<0||seen[j]||!inArt[j]||bg[j])continue;seen[j]=1;
+         const q=j*4,r=db[q],g=db[q+1],b=db[q+2];
+         /* quasi bianco o pastello chiarissimo (la sfumatura passa per un celeste pallido prima del bianco) */
+         if(0.299*r+0.587*g+0.114*b>=230&&Math.max(r,g,b)-Math.min(r,g,b)<=45){bg[j]=1;bgOf[j]=k;pila.push(j);}}}}}
   /* ---- 2. rilievo: pixel che si staccano dallo sfondo piu' vicino ---- */
   const nearest=new Int32Array(N);const q=new Int32Array(N);let qh=0,qt=0;
   /* si parte dai pixel di sfondo INTERNI (a 2 px dal confine): quelli sul confine sono
@@ -3911,6 +3953,31 @@ function rilievoMask(){
      for(let t=1;t<=Lv-a+1;t++){const yy=y+t;if(yy>=h)break;if(R[yy*w+x]){b=t;break;}}
      if(b&&a+b-1<=Lv)add.push(i);}
    for(const i of add)R[i]=1;}
+  /* ---- 2c. CORNICE SOTTILE LUNGO IL BORDO (THE BULL, 7/10/2026) ----
+     Un filetto o una fascia sottile che corre lungo un lato del pezzo a ridosso del taglio e' la
+     cornice dell'etichetta, non grafica: Mattia la vuole piatta (in rilievo scritte e filetto
+     centrale, la cornice argento no). Si riconosce cosi': tutti i suoi pixel stanno entro 2 mm dal
+     bordo esterno, e' lunga almeno 3/4 di un lato del disegno ed e' sottile (area entro quella di
+     una fascia di 1,2 mm lungo il suo riquadro). Una scritta vicina al bordo non e' lunga quanto un
+     lato; una cornice spessa e' una placca e segue le regole sopra. */
+  /* scala VERA del pezzo (mm per pixel di lavoro): S.art.w e' la larghezza in mm di TUTTA l'immagine
+     di lavoro (S.mw pixel), quindi si divide per S.mw. (mmpx qui sopra divide per S.bbox.w, la
+     larghezza del solo disegno: su un file con molto sfondo attorno esce il doppio del vero.
+     Le soglie delle regole precedenti sono tarate su quel valore e non si toccano.) */
+  const mmpxV=(S.art&&S.art.w&&S.mw)?(S.art.w/S.mw)/kx:mmpx;
+  {const dMax=(2/mmpxV)*(2/mmpxV), spess=1.2/mmpxV; const lab=new Int32Array(N);let n=0;
+   for(let s0=0;s0<N;s0++){if(lab[s0]||!R[s0])continue;n++;lab[s0]=n;let top=0;st[top++]=s0;px.length=0;let x0=w,x1=0,y0=h,y1=0,vicino=true;
+     while(top){const i=st[--top];px.push(i);const x=i%w,y=(i/w)|0;if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;if(dNon[i]>dMax)vicino=false;
+       for(const j of [x>0?i-1:-1,x<w-1?i+1:-1,y>0?i-w:-1,y<h-1?i+w:-1]){if(j<0||lab[j]||!R[j])continue;lab[j]=n;st[top++]=j;}}
+     const cw=x1-x0+1,ch=y1-y0+1;if(cw<0.75*bw||ch<0.75*bh)continue;
+     /* ANELLO RETTANGOLARE: quasi tutti i pixel stanno a ridosso del proprio riquadro. Le corna
+        a linea di BLECK o il contorno di una figura sagomata seguono anche loro il bordo del
+        pezzo, ma hanno il riquadro pieno di tratti lontani dai lati: restano in rilievo */
+     let aderenti=0;for(const i of px){const x=i%w,y=(i/w)|0;if(Math.min(x-x0,x1-x,y-y0,y1-y)<=spess)aderenti++;}
+     const sottile=px.length<=2*(cw+ch)*spess, rett=aderenti>=0.9*px.length;
+     if(S.rilDebugCornice)console.debug('[cornice] '+JSON.stringify({area:px.length,cw,ch,bw:Math.round(bw),bh:Math.round(bh),vicino,sottile,rett,aderenti,spess:Math.round(spess),dMax:Math.round(dMax)}));
+     if(!vicino||!sottile||!rett)continue;
+     for(const i of px)R[i]=0;}}
   /* ---- 3. pulizia minima ---- */
   {const Amin=Math.max(4,Math.round((0.35/mmpx)*(0.35/mmpx))), Ahole=Math.max(4,Math.round((0.2/mmpx)*(0.2/mmpx)));
    const lab=new Int32Array(N);
@@ -3942,7 +4009,7 @@ function rilievoMask(){
   g.putImageData(im,0,0);
   /* spessore locale (distanza dal bordo del rilievo), usato solo dal vecchio mockup 3D */
   const md=new Float32Array(N);{const inv=new Uint8Array(N);for(let i=0;i<N;i++)inv[i]=R[i]?0:1;const dd2=edt2d(inv,w,h);for(let i=0;i<N;i++)if(R[i])md[i]=Math.sqrt(dd2[i]);}
-  S.ril={key,canvas:c,w,h,frac,on:R,md,dbg:{bg,nearest,db,inArt,linee,mono,fileBg,regioni:regioni.map(r=>({area:+(r.px.length/artArea).toFixed(3),touch:r.touch,tf:+r.touchFrac.toFixed(2),plate:r.plate,col:r.col.map(Math.round),box:r.box,m:r.m||null,gd:r.geoDbg||null}))}};
+  S.ril={key,canvas:c,w,h,frac,on:R,md,dbg:{bg,bgOf,nearest,db,inArt,dNon,linee,mono,fileBg,regioniRaw:S.rilDebugRaw?regioni:null,regioni:regioni.map(r=>({area:+(r.px.length/artArea).toFixed(3),touch:r.touch,tf:+r.touchFrac.toFixed(2),plate:r.plate,col:r.col.map(Math.round),lum:r.lum,box:r.box,m:r.m||null,gd:r.geoDbg||null}))}};
   try{console.debug('[rilievo] '+Math.round(frac*100)+'% del disegno in rilievo, '+w+'x'+h+' in '+Math.round(performance.now()-t0)+' ms');}catch(e){}
   return S.ril;}
 
@@ -4820,12 +4887,12 @@ function bgFixBar(){
     if(cutIdx<0){box.innerHTML='';return;}
     box.innerHTML='<div class="fixbar">Dentro la forma vedi il file <b>com\'è</b>, con il suo fondo.'+
       '<button id="bgSwap">Voglio solo il disegno, senza fondo</button></div>';
-    $('bgSwap').onclick=()=>{S.chosen=cutIdx;S.seeds=[];S.lineSeed=null;refresh(true);};
+    $('bgSwap').onclick=()=>{S.chosen=cutIdx;S.sceltaUtente=true;S.seeds=[];S.lineSeed=null;refresh(true);};
   }else{
     if(keepIdx<0){box.innerHTML='';return;}
     box.innerHTML='<div class="fixbar">Dentro la forma ho messo <b>solo il disegno</b>, senza il suo fondo.'+
       '<button id="bgSwap">Rimetti il file com\'era</button></div>';
-    $('bgSwap').onclick=()=>{S.chosen=keepIdx;S.seeds=[];S.lineSeed=null;refresh(true);};
+    $('bgSwap').onclick=()=>{S.chosen=keepIdx;S.sceltaUtente=true;S.seeds=[];S.lineSeed=null;refresh(true);};
   }}
 
 /* ---- due sezioni: adesivi personalizzati / adesivi resinati ---- */

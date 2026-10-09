@@ -1,11 +1,15 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import { money, dmy } from '$lib/dashboard/orders';
+	import { money, dmy, monthKey, MONTHS } from '$lib/dashboard/orders';
+	import MonthBar from '$lib/components/dashboard/MonthBar.svelte';
 	let { data, form } = $props();
 	let selected = $state<Set<string>>(new Set());
 	let search = $state('');
+	/* come in ordini e fatture: si parte dal mese in corso, l'elenco parla di quel mese */
+	let month = $state<string | null>(data.year === new Date().getFullYear() ? String(new Date().getMonth()) : null);
+	const meseLabel = $derived(month === null ? `tutto il ${data.year}` : month === 'prev' ? `prima del ${data.year}` : month === 'next' ? `dopo il ${data.year}` : `${MONTHS[+month]} ${data.year}`);
 	const keyOf = (d: (typeof data.ddts)[number]) => { const c = (d.data?.customer ?? {}) as Record<string, string>; return c.vat ? 'vat:' + c.vat.replace(/^IT/i, '').trim() : 'name:' + (c.company || d.customer_name || '').toLowerCase().trim(); };
-	const list = $derived(data.ddts.filter((d) => { const q = search.trim().toLowerCase(); if (!q) return true; const c = (d.data?.customer ?? {}) as Record<string, string>; return `${d.number} ${d.customer_name ?? ''} ${d.email ?? ''} ${c.vat ?? ''} ${d.order_number ?? ''}`.toLowerCase().includes(q); }));
+	const list = $derived(data.ddts.filter((d) => { if (month !== null && monthKey(d.issued_at, data.year) !== month) return false; const q = search.trim().toLowerCase(); if (!q) return true; const c = (d.data?.customer ?? {}) as Record<string, string>; return `${d.number} ${d.customer_name ?? ''} ${d.email ?? ''} ${c.vat ?? ''} ${d.order_number ?? ''}`.toLowerCase().includes(q); }));
 	// si possono unire solo DDT della stessa partita IVA: scelto il primo, gli altri clienti si disattivano
 	const activeKey = $derived(selected.size ? keyOf(data.ddts.find((d) => selected.has(d.id))!) : null);
 	const selectable = $derived(list.filter((d) => !d.invoice_id && (!activeKey || keyOf(d) === activeKey)).map((d) => d.id));
@@ -23,6 +27,8 @@
 	</div>
 </div>
 {#if form?.error}<p class="error">{form.error}</p>{/if}
+<MonthBar bind:month year={data.year} items={data.ddts} dateOf={(d: { issued_at: string }) => d.issued_at} amountOf={(d: { data: { total_gross?: number } | null }) => Number(d.data?.total_gross ?? 0)} unit="DDT" />
+<p class="stats5-rif">Stai guardando <b>{meseLabel}</b>: l'elenco qui sotto è solo di {meseLabel}.</p>
 {#if form?.ok && form.made?.length}<p class="success">Fattura {form.made.join(', ')} creata{#if form.ddtCount > 1} da {form.ddtCount} DDT{/if}: <a class="link" href="/dashboard/fatturazione/fatture/{form.invoiceId}">aprila</a>.</p>{/if}
 
 <div class="dcard filters" style="grid-template-columns:1fr auto">
@@ -54,7 +60,7 @@
 					</td>
 				</tr>
 			{:else}
-				<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:30px">Nessun DDT{search ? ' con questo filtro' : ` nel ${data.year}`}. Si generano da In spedizione con "Concludi".</td></tr>
+				<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:30px">Nessun DDT{search ? ' con questo filtro' : ` in ${meseLabel}`}. Si generano da In spedizione con "Concludi".</td></tr>
 			{/each}
 		</tbody>
 	</table>

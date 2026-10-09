@@ -4,7 +4,7 @@ export interface InvoiceMessage { id: number; invoice_id: string; direction: 'in
 /** Ricevuta bancaria (RiBa, codice MP12): addebito alla scadenza, niente bottone. Tutto il resto (bonifici) si puo' pagare subito. */
 export const isRiba = (method: string, xml?: string | null) => xml === 'MP12' || /ricevuta|riba|rid\b|sdd/i.test(method);
 export const dueNow = (p: InvoicePayment[]) => p.filter((x) => x.payable && x.status === 'da_pagare').reduce((a, x) => a + Number(x.amount), 0);
-const eur = (v: number) => new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(v);
+const eur = (v: number) => new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR', useGrouping: 'always' }).format(v);
 const it = (d: string) => new Date(d + 'T12:00:00').toLocaleDateString('it-IT', { day: 'numeric', month: 'long' });
 export function defaultInvoiceEmail(inv: { number: string; issued_at: string; amount_gross: number; billing: Record<string, string> | null; order_numbers?: string[] | null }, payments: InvoicePayment[], sender: string | null): { subject: string; body: string } {
 	const first = (inv.billing?.first_name || '').trim() || inv.billing?.company || '';

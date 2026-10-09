@@ -99,7 +99,7 @@ export function contactAutoReplyEmail(opts: { name: string }) {
 		tag: 'auto-reply',
 		html: layout(
 			`Grazie ${esc(opts.name)}, ci pensiamo noi.`,
-			`<p>La tua richiesta è arrivata in laboratorio. Ti rispondiamo di solito entro un giorno lavorativo.</p>`
+			`<p>La tua richiesta è arrivata in laboratorio. Ti rispondiamo entro 24 ore.</p><p>Nel frattempo prova a dare un’occhiata alle domande frequenti dalla <a href="${SITE}/support" style="color:#1d6bf3;font-weight:700;">pagina di supporto</a>: spesso la risposta è già lì.</p>`
 		)
 	};
 }
@@ -233,13 +233,17 @@ export function quoteAcceptedEmail(o: { name?: string | null; number: string; or
 }
 
 /* ---------- Helpdesk ---------- */
+export function aziendeReceivedEmail(o: { name?: string | null; company?: string | null }) {
+	return { subject: 'Richiesta ricevuta: ti rispondiamo entro 24 ore', tag: 'aziende-received', html: layoutHtml(`Richiesta ${hl('ricevuta')} 🙌`, `<p>Ciao ${esc(o.name || '')},</p><p>la tua richiesta${o.company ? ` per <b>${esc(o.company)}</b>` : ''} è arrivata in laboratorio. Ti rispondiamo <b>entro 24 ore</b> con una proposta su misura: prezzi, tempi e, se serve, qualche domanda sul file.</p><p>Grazie per averci contattato.</p>`, { label: 'Vai al sito', href: 'https://stickerprint.it/aziende' }) };
+}
 export function ticketReceivedEmail(o: { name?: string | null; number: string; href: string }) {
 	const n = esc(o.number);
-	return { subject: `Richiesta ${o.number} ricevuta: ci pensiamo noi`, tag: 'ticket-received', html: layoutHtml(`Richiesta ${n} ${hl('ricevuta')} 🙌`, `<p>Ciao ${esc(o.name || '')},</p><p>la tua richiesta è arrivata in laboratorio con il numero <b>${n}</b>. Di solito rispondiamo entro un giorno lavorativo. Puoi seguire la conversazione e aggiungere dettagli dal link qui sotto.<br>Nel frattempo ti ringrazio per averci contattato.</p>`, { label: 'Vedi la richiesta', href: o.href }) };
+	return { subject: `Richiesta ${o.number} ricevuta: ci pensiamo noi`, tag: 'ticket-received', html: layoutHtml(`Richiesta ${n} ${hl('ricevuta')} 🙌`, `<p>Ciao ${esc(o.name || '')},</p><p>la tua richiesta è arrivata in laboratorio con il numero <b>${n}</b>. Ti rispondiamo entro 24 ore. Puoi seguire la conversazione e aggiungere dettagli dal link qui sotto.</p><p>Nel frattempo prova a dare un’occhiata alle domande frequenti dalla <a href="${SITE}/support" style="color:#1d6bf3;font-weight:700;">pagina di supporto</a>: spesso la risposta è già lì.</p><p>Grazie per averci contattato.</p>`, { label: 'Vedi la richiesta', href: o.href }) };
 }
-export function ticketReplyEmail(o: { name?: string | null; number: string; body: string; author?: string | null; href: string }) {
+export function ticketReplyEmail(o: { name?: string | null; number: string; body: string; author?: string | null; href: string; attachments?: { name: string; href: string }[] }) {
 	const n = esc(o.number);
-	return { subject: `Re: richiesta ${o.number}`, tag: 'ticket-reply', html: layoutHtml(`Novità sulla richiesta ${n} 💬`, `<p>Ciao ${esc(o.name || '')},</p><div style="white-space:pre-wrap;background:#f4f5fa;padding:14px 16px;border-radius:10px;">${esc(o.body)}</div>${o.author ? `<p style="margin-top:10px;color:#8e92b0;font-size:13px;">${esc(o.author)} · Stickerprint</p>` : ''}<p>Per rispondere usa il bottone: la conversazione resta tutta in un posto.</p>`, { label: 'Rispondi', href: o.href }) };
+	const att = o.attachments?.length ? `<p style="margin-top:12px;">📎 In allegato trovi ${o.attachments.map((a) => `<a href="${a.href}" style="color:#1d6bf3;font-weight:700;">${esc(a.name)}</a>`).join(', ')}: ${o.attachments.length === 1 ? 'lo' : 'li'} trovi anche nella pagina della richiesta.</p>` : '';
+	return { subject: `Re: richiesta ${o.number}`, tag: 'ticket-reply', html: layoutHtml(`Novità sulla richiesta ${n} 💬`, `<p>Ciao ${esc(o.name || '')},</p><div style="white-space:pre-wrap;background:#f4f5fa;padding:14px 16px;border-radius:10px;">${esc(o.body)}</div>${att}${o.author ? `<p style="margin-top:10px;color:#8e92b0;font-size:13px;">${esc(o.author)} · Stickerprint</p>` : ''}<p>Per rispondere usa il bottone: la conversazione resta tutta in un posto.</p>`, { label: 'Rispondi', href: o.href }) };
 }
 
 /* ---------- Ordine nato da un preventivo confermato dal cliente (email automatica) ---------- */
@@ -309,4 +313,26 @@ export function integrationRequestEmail(o: { name?: string | null; number: strin
 export function integrationInvoiceEmail(o: { name?: string | null; number: string; invoice: string; amount: string; lines: string[] }) {
 	const n = esc(o.number);
 	return { subject: `Ordine ${o.number}: integrazione ricevuta, fattura ${o.invoice}`, tag: 'order-integration-paid', html: layoutHtml(`Integrazione ${hl('ricevuta')}, si riparte 🚀`, `<p>Ciao ${esc(o.name || '')},</p><p>abbiamo ricevuto <b>${esc(o.amount)}</b> per la modifica dell'ordine <b>${n}</b>. In allegato trovi la fattura <b>${esc(o.invoice)}</b> (la trovi anche nella tua area personale).</p>${o.lines.length ? `<p>L'ordine ora è:</p><ul style="padding-left:18px;">${o.lines.map((l) => `<li>${esc(l)}</li>`).join('')}</ul>` : ''}<p>La produzione riparte subito con la nuova versione.</p>`) };
+}
+
+/** Email di Supabase Auth (conferma account, reset password, magic link, cambio email, invito, codice): le manda il sito via Postmark
+    tramite l'hook "Send Email" di Supabase, con il nostro mittente e la nostra grafica. */
+export type AuthMailKind = 'signup' | 'recovery' | 'magiclink' | 'email_change' | 'invite' | 'reauthentication' | 'email';
+export function authEmail(kind: AuthMailKind, o: { name?: string | null; email: string; href: string; code?: string | null; newEmail?: string | null }) {
+	const name = o.name?.trim() ? `Ciao ${esc(o.name.trim())}` : 'Ciao';
+	const note = `<p style="font-size:13px;color:#8e92b0;">Se non sei stato tu, ignora questa email: non succede nulla.</p>`;
+	switch (kind) {
+		case 'recovery':
+			return { subject: 'Reimposta la password del tuo account Stickerprint', tag: 'auth-recovery', html: layout(`${name}, vuoi cambiare password?`, `<p>Clicca il bottone qui sotto e scegli una password nuova. Il link vale per un'ora.</p>${note}`, { label: 'Reimposta la password', href: o.href }) };
+		case 'magiclink':
+			return { subject: 'Il tuo link per entrare su Stickerprint', tag: 'auth-magiclink', html: layout(`${name}, entra con un clic.`, `<p>Questo link ti fa accedere al tuo account senza password. Vale per un'ora e si usa una volta sola.</p>${note}`, { label: 'Entra nel mio account', href: o.href }) };
+		case 'email_change':
+			return { subject: 'Conferma il nuovo indirizzo email', tag: 'auth-email-change', html: layout(`${name}, confermi il nuovo indirizzo?`, `<p>Hai chiesto di usare <strong>${esc(o.newEmail || o.email)}</strong> per il tuo account Stickerprint. Conferma con il bottone qui sotto.</p>${note}`, { label: 'Conferma il nuovo indirizzo', href: o.href }) };
+		case 'invite':
+			return { subject: 'Sei stato invitato su Stickerprint', tag: 'auth-invite', html: layout(`${name}, ti aspettiamo.`, `<p>Qualcuno ti ha invitato ad aprire un account su Stickerprint. Accetta l'invito e scegli la tua password.</p>`, { label: 'Accetta l’invito', href: o.href }) };
+		case 'reauthentication':
+			return { subject: 'Il tuo codice di verifica Stickerprint', tag: 'auth-code', html: layout(`${name}, ecco il tuo codice.`, `<p>Per confermare l'operazione inserisci questo codice:</p><p style="font-size:30px;font-weight:800;letter-spacing:.2em;text-align:center;color:#0b0b3b;">${esc(o.code || '')}</p><p>Vale per pochi minuti.</p>${note}`) };
+		default:
+			return { subject: 'Conferma il tuo account Stickerprint 🚀', tag: 'auth-signup', html: layout(`${name}, manca solo un clic.`, `<p>Grazie per esserti registrato su Stickerprint. Conferma il tuo indirizzo email con il bottone qui sotto: poi carichi il file, vedi l'anteprima e ordini in un minuto.</p><p>Ogni ordine ti lascia <strong>credito Stickerprint</strong> da usare sul prossimo.</p>${note}`, { label: 'Conferma il mio account', href: o.href }) };
+	}
 }
