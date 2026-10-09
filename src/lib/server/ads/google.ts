@@ -36,7 +36,7 @@ async function chiama<T>(path: string, body: unknown): Promise<T> {
 	}
 	return j as T;
 }
-type Riga = { campaign?: { resourceName: string; id: string; name: string; status: string; advertisingChannelType?: string }; campaignBudget?: { resourceName: string; amountMicros?: string; explicitlyShared?: boolean; totalAmountMicros?: string }; metrics?: { costMicros?: string; impressions?: string; clicks?: string; conversions?: number; conversionsValue?: number }; segments?: { date?: string } };
+type Riga = { campaign?: { resourceName: string; id: string; name: string; status: string; advertisingChannelType?: string }; campaignBudget?: { resourceName: string; amountMicros?: string; explicitlyShared?: boolean; totalAmountMicros?: string }; metrics?: { costMicros?: string; impressions?: string; clicks?: string; conversions?: number; conversionsValue?: number }; segments?: { date?: string; month?: string } };
 async function query(q: string): Promise<Riga[]> {
 	const chunks = await chiama<{ results?: Riga[] }[]>('googleAds:searchStream', { query: q });
 	return chunks.flatMap((c) => c.results ?? []);
@@ -98,4 +98,12 @@ export async function googleBudget(id: string, euroGiorno: number): Promise<void
 export async function googleStato(id: string, on: boolean): Promise<void> {
 	await chiama('campaigns:mutate', { operations: [{ update: { resourceName: `customers/${cid()}/campaigns/${id}`, status: on ? 'ENABLED' : 'PAUSED' }, updateMask: 'status' }] });
 	cache = new Map();
+}
+
+/** Spesa mese per mese (yyyy-mm → euro) fra due date: una query sola, per l'Analisi margini */
+export async function googleSpesaMesi(p: Periodo): Promise<Record<string, number>> {
+	const righe = await query(`SELECT segments.month, metrics.cost_micros FROM customer WHERE ${tra(p)}`);
+	const out: Record<string, number> = {};
+	for (const r of righe) { const k = String(r.segments?.month ?? '').slice(0, 7); if (k) out[k] = (out[k] ?? 0) + eur(r.metrics?.costMicros); }
+	return out;
 }

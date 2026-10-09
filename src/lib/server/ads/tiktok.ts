@@ -5,7 +5,7 @@
  */
 import { env } from '$env/dynamic/private';
 import type { Campagna, CanaleDati, Risultati } from '$lib/marketing/ads-tipi';
-import { type Periodo, periodoPrima, giorniDi } from './periodo';
+import { type Periodo, periodoPrima, giorniDi, mesiDi } from './periodo';
 
 const BASE = 'https://business-api.tiktok.com/open_api/v1.3';
 const VARS = ['TIKTOK_ACCESS_TOKEN', 'TIKTOK_ADVERTISER_ID'];
@@ -75,4 +75,16 @@ export async function tiktokBudget(id: string, euroGiorno: number): Promise<void
 export async function tiktokStato(id: string, on: boolean): Promise<void> {
 	await call('POST', 'campaign/status/update/', { advertiser_id: adv(), campaign_ids: [id], operation_status: on ? 'ENABLE' : 'DISABLE' });
 	cache = new Map();
+}
+
+/** Spesa mese per mese (yyyy-mm → euro) fra due date, per l'Analisi margini.
+ *  Un report per mese (TikTok limita la durata dei periodi), quattro alla volta. */
+export async function tiktokSpesaMesi(p: Periodo): Promise<Record<string, number>> {
+	const mesi = mesiDi(p);
+	const out: Record<string, number> = {};
+	for (let i = 0; i < mesi.length; i += 4) {
+		const parte = await Promise.all(mesi.slice(i, i + 4).map((m) => report('AUCTION_ADVERTISER', ['advertiser_id'], m, ['spend']).then((rs) => [m.da.slice(0, 7), rs.reduce((s, r) => s + num(r.metrics.spend), 0)] as const)));
+		for (const [k, v] of parte) out[k] = v;
+	}
+	return out;
 }

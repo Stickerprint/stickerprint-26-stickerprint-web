@@ -1,6 +1,7 @@
 import { groupOrders, type OrderRow } from '$lib/dashboard/orders';
 import { contestoMargini, indiceFatture, margineOrdine, COLONNE_FATTURA, type FatturaMargine } from '$lib/server/margini';
 import { PARAMETRI, COSTO_SPEDIZIONE_NETTO } from '$lib/margini/costi';
+import { spesaAnno } from '$lib/server/ads/spesa';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ url, locals: { supabase } }) => {
@@ -18,5 +19,7 @@ export const load: PageServerLoad = async ({ url, locals: { supabase } }) => {
 	const firstYear = first ? new Date(first.created_at).getFullYear() : year;
 	const now = new Date().getFullYear();
 	const years = Array.from({ length: Math.max(1, now - Math.min(firstYear, now - 2) + 1) }, (_, i) => now - i);
-	return { year, years, ordini, parametri: { bobina: PARAMETRI.bobina.width, scarto: PARAMETRI.scarto, spedizione: COSTO_SPEDIZIONE_NETTO } };
+	/* la spesa pubblicitaria arriva dopo (le piattaforme sono lente): la pagina si apre subito con gli ordini */
+	const ads = spesaAnno(supabase, year).catch(() => null);
+	return { year, years, ordini, ads, parametri: { bobina: PARAMETRI.bobina.width, scarto: PARAMETRI.scarto, spedizione: COSTO_SPEDIZIONE_NETTO } };
 };
