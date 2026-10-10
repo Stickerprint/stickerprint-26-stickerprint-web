@@ -24,14 +24,14 @@
 				{@const cur = edit[c.id] ?? c.budgetGiorno ?? 0}
 				{@const r = ritorno(c)}
 				<tr class:mk-riga-pausa={c.stato !== 'attiva'}>
-					<td>
+					<td class="mk-td-nome">
 						<b>{c.nome}</b>
 						<div class="osub">{c.obiettivo}{#if c.stato !== 'attiva'} · <span class="mk-chip mk-chip--gray" style="font-size:10px">{c.stato === 'in_pausa' ? 'in pausa' : c.statoOriginale.toLowerCase()}</span>{/if}</div>
 						{#if piattaforme && c.piattaforme && Object.keys(c.piattaforme).length > 1}
 							<div class="osub">{#each Object.entries(c.piattaforme) as [p, x] (p)}<span class="mk-piatt">{PIATT[p] ?? p}: {euro(x.spesa)}{x.conversioni ? ` · ${num(x.conversioni)} ord.` : ''}</span>{/each}</div>
 						{/if}
 					</td>
-					<td style="max-width:260px">
+					<td class="mk-td-verdetto" style="max-width:260px" data-l="Verdetto">
 						{#if g}
 							<button type="button" class="mk-vbtn" onclick={() => (aperta = aperta === c.id ? null : c.id)} title="Perché">
 								<span class="mk-chip {VERDETTO[g.verdetto].chip}">{VERDETTO[g.verdetto].etichetta}</span>
@@ -39,11 +39,11 @@
 							{#if aperta === c.id}<div class="mk-nota" style="margin-top:6px">{g.motivo}</div>{/if}
 						{/if}
 					</td>
-					<td><b>{euro(c.spesa, 2)}</b>{#if c.clic}<div class="osub">{euro(c.spesa / c.clic, 2)} a clic</div>{/if}</td>
-					<td>{num(c.clic)}{#if c.impressioni}<div class="osub">CTR {r1((c.clic / c.impressioni) * 100).toLocaleString('it-IT')}%</div>{/if}</td>
-					<td>{num(c.conversioni)}{#if c.conversioni}<div class="osub">{euro(c.spesa / c.conversioni, 2)} l'uno</div>{/if}</td>
-					<td>{#if r != null}<b>{r.toFixed(1)}×</b><div class="osub">{euro(c.valore)} di ordini</div>{:else if g?.roas != null}<span>{g.roas.toFixed(1)}×</span><div class="osub">stimato</div>{:else}—{/if}</td>
-					<td>
+					<td data-l="Spesa {giorni} gg"><b>{euro(c.spesa, 2)}</b>{#if c.clic}<div class="osub">{euro(c.spesa / c.clic, 2)} a clic</div>{/if}</td>
+					<td data-l="Clic">{num(c.clic)}{#if c.impressioni}<div class="osub">CTR {r1((c.clic / c.impressioni) * 100).toLocaleString('it-IT')}%</div>{/if}</td>
+					<td data-l="Ordini">{num(c.conversioni)}{#if c.conversioni}<div class="osub">{euro(c.spesa / c.conversioni, 2)} l'uno</div>{/if}</td>
+					<td data-l="Ritorno">{#if r != null}<b>{r.toFixed(1)}×</b><div class="osub">{euro(c.valore)} di ordini</div>{:else if g?.roas != null}<span>{g.roas.toFixed(1)}×</span><div class="osub">stimato</div>{:else}—{/if}</td>
+					<td class="mk-td-budget" data-l="Budget al giorno">
 						{#if c.budgetGiorno == null}
 							<span class="osub">{c.budgetTotale != null ? `${euro(c.budgetTotale)} totale` : 'sui gruppi di inserzioni'}</span>
 						{:else if puoAgire && c.budgetModificabile}
@@ -61,7 +61,7 @@
 						{/if}
 					</td>
 					{#if puoAgire}
-						<td style="white-space:nowrap">
+						<td class="mk-td-azioni" style="white-space:nowrap">
 							{#if c.stato === 'attiva' || c.stato === 'in_pausa'}
 								<form method="POST" action="?/stato" use:enhance style="display:inline"><input type="hidden" name="id" value={c.id} /><input type="hidden" name="on" value={c.stato === 'attiva' ? '0' : '1'} /><button class="btn btn--xs {c.stato === 'attiva' ? 'btn--white' : 'btn--green'}" type="submit">{c.stato === 'attiva' ? '⏸ Pausa' : '▶ Riattiva'}</button></form>
 							{/if}

@@ -23,14 +23,14 @@
 {:else if !ga}
 	<div class="mk-err">Google Analytics non risponde: {data.errore}</div>
 {:else}
-	<div class="mk-stats" style="grid-template-columns:repeat(5,1fr)">
+	<div class="mk-stats mk-stats--5">
 		<Stat etichetta="Utenti attivi adesso" valore={ga.attivi == null ? '—' : num(ga.attivi)} nota="in tempo reale" />
 		<Stat etichetta="Sessioni" valore={num(ga.kpi.sessioni)} delta={delta(ga.kpi.sessioni, ga.prima.sessioni)} />
 		<Stat etichetta="Utenti" valore={num(ga.kpi.utenti)} delta={delta(ga.kpi.utenti, ga.prima.utenti)} />
 		<Stat etichetta="Conversioni" valore={num(ga.kpi.conversioni)} delta={delta(ga.kpi.conversioni, ga.prima.conversioni)} />
 		<Stat etichetta="Ricavi (acquisti)" valore={euro(ga.kpi.ricavi, 2)} delta={delta(ga.kpi.ricavi, ga.prima.ricavi)} />
 	</div>
-	<div class="mk-stats" style="grid-template-columns:repeat(4,1fr)">
+	<div class="mk-stats mk-stats--4">
 		<Stat etichetta="Nuovi utenti" valore={num(ga.kpi.nuoviUtenti)} nota="{Math.round((ga.kpi.nuoviUtenti / Math.max(1, ga.kpi.utenti)) * 100)}% degli utenti" />
 		<Stat etichetta="Pagine viste" valore={num(ga.kpi.pagine)} nota="{(ga.kpi.pagine / Math.max(1, ga.kpi.sessioni)).toFixed(1)} a sessione" />
 		<Stat etichetta="Durata media sessione" valore={durata(ga.kpi.durata)} nota="minuti:secondi" />

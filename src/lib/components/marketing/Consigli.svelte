@@ -78,9 +78,9 @@
 					<thead><tr><th>Canale</th><th>Spesa nel periodo</th><th>Budget oggi</th><th>Consigliato</th><th>Quota decisa</th></tr></thead>
 					<tbody>
 						{#each totale.budget.righe as r (r.canale)}
-							<tr><td><b>{NOME_BREVE[r.canale]}</b></td><td>{euro(r.spesaPeriodo)} <small class="osub">({euro(r.spesaGiorno, 1)}/giorno)</small></td><td>{euro(r.budgetGiorno, 1)}/giorno</td><td><b>{euro(r.propostoMese)}/mese</b> <small class="osub">({euro(r.propostoGiorno, 1)}/giorno)</small></td><td>{r.quota != null ? euro(r.quota) : '—'}</td></tr>
+							<tr><td class="mk-td-mese"><b>{NOME_BREVE[r.canale]}</b></td><td data-l="Spesa nel periodo">{euro(r.spesaPeriodo)} <small class="osub">({euro(r.spesaGiorno, 1)}/giorno)</small></td><td data-l="Budget oggi">{euro(r.budgetGiorno, 1)}/giorno</td><td data-l="Consigliato"><b>{euro(r.propostoMese)}/mese</b> <small class="osub">({euro(r.propostoGiorno, 1)}/giorno)</small></td><td data-l="Quota decisa">{r.quota != null ? euro(r.quota) : '—'}</td></tr>
 						{/each}
-						<tr><td><b>Totale</b></td><td></td><td></td><td><b>{euro(totale.budget.totaleMese)}/mese</b></td><td>{totale.budget.tetto != null ? euro(totale.budget.tetto) : 'nessun tetto'}</td></tr>
+						<tr><td class="mk-td-mese"><b>Totale</b></td><td></td><td></td><td data-l="Consigliato"><b>{euro(totale.budget.totaleMese)}/mese</b></td><td data-l="Tetto">{totale.budget.tetto != null ? euro(totale.budget.tetto) : 'nessun tetto'}</td></tr>
 					</tbody>
 				</table>
 				<p class="mk-nota">{totale.budget.motivo}</p>

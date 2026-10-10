@@ -85,7 +85,7 @@
 		<div class="dcard" style="padding:0;overflow-x:auto">
 			<table class="dtable mk-mesi">
 				<thead><tr><th>Mese</th><th>Spesa</th><th>Clic</th><th>Ordini</th><th>Costo per ordine</th><th>Ritorno</th></tr></thead>
-				<tbody>{#each data.mesi as m (m.mese)}<tr><td><b style="text-transform:capitalize">{mese(m.mese)}</b></td><td>{euro(m.spesa)}</td><td>{num(m.clic)}</td><td>{num(m.conversioni)}</td><td>{m.conversioni ? euro(m.spesa / m.conversioni, 2) : '—'}</td><td>{m.valore != null && m.spesa ? `${(m.valore / m.spesa).toFixed(1)}×` : '—'}</td></tr>{/each}</tbody>
+				<tbody>{#each data.mesi as m (m.mese)}<tr><td class="mk-td-mese"><b style="text-transform:capitalize">{mese(m.mese)}</b></td><td data-l="Spesa">{euro(m.spesa)}</td><td data-l="Clic">{num(m.clic)}</td><td data-l="Ordini">{num(m.conversioni)}</td><td data-l="Costo per ordine">{m.conversioni ? euro(m.spesa / m.conversioni, 2) : '—'}</td><td data-l="Ritorno">{m.valore != null && m.spesa ? `${(m.valore / m.spesa).toFixed(1)}×` : '—'}</td></tr>{/each}</tbody>
 			</table>
 			<p class="mk-nota" style="padding:10px 16px">Storico salvato ogni notte dal sito (tabella ads_giorni): parte dal giorno in cui i canali sono stati collegati.</p>
 		</div>
