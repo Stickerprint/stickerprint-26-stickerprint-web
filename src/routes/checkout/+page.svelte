@@ -2,7 +2,7 @@
 	import '$lib/styles/checkout.css';
 	import FreeShippingBar from '$lib/components/FreeShippingBar.svelte';
 	import { shippingGrossFor, isRemote } from '$lib/shipping-rules';
-	import { onMount, tick } from 'svelte';
+	import { onMount, tick, untrack } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { deserialize } from '$app/forms';
 	import { readCart, removeFromCart, updateCartItem, clearCart, type CartItem } from '$lib/cart';
@@ -121,6 +121,11 @@
 	let exElements: StripeElements | null = null;
 	let exHost = $state<HTMLDivElement | undefined>();
 	let walletsShown = $state(false);
+	/* Stripe.js non arrivato (blocco pubblicita', rete aziendale, script bloccato): la carta si paga sulla cassa Stripe esterna */
+	let stripeFailed = $state(false);
+	const cardFallback = $derived(payment === 'card' && !!data.stripeKey && !stripe && stripeFailed);
+	/* totale coperto dal credito: non c'e' niente da incassare, l'ordine si chiude subito */
+	const free = $derived(toPay <= 0);
 	/* ordine gia' creato in attesa del pagamento in pagina: si riusa se il carrello non e' cambiato (una carta rifiutata si puo' riprovare) */
 	let pending: { clientSecret: string; group: string; sig: string } | null = null;
 	const cents = (v: number) => Math.max(50, Math.round(v * 100));
@@ -146,8 +151,9 @@
 	/* Apple Pay / Google Pay: Express Checkout Element (compare solo dove il wallet e' disponibile) */
 	$effect(() => {
 		const host = exHost; const st = stripe;
-		if (!host || !st || !loaded || items.length === 0) return;
-		const els = st.elements({ mode: 'payment', amount: cents(toPay), currency: 'eur', locale: 'it', appearance: { variables: { borderRadius: '10px' } } });
+		if (!host || !st || !loaded || items.length === 0 || free) return;
+		/* l'importo iniziale non e' una dipendenza: ai cambi di totale pensa l'effetto di aggiornamento qui sotto */
+		const els = st.elements({ mode: 'payment', amount: untrack(() => cents(toPay)), currency: 'eur', locale: 'it', appearance: { variables: { borderRadius: '10px' } } });
 		exElements = els;
 		const ex = els.create('expressCheckout', { paymentMethods: { link: 'never', paypal: 'never', amazonPay: 'never', klarna: 'never' }, buttonHeight: 48, layout: { maxColumns: 2, maxRows: 1, overflow: 'never' }, buttonType: { applePay: 'buy', googlePay: 'buy' }, buttonTheme: { applePay: 'black', googlePay: 'black' } });
 		ex.on('ready', (ev: { availablePaymentMethods?: Record<string, boolean> }) => { walletsShown = !!ev.availablePaymentMethods && Object.values(ev.availablePaymentMethods).some(Boolean); });
@@ -155,6 +161,7 @@
 			err = '';
 			if (!canOrder) { err = data.user ? '' : data.guestAllowed ? 'Inserisci la tua email prima di pagare.' : 'Accedi o registrati per completare l’ordine.'; return; }
 			if (!allFiles) { err = 'Manca il file di un prodotto.'; return; }
+			const miss = missingFields(); if (miss) { err = miss; return; }
 			ev.resolve({ emailRequired: false });
 		});
 		ex.on('confirm', async (ev: { paymentFailed: (o?: { reason?: string; message?: string }) => void }) => {
@@ -175,7 +182,12 @@
 		return () => { ex.destroy(); exElements = null; };
 	});
 	$effect(() => { const t = toPay; exElements?.update({ amount: cents(t) }); });
-	onMount(() => { loadStripe().catch((e) => console.error('[stripe.js]', e)); });
+	onMount(() => {
+		loadStripe().catch((e) => { console.error('[stripe.js]', e); stripeFailed = true; });
+		/* dopo 12 secondi senza Stripe.js il bottone porta alla cassa Stripe: il cliente non resta bloccato su "Caricamento…" */
+		const t = setTimeout(() => { if (!stripe) stripeFailed = true; }, 12_000);
+		return () => clearTimeout(t);
+	});
 
 	/* carica i file su Storage e registra l'ordine (in attesa, se il pagamento avviene sul sito); restituisce la risposta del server */
 	async function prepare(paymentKind: string): Promise<{ type: string; data?: Record<string, unknown> }> {
@@ -192,12 +204,15 @@
 					if (!pe) previewUrl = data.supabase.storage.from('order-previews').getPublicUrl(ppath).data.publicUrl;
 				}
 				const extOf = (x: File) => (x.name.split('.').pop() ?? 'bin').toLowerCase().replace(/[^a-z0-9]/g, '') || 'bin';
-				/* file d'ordine: gli utenti registrati scrivono nel bucket direttamente; gli ospiti passano dal server (il bucket non accetta scritture anonime) */
+				/* file d'ordine: gli utenti registrati scrivono nel bucket direttamente; gli ospiti chiedono al server un permesso firmato e poi caricano anche loro direttamente (il bucket non accetta scritture anonime) */
 				const putFile = async (path: string, kf: File) => {
 					if (data.user) { const { error } = await data.supabase.storage.from('order-files').upload(path, kf, { contentType: kf.type || undefined, upsert: true }); if (error) throw new Error(`File non caricato (${kf.name}): ${error.message}`); return; }
-					const fdu = new FormData(); fdu.set('path', path); fdu.set('file', kf);
-					const r = await fetch('/api/order-file', { method: 'POST', body: fdu }).then((x) => x.json()).catch(() => ({ error: 'rete' }));
-					if (!r.ok) throw new Error(`File non caricato (${kf.name}): ${r.error ?? 'errore'}`);
+					/* ospite: permesso firmato dal server, poi il file va dritto su Supabase Storage (le funzioni Vercel rifiutano i corpi oltre 4,5 MB) */
+					const fdu = new FormData(); fdu.set('path', path); fdu.set('size', String(kf.size));
+					const r = await fetch('/api/order-file', { method: 'POST', body: fdu }).then((x) => x.json()).catch(() => ({ error: 'problema di rete, riprova' }));
+					if (!r.ok || !r.token) throw new Error(`File non caricato (${kf.name}): ${r.error ?? 'errore'}`);
+					const { error } = await data.supabase.storage.from('order-files').uploadToSignedUrl(path, String(r.token), kf, { contentType: kf.type || undefined });
+					if (error) throw new Error(`File non caricato (${kf.name}): ${error.message}`);
 				};
 				if (it.product === 'kit_adesivi') {
 					/* kit di adesivi: piu' file in una cartella dell'ordine (cavallotto + adesivo-1..6); file_path = la cartella */
@@ -251,17 +266,28 @@
 		if (result.type === 'success' && result.data?.clientSecret) { pending = { clientSecret: String(result.data.clientSecret), group: String(result.data.group), sig: now }; return pending; }
 		throw new Error(result.type === 'failure' ? String(result.data?.error ?? 'Ordine non inviato.') : 'Ordine non inviato, riprova.');
 	}
+	/* controlli che il server farebbe comunque, ma prima di caricare i file: il codice fiscale non e' un campo `required` del browser */
+	function missingFields(): string {
+		if (!formEl) return 'Modulo non pronto.';
+		const fd = new FormData(formEl);
+		const g = (k: string) => String(fd.get(k) ?? '').trim();
+		if (!g('fiscal_code') && !g('vat')) return 'Inserisci il codice fiscale (o la partita IVA).';
+		return '';
+	}
 	async function onSubmit(e: SubmitEvent) {
 		e.preventDefault();
 		err = '';
 		if (!canOrder) { err = data.user ? '' : data.guestAllowed ? 'Inserisci la tua email.' : 'Accedi o registrati per completare l’ordine.'; return; }
 		if (!allFiles) { err = 'Manca il file di un prodotto.'; return; }
 		if (!formEl) return;
-		const useSaved = payment === 'card' && cardPick !== 'new';
-		if (payment === 'card' && !useSaved && (!cardReady || cardErr)) { err = cardErr || 'Inserisci i dati della carta.'; return; }
+		const miss = missingFields(); if (miss) { err = miss; return; }
+		/* carta scelta ma Stripe.js assente: si paga sulla cassa Stripe esterna (stesso incasso, pagina di Stripe) */
+		const hosted = payment === 'card' && !stripe;
+		const useSaved = payment === 'card' && !hosted && cardPick !== 'new';
+		if (payment === 'card' && !hosted && !free && !useSaved && (!cardReady || cardErr)) { err = cardErr || 'Inserisci i dati della carta.'; return; }
 		submitting = true;
 		try {
-			if (useSaved && stripe) {
+			if (useSaved && stripe && !free) {
 				/* carta salvata: il server prepara il pagamento con quella carta, il browser lo conferma (3D Secure se la banca lo chiede) */
 				const cs = await ensurePending('card');
 				const r = await stripe.confirmCardPayment(cs.clientSecret, { payment_method: cardPick });
@@ -269,7 +295,7 @@
 				await goto(`/checkout/grazie?pi=${encodeURIComponent(r.paymentIntent?.id ?? '')}${express ? '&e=1' : ''}`);
 				return;
 			}
-			if (payment === 'card' && stripe && cardEl) {
+			if (payment === 'card' && stripe && cardEl && !free) {
 				/* carta inserita in pagina: ordine in attesa + conferma del pagamento nel browser (3D Secure compreso) */
 				const cs = await ensurePending('card');
 				const fd = new FormData(formEl);
@@ -278,7 +304,14 @@
 				await goto(`/checkout/grazie?pi=${encodeURIComponent(r.paymentIntent?.id ?? '')}${express ? '&e=1' : ''}`);
 				return;
 			}
-			const result = await prepare(payment);
+			/* totale a zero (credito): l'ordine si chiude subito senza cassa, qualunque metodo sia selezionato */
+			const result = await prepare(free ? 'credito' : hosted ? 'stripe' : payment);
+			if (result.type === 'success' && result.data?.clientSecret) {
+				/* il server ha preparato un pagamento in pagina che qui non possiamo confermare: non si svuota il carrello */
+				const fd = new FormData(); fd.set('group', String(result.data.group ?? ''));
+				await fetch('?/annulla', { method: 'POST', body: fd, headers: { 'x-sveltekit-action': 'true' } }).catch(() => {});
+				err = 'Il modulo della carta non è disponibile: ricarica la pagina e riprova.'; submitting = false; return;
+			}
 			if (result.type === 'success' && result.data?.redirect) {
 				/* cassa esterna (PayPal, o Stripe hosted se manca la chiave pubblica): il carrello resta finche' il pagamento non va a buon fine */
 				location.href = String(result.data.redirect);
@@ -383,7 +416,11 @@
 								{/if}
 								<div hidden={cardPick !== 'new'} style="display:{cardPick === 'new' ? 'grid' : 'none'};gap:8px">
 									<p class="co-card__lead">Inserisci i dati della carta per questo ordine{#if !data.user} · <a class="link" href="/login?next=/checkout">Accedi</a> per salvare la carta e ritrovare i tuoi dati la prossima volta{/if}</p>
-									<div class="co-card__box" bind:this={cardHost}>{#if !stripe}<span class="note">Caricamento del modulo carta…</span>{/if}</div>
+									{#if cardFallback}
+										<p class="co-card__lead" style="margin:0">Il modulo della carta non si è caricato (succede con alcuni blocchi pubblicità o reti aziendali). Nessun problema: con <b>Paga</b> vai alla cassa sicura di Stripe e completi lì il pagamento con la carta.</p>
+									{:else}
+										<div class="co-card__box" bind:this={cardHost}>{#if !stripe}<span class="note">Caricamento del modulo carta…</span>{/if}</div>
+									{/if}
 									{#if cardErr}<p class="error" style="margin:6px 0 0;font-size:13px">{cardErr}</p>{/if}
 									{#if data.user && data.canSaveCard}<label class="co-save"><input type="checkbox" bind:checked={saveCard} /> Salva la carta nel mio account per i prossimi ordini</label>{/if}
 								</div>
@@ -411,10 +448,10 @@
 				<p class="co-secure"><b>🔒 Pagamento sicuro.</b> Il pagamento viene effettuato subito alla conferma dell’ordine. Ricevi conferma e fattura via email e l’ordine entra in produzione con l’anteprima che hai già visto: nessun passaggio in più.</p>
 
 				{#if err || PAY_ERR}<p class="error" style="margin-top:14px">{err || PAY_ERR}</p>{/if}
-				{#if payment === 'paypal' && (data.paypal || data.online)}
+				{#if payment === 'paypal' && (data.paypal || data.online) && !free}
 					<button class="btn btn--paypal btn--lg co-submit" type="submit" disabled={submitting || !canOrder || !allFiles || items.length === 0}><img src="/icons/footer/paypal.webp" alt="" />{submitting ? 'Ti portiamo su PayPal…' : 'Invia l’ordine e paga con PayPal'}</button>
 				{:else}
-					<button class="btn btn--green btn--lg co-submit" type="submit" disabled={submitting || !canOrder || !allFiles || items.length === 0}>{submitting ? (payment === 'card' ? 'Pagamento in corso…' : data.online && payment !== 'test' ? 'Ti portiamo alla cassa…' : 'Invio in corso…') : payment === 'card' ? `Paga ${eur(toPay)} con carta` : 'Invia il tuo ordine e paga'}</button>
+					<button class="btn btn--green btn--lg co-submit" type="submit" disabled={submitting || !canOrder || !allFiles || items.length === 0}>{submitting ? (free ? 'Invio in corso…' : payment === 'card' && stripe ? 'Pagamento in corso…' : data.online && payment !== 'test' ? 'Ti portiamo alla cassa…' : 'Invio in corso…') : free ? 'Invia il tuo ordine (pagato col credito)' : cardFallback ? `Paga ${eur(toPay)} sulla cassa Stripe` : payment === 'card' ? `Paga ${eur(toPay)} con carta` : 'Invia il tuo ordine e paga'}</button>
 				{/if}
 				<p class="note" style="margin-top:8px">Cliccando su Invia il tuo ordine, accetti la <a class="link" href="/privacy">privacy policy</a> e i <a class="link" href="/termini">termini e condizioni</a> di Stickerprint.</p>
 			</div>

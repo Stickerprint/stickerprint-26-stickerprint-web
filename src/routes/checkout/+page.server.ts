@@ -91,12 +91,13 @@ export const actions: Actions = {
 		const sameBilling = f.get('same_billing') !== 'off';
 		const bill = sameBilling ? { ...ship, ...fiscal } : { first_name: s('b_first_name'), last_name: s('b_last_name'), street: s('b_street'), street2: s('b_street2'), city: s('b_city'), zip: s('b_zip'), province: s('b_province'), country: 'IT', phone: ship.phone, ...fiscal };
 		if (!sameBilling && (!bill.street || !bill.city || !bill.zip || !bill.province)) return fail(400, { error: 'Compila l’indirizzo di fatturazione.' });
-		const payment = s('payment') || (stripeConfigured() ? 'stripe' : 'test');
-		const inline = (payment === 'card' || payment === 'wallet') && stripeConfigured() && !!pub.PUBLIC_STRIPE_PUBLISHABLE_KEY; // carta o wallet inseriti sul sito
-		const online = payment === 'stripe' || payment === 'paypal' || inline;
-		const viaPayPal = payment === 'paypal' && paypalConfigured();
+		let payment = s('payment') || (stripeConfigured() ? 'stripe' : 'test');
+		let inline = (payment === 'card' || payment === 'wallet') && stripeConfigured() && !!pub.PUBLIC_STRIPE_PUBLISHABLE_KEY; // carta o wallet inseriti sul sito
+		let online = payment === 'stripe' || payment === 'paypal' || inline;
+		let viaPayPal = payment === 'paypal' && paypalConfigured();
 		if (online && !stripeConfigured() && !viaPayPal) return fail(400, { error: 'Il pagamento online non è ancora attivo. Per ora usa "Test".' });
-		if (!online && payment !== 'test') return fail(400, { error: 'Metodo di pagamento non valido.' });
+		if (!online && payment !== 'test' && payment !== 'credito') return fail(400, { error: 'Metodo di pagamento non valido.' });
+		if (payment === 'credito' && !user) return fail(400, { error: 'Il Credito Stickerprint si usa solo da un account registrato.' });
 		if (payment === 'test' && (stripeConfigured() || paypalConfigured())) return fail(400, { error: 'L’ordine di prova non è più disponibile: scegli un metodo di pagamento.' });
 		if (online && !admin) return fail(400, { error: 'Pagamento online non disponibile in questo momento.' });
 		const express = f.get('express') === 'on';
@@ -160,6 +161,11 @@ export const actions: Actions = {
 			creditUsed = r2(Math.min(Number(bal ?? 0), totalGross));
 		}
 		const toPay = r2(totalGross - creditUsed);
+		/* credito che copre tutto il totale: non c'e' niente da incassare, niente cassa (Stripe rifiuta gli importi a zero);
+		   l'ordine si chiude subito come pagato col credito, qualunque metodo fosse selezionato */
+		if (payment === 'credito' && (toPay > 0 || creditUsed <= 0)) return fail(400, { error: 'Il credito non copre tutto l’ordine: scegli un metodo di pagamento.' });
+		if (online && creditUsed > 0 && toPay <= 0) payment = 'credito';
+		if (payment === 'credito') { online = false; inline = false; viaPayPal = false; }
 
 		// ordini: UN numero per tutto il carrello, una riga per prodotto (stesso numero, stesso gruppo).
 		// Con pagamento online le righe nascono "in attesa di pagamento" e si chiudono all'incasso (finalizeCheckout).
@@ -189,7 +195,7 @@ export const actions: Actions = {
 				file_path: l.filePath?.startsWith('riordino:') || l.filePath === 'campioni' ? null : l.filePath,
 				notes: [l.reorderOf ? `Riordino di ${l.reorderOf}` : '', l.note ?? ''].filter(Boolean).join(' · ') || null,
 				email, shipping: ship, billing: bill,
-				payment_method: payment === 'card' ? 'stripe' : payment, payment_status: online ? 'pending' : 'test',
+				payment_method: payment === 'card' ? 'stripe' : payment, payment_status: online ? 'pending' : payment === 'credito' ? 'paid' : 'test',
 				discount_code: discountCode, discount_amount: r2(discount * share),
 				credit_used: r2(creditUsed * share), express, checkout_group: group,
 				total_paid: r2(toPay * share),
@@ -219,10 +225,10 @@ export const actions: Actions = {
 		if (shippingNet > 0) invoiceLines.push({ description: isRemote(ship.province) ? 'Spedizione (isole e zone remote)' : 'Spedizione', qty: 1, unit_net: shippingNet, total_net: shippingNet });
 		const payload: CheckoutPayload = { userId: user?.id ?? null, email, firstName: ship.first_name, lastName: ship.last_name, payment: payment === 'card' ? 'stripe' : payment, ship, bill, numbers, invoiceLines, emailLines: invLines, items, productsNet, expressNet, discount, discountCode, creditUsed, vatAmount, totalGross, toPay, express, autoProof };
 		const fdb = admin ?? db;
-		const se = await savePendingCheckout(fdb, group, payload, viaPayPal ? 'paypal' : online ? 'stripe' : 'test');
+		const se = await savePendingCheckout(fdb, group, payload, viaPayPal ? 'paypal' : online ? 'stripe' : payment === 'credito' ? 'credit' : 'test');
 		if (se) return fail(400, { error: `Ordine non registrato: ${se}` });
 		// scadenza unica, anticipata: pagata online (o subito, con l'ordine di prova)
-		await fdb.from('order_payments').insert({ checkout_group: group, seq: 1, method: ({ paypal: 'PayPal', stripe: 'Carta di credito (Stripe)', card: 'Carta di credito (Stripe)', wallet: 'Apple Pay / Google Pay (Stripe)' } as Record<string, string>)[payment] ?? 'Test', due: new Date().toISOString().slice(0, 10), amount: toPay, upfront: true, status: 'da_pagare' });
+		await fdb.from('order_payments').insert({ checkout_group: group, seq: 1, method: ({ paypal: 'PayPal', stripe: 'Carta di credito (Stripe)', card: 'Carta di credito (Stripe)', wallet: 'Apple Pay / Google Pay (Stripe)', credito: 'Credito Stickerprint' } as Record<string, string>)[payment] ?? 'Test', due: new Date().toISOString().slice(0, 10), amount: toPay, upfront: true, status: 'da_pagare' });
 
 		// dati salvati per la prossima volta
 		if (user) {
@@ -280,7 +286,7 @@ export const actions: Actions = {
 				return fail(400, { error: `Pagamento non avviato: ${e instanceof Error ? e.message : 'errore Stripe'}` });
 			}
 		}
-		const fin = await finalizeCheckout(fdb, group, { provider: 'test', ref: null });
+		const fin = await finalizeCheckout(fdb, group, { provider: payment === 'credito' ? 'credit' : 'test', ref: null });
 		return { ok: true, numbers, toPay, invoice: fin.invoice ?? '' };
 	},
 	/** il cliente ha cambiato carrello o metodo dopo aver avviato il pagamento in pagina: l'ordine in attesa viene tolto */

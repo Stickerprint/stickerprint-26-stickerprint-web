@@ -26,7 +26,7 @@ export interface CheckoutPayload {
 	vatAmount: number; totalGross: number; toPay: number; express: boolean; autoProof: boolean[];
 }
 /** Etichetta del metodo nei documenti */
-export const PAYMENT_NAME: Record<string, string> = { paypal: 'PayPal', stripe: 'Carta di credito (Stripe)', wallet: 'Apple Pay / Google Pay (Stripe)', test: 'Test' };
+export const PAYMENT_NAME: Record<string, string> = { paypal: 'PayPal', stripe: 'Carta di credito (Stripe)', wallet: 'Apple Pay / Google Pay (Stripe)', credito: 'Credito Stickerprint', test: 'Test' };
 
 function toBase64(bytes: Uint8Array): string {
 	let bin = '';
@@ -84,7 +84,7 @@ export async function finalizeCheckout(db: DB, group: string, o: { provider: str
 		await db.from('orders').update({ status: 'in_produzione', prod_stage: row.product_slug !== 'campioni' ? 'stampa' : null, payment_status: 'paid' }).eq('id', row.id);
 	}
 	await db.from('orders').update({ payment_status: 'paid' }).eq('checkout_group', group);
-	if (o.provider === 'stripe' || o.provider === 'paypal' || o.provider === 'test') await db.from('order_payments').update({ status: 'pagato', paid_at: paidAt, provider: o.provider, provider_ref: o.ref, note: o.provider === 'test' ? 'ordine di prova' : 'incassato online' }).eq('checkout_group', group).eq('seq', 1);
+	if (o.provider === 'stripe' || o.provider === 'paypal' || o.provider === 'test' || o.provider === 'credit') await db.from('order_payments').update({ status: 'pagato', paid_at: paidAt, provider: o.provider, provider_ref: o.ref, note: o.provider === 'test' ? 'ordine di prova' : o.provider === 'credit' ? 'coperto dal Credito Stickerprint' : 'incassato online' }).eq('checkout_group', group).eq('seq', 1);
 	if (p.creditUsed > 0 && p.userId) await db.from('credit_transactions').insert({ user_id: p.userId, amount: -p.creditUsed, kind: 'spend', order_ref: p.numbers[0], note: `Credito usato sull'ordine ${p.numbers.join(', ')}` });
 	if (p.discountCode) await db.rpc('discount_code_used', { p_code: p.discountCode });
 

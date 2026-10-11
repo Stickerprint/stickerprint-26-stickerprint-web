@@ -21,7 +21,7 @@ progressivamente stickerprint.it (SvelteKit su Cloudflare Pages). Lingua del pro
 
 - `src/routes/+page.svelte` homepage (design da HOME_V4.pdf), dati in `+page.server.ts`
 - `src/routes/login|signup|reset-password|logout|auth/callback` flusso auth
-- `src/routes/checkout/` carrello (localStorage + file in IndexedDB) e ordine: prezzi ricalcolati lato server con il listino, file caricati nel bucket privato `order-files`, numerazione `SP-xxxx`
+- `src/routes/checkout/` carrello (localStorage + file in IndexedDB) e ordine: prezzi ricalcolati lato server con il listino, file caricati nel bucket privato `order-files` (gli ospiti con URL firmato da `/api/order-file`: i file non devono passare dalle funzioni Vercel, che rifiutano i corpi oltre 4,5 MB), numerazione `SP-xxxx`. Se Stripe.js non si carica la carta si paga sulla cassa Stripe esterna; un totale coperto dal credito chiude l'ordine senza cassa (`payment_method` `credito`).
 - `src/routes/account/` area personale cliente (panoramica, ordini con popup Riordina, credito, fatture, dati e indirizzi, pagamenti, recensioni). Tabelle `orders`, `invoices`, `reviews` in `supabase/migrations/0009_customer_area.sql`
 - `src/routes/blog/` blog pubblico (tabelle `posts`, `post_categories`, bucket `blog-media`, migrazione 0008); gestione in `/dashboard/blog`
 - `src/routes/aziende|chi-siamo|support|resi` pagine informative (testi da stickerprint.it); i form salvano in `contact_requests` (migrazione 0007)
