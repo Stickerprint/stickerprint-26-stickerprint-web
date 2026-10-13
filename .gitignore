@@ -9,3 +9,4 @@ node_modules
 vite.config.ts.timestamp-*
 scripts/migrazione/.chiavi
 scripts/migrazione/export/
+veralab-uscita/
