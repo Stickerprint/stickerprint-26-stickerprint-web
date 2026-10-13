@@ -242,7 +242,7 @@ export async function buildDistintaPdf(d: { date: string; rows: DistintaRow[] })
 	const font = await pdf.embedFont(StandardFonts.Helvetica); const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
 	const logo = await pdf.embedPng(b64(LOGO_PNG_B64));
 	const M = 48;
-	const cols: TableCol[] = [{ label: 'Cliente', width: 150, maxLines: 2, bold: true }, { label: 'P.IVA / C.F.', width: 92 }, { label: 'Fattura', width: 58, bold: true }, { label: 'Data', width: 58 }, { label: 'Scadenza', width: 60, bold: true }, { label: 'Importo', width: 81, align: 'right', bold: true }];
+	const cols: TableCol[] = [{ label: 'Cliente', width: 144, maxLines: 2, bold: true }, { label: 'P.IVA / C.F.', width: 90 }, { label: 'Fattura', width: 58, bold: true }, { label: 'Data', width: 64 }, { label: 'Scadenza', width: 64, bold: true }, { label: 'Importo', width: 79, align: 'right', bold: true }];
 	const PER_PAGE = 24;
 	const total = d.rows.reduce((s, r) => s + r.importo, 0);
 	const pages = Math.max(1, Math.ceil(d.rows.length / PER_PAGE));
