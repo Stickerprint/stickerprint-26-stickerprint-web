@@ -13,7 +13,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase } }) => {
 	for (const inv of data) {
 		const b = (inv.billing ?? {}) as Record<string, string>;
 		const cliente = b.company || [b.first_name, b.last_name].filter(Boolean).join(' ') || '—';
-		const piva = b.vat ? `P.IVA ${String(b.vat).replace(/^IT/i, '')}` : b.fiscal_code ? `C.F. ${b.fiscal_code}` : '';
+		const piva = b.vat ? String(b.vat).replace(/^IT/i, '').trim() : b.fiscal_code ? String(b.fiscal_code).toUpperCase() : '';
 		const terms = (inv.payment_terms ?? []) as { due: string; amount: number; method: string }[];
 		if (terms.length) for (const t of terms) rows.push({ cliente, piva, numero: inv.number, data: dmy(inv.issued_at), scadenza: dmy(t.due), importo: Number(t.amount), metodo: t.method || inv.payment_method });
 		else rows.push({ cliente, piva, numero: inv.number, data: dmy(inv.issued_at), scadenza: '—', importo: Number(inv.amount_gross), metodo: inv.payment_method });
