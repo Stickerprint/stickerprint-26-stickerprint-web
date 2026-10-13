@@ -86,7 +86,7 @@ const EPS = 1e-6;
 const ingombro = (c: Cand) => c.w * c.quanti;
 
 /** candidato: un modo di impaginare un soggetto in uno o piu' blocchi tutti uguali */
-export interface Cand {
+interface Cand {
 	/** misure del blocco */
 	w: number;
 	h: number;
@@ -99,7 +99,7 @@ export interface Cand {
 }
 
 /** tutte le griglie sensate per un soggetto, dalla piu' stretta alla piu' larga */
-export function candidati(s: Soggetto, o: MontaOptions): Cand[] {
+function candidati(s: Soggetto, o: MontaOptions): Cand[] {
 	const out: Cand[] = [];
 	const maxW = o.pageW - 2 * o.margin;
 	const maxH = o.maxH - 2 * o.marginY;
@@ -207,7 +207,7 @@ export function montaStriscia(soggetti: Soggetto[], o: MontaOptions): MontaResul
 	return { ok: true, strips: [{ w: o.pageW, h, blocchi }], altezza: h, note };
 }
 
-export function bloccoA(soggetto: number, c: Cand, x: number, y: number, quanti: number): Blocco {
+function bloccoA(soggetto: number, c: Cand, x: number, y: number, quanti: number): Blocco {
 	return {
 		soggetto, x, y, w: c.w, h: c.h, grid: c.grid,
 		pieces: c.dentro.slice(0, quanti).map((p) => ({ x: p.x + x, y: p.y + y, rot: p.rot })),
