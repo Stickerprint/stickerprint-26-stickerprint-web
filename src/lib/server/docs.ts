@@ -233,3 +233,32 @@ export async function buildManifestPdf(m: ManifestData): Promise<Uint8Array> {
 	}
 	return pdf.save();
 }
+
+/* ---------- distinta per la banca: fatture manuali selezionate con P.IVA, importo e scadenza ---------- */
+export interface DistintaRow { cliente: string; piva: string; numero: string; data: string; scadenza: string; importo: number; metodo: string }
+/** Elenco da stampare e depositare in banca con le ricevute bancarie: una riga per scadenza, totale in fondo. Più pagine se serve. */
+export async function buildDistintaPdf(d: { date: string; rows: DistintaRow[] }): Promise<Uint8Array> {
+	const pdf = await PDFDocument.create();
+	const font = await pdf.embedFont(StandardFonts.Helvetica); const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
+	const logo = await pdf.embedPng(b64(LOGO_PNG_B64));
+	const M = 48;
+	const cols: TableCol[] = [{ label: 'Cliente', width: 160, maxLines: 2, bold: true }, { label: 'P.IVA / C.F.', width: 82 }, { label: 'Fattura', width: 60, bold: true }, { label: 'Data', width: 50 }, { label: 'Scadenza', width: 60, bold: true }, { label: 'Importo', width: 87, align: 'right', bold: true }];
+	const PER_PAGE = 24;
+	const total = d.rows.reduce((s, r) => s + r.importo, 0);
+	const pages = Math.max(1, Math.ceil(d.rows.length / PER_PAGE));
+	let y = 0; let page = pdf.addPage([595.28, 841.89]);
+	for (let p = 0; p < pages; p++) {
+		if (p > 0) page = pdf.addPage([595.28, 841.89]);
+		docHeader(page, font, bold, logo, 'DISTINTA RICEVUTE BANCARIE', `${d.rows.length} ${d.rows.length === 1 ? 'scadenza' : 'scadenze'}`, new Date(d.date).toLocaleDateString('it-IT'));
+		y = 700;
+		if (p === 0) { page.drawText(`Fatture da presentare in banca · ${d.rows.length} ${d.rows.length === 1 ? 'riga' : 'righe'} · totale ${eur(total)}`, { x: M, y, size: 10, font, color: gray }); y -= 18; }
+		else { page.drawText(`pagina ${p + 1} di ${pages}`, { x: M, y, size: 9, font, color: gray }); y -= 18; }
+		const chunk = d.rows.slice(p * PER_PAGE, (p + 1) * PER_PAGE);
+		y = drawTable({ page, x: M, y, cols, rows: chunk.map((r) => [r.cliente, r.piva || '—', r.numero, r.data, r.scadenza, eur(r.importo)]), font, bold, size: 9.5, headSize: 8.5, minRowH: 20 });
+		page.drawText('Documento generato da stickerprint.it', { x: M, y: 40, size: 8, font, color: gray });
+		if (pages > 1) page.drawText(`${p + 1}/${pages}`, { x: 547 - font.widthOfTextAtSize(`${p + 1}/${pages}`, 8), y: 40, size: 8, font, color: gray });
+	}
+	y -= 18;
+	drawTotals(page, font, bold, y, [['Scadenze', String(d.rows.length)], ['Totale da incassare', eur(total), true]]);
+	return pdf.save();
+}

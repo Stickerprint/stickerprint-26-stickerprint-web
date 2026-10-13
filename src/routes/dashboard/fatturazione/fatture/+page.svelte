@@ -5,16 +5,22 @@
 	import { invalidateAll } from '$app/navigation';
 	let { data } = $props();
 	let selected = $state<Set<string>>(new Set());
+	const ddtsOf = (inv: { ddt_numbers: string[] | null; ddt_number: string | null }) => inv.ddt_numbers?.length ? inv.ddt_numbers : inv.ddt_number ? [inv.ddt_number] : [];
 	let search = $state('');
+	/* e-commerce (pagate su Stripe/PayPal) o manuali (da DDT e ordini manuali, con scadenze) */
+	let canale = $state<'tutte' | 'ecommerce' | 'manuali'>('tutte');
+	const manuale = (i: { ddt_numbers: string[] | null; ddt_number: string | null; payment_method: string | null }) => ddtsOf(i).length > 0 || !['stripe', 'paypal'].includes((i.payment_method ?? '').toLowerCase());
 	/* come negli ordini: si parte dal mese in corso, elenco e totali parlano di quel mese */
 	let month = $state<string | null>(data.year === new Date().getFullYear() ? String(new Date().getMonth()) : null);
 	const meseLabel = $derived(month === null ? `tutto il ${data.year}` : month === 'prev' ? `prima del ${data.year}` : month === 'next' ? `dopo il ${data.year}` : `${MONTHS[+month]} ${data.year}`);
-	const list = $derived(data.invoices.filter((i) => { if (month !== null && monthKey(i.issued_at, data.year) !== month) return false; const q = search.trim().toLowerCase(); if (!q) return true; const b = i.billing ?? {}; return `${i.number} ${b.company ?? ''} ${b.first_name ?? ''} ${b.last_name ?? ''} ${i.email ?? ''} ${b.vat ?? ''}`.toLowerCase().includes(q); }));
+	const list = $derived(data.invoices.filter((i) => { if (month !== null && monthKey(i.issued_at, data.year) !== month) return false; if (canale === 'manuali' && !manuale(i)) return false; if (canale === 'ecommerce' && manuale(i)) return false; const q = search.trim().toLowerCase(); if (!q) return true; const b = i.billing ?? {}; return `${i.number} ${b.company ?? ''} ${b.first_name ?? ''} ${b.last_name ?? ''} ${i.email ?? ''} ${b.vat ?? ''}`.toLowerCase().includes(q); }));
 	function toggle(id: string) { const s = new Set(selected); s.has(id) ? s.delete(id) : s.add(id); selected = s; }
+	/* distinta per la banca: solo le fatture manuali tra quelle selezionate */
+	const selManuali = $derived([...selected].filter((id) => { const i = data.invoices.find((x) => x.id === id); return i && manuale(i); }));
+	function distinta() { window.open(`/dashboard/fatturazione/fatture/distinta?ids=${selManuali.join(',')}`, '_blank'); }
 	function genXml() { window.open(`/dashboard/fatturazione/fatture/xml?ids=${[...selected].join(',')}`, '_blank'); setTimeout(() => { selected = new Set(); invalidateAll(); }, 1500); }
 	const tot = $derived(list.reduce((s, i) => s + Number(i.amount_gross), 0));
 	const net = $derived(list.reduce((s, i) => s + Number(i.subtotal_net) - Number(i.discount_net) + Number(i.express_net), 0));
-	const ddtsOf = (inv: { ddt_numbers: string[] | null; ddt_number: string | null }) => inv.ddt_numbers?.length ? inv.ddt_numbers : inv.ddt_number ? [inv.ddt_number] : [];
 </script>
 
 <svelte:head><title>Fatture {data.year} | Dashboard</title></svelte:head>
@@ -23,12 +29,16 @@
 	<div><h1>Fatture {data.year}</h1><p class="lead">Generate in automatico dagli ordini e-commerce; per gli ordini manuali nascono dai DDT. Apri una fattura per vederla o modificarla (finché non è stato generato l'XML).</p></div>
 	<div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
 		<div class="year-bar">{#each data.years as y (y)}<a href="?anno={y}" class:is-active={y === data.year}>{y}</a>{/each}</div>
+		<button type="button" class="btn btn--ghost" disabled={selManuali.length === 0} onclick={distinta} title="PDF con intestatario, P.IVA, importo e scadenza delle fatture manuali selezionate, da stampare per la banca">🏦 Distinta per la banca ({selManuali.length})</button>
 		<button type="button" class="btn btn--green" disabled={selected.size === 0} onclick={genXml}>📤 Genera XML fatture elettroniche ({selected.size})</button>
 	</div>
 </div>
 <MonthBar bind:month year={data.year} items={data.invoices} dateOf={(i: { issued_at: string }) => i.issued_at} amountOf={(i: { amount_gross: number }) => Number(i.amount_gross)} unit="fatt." />
 <p class="stats5-rif">Stai guardando <b>{meseLabel}</b>: elenco e totali qui sotto sono solo di {meseLabel}.</p>
-<div class="dcard filters" style="grid-template-columns:1fr"><input type="text" placeholder="Cerca numero, intestatario, email o P.IVA…" bind:value={search} /></div>
+<div class="dcard filters" style="grid-template-columns:1fr auto">
+	<input type="text" placeholder="Cerca numero, intestatario, email o P.IVA…" bind:value={search} />
+	<div class="year-bar" role="group" aria-label="Tipo di fattura">{#each [['tutte', 'Tutte'], ['ecommerce', '🛒 E-commerce'], ['manuali', '✏️ Manuali']] as [k, l] (k)}<a href="?" class:is-active={canale === k} onclick={(e) => { e.preventDefault(); canale = k as typeof canale; selected = new Set(); }}>{l}</a>{/each}</div>
+</div>
 
 <div class="dcard" style="padding:0;overflow-x:auto">
 	<table class="dtable">
