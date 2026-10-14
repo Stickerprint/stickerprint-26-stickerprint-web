@@ -10,9 +10,9 @@
 </script>
 
 <div class="mk-stats" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
-	<Stat etichetta="Spesa" valore={euro(kpi.spesa, 2)} delta={delta(kpi.spesa, prima?.spesa)} nota={spesaMese != null ? `questo mese ${euro(spesaMese, 2)}` : ''} />
-	<Stat etichetta="Ordini" valore={num(kpi.conversioni)} delta={delta(kpi.conversioni, prima?.conversioni)} />
-	<Stat etichetta="Ritorno" valore={r != null ? `${r.toFixed(1)}×` : '—'} delta={delta(r, rp)} nota={r == null ? (valoreStimato ? 'il canale non misura il valore' : 'serve il valore degli ordini') : kpi.valore != null ? `${euro(kpi.valore)} di ordini` : ''} />
-	<Stat etichetta="Costo per ordine" valore={c != null ? euro(c, 2) : '—'} delta={c != null && cp != null ? delta(-c, -cp) : ''} />
-	<Stat etichetta="Clic" valore={num(kpi.clic)} delta={delta(kpi.clic, prima?.clic)} nota={ctr(kpi) != null ? `CTR ${ctr(kpi)!.toFixed(2)}% · ${euro(kpi.clic ? kpi.spesa / kpi.clic : null, 2)} a clic` : ''} />
+	<Stat icona="💸" tono="pink" etichetta="Spesa" valore={euro(kpi.spesa, 2)} delta={delta(kpi.spesa, prima?.spesa)} nota={spesaMese != null ? `questo mese ${euro(spesaMese, 2)}` : ''} />
+	<Stat icona="🛒" tono="green" etichetta="Ordini" valore={num(kpi.conversioni)} delta={delta(kpi.conversioni, prima?.conversioni)} />
+	<Stat icona="📈" tono="blue" etichetta="Ritorno" valore={r != null ? `${r.toFixed(1)}×` : '—'} delta={delta(r, rp)} nota={r == null ? (valoreStimato ? 'il canale non misura il valore' : 'serve il valore degli ordini') : kpi.valore != null ? `${euro(kpi.valore)} di ordini` : ''} />
+	<Stat icona="🎯" tono="orange" etichetta="Costo per ordine" valore={c != null ? euro(c, 2) : '—'} delta={c != null && cp != null ? delta(-c, -cp) : ''} />
+	<Stat icona="👆" tono="purple" etichetta="Clic" valore={num(kpi.clic)} delta={delta(kpi.clic, prima?.clic)} nota={ctr(kpi) != null ? `CTR ${ctr(kpi)!.toFixed(2)}% · ${euro(kpi.clic ? kpi.spesa / kpi.clic : null, 2)} a clic` : ''} />
 </div>

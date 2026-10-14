@@ -44,7 +44,23 @@ export function addToCart(item: Omit<CartItem, 'id' | 'addedAt'>): CartItem {
 	items.push(it);
 	localStorage.setItem(KEY, JSON.stringify(items));
 	emit(items);
+	segnalaAggiunta(it);
 	return it;
+}
+/** codice anonimo del browser: serve solo a contare i visitatori diversi che aggiungono al carrello */
+function visitatore(): string {
+	try { let v = localStorage.getItem('sp-vid'); if (!v) { v = crypto.randomUUID(); localStorage.setItem('sp-vid', v); } return v; } catch { return 'sconosciuto'; }
+}
+/** segnala l'aggiunta alla dashboard (tabella carrello_eventi, letta dalla Panoramica marketing): in sottofondo, mai bloccante */
+function segnalaAggiunta(it: CartItem) {
+	try {
+		const body = JSON.stringify({
+			visitatore: visitatore(), prodotto: it.product, nome: it.productName, forma: it.forma, materiale: it.materiale, finitura: it.finitura ?? null,
+			larghezza_mm: it.w || null, altezza_mm: it.h || null, qta: it.qty, netto: it.net, lordo: it.gross, promo: it.promoId ?? null, pagina: location.pathname,
+			sorgente: it.reorderOf ? 'riordino' : it.product === 'campioni' ? 'campioni' : it.promoId ? 'offerta' : 'configuratore'
+		});
+		fetch('/api/carrello', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, keepalive: true }).catch(() => {});
+	} catch { /* niente: il carrello funziona lo stesso */ }
 }
 export function updateCartItem(id: string, patch: Partial<CartItem>): CartItem[] {
 	const items = readCart().map((i) => (i.id === id ? { ...i, ...patch } : i));

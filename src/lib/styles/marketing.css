@@ -181,3 +181,65 @@
 	.mk .mk-nota { font-size: 11.5px; }
 	.mk .mk-testo { font-size: 13.5px; }
 }
+
+/* ==========================================================================
+   Panoramica rifatta (14/10/2026): sezioni numerate, numeri con icona,
+   schede dei canali con colore e linea della spesa, riquadro del carrello.
+   ========================================================================== */
+.mk-toolbar { align-items: flex-start; }
+.mk-sezione { display: grid; gap: 12px; }
+.mk-sezione__testa { display: flex; gap: 12px; align-items: flex-start; }
+.mk-sezione__testa h2 { margin: 0; font-size: 19px; }
+.mk-sezione__testa .mk-nota { margin-top: 2px; }
+.mk-n { flex: 0 0 auto; width: 28px; height: 28px; border-radius: 999px; background: var(--navy); color: var(--yellow); font-family: var(--font-display); font-weight: 800; font-size: 13px; display: grid; place-items: center; margin-top: 1px; }
+.mk-h4 { margin: 0 0 6px; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+
+/* numeri con icona e tono */
+.mk-stat.has-ico { grid-template-columns: auto 1fr; grid-template-rows: auto auto auto; column-gap: 12px; }
+.mk-stat.has-ico small, .mk-stat.has-ico b, .mk-stat.has-ico .mk-delta { grid-column: 2; }
+.mk-stat__ico { grid-row: 1 / 4; align-self: start; width: 38px; height: 38px; border-radius: 11px; display: grid; place-items: center; font-size: 18px; background: #eef0f5; }
+.mk-stat__ico--blue { background: #e5f0ff; } .mk-stat__ico--green { background: #e1f3e8; } .mk-stat__ico--pink { background: #ffe1f4; } .mk-stat__ico--orange { background: #fff0d6; } .mk-stat__ico--purple { background: #ede4fb; } .mk-stat__ico--gray { background: #eef0f5; }
+
+/* schede dei canali */
+.mk-canale { position: relative; border-top: 4px solid var(--c, var(--blue)); }
+.mk-canale.is-off { border-top-color: #d6d9e6; }
+.mk-canale__testa { gap: 10px; justify-content: flex-start; }
+.mk-canale__testa h3 { flex: 1; min-width: 0; }
+.mk-canale__logo { width: 34px; height: 34px; border-radius: 10px; background: var(--c-soft, #eef0f5); color: var(--c, var(--ink)); font-family: var(--font-display); font-weight: 800; font-size: 17px; display: grid; place-items: center; flex: 0 0 auto; }
+.mk-stato { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+.mk-stato::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: #c9cfdd; }
+.mk-stato--on { color: #1d7a46; } .mk-stato--on::before { background: #22c55e; box-shadow: 0 0 0 3px #dcfce7; }
+.mk-stato--err { color: #b3261e; } .mk-stato--err::before { background: #dc2626; box-shadow: 0 0 0 3px #fee2e2; }
+.mk-stato--off::before { background: #c9cfdd; }
+.mk-canale__spesa { display: grid; grid-template-columns: minmax(0, 1fr) 120px; gap: 10px; align-items: end; padding: 10px 12px; border-radius: 12px; background: var(--c-soft, #f4f5fa); }
+.mk-canale__spesa small { font-size: 11px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
+.mk-canale__spesa b { display: block; font-family: var(--font-display); font-size: 26px; line-height: 1.1; letter-spacing: -0.02em; color: var(--c, var(--ink)); }
+.mk-canale__spesa .mk-delta { font-size: 11.5px; color: var(--muted); }
+.mk-spark { width: 100%; height: 36px; display: block; }
+.mk-canale .mk-canale__num { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.mk-canale .mk-canale__num b { font-size: 18px; }
+
+/* carrello */
+.mk-carrello { display: grid; gap: 14px; }
+.mk-carrello__testa { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; flex-wrap: wrap; }
+.mk-carrello__testa h3 { margin: 0 0 2px; }
+.mk-carrello .mk-periodo button { background: #fff; border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; font: inherit; font-size: 12.5px; font-weight: 700; color: var(--ink); cursor: pointer; }
+.mk-carrello .mk-periodo button.is-active { background: var(--navy); color: #fff; border-color: var(--navy); }
+.mk-carrello .mk-periodo button:disabled { opacity: .5; cursor: default; }
+.mk-carrello .mk-stats > .mk-stat { border-color: #e9ebf3; }
+.mk-carrello__giorni { padding: 4px 0 0; }
+.mk-riga--barra > span { display: grid; gap: 3px; min-width: 0; }
+.mk-riga--barra .mk-prog { display: block; height: 6px; margin-top: 2px; }
+.mk-riga--barra .mk-prog i { background: var(--blue); }
+
+@media (max-width: 820px) {
+	.mk .mk-sezione__testa h2 { font-size: 17px; }
+	.mk .mk-canale .mk-canale__num { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+	.mk .mk-canale__spesa { grid-template-columns: minmax(0, 1fr) 90px; }
+	.mk .mk-canale__spesa b { font-size: 22px; }
+	.mk .mk-stat.has-ico { column-gap: 8px; }
+	.mk .mk-stat__ico { width: 30px; height: 30px; font-size: 15px; border-radius: 9px; }
+	.mk .mk-carrello__testa { flex-direction: column; }
+	.mk .mk-carrello .mk-periodo { flex-wrap: nowrap; overflow-x: auto; max-width: 100%; }
+	.mk .mk-carrello .mk-periodo button { flex: 0 0 auto; padding: 6px 10px; font-size: 12px; }
+}

@@ -155,6 +155,14 @@ export async function generaRating(db: DB, mese: string, definitivo: boolean): P
 	return { ok: true, riga: data as RigaRating };
 }
 
+/** l'ultimo rating salvato dei mesi chiesti (per la Home): definitivo se c'e', altrimenti il provvisorio piu' recente. Una lettura sola, niente ricalcolo. */
+export async function ultimiRating(db: DB, mesi: string[]): Promise<Record<string, RigaRating>> {
+	const { data } = await db.from('margini_rating').select('*').in('mese', mesi).order('generato_il', { ascending: false }).limit(60);
+	const out: Record<string, RigaRating> = {};
+	for (const r of (data ?? []) as RigaRating[]) { const cur = out[r.mese]; if (!cur || (r.definitivo && !cur.definitivo)) out[r.mese] = r; }
+	return out;
+}
+
 /** ultimo rating di ogni mese dell'anno: il definitivo se c'e', altrimenti il provvisorio piu' recente; piu' lo storico delle lettere */
 export async function ratingAnno(db: DB, anno: number): Promise<{ perMese: Record<string, RigaRating>; storico: Record<string, { lettera: string; definitivo: boolean; generato_il: string }[]> }> {
 	const { data } = await db.from('margini_rating').select('*').gte('mese', `${anno}-01`).lte('mese', `${anno}-12`).order('generato_il', { ascending: false }).limit(400);

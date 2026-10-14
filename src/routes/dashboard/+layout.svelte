@@ -13,6 +13,7 @@
 	let menuOpen = $state(false);
 	$effect(() => { void path; menuOpen = false; });
 	const tabs = $derived([
+		{ label: 'Home', icon: '🏠', href: '/dashboard', exact: true },
 		{ label: 'Ordini', icon: '🧾', href: '/dashboard/fatturazione/ordini', count: data.counts?.prove },
 		{ label: 'Spedizioni', icon: '🚀', href: '/dashboard/produzione/spedizioni', count: data.counts?.spedizione },
 		{ label: 'Aziende', icon: '🏢', href: '/dashboard/aziende/richieste', count: data.counts?.aziende },
@@ -21,6 +22,10 @@
 
 	// Menù dal documento del gestionale: PRODUZIONE e DOCUMENTI (qui "Fatturazione"), più le altre sezioni
 	const menu = $derived<{ id: string; title: string; items: { label: string; href: string; exact?: boolean; count?: number }[] }[]>([
+		{ id: 'home', title: 'Home', items: [
+			// il riepilogo del giorno: fatturato, ordini da far partire, nuovi ordini, assistenza, margini (src/lib/server/home.ts)
+			{ label: 'Riepilogo di oggi', href: '/dashboard', exact: true }
+		] },
 		{ id: 'produzione', title: 'Produzione', items: [
 			{ label: 'Da fare oggi', href: '/dashboard/produzione', exact: true, count: data.counts?.daFare },
 			{ label: 'Spedizioni', href: '/dashboard/produzione/spedizioni', count: data.counts?.spedizione }
@@ -176,7 +181,7 @@
 		</div>
 		<!-- telefono: barra in basso con le voci piu' usate -->
 		<nav class="dash__tabs" aria-label="Sezioni principali">
-			{#each tabs as t (t.href)}<a href={t.href} class:is-active={active(t.href, false)}><span class="dash__tab-ico">{t.icon}{#if t.count}<i class="dash__tab-n">{t.count}</i>{/if}</span><span>{t.label}</span></a>{/each}
+			{#each tabs as t (t.href)}<a href={t.href} class:is-active={active(t.href, 'exact' in t && !!t.exact)}><span class="dash__tab-ico">{t.icon}{#if t.count}<i class="dash__tab-n">{t.count}</i>{/if}</span><span>{t.label}</span></a>{/each}
 			<button type="button" class:is-active={menuOpen} onclick={() => (menuOpen = !menuOpen)}><span class="dash__tab-ico">☰</span><span>Menu</span></button>
 		</nav>
 		{#if toasts.length}
