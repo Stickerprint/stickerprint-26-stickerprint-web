@@ -27,6 +27,9 @@
 	const attivo = $derived(sopra ?? selIdx);
 	const colonna = $derived(punti.length > 1 ? (w - PAD.sx - PAD.dx) / (punti.length - 1) : w);
 	const tooltipSx = $derived(attivo < 0 ? 0 : Math.min(Math.max(x(attivo) - 80, 0), w - 160));
+	/* etichette dei mesi: se lo spazio e' poco (telefono) una ogni due, sempre la prima, l'ultima e quella selezionata */
+	const passoLabel = $derived(colonna < 46 ? 2 : 1);
+	const mostraLabel = (i: number) => passoLabel === 1 || i === 0 || i === punti.length - 1 || i === selIdx || (punti.length - 1 - i) % passoLabel === 0;
 </script>
 
 <div class="ln" bind:clientWidth={larghezza} role="img" aria-label="Andamento mese per mese">
@@ -43,7 +46,7 @@
 		{/each}
 		{#if selIdx >= 0}<line x1={x(selIdx)} x2={x(selIdx)} y1={PAD.su} y2={y(0)} class="ln__cursore" />{/if}
 		{#each punti as p, i (p.id)}
-			<text x={x(i)} y={h - 8} class="ln__x" class:is-sel={p.id === selezionato} text-anchor={i === 0 ? 'start' : i === punti.length - 1 ? 'end' : 'middle'}>{p.label}</text>
+			{#if mostraLabel(i)}<text x={x(i)} y={h - 8} class="ln__x" class:is-sel={p.id === selezionato} text-anchor={i === 0 ? 'start' : i === punti.length - 1 ? 'end' : 'middle'}>{p.label}</text>{/if}
 			{#each serie as s, k (s.nome)}
 				<circle cx={x(i)} cy={y(p.valori[k] ?? 0)} r={i === attivo ? 5.5 : 3.5} fill="#fff" stroke={s.colore} class="ln__punto" />
 			{/each}

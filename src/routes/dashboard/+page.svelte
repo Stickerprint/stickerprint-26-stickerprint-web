@@ -58,15 +58,15 @@
 				<small>Fatturato netto · <span style="text-transform:capitalize">{meseLungo(sel.mese)}</span>{#if sel.mese === data.fatturato.meseCorrente} (in corso){/if}</small>
 				<b>{money(sel.totale)}</b>
 				<span class="hm-riep__sotto">
-					<i class="hm-dot" style="background:#0e8bff"></i>E-commerce <strong>{money(sel.ecommerce)}</strong> <em>{quota(sel.ecommerce, sel.totale)} · {sel.fattureEcommerce} fatture</em>
-					<i class="hm-dot" style="background:#050538;margin-left:14px"></i>Manuali <strong>{money(sel.manuale)}</strong> <em>{quota(sel.manuale, sel.totale)} · {sel.fattureManuali} fatture</em>
+					<span class="hm-riep__riga"><i class="hm-dot" style="background:#0e8bff"></i>E-commerce <strong>{money(sel.ecommerce)}</strong> <em>{quota(sel.ecommerce, sel.totale)} · {sel.fattureEcommerce} fatture</em></span>
+					<span class="hm-riep__riga"><i class="hm-dot" style="background:#050538"></i>Manuali <strong>{money(sel.manuale)}</strong> <em>{quota(sel.manuale, sel.totale)} · {sel.fattureManuali} fatture</em></span>
 				</span>
 				{#if delta != null}<span class="hm-delta" class:su={delta > 0} class:giu={delta < 0}>{delta > 0 ? '▲' : delta < 0 ? '▼' : '='} {Math.abs(delta)}% rispetto a {meseLungo(mesePrecedente!.mese)}</span>{/if}
 			</div>
 			<div class="hm-riep__anno">
 				<small>Anno {data.oggi.slice(0, 4)}</small>
 				<b>{money(data.fatturato.anno.totale)}</b>
-				<span class="hm-riep__sotto"><i class="hm-dot" style="background:#0e8bff"></i>E-commerce <strong>{money(data.fatturato.anno.ecommerce)}</strong> <em>{quota(data.fatturato.anno.ecommerce, data.fatturato.anno.totale)}</em><br /><i class="hm-dot" style="background:#050538"></i>Manuali <strong>{money(data.fatturato.anno.manuale)}</strong> <em>{quota(data.fatturato.anno.manuale, data.fatturato.anno.totale)}</em></span>
+				<span class="hm-riep__sotto"><span class="hm-riep__riga"><i class="hm-dot" style="background:#0e8bff"></i>E-commerce <strong>{money(data.fatturato.anno.ecommerce)}</strong> <em>{quota(data.fatturato.anno.ecommerce, data.fatturato.anno.totale)}</em></span><br /><span class="hm-riep__riga"><i class="hm-dot" style="background:#050538"></i>Manuali <strong>{money(data.fatturato.anno.manuale)}</strong> <em>{quota(data.fatturato.anno.manuale, data.fatturato.anno.totale)}</em></span></span>
 			</div>
 		</div>
 	</section>
