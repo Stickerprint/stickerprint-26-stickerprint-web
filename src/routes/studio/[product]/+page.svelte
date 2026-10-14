@@ -1015,7 +1015,7 @@
 	{:else}
 		<div class="st-bench">
 			<div class="st-stage">
-				<EnginePreview bind:this={engine} {file} forma={eForma} {materiale} finitura={showFinish ? finitura : 'lucida'} prodotto={P.engineProduct} foglio={!!P.foglio} rilievo={!!P.rilievo} vetro={!!P.vetro} noang={cavallotto} w={eW} h={eH} {showCut} panel stage={560} onrender={onRender} />
+				<EnginePreview bind:this={engine} {file} forma={eForma} {materiale} finitura={showFinish ? finitura : 'lucida'} prodotto={P.engineProduct} foglio={!!P.foglio} rilievo={!!P.rilievo} vetro={!!P.vetro} noang={cavallotto} w={eW} h={eH} {showCut} panel alts stage={560} onrender={onRender} />
 				<div class="st-bar">
 					<button type="button" class="st-tool" disabled={!rendered} onclick={apriLente}>🔍 Tracciato da vicino</button>
 					{#if !P.vetro}

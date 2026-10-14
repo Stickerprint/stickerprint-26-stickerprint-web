@@ -124,6 +124,17 @@ input.lv::-moz-range-thumb{width:22px;height:22px;border-radius:50%;
 #sheetprev,#foldName,#bFold,#subfold,#bSvg,#bSheet,#qual,.stagebar,
 #bWand,#bLine,#bReset,#fileinfo{display:none !important}
 .hidden{display:none !important}
+/* STUDIO: le maschere che il motore ha scartato restano a disposizione dell'operatore.
+   Si accendono solo con ?alts=1 — il cliente sul sito non le vede. */
+#ppAltsSec{display:none}
+body.conalts #ppAltsSec{display:block}
+#ppAlts{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0}
+#ppAlts .alt{cursor:pointer;border:2px solid var(--line);border-radius:9px;
+  padding:3px;background:#fff;width:58px}
+#ppAlts .alt.on{border-color:var(--blu2);box-shadow:0 0 0 2px rgba(10,149,255,.18)}
+#ppAlts .alt canvas{width:100%;height:auto;display:block;border-radius:6px}
+#ppAlts .alt em{display:block;font-style:normal;font-size:9.5px;line-height:1.25;
+  color:var(--tx2);text-align:center;margin-top:3px;word-break:break-word}
 
 /* ===================== PREPRINT =====================
    Pagina fissa: una schermata, niente scorrimento. L'anteprima vive dentro
@@ -231,6 +242,14 @@ html,body{height:100%;overflow:hidden}
       <button id="ppRimuovi" class="rimuovi"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14.5 3.5l1 2.2 2.2 1-2.2 1-1 2.2-1-2.2-2.2-1 2.2-1 1-2.2z" fill="currentColor"/><path d="M19.4 11.2l.6 1.4 1.4.6-1.4.6-.6 1.4-.6-1.4-1.4-.6 1.4-.6.6-1.4z" fill="currentColor"/><path d="M13.2 8.6L3.6 18.2a1.4 1.4 0 000 2l.2.2a1.4 1.4 0 002 0l9.6-9.6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg><span>Rimuovi sfondo</span></button>
       <div id="ppRimuoviNota" style="font-size:11.5px;color:var(--tx2);margin-top:7px;display:none">
         Lo sfondo non viene stampato: resta il solo disegno.</div>
+    </div>
+
+    <!-- STUDIO (?alts=1): le maschere che il motore ha scartato, per sceglierne un'altra a mano -->
+    <div class="pp-sec" id="ppAltsSec">
+      <div class="pp-h">Come scontornare</div>
+      <div class="alts" id="ppAlts"></div>
+      <div id="ppAltsNota" style="font-size:11.5px;color:var(--tx2);margin-top:6px">
+        Verde = quello che resta dell&rsquo;immagine. Il motore sceglie da s&eacute;: qui puoi cambiare idea.</div>
     </div>
 
     <div class="pp-sec" id="ppGeoSec" style="display:none">
@@ -1508,6 +1527,8 @@ function geoIdx(){
       const i=S.cands.findIndex(c=>c.st.kind!=='intero');
       if(i>=0&&S.cands[i].keptPct<=0.6&&(S.cands[i].borderTouch||0)<=0.05){S.chosen=i;S.cropAuto=true;}}
     return S.chosen;}
+  /* l'operatore ha scelto lui la maschera dalle proposte: comanda la sua, sempre */
+  if(S.sceltaUtente&&S.chosen>=0&&S.cands[S.chosen])return S.chosen;
   if(S.chosen>=0&&S.cands[S.chosen]&&S.cands[S.chosen].st.kind!=='intero')return S.chosen;
   /* DISEGNO AL VIVO (14/10/2026, copertina "Capitan Giorgino"): il file non ha nessuno sfondo da
      togliere, il disegno arriva fino ai quattro bordi. Forzare comunque una rimozione faceva
@@ -4329,7 +4350,9 @@ function renderTile(ppm,withMat,bleedMM){
     d[p+3]=Math.round((S.vetro?58:(clear?209:255))*(cov<1?Math.max(cov,a):1));}
   go.putImageData(id,0,0);return out;}
 function paintAlts(){
-  const box=$('alts');box.innerHTML='';
+  for(const id of ['alts','ppAlts'])paintAltsIn(id);}
+function paintAltsIn(idBox){
+  const box=$(idBox);if(!box)return;box.innerHTML='';
   S.cands.forEach((c,i)=>{
     const div=document.createElement('div');
     div.className='alt'+(i===S.chosen?' on':'');
@@ -4339,7 +4362,7 @@ function paintAlts(){
       id.data[p]=on?255:22;id.data[p+1]=on?45:27;id.data[p+2]=on?149:34;id.data[p+3]=255;}
     g.putImageData(id,0,0);div.appendChild(cv);
     const em=document.createElement('em');em.textContent=c.label;div.appendChild(em);
-    div.onclick=()=>{S.chosen=i;S.seeds=[];S.lineSeed=null;refresh();};
+    div.onclick=()=>{S.chosen=i;S.sceltaUtente=true;S.seeds=[];S.lineSeed=null;refresh();};
     box.appendChild(div);});}
 /* Adatta il canvas al riquadro davvero disponibile: così l'anteprima resta
    centrata e non viene mai tagliata in basso. */
@@ -5136,7 +5159,8 @@ function uBloccaCombinazione(){
   if(c.foglio!==undefined){const v=String(c.foglio).toLowerCase(); S.foglio=!(v===''||v==='0'||v==='false'||v==='no');}
   if(c.rilievo!==undefined){const v=String(c.rilievo).toLowerCase(); S.rilievo=!(v===''||v==='0'||v==='false'||v==='no');}
   if(c.vetro!==undefined){const v=String(c.vetro).toLowerCase(); S.vetro=!(v===''||v==='0'||v==='false'||v==='no'); vetroUI();}
-  try{const qq=new URLSearchParams(location.search); if(qq.get('rildebug')==='1')S.rilDebug=true;}catch(e){}
+  try{const qq=new URLSearchParams(location.search); if(qq.get('rildebug')==='1')S.rilDebug=true;
+    if(qq.get('alts')==='1')document.body.classList.add('conalts');}catch(e){}
   const f=U_FORMA[String(c.forma||'').toLowerCase()];
   if(f){
     CL.shape=f;
