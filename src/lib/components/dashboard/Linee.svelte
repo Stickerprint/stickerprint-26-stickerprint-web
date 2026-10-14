@@ -29,7 +29,7 @@
 	const tooltipSx = $derived(attivo < 0 ? 0 : Math.min(Math.max(x(attivo) - 80, 0), w - 160));
 	/* etichette dei mesi: se lo spazio e' poco (telefono) una ogni due, sempre la prima, l'ultima e quella selezionata */
 	const passoLabel = $derived(colonna < 46 ? 2 : 1);
-	const mostraLabel = (i: number) => passoLabel === 1 || i === 0 || i === punti.length - 1 || i === selIdx || (punti.length - 1 - i) % passoLabel === 0;
+	const mostraLabel = (i: number) => passoLabel === 1 || i === selIdx || (punti.length - 1 - i) % passoLabel === 0;
 </script>
 
 <div class="ln" bind:clientWidth={larghezza} role="img" aria-label="Andamento mese per mese">
