@@ -22,7 +22,6 @@
 		showCut = true,
 		noang = false,
 		hires = false,
-		alts = false,
 		noombra = false,
 		live = false,
 		warm = false,
@@ -44,8 +43,6 @@
 		showCut?: boolean;
 		noang?: boolean;
 		hires?: boolean;
-		/** Studio: mostra le maschere scartate, cosi' l'operatore puo' sceglierne un'altra */
-		alts?: boolean;
 		noombra?: boolean;
 		/** anche prodotto e foglio cambiano via messaggio, senza ricaricare il motore (anteprima in home) */
 		live?: boolean;
@@ -68,7 +65,6 @@
 
 	function buildSrc() {
 		const q = new URLSearchParams({ embed: '1', forma, materiale, prodotto, lamina: finitura });
-		if (alts) q.set('alts', '1');
 		if (foglio) q.set('foglio', '1');
 		if (rilievo) q.set('rilievo', '1');
 		if (vetro) q.set('vetro', '1');

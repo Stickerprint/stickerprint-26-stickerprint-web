@@ -124,17 +124,6 @@ input.lv::-moz-range-thumb{width:22px;height:22px;border-radius:50%;
 #sheetprev,#foldName,#bFold,#subfold,#bSvg,#bSheet,#qual,.stagebar,
 #bWand,#bLine,#bReset,#fileinfo{display:none !important}
 .hidden{display:none !important}
-/* STUDIO: le maschere che il motore ha scartato restano a disposizione dell'operatore.
-   Si accendono solo con ?alts=1 — il cliente sul sito non le vede. */
-#ppAltsSec{display:none}
-body.conalts #ppAltsSec{display:block}
-#ppAlts{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0}
-#ppAlts .alt{cursor:pointer;border:2px solid var(--line);border-radius:9px;
-  padding:3px;background:#fff;width:58px}
-#ppAlts .alt.on{border-color:var(--blu2);box-shadow:0 0 0 2px rgba(10,149,255,.18)}
-#ppAlts .alt canvas{width:100%;height:auto;display:block;border-radius:6px}
-#ppAlts .alt em{display:block;font-style:normal;font-size:9.5px;line-height:1.25;
-  color:var(--tx2);text-align:center;margin-top:3px;word-break:break-word}
 
 /* ===================== PREPRINT =====================
    Pagina fissa: una schermata, niente scorrimento. L'anteprima vive dentro
@@ -244,13 +233,6 @@ html,body{height:100%;overflow:hidden}
         Lo sfondo non viene stampato: resta il solo disegno.</div>
     </div>
 
-    <!-- STUDIO (?alts=1): le maschere che il motore ha scartato, per sceglierne un'altra a mano -->
-    <div class="pp-sec" id="ppAltsSec">
-      <div class="pp-h">Come scontornare</div>
-      <div class="alts" id="ppAlts"></div>
-      <div id="ppAltsNota" style="font-size:11.5px;color:var(--tx2);margin-top:6px">
-        Verde = quello che resta dell&rsquo;immagine. Il motore sceglie da s&eacute;: qui puoi cambiare idea.</div>
-    </div>
 
     <div class="pp-sec" id="ppGeoSec" style="display:none">
       <div class="pp-h">Il tuo file dentro la sagoma</div>
@@ -4350,9 +4332,7 @@ function renderTile(ppm,withMat,bleedMM){
     d[p+3]=Math.round((S.vetro?58:(clear?209:255))*(cov<1?Math.max(cov,a):1));}
   go.putImageData(id,0,0);return out;}
 function paintAlts(){
-  for(const id of ['alts','ppAlts'])paintAltsIn(id);}
-function paintAltsIn(idBox){
-  const box=$(idBox);if(!box)return;box.innerHTML='';
+  const box=$('alts');box.innerHTML='';
   S.cands.forEach((c,i)=>{
     const div=document.createElement('div');
     div.className='alt'+(i===S.chosen?' on':'');
@@ -5159,8 +5139,7 @@ function uBloccaCombinazione(){
   if(c.foglio!==undefined){const v=String(c.foglio).toLowerCase(); S.foglio=!(v===''||v==='0'||v==='false'||v==='no');}
   if(c.rilievo!==undefined){const v=String(c.rilievo).toLowerCase(); S.rilievo=!(v===''||v==='0'||v==='false'||v==='no');}
   if(c.vetro!==undefined){const v=String(c.vetro).toLowerCase(); S.vetro=!(v===''||v==='0'||v==='false'||v==='no'); vetroUI();}
-  try{const qq=new URLSearchParams(location.search); if(qq.get('rildebug')==='1')S.rilDebug=true;
-    if(qq.get('alts')==='1')document.body.classList.add('conalts');}catch(e){}
+  try{const qq=new URLSearchParams(location.search); if(qq.get('rildebug')==='1')S.rilDebug=true;}catch(e){}
   const f=U_FORMA[String(c.forma||'').toLowerCase()];
   if(f){
     CL.shape=f;
