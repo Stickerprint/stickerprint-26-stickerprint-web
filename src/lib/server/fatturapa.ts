@@ -13,6 +13,19 @@ const n2 = (v: number) => (Math.round(v * 100) / 100).toFixed(2);
 /* da 2 a 8 decimali (lo schema vuole almeno 2: "8.2" viene scartato, "8.20" no) */
 const n8 = (v: number) => { const t = v.toFixed(8).replace(/0+$/, ''); const d = t.split('.')[1]?.length ?? 0; return d >= 2 ? t : v.toFixed(2); };
 const VAT = COMPANY.vatRate;
+/* spezza un testo in pezzi di al massimo 200 caratteri, preferibilmente dopo una virgola (Causale = String200LatinType) */
+export function spezza200(testo: string, max = 200): string[] {
+	const out: string[] = [];
+	let resto = testo.trim();
+	while (resto.length > max) {
+		let cut = resto.lastIndexOf(', ', max - 1);
+		if (cut < max / 2) cut = resto.lastIndexOf(' ', max - 1);
+		if (cut >= max / 2) { out.push(resto.slice(0, cut + (resto[cut] === ',' ? 1 : 0)).trim()); resto = resto.slice(cut + 1).trim(); }
+		else { out.push(resto.slice(0, max)); resto = resto.slice(max); }
+	}
+	if (resto) out.push(resto);
+	return out;
+}
 
 /** XML FatturaPA (FPR12) per lo SDI, da inviare tramite Sibill. Progressivo = numero fattura senza prefisso. */
 export function buildFatturaPaXml(inv: FpaInvoice, progressivo: string): { xml: string; filename: string } {
@@ -48,7 +61,11 @@ export function buildFatturaPaXml(inv: FpaInvoice, progressivo: string): { xml: 
 		return `<DatiDDT><NumeroDDT>${esc(n)}</NumeroDDT><DataDDT>${date}</DataDDT>${refs.map((r) => `<RiferimentoNumeroLinea>${r}</RiferimentoNumeroLinea>`).join('')}</DatiDDT>`;
 	}).join('');
 	const payText = PAY_LABEL[inv.payment_method ?? ''] ?? inv.payment_method ?? '';
-	const causale = `<Causale>${esc([ddtList.length ? `DDT collegati: ${ddtList.join(', ')}` : '', inv.order_numbers?.length ? `Ordine ${inv.order_numbers.join(', ')}` : '', payText && (inv.payment_method === 'paypal' || inv.payment_method === 'stripe') ? `Pagato con ${payText}` : payText ? `Pagamento: ${payText}` : ''].filter(Boolean).join(' - ') || 'Vendita')}</Causale>`;
+	// Causale: lo schema ammette al massimo 200 caratteri per elemento (String200LatinType), ma l'elemento si puo' ripetere:
+	// un <Causale> per voce (DDT, ordini, pagamento) e le voci lunghe spezzate alle virgole. Una causale sola da 253 caratteri
+	// ha fatto scartare la SPF00362 (Metrica, 10 DDT e 10 ordini) il 14/10/2026
+	const voci = [ddtList.length ? `DDT collegati: ${ddtList.join(', ')}` : '', inv.order_numbers?.length ? `Ordine ${inv.order_numbers.join(', ')}` : '', payText && (inv.payment_method === 'paypal' || inv.payment_method === 'stripe') ? `Pagato con ${payText}` : payText ? `Pagamento: ${payText}` : ''].filter(Boolean);
+	const causale = (voci.length ? voci.flatMap((v) => spezza200(v)) : ['Vendita']).map((c) => `<Causale>${esc(c)}</Causale>`).join('');
 	const terms = inv.payment_terms?.length ? inv.payment_terms : [{ due: inv.issued_at, amount: 0, method: payText, xml_code: payMode }];
 	const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <p:FatturaElettronica versione="FPR12" xmlns:p="http://ivaservizi.agenziaentrate.gov.it/docs/xsd/fatture/v1.2" xmlns:ds="http://www.w3.org/2000/09/xmldsig#" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://ivaservizi.agenziaentrate.gov.it/docs/xsd/fatture/v1.2 http://www.fatturapa.gov.it/export/fatturazione/sdi/fatturapa/v1.2/Schema_del_file_xml_FatturaPA_versione_1.2.xsd">
