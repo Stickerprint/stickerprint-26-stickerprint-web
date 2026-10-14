@@ -1509,8 +1509,38 @@ function geoIdx(){
       if(i>=0&&S.cands[i].keptPct<=0.6&&(S.cands[i].borderTouch||0)<=0.05){S.chosen=i;S.cropAuto=true;}}
     return S.chosen;}
   if(S.chosen>=0&&S.cands[S.chosen]&&S.cands[S.chosen].st.kind!=='intero')return S.chosen;
+  /* DISEGNO AL VIVO (14/10/2026, copertina "Capitan Giorgino"): il file non ha nessuno sfondo da
+     togliere, il disegno arriva fino ai quattro bordi. Forzare comunque una rimozione faceva
+     sparire la fascia scura in alto e il taglio seguiva le lettere del titolo: il motore aveva
+     dato 0,048 a "tieni tutto" e 0,0001 alla rimozione, e noi usavamo lo stesso la rimozione.
+     Se il bordo dell'immagine non e' di un colore solo, non c'e' sfondo: si tiene tutto e la
+     sagoma segue il bordo del disegno. */
+  if(bordoUniforme()<0.5)return S.chosen;
+  /* Fra le rimozioni si prende la meno distruttiva, non la prima in classifica: `sicuri` dice
+     quanta grafica CERTA (lontanissima dal colore di sfondo) quella maschera butterebbe via. */
+  let best=-1;
+  for(let k=0;k<S.cands.length;k++){const c=S.cands[k];
+    if(c.st.kind==='intero')continue;
+    if((c.sicuri===undefined?1:c.sicuri)<0.9)continue;
+    if(best<0||c.score>S.cands[best].score)best=k;}
+  if(best>=0)return best;
   const i=S.cands.findIndex(c=>c.st.kind!=='intero');
   return i>=0?i:S.chosen;}
+/* Quanto e' uniforme il bordo dell'immagine: 1 = tutti i pixel sul bordo hanno lo stesso colore
+   (c'e' uno sfondo da togliere), verso 0 = il bordo e' tutto diverso (il disegno arriva al vivo).
+   Misurato su 23 file veri dei clienti: 21 stanno sopra il 90%, sotto il 50% ci finiscono solo le
+   foto a pieno campo, cioe' proprio quelle da non scontornare. */
+function bordoUniforme(){
+  if(!S.work)return 1;
+  const d=S.work.data,w=S.work.w,h=S.work.h,px=[];
+  const g=(x,y)=>{const p=(y*w+x)*4;if(d[p+3]>=128)px.push([d[p],d[p+1],d[p+2]]);};
+  for(let x=0;x<w;x++){g(x,0);g(x,h-1);}
+  for(let y=0;y<h;y++){g(0,y);g(w-1,y);}
+  if(px.length<40)return 1;
+  const ref=modeColor(px),tol2=Math.pow(0.12*255*Math.sqrt(3),2);
+  let n=0;for(const c of px){const dr=c[0]-ref[0],dg=c[1]-ref[1],db=c[2]-ref[2];
+    if(dr*dr+dg*dg+db*db<=tol2)n++;}
+  return n/px.length;}
 /* Soglia anti-puntini per la GEOMETRIA: molto più bassa di quella usata per
    dare il punteggio. Il rumore di un JPEG sono macchie di 1-4 px; a 0,006%
    tolgo quelle e non tocco lettere, trattini e dettagli veri, che prima
