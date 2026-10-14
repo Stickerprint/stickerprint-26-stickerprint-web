@@ -5,7 +5,7 @@
 	 */
 	import Stat from './Stat.svelte';
 	import { num, euro, segno } from '$lib/marketing/formato';
-	import { PERIODI_CARRELLO, type PeriodoCarrello, type StatoCarrello } from '$lib/server/carrello';
+	import { PERIODI_CARRELLO, type PeriodoCarrello, type StatoCarrello } from '$lib/marketing/carrello';
 	let { dati }: { dati: StatoCarrello } = $props();
 	let periodo = $state<PeriodoCarrello>('oggi');
 	const r = $derived(dati.stato === 'dati' ? dati.riassunti[periodo] : null);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { riassumi, type EventoCarrello } from './carrello';
+import { riassumi, type EventoCarrello } from '$lib/marketing/carrello';
 
 const ev = (creato_il: string, p: Partial<EventoCarrello> = {}): EventoCarrello => ({ id: crypto.randomUUID(), creato_il, visitatore: 'v1', prodotto: 'adesivi_personalizzati', nome: 'Adesivi Personalizzati', forma: null, materiale: null, finitura: null, larghezza_mm: null, altezza_mm: null, qta: 50, netto: 20, lordo: 24.4, sorgente: 'configuratore', promo: null, dispositivo: 'mobile', ...p });
 

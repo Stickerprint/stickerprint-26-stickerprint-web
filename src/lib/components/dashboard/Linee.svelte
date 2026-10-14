@@ -23,7 +23,8 @@
 	const area = (k: number) => `${linea(k)} L${x(punti.length - 1).toFixed(1)},${y(0).toFixed(1)} L${x(0).toFixed(1)},${y(0).toFixed(1)} Z`;
 
 	let sopra = $state<number | null>(null);
-	const attivo = $derived(sopra ?? punti.findIndex((p) => p.id === selezionato));
+	const selIdx = $derived(punti.findIndex((p) => p.id === selezionato));
+	const attivo = $derived(sopra ?? selIdx);
 	const colonna = $derived(punti.length > 1 ? (w - PAD.sx - PAD.dx) / (punti.length - 1) : w);
 	const tooltipSx = $derived(attivo < 0 ? 0 : Math.min(Math.max(x(attivo) - 80, 0), w - 160));
 </script>
@@ -40,20 +41,20 @@
 		{#each serie as s, k (s.nome)}
 			<path d={linea(k)} stroke={s.colore} class="ln__linea" />
 		{/each}
-		{#if attivo >= 0}<line x1={x(attivo)} x2={x(attivo)} y1={PAD.su} y2={y(0)} class="ln__cursore" />{/if}
+		{#if selIdx >= 0}<line x1={x(selIdx)} x2={x(selIdx)} y1={PAD.su} y2={y(0)} class="ln__cursore" />{/if}
 		{#each punti as p, i (p.id)}
 			<text x={x(i)} y={h - 8} class="ln__x" class:is-sel={p.id === selezionato} text-anchor={i === 0 ? 'start' : i === punti.length - 1 ? 'end' : 'middle'}>{p.label}</text>
 			{#each serie as s, k (s.nome)}
 				<circle cx={x(i)} cy={y(p.valori[k] ?? 0)} r={i === attivo ? 5.5 : 3.5} fill="#fff" stroke={s.colore} class="ln__punto" />
 			{/each}
 			<!-- zona cliccabile di ogni mese -->
-			<rect x={x(i) - colonna / 2} y={0} width={colonna} height={h} fill="transparent" role="button" tabindex="-1" aria-label={p.label} onmouseenter={() => (sopra = i)} onmouseleave={() => (sopra = null)} onclick={() => onselect?.(p.id)} style={onselect ? 'cursor:pointer' : ''} />
+			<rect x={x(i) - colonna / 2} y={0} width={colonna} height={h} fill="transparent" role="button" tabindex="-1" aria-label={p.label} onmouseenter={() => (sopra = i)} onmouseleave={() => (sopra = null)} onclick={() => onselect?.(p.id)} onkeydown={(e) => e.key === 'Enter' && onselect?.(p.id)} style={onselect ? 'cursor:pointer' : ''} />
 		{/each}
 	</svg>
-	{#if attivo >= 0 && punti[attivo]}
+	{#if sopra != null && punti[sopra]}
 		<div class="ln__tip" style="left:{tooltipSx}px">
-			<b>{punti[attivo].label}</b>
-			{#each serie as s, k (s.nome)}<span><i style="background:{s.colore}"></i>{s.nome} <strong>{formato(punti[attivo].valori[k] ?? 0)}</strong></span>{/each}
+			<b>{punti[sopra].label}</b>
+			{#each serie as s, k (s.nome)}<span><i style="background:{s.colore}"></i>{s.nome} <strong>{formato(punti[sopra].valori[k] ?? 0)}</strong></span>{/each}
 		</div>
 	{/if}
 	<div class="ln__legenda">{#each serie as s (s.nome)}<span><i style="background:{s.colore}"></i>{s.nome}</span>{/each}</div>
