@@ -58,6 +58,11 @@ export const A4_TOL = 0.15;
 
 /** materiale che se ne va fra una striscia e l'altra (3 cm di codice a barre + stacco) */
 export const STRIP_OVERHEAD = 50;
+/** fogli, altezza "automatica": se l'operatore non scrive un'altezza, la striscia puo' alzarsi fino a qui
+ *  quando cosi' ci stanno piu' fogli affiancati (es. Ø80 resinati: 3 fogli da 2×5 in 473 mm invece di 1 foglio in 227) */
+export const SHEET_AUTO_MAX_H = 500;
+/** cornice della striscia: margini laterali e verticali dentro i crocini */
+export interface Frame { margin: number; marginY: number; label?: string }
 
 export interface Placement {
 	/** angolo in alto a sinistra del rettangolo occupato (gia' ruotato) */
@@ -193,6 +198,10 @@ export interface SheetStripOptions {
 	versoPezzi?: Verso;
 	/** verso del foglio sulla striscia */
 	versoFoglio?: Verso;
+	/** altezza libera: la striscia puo' alzarsi fino a qui (al posto di stripH) se ci stanno piu' fogli */
+	autoMaxH?: number;
+	/** cornici fra cui scegliere (la prima e' quella di margin/marginY): es. quella a tutta larghezza fra i crocini */
+	frames?: Frame[];
 }
 
 export interface SheetResult {
@@ -208,6 +217,9 @@ export interface SheetResult {
 	/** foglio girato sulla striscia */
 	sheetRot: boolean;
 	strips: Strip[];
+	/** altezza della striscia piena e cornice scelte */
+	stripH?: number;
+	frame?: Frame;
 }
 
 interface Cand {
@@ -217,6 +229,7 @@ interface Cand {
 	sheetRot: boolean;
 	usedH: number;
 	density: number;
+	frame: Frame;
 }
 
 function a4Near(w: number, h: number, tol: number) {
@@ -226,39 +239,48 @@ function a4Near(w: number, h: number, tol: number) {
 
 /**
  * Sceglie la griglia del foglio e come mettere i fogli sulla striscia.
- * Priorita': piu' etichette per millimetro di striscia consumata. Il foglio resta
- * "circa A4" (±15% sui lati); se nessuna griglia ci sta (etichette molto grandi o
- * molto piccole col vincolo dei 5 aghi) si ripiega sul foglio che rende di piu'
- * sulla striscia, e lo si segnala.
+ * Priorita': piu' etichette per millimetro di striscia consumata (la larghezza e' fissa, conta l'altezza).
+ * Si provano tutte le griglie ammesse, i due versi del foglio, le cornici date e, con l'altezza libera,
+ * quante file di fogli mettere una sotto l'altra. Il foglio resta "circa A4" (±15% sui lati) quando una
+ * griglia del genere esiste; altrimenti (etichette grandi col vincolo della testa) si prende il foglio che
+ * rende di piu' sulla striscia e lo si segnala. Entro il 5% di resa si preferisce non alzare la striscia.
  */
 export function layoutSheets(cutW: number, cutH: number, rules: SheetRules, o: SheetStripOptions): SheetResult {
-	const my = o.marginY ?? o.margin;
-	const aw = o.stripW - 2 * o.margin, ah = o.stripH - 2 * my;
+	const frames: Frame[] = o.frames?.length ? o.frames : [{ margin: o.margin, marginY: o.marginY ?? o.margin }];
+	const hMax = o.autoMaxH && o.autoMaxH > o.stripH ? o.autoMaxH : o.stripH;
 	const cands: Cand[] = [];
-	for (const rot of versi(o.versoPezzi)) {
-		const pw = rot ? cutH : cutW, ph = rot ? cutW : cutH;
-		const maxC = fit(aw - 2 * rules.margin, pw, rules.gap), maxR = fit(Math.max(aw, ah) - 2 * rules.margin, ph, rules.gap);
-		for (let c = 1; c <= maxC; c++)
-			for (let r = 1; r <= maxR; r++) {
-				const n = c * r;
-				if (rules.testa && (rules.testa % c || n % rules.testa)) continue;
-				const g = grid(pw, ph, c, r, rules.gap, rot);
-				const sw = Math.round((g.w + 2 * rules.margin) * 10) / 10, sh = Math.round((g.h + 2 * rules.margin) * 10) / 10;
-				const sheet: SheetLayout = { w: sw, h: sh, grid: g, pieces: place(g, pw, ph, rules.gap, rules.margin, rules.margin), pw, ph, nearA4: a4Near(sw, sh, A4_TOL) };
-				for (const sRot of versi(o.versoFoglio)) {
-					const W = sRot ? sh : sw, H = sRot ? sw : sh;
-					const across = fit(aw, W, o.sheetGap), down = fit(ah, H, o.sheetGap);
-					if (!across || !down) continue;
-					const usedH = down * H + (down - 1) * o.sheetGap + 2 * my;
-					cands.push({ sheet, across, down, sheetRot: sRot, usedH, density: (across * down * n) / (usedH + STRIP_OVERHEAD) });
+	for (const f of frames) {
+		const aw = o.stripW - 2 * f.margin, ah = hMax - 2 * f.marginY;
+		if (aw <= 0 || ah <= 0) continue;
+		for (const rot of versi(o.versoPezzi)) {
+			const pw = rot ? cutH : cutW, ph = rot ? cutW : cutH;
+			const lato = Math.max(aw, ah) - 2 * rules.margin;
+			const maxC = fit(lato, pw, rules.gap), maxR = fit(lato, ph, rules.gap);
+			for (let c = 1; c <= maxC; c++)
+				for (let r = 1; r <= maxR; r++) {
+					const n = c * r;
+					if (rules.testa && (rules.testa % c || n % rules.testa)) continue;
+					const g = grid(pw, ph, c, r, rules.gap, rot);
+					const sw = Math.round((g.w + 2 * rules.margin) * 10) / 10, sh = Math.round((g.h + 2 * rules.margin) * 10) / 10;
+					const sheet: SheetLayout = { w: sw, h: sh, grid: g, pieces: place(g, pw, ph, rules.gap, rules.margin, rules.margin), pw, ph, nearA4: a4Near(sw, sh, A4_TOL) };
+					for (const sRot of versi(o.versoFoglio)) {
+						const W = sRot ? sh : sw, H = sRot ? sw : sh;
+						const across = fit(aw, W, o.sheetGap), maxDown = fit(ah, H, o.sheetGap);
+						if (!across || !maxDown) continue;
+						for (let down = 1; down <= maxDown; down++) {
+							const usedH = down * H + (down - 1) * o.sheetGap + 2 * f.marginY;
+							cands.push({ sheet, across, down, sheetRot: sRot, usedH, density: (across * down * n) / (usedH + STRIP_OVERHEAD), frame: f });
+						}
+					}
 				}
-			}
+		}
 	}
 	const empty: SheetResult = { ok: false, sheet: null, across: 0, down: 0, sheetsPerStrip: 0, piecesPerStrip: 0, sheetRot: false, strips: [] };
 	if (!cands.length) {
 		return { ...empty, error: rules.testa ? `Con ${cutW.toFixed(1)}×${cutH.toFixed(1)} mm non viene fuori un foglio adatto alla testa da ${rules.testa} aghi (colonne 1, 2, 5 o ${rules.testa} e totale multiplo di ${rules.testa}) nella striscia ${o.stripW}×${o.stripH} mm.` : `L'etichetta (${cutW.toFixed(1)}×${cutH.toFixed(1)} mm) non entra in un foglio sulla striscia ${o.stripW}×${o.stripH} mm.` };
 	}
 	const areaA4 = A4[0] * A4[1];
+	// prima i fogli "circa A4" (la resinatrice lavora bene con quelli); solo se non ce n'e' nessuno si guarda tutto il resto
 	const near = cands.filter((c) => c.sheet.nearA4);
 	const pool = near.length ? near : cands;
 	pool.sort(
@@ -267,9 +289,12 @@ export function layoutSheets(cutW: number, cutH: number, rules: SheetRules, o: S
 			Math.abs(a.sheet.w * a.sheet.h - areaA4) - Math.abs(b.sheet.w * b.sheet.h - areaA4) ||
 			a.usedH - b.usedH
 	);
-	const best = pool[0];
+	// a parita' (quasi, entro il 5%) di resa si resta entro l'altezza consigliata invece di alzare la striscia
+	const soglia = pool[0].density * 0.95;
+	const best = pool.find((c) => c.density >= soglia && c.usedH <= o.stripH) ?? pool[0];
 	const perStrip = best.across * best.down;
 	const W = best.sheetRot ? best.sheet.h : best.sheet.w, H = best.sheetRot ? best.sheet.w : best.sheet.h;
+	const my = best.frame.marginY;
 
 	const total = o.sheets > 0 ? o.sheets : perStrip;
 	const strips: Strip[] = [];
@@ -296,13 +321,15 @@ export function layoutSheets(cutW: number, cutH: number, rules: SheetRules, o: S
 	}
 	return {
 		ok: true,
-		warning: near.length ? undefined : `Nessun foglio "circa A4" possibile con questa misura: uso un foglio ${best.sheet.w}×${best.sheet.h} mm.`,
+		warning: best.sheet.nearA4 ? undefined : `Nessun foglio "circa A4" rende bene con questa misura: uso un foglio ${best.sheet.w}×${best.sheet.h} mm.`,
 		sheet: best.sheet,
 		across: best.across,
 		down: best.down,
 		sheetsPerStrip: perStrip,
 		piecesPerStrip: perStrip * best.sheet.grid.n,
 		sheetRot: best.sheetRot,
-		strips
+		strips,
+		stripH: Math.round(best.usedH * 10) / 10,
+		frame: best.frame
 	};
 }

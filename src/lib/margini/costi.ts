@@ -23,8 +23,8 @@
 import { type EngineConfig } from '$lib/pricing/engine';
 import { kitN } from '$lib/pricing/kit';
 import { KIT_CAVALLOTTO } from '$lib/studio/products';
-import { STRIP_MATERIALS, STRIP_OVERHEAD, SHEET_RULES, layoutLoose, layoutSheets, type Strip } from '$lib/studio/layout';
-import { MARKED_MARGIN, pageWidthFor } from '$lib/studio/graphtec';
+import { STRIP_MATERIALS, STRIP_OVERHEAD, SHEET_RULES, SHEET_AUTO_MAX_H, layoutLoose, layoutSheets, type Strip } from '$lib/studio/layout';
+import { MARKED_MARGIN, SHEET_FRAMES, pageWidthFor } from '$lib/studio/graphtec';
 import { deliveryMode } from '$lib/dashboard/orders';
 
 /* ------------------------------------------------------------------ parametri */
@@ -226,7 +226,8 @@ export function pianoRiga(slug: string, w: number, h: number, qty: number, forma
 
 	if (slug === 'adesivi_resinati' || slug === 'etichette') {
 		const rules = SHEET_RULES[slug === 'adesivi_resinati' ? 'resinati' : 'etichette'];
-		const o = { stripW, stripH: par.bobina.maxHSheets, margin, marginY, sheetGap: par.gapFogli };
+		// come lo Studio con l'altezza automatica: la striscia puo' alzarsi se cosi' entrano piu' fogli, e sceglie la cornice che rende di piu'
+		const o = { stripW, stripH: par.bobina.maxHSheets, margin, marginY, sheetGap: par.gapFogli, autoMaxH: SHEET_AUTO_MAX_H, frames: SHEET_FRAMES };
 		const probe = layoutSheets(w, h, rules, { ...o, sheets: 0 });
 		if (!probe.ok || !probe.sheet) return vuoto('fuori_misura', probe.error ?? 'il pezzo non entra in un foglio');
 		const fogli = Math.ceil(pezziDaFare / probe.sheet.grid.n);

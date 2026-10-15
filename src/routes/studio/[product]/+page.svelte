@@ -4,9 +4,9 @@
 	import StudioLente from '$lib/components/StudioLente.svelte';
 	import { showFinishStep, showMaterialStep, minForShape, startSize, sizeProposals, roundHalf, proportionalSize, sizeRule } from '$lib/pricing/engine';
 	import { KIT_CAVALLOTTO } from '$lib/studio/products';
-	import { STRIP_MATERIALS, SHEET_RULES, layoutLoose, layoutSheets, type Strip, type Verso } from '$lib/studio/layout';
+	import { STRIP_MATERIALS, SHEET_RULES, SHEET_AUTO_MAX_H, layoutLoose, layoutSheets, type Strip, type Verso } from '$lib/studio/layout';
 	import { angoliVivi, smussa } from '$lib/studio/smussa';
-	import { MARKED_MARGIN, pageWidthFor, DEFAULT_COND, markRects, barcodeRects } from '$lib/studio/graphtec';
+	import { MARKED_MARGIN, SHEET_FRAMES, pageWidthFor, DEFAULT_COND, markRects, barcodeRects } from '$lib/studio/graphtec';
 	import { pickDataLink, savedDataLink, grantDataLink, takenJobIds, writeXpf, type DataLinkDir } from '$lib/studio/datalink';
 	import { pickArchivio, savedArchivio, grantArchivio, salvaNellArchivio, type ArchivioDir } from '$lib/studio/archivio';
 	import { pickVersaworks, savedVersaworks, grantVersaworks, stampanti, mappaSalvata, salvaMappa, inviaAStampante, RUOLO_LABEL, type VwDir, type Ruolo as VwRuolo } from '$lib/studio/versaworks';
@@ -608,8 +608,10 @@
 	const MIN_SHEET_GAP = 10;
 	let sheetGap = $state(MIN_SHEET_GAP);
 	const sGap = $derived(Math.max(MIN_SHEET_GAP, +sheetGap || 0));
-	/* la prima volta si parte dall'altezza consigliata; poi comanda l'operatore, anche oltre */
-	$effect(() => { if (!stripH) stripH = maxH; });
+	/* altezza vuota = automatica: i fogli restano entro l'altezza consigliata, ma la striscia puo' alzarsi fino a
+	   SHEET_AUTO_MAX_H quando cosi' ci stanno piu' fogli affiancati (Ø80: 3 fogli in 473 mm invece di 1 in 227).
+	   Se l'operatore scrive un'altezza, quella comanda, anche oltre il consigliato. */
+	const fogliOpz = $derived(P.mode === 'fogli' && !MULTI ? { autoMaxH: stripH > 0 ? undefined : SHEET_AUTO_MAX_H, frames: SHEET_FRAMES } : {});
 
 	const cutW = $derived(engCut?.w ?? (cavallotto ? KIT_CAVALLOTTO.w : w));
 	const cutH = $derived(engCut?.h ?? (cavallotto ? KIT_CAVALLOTTO.h : h));
@@ -622,10 +624,10 @@
 		}
 		if (P.mode === 'fogli') {
 			const rules = regole;
-			const probe = layoutSheets(cutW, cutH, rules, { stripW: pageW, stripH: H, margin, marginY, sheetGap: sGap, sheets: 0, versoPezzi, versoFoglio });
+			const probe = layoutSheets(cutW, cutH, rules, { stripW: pageW, stripH: H, margin, marginY, sheetGap: sGap, sheets: 0, versoPezzi, versoFoglio, ...fogliOpz });
 			if (!probe.ok || !probe.sheet) return { kind: 'fogli' as const, r: probe, sheets: 0 };
 			const want = qtyDaFare ? Math.ceil(qtyDaFare / probe.sheet.grid.n) : 0;
-			return { kind: 'fogli' as const, r: want ? layoutSheets(cutW, cutH, rules, { stripW: pageW, stripH: H, margin, marginY, sheetGap: sGap, sheets: want, versoPezzi, versoFoglio }) : probe, sheets: want };
+			return { kind: 'fogli' as const, r: want ? layoutSheets(cutW, cutH, rules, { stripW: pageW, stripH: H, margin, marginY, sheetGap: sGap, sheets: want, versoPezzi, versoFoglio, ...fogliOpz }) : probe, sheets: want };
 		}
 		return { kind: 'sciolti' as const, r: layoutLoose(cutW, cutH, { stripW: pageW, stripH: H, margin, marginY, gap, qty: qtyDaFare, verso: versoPezzi }) };
 	});
@@ -649,10 +651,10 @@
 			pages = r.strips.map((pg) => ({ ...pg, sheets: pg.pieces.map((q) => ({ x: q.x, y: q.y, w: q.rot ? art.cutH : art.cutW, h: q.rot ? art.cutW : art.cutH, rot: q.rot })) }));
 		} else if (P.mode === 'fogli') {
 			const rules = regole;
-			const probe = layoutSheets(art.cutW, art.cutH, rules, { stripW: pageW, stripH: H, margin, marginY, sheetGap: sGap, sheets: 0, versoPezzi, versoFoglio });
+			const probe = layoutSheets(art.cutW, art.cutH, rules, { stripW: pageW, stripH: H, margin, marginY, sheetGap: sGap, sheets: 0, versoPezzi, versoFoglio, ...fogliOpz });
 			if (!probe.ok || !probe.sheet) throw new Error(probe.error ?? 'Impaginazione non possibile');
 			const want = qtyDaFare ? Math.ceil(qtyDaFare / probe.sheet.grid.n) : 0;
-			pages = (want ? layoutSheets(art.cutW, art.cutH, rules, { stripW: pageW, stripH: H, margin, marginY, sheetGap: sGap, sheets: want, versoPezzi, versoFoglio }) : probe).strips;
+			pages = (want ? layoutSheets(art.cutW, art.cutH, rules, { stripW: pageW, stripH: H, margin, marginY, sheetGap: sGap, sheets: want, versoPezzi, versoFoglio, ...fogliOpz }) : probe).strips;
 		} else {
 			const r = layoutLoose(art.cutW, art.cutH, { stripW: pageW, stripH: H, margin, marginY, gap, qty: qtyDaFare, verso: versoPezzi });
 			if (!r.ok) throw new Error(r.error ?? 'Impaginazione non possibile');
@@ -1133,6 +1135,7 @@
 				</div>
 				<label class="st-field"><span>Altezza striscia (mm)</span><input class="input" type="number" min="50" step="1" bind:value={stripH} placeholder={String(maxH)} />
 					{#if stripH > maxH}<em class="st-hint st-hint--warn">oltre i {maxH} mm consigliati per {P.mode === 'fogli' ? 'i fogli' : 'gli adesivi'}: decidi tu fin dove spingerti</em>
+					{:else if P.mode === 'fogli' && !MULTI && !stripH}<em class="st-hint">vuoto = automatica: resta entro {maxH} mm, sale fino a {SHEET_AUTO_MAX_H} solo se così entrano più fogli affiancati{#if plan?.kind === 'fogli' && plan.r.ok && plan.r.stripH && plan.r.stripH > maxH} · <b>alzata a {plan.r.stripH} mm per {plan.r.across} fogli affiancati</b>{/if}</em>
 					{:else}<em class="st-hint">vuoto = {maxH} mm, il consigliato; puoi alzarla quanto vuoi</em>{/if}</label>
 				<label class="st-field"><span>{MULTI ? 'Fogli da stampare' : P.mode === 'fogli' ? 'Etichette da stampare' : 'Pezzi da stampare'} <em>(vuoto = una striscia piena)</em></span><input class="input" type="number" min="1" step="1" bind:value={qty} placeholder="riempi la striscia" />{#if qtyDaFare}<em class="st-hint">ne preparo {qtyDaFare}: l’8% in piu&#39; per gli scarti</em>{/if}</label>
 				{#if P.mode === 'fogli' && !MULTI}
@@ -1165,7 +1168,7 @@
 				</div>
 				<details class="st-adv">
 					<summary>Margini e spazi</summary>
-					<p class="st-note">Crocini e codice a barre Graphtec sempre presenti: pagina {pageW} mm, pezzi a {margin} mm dai lati e {marginY} mm da sopra e sotto.</p>
+					<p class="st-note">Crocini e codice a barre Graphtec sempre presenti: pagina {pageW} mm{#if plan?.kind === 'fogli' && plan.r.ok && plan.r.frame}, fogli a {plan.r.frame.margin} mm dai lati e {plan.r.frame.marginY} mm da sopra e sotto ({plan.r.frame.label}){:else}, pezzi a {margin} mm dai lati e {marginY} mm da sopra e sotto{/if}.</p>
 					<label class="st-field"><span>Condizione plotter mezzo taglio</span><input class="input" type="number" min="1" max="8" step="1" bind:value={condHalf} /></label>
 					<label class="st-field"><span>Condizione plotter passante</span><input class="input" type="number" min="1" max="8" step="1" bind:value={condThrough} /></label>
 					{#if P.mode === 'fogli'}

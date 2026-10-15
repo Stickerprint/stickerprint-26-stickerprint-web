@@ -49,6 +49,15 @@ export const MARK_BLACK = [0.91, 0.79, 0.62, 0.97] as const;
 
 /** margini del contenuto dentro la striscia con i crocini (fuori dai bracci, con 5-6 mm di aria) */
 export const MARKED_MARGIN = { x: MARK.thick / 2 + MARK.arm + 5.5, y: MARK.edge + MARK.thick / 2 + 5 };
+/** cornice a tutta larghezza: i crocini stanno solo agli angoli, quindi sotto e sopra la fascia dei bracci
+ *  (edge + arm) il contenuto puo' arrivare a 4 mm dal bordo della pagina. Costa 20 mm in piu' sopra e sotto,
+ *  rende 45 mm in piu' di larghezza: l'impaginazione dei fogli sceglie la cornice che consuma meno */
+export const MARKED_MARGIN_WIDE = { x: 4, y: MARK.edge + MARK.arm + 5 };
+/** le due cornici fra cui scegliere per i fogli (resinati, etichette) */
+export const SHEET_FRAMES = [
+	{ margin: MARKED_MARGIN.x, marginY: MARKED_MARGIN.y, label: 'dentro i crocini' },
+	{ margin: MARKED_MARGIN_WIDE.x, marginY: MARKED_MARGIN_WIDE.y, label: 'a tutta larghezza fra i crocini' }
+];
 
 /** la pagina con i crocini e' un po' piu' stretta della bobina (come in Cutting Master: 688 su 70 cm) */
 export const pageWidthFor = (rollWidth: number) => rollWidth - 12;
