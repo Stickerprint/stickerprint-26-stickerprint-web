@@ -600,8 +600,8 @@
 	/* sugli ordini si stampa l'8% in piu' dei pezzi chiesti, per coprire gli scarti di produzione */
 	const SCARTO = 0.08;
 	const qtyDaFare = $derived(typeof qty === 'number' && qty > 0 ? Math.ceil(qty * (1 + SCARTO)) : 0);
-	/* crocini e codice a barre Graphtec, SEMPRE: la pagina e' larga quanto quella di Cutting Master
-	   (bobina meno 12 mm) e i pezzi stanno fuori dai bracci dei crocini e dalle fasce dei codici */
+	/* crocini e codice a barre Graphtec, SEMPRE: la pagina e' larga quanto l'area di stampa della bobina
+	   (700 mm sulla 70, che ha 2,5 cm di margine per lato) e i pezzi stanno fuori dai bracci dei crocini e dalle fasce dei codici */
 	const pageW = $derived(pageWidthFor(mat.width));
 	const margin = MARKED_MARGIN.x;
 	const marginY = MARKED_MARGIN.y;

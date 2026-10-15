@@ -310,7 +310,7 @@
 			</div>
 			<label class="mo-f"><span>Larghezza della pagina (mm)</span>
 				<input class="input" type="number" min="200" max={PAGINA_MAX} step="1" bind:value={pageW} /></label>
-			<p class="mo-note">Cutting Master usa {pageWidthFor(mat.width)} mm sulla bobina da {mat.width / 10} cm. Si puo' arrivare a {PAGINA_MAX}: oltre, i crocini escono dal materiale.</p>
+			<p class="mo-note">Pagina {pageWidthFor(mat.width)} mm sulla bobina da {mat.width / 10} cm: tutta l'area di stampa (la bobina ha 2,5 cm di margine per lato). Oltre {PAGINA_MAX} i crocini escono dal materiale.</p>
 			<label class="mo-f"><span>Altezza massima (mm)</span><input class="input" type="number" min="100" step="10" bind:value={maxH} /></label>
 			<label class="mo-f"><span>Stacco fra i soggetti (mm)</span><input class="input" type="number" min="5" step="1" bind:value={gapBlocchi} /></label>
 			<label class="mo-f"><span>Regole del foglio</span>

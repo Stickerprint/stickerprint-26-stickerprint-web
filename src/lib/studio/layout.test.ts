@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { layoutSheets, SHEET_RULES, SHEET_AUTO_MAX_H } from './layout';
+
+it('la pagina e\' larga quanto la bobina: 700 sulla 70, 570 sulla 57', () => { expect(pageWidthFor(700)).toBe(700); expect(pageWidthFor(570)).toBe(570); });
 import { SHEET_FRAMES, MARKED_MARGIN, pageWidthFor } from './graphtec';
 
-/* la striscia dello Studio: bobina 70 cm (pagina 688), crocini Graphtec, 10 mm fra i fogli */
+/* la striscia dello Studio: bobina 70 cm (pagina 700, tutta l'area di stampa), crocini Graphtec, 10 mm fra i fogli */
 const base = { stripW: pageWidthFor(700), margin: MARKED_MARGIN.x, marginY: MARKED_MARGIN.y, sheetGap: 10, sheets: 0 };
 const auto = { ...base, stripH: 360, autoMaxH: SHEET_AUTO_MAX_H, frames: SHEET_FRAMES };
 
