@@ -230,6 +230,8 @@ interface Cand {
 	usedH: number;
 	density: number;
 	frame: Frame;
+	/** la griglia rispetta la testa della resinatrice (colonne 1, 2, 5, 10 e totale multiplo di 10) */
+	testaOk: boolean;
 }
 
 function a4Near(w: number, h: number, tol: number) {
@@ -241,9 +243,10 @@ function a4Near(w: number, h: number, tol: number) {
  * Sceglie la griglia del foglio e come mettere i fogli sulla striscia.
  * Priorita': piu' etichette per millimetro di striscia consumata (la larghezza e' fissa, conta l'altezza).
  * Si provano tutte le griglie ammesse, i due versi del foglio, le cornici date e, con l'altezza libera,
- * quante file di fogli mettere una sotto l'altra. Il foglio resta "circa A4" (±15% sui lati) quando una
- * griglia del genere esiste; altrimenti (etichette grandi col vincolo della testa) si prende il foglio che
- * rende di piu' sulla striscia e lo si segnala. Entro il 5% di resa si preferisce non alzare la striscia.
+ * quante file di fogli mettere una sotto l'altra. Il foglio resta "circa A4" (±15% sui lati) sempre, quando
+ * una griglia del genere esiste: prima quelle che rispettano la testa della resinatrice, altrimenti anche le
+ * altre (meno etichette per foglio). Senza alcun foglio A4 si prende quello che rende di piu' e lo si segnala.
+ * Entro il 5% di resa si preferisce non alzare la striscia.
  */
 export function layoutSheets(cutW: number, cutH: number, rules: SheetRules, o: SheetStripOptions): SheetResult {
 	const frames: Frame[] = o.frames?.length ? o.frames : [{ margin: o.margin, marginY: o.marginY ?? o.margin }];
@@ -259,7 +262,7 @@ export function layoutSheets(cutW: number, cutH: number, rules: SheetRules, o: S
 			for (let c = 1; c <= maxC; c++)
 				for (let r = 1; r <= maxR; r++) {
 					const n = c * r;
-					if (rules.testa && (rules.testa % c || n % rules.testa)) continue;
+					const testaOk = !rules.testa || !(rules.testa % c || n % rules.testa);
 					const g = grid(pw, ph, c, r, rules.gap, rot);
 					const sw = Math.round((g.w + 2 * rules.margin) * 10) / 10, sh = Math.round((g.h + 2 * rules.margin) * 10) / 10;
 					const sheet: SheetLayout = { w: sw, h: sh, grid: g, pieces: place(g, pw, ph, rules.gap, rules.margin, rules.margin), pw, ph, nearA4: a4Near(sw, sh, A4_TOL) };
@@ -269,7 +272,7 @@ export function layoutSheets(cutW: number, cutH: number, rules: SheetRules, o: S
 						if (!across || !maxDown) continue;
 						for (let down = 1; down <= maxDown; down++) {
 							const usedH = down * H + (down - 1) * o.sheetGap + 2 * f.marginY;
-							cands.push({ sheet, across, down, sheetRot: sRot, usedH, density: (across * down * n) / (usedH + STRIP_OVERHEAD), frame: f });
+							cands.push({ sheet, across, down, sheetRot: sRot, usedH, density: (across * down * n) / (usedH + STRIP_OVERHEAD), frame: f, testaOk });
 						}
 					}
 				}
@@ -280,9 +283,13 @@ export function layoutSheets(cutW: number, cutH: number, rules: SheetRules, o: S
 		return { ...empty, error: rules.testa ? `Con ${cutW.toFixed(1)}×${cutH.toFixed(1)} mm non viene fuori un foglio adatto alla testa da ${rules.testa} aghi (colonne 1, 2, 5 o ${rules.testa} e totale multiplo di ${rules.testa}) nella striscia ${o.stripW}×${o.stripH} mm.` : `L'etichetta (${cutW.toFixed(1)}×${cutH.toFixed(1)} mm) non entra in un foglio sulla striscia ${o.stripW}×${o.stripH} mm.` };
 	}
 	const areaA4 = A4[0] * A4[1];
-	// prima i fogli "circa A4" (la resinatrice lavora bene con quelli); solo se non ce n'e' nessuno si guarda tutto il resto
+	// Il foglio "circa A4" viene prima di tutto (Mattia, 15/10/2026: "le regole devono essere uguali per tutti i fogli",
+	// niente fogli alti 43 cm). Poi, se si puo', la testa della resinatrice; se nessun foglio A4 la rispetta
+	// (Ø80: solo 2×5 = 433 mm) si abbassa il numero di etichette per foglio (Ø80: 3×2 = 6) e lo si scrive.
+	// Solo senza alcun foglio A4 possibile (etichette oltre l'A4) si guarda il resto.
 	const near = cands.filter((c) => c.sheet.nearA4);
-	const pool = near.length ? near : cands;
+	const nearTesta = near.filter((c) => c.testaOk);
+	const pool = nearTesta.length ? nearTesta : near.length ? near : cands.filter((c) => c.testaOk).length ? cands.filter((c) => c.testaOk) : cands;
 	pool.sort(
 		(a, b) =>
 			b.density - a.density ||
@@ -321,7 +328,9 @@ export function layoutSheets(cutW: number, cutH: number, rules: SheetRules, o: S
 	}
 	return {
 		ok: true,
-		warning: best.sheet.nearA4 ? undefined : `Nessun foglio "circa A4" rende bene con questa misura: uso un foglio ${best.sheet.w}×${best.sheet.h} mm.`,
+		warning: !best.sheet.nearA4
+			? `Nessun foglio "circa A4" possibile con questa misura: uso un foglio ${best.sheet.w}×${best.sheet.h} mm.`
+			: !best.testaOk ? `Nessun foglio "circa A4" rispetta la testa da ${rules.testa} aghi con questa misura: foglio ${best.sheet.grid.cols}×${best.sheet.grid.rows} = ${best.sheet.grid.n} etichette, fuori dai multipli di ${rules.testa}.` : undefined,
 		sheet: best.sheet,
 		across: best.across,
 		down: best.down,

@@ -1147,7 +1147,7 @@
 							<button type="button" class="st-chip" class:is-on={regoleFoglio === 'etichette'} onclick={() => (regoleFoglio = 'etichette')}>Etichette · bordo {SHEET_RULES.etichette.margin} mm</button>
 							<button type="button" class="st-chip" class:is-on={regoleFoglio === 'resinati'} onclick={() => (regoleFoglio = 'resinati')}>Resinati · bordo {SHEET_RULES.resinati.margin} mm, testa da {SHEET_RULES.resinati.testa} aghi</button>
 						</div>
-						<p class="st-note">Il foglio parte con le regole del prodotto. Con i resinati le etichette si dispongono sulla testa da {SHEET_RULES.resinati.testa} aghi: 1, 2, 5 o {SHEET_RULES.resinati.testa} per riga e totale del foglio multiplo di {SHEET_RULES.resinati.testa}; bordo {SHEET_RULES.resinati.margin} mm.</p>
+						<p class="st-note">Il foglio è sempre circa A4. Con i resinati le etichette si dispongono sulla testa da {SHEET_RULES.resinati.testa} aghi (1, 2, 5 o {SHEET_RULES.resinati.testa} per riga, totale multiplo di {SHEET_RULES.resinati.testa}) quando un foglio A4 lo permette; altrimenti vanno meno etichette per foglio (Ø80: 2×3) e lo si segnala. Bordo {SHEET_RULES.resinati.margin} mm.</p>
 					</div>
 				{/if}
 				<div class="st-block">
