@@ -586,7 +586,9 @@
 	let matId = $state(STRIP_MATERIALS[0].id);
 	const mat = $derived(STRIP_MATERIALS.find((m) => m.id === matId) ?? STRIP_MATERIALS[0]);
 	const maxH = $derived(P.mode === 'fogli' ? mat.maxHSheets : mat.maxHLoose);
-	let stripH = $state(0);
+	let stripH = $state<number | ''>('');
+	/* altezza scritta dall'operatore (0 = vuota, automatica) */
+	const hScritta = $derived(typeof stripH === 'number' && stripH > 0 ? stripH : 0);
 	/* regole del foglio: quelle del prodotto, ma si possono cambiare (un file pronto di etichette puo'
 	   dover seguire le regole dei resinati, e viceversa) */
 	let regoleFoglio = $state<'etichette' | 'resinati'>(P.sheetRules ?? 'etichette');
@@ -611,13 +613,13 @@
 	/* altezza vuota = automatica: i fogli restano entro l'altezza consigliata, ma la striscia puo' alzarsi fino a
 	   SHEET_AUTO_MAX_H quando cosi' ci stanno piu' fogli affiancati (Ø80: 3 fogli in 473 mm invece di 1 in 227).
 	   Se l'operatore scrive un'altezza, quella comanda, anche oltre il consigliato. */
-	const fogliOpz = $derived(P.mode === 'fogli' && !MULTI ? { autoMaxH: stripH > 0 ? undefined : SHEET_AUTO_MAX_H, frames: SHEET_FRAMES } : {});
+	const fogliOpz = $derived(P.mode === 'fogli' && !MULTI ? { autoMaxH: hScritta ? undefined : SHEET_AUTO_MAX_H, frames: SHEET_FRAMES } : {});
 
 	const cutW = $derived(engCut?.w ?? (cavallotto ? KIT_CAVALLOTTO.w : w));
 	const cutH = $derived(engCut?.h ?? (cavallotto ? KIT_CAVALLOTTO.h : h));
 	const plan = $derived.by(() => {
 		if (!(cutW > 0 && cutH > 0)) return null;
-		const H = stripH > 0 ? stripH : maxH;
+		const H = hScritta || maxH;
 		if (MULTI) {
 			/* il foglio e' gia' impaginato dal cliente: sulla striscia ci vanno i fogli interi */
 			return { kind: 'multi' as const, r: layoutLoose(cutW, cutH, { stripW: pageW, stripH: H, margin, marginY, gap: sGap, qty: qtyDaFare, verso: versoFoglio }) };
@@ -642,7 +644,7 @@
 		const { buildPdf } = await import('$lib/studio/pdf');
 		const art = await artwork();
 		// si rifa' l'impaginazione con le misure esatte del tracciato
-		const H = stripH > 0 ? stripH : maxH;
+		const H = hScritta || maxH;
 		let pages: Strip[];
 		if (MULTI) {
 			const r = layoutLoose(art.cutW, art.cutH, { stripW: pageW, stripH: H, margin, marginY, gap: sGap, qty: qtyDaFare, verso: versoFoglio });
@@ -1129,13 +1131,13 @@
 					<p class="st-label">Materiale di stampa</p>
 					<div class="st-chips">
 						{#each STRIP_MATERIALS as m (m.id)}
-							<button type="button" class="st-chip" class:is-on={matId === m.id} onclick={() => { matId = m.id; stripH = 0; }}>{m.label}</button>
+							<button type="button" class="st-chip" class:is-on={matId === m.id} onclick={() => { matId = m.id; stripH = ''; }}>{m.label}</button>
 						{/each}
 					</div>
 				</div>
 				<label class="st-field"><span>Altezza striscia (mm)</span><input class="input" type="number" min="50" step="1" bind:value={stripH} placeholder={String(maxH)} />
-					{#if stripH > maxH}<em class="st-hint st-hint--warn">oltre i {maxH} mm consigliati per {P.mode === 'fogli' ? 'i fogli' : 'gli adesivi'}: decidi tu fin dove spingerti</em>
-					{:else if P.mode === 'fogli' && !MULTI && !stripH}<em class="st-hint">vuoto = automatica: resta entro {maxH} mm, sale fino a {SHEET_AUTO_MAX_H} solo se così entrano più fogli affiancati{#if plan?.kind === 'fogli' && plan.r.ok && plan.r.stripH && plan.r.stripH > maxH} · <b>alzata a {plan.r.stripH} mm per {plan.r.across} fogli affiancati</b>{/if}</em>
+					{#if hScritta > maxH}<em class="st-hint st-hint--warn">oltre i {maxH} mm consigliati per {P.mode === 'fogli' ? 'i fogli' : 'gli adesivi'}: decidi tu fin dove spingerti</em>
+					{:else if P.mode === 'fogli' && !MULTI && !hScritta}<em class="st-hint">vuoto = automatica: resta entro {maxH} mm, sale fino a {SHEET_AUTO_MAX_H} solo se così entrano più fogli affiancati{#if plan?.kind === 'fogli' && plan.r.ok && plan.r.stripH && plan.r.stripH > maxH} · <b>alzata a {plan.r.stripH} mm per {plan.r.across} fogli affiancati</b>{/if}</em>
 					{:else}<em class="st-hint">vuoto = {maxH} mm, il consigliato; puoi alzarla quanto vuoi</em>{/if}</label>
 				<label class="st-field"><span>{MULTI ? 'Fogli da stampare' : P.mode === 'fogli' ? 'Etichette da stampare' : 'Pezzi da stampare'} <em>(vuoto = una striscia piena)</em></span><input class="input" type="number" min="1" step="1" bind:value={qty} placeholder="riempi la striscia" />{#if qtyDaFare}<em class="st-hint">ne preparo {qtyDaFare}: l’8% in piu&#39; per gli scarti</em>{/if}</label>
 				{#if P.mode === 'fogli' && !MULTI}
