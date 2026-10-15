@@ -40,10 +40,10 @@ export interface SheetRules {
 	margin: number;
 	/** spazio minimo fra un'etichetta e l'altra */
 	gap: number;
-	/** resinatrice a 10 aghi: etichette per foglio multiple di 5 */
 	/** resinatrice: quanti aghi ha la testa (null = nessun vincolo).
-	 *  Le etichette di una riga si dividono gli aghi, quindi le colonne devono stare nella testa
-	 *  (1, 2, 5 o 10 per una testa da 10) e il totale del foglio dev'essere un multiplo della testa. */
+	 *  Le etichette di una riga si dividono gli aghi (2 etichette = 5 aghi ciascuna), quindi le COLONNE devono
+	 *  dividere la testa: 1, 2, 5 o 10 per una testa da 10. Le righe sono libere (Mattia, 15/10/2026: il
+	 *  "totale multiplo di 10" del 29/9 era un vincolo inventato che faceva fogli da 43 cm per Ø80). */
 	testa: number | null;
 }
 
@@ -230,7 +230,7 @@ interface Cand {
 	usedH: number;
 	density: number;
 	frame: Frame;
-	/** la griglia rispetta la testa della resinatrice (colonne 1, 2, 5, 10 e totale multiplo di 10) */
+	/** la griglia rispetta la testa della resinatrice (colonne che dividono gli aghi: 1, 2, 5, 10) */
 	testaOk: boolean;
 }
 
@@ -262,7 +262,7 @@ export function layoutSheets(cutW: number, cutH: number, rules: SheetRules, o: S
 			for (let c = 1; c <= maxC; c++)
 				for (let r = 1; r <= maxR; r++) {
 					const n = c * r;
-					const testaOk = !rules.testa || !(rules.testa % c || n % rules.testa);
+					const testaOk = !rules.testa || rules.testa % c === 0;
 					const g = grid(pw, ph, c, r, rules.gap, rot);
 					const sw = Math.round((g.w + 2 * rules.margin) * 10) / 10, sh = Math.round((g.h + 2 * rules.margin) * 10) / 10;
 					const sheet: SheetLayout = { w: sw, h: sh, grid: g, pieces: place(g, pw, ph, rules.gap, rules.margin, rules.margin), pw, ph, nearA4: a4Near(sw, sh, A4_TOL) };
@@ -280,12 +280,12 @@ export function layoutSheets(cutW: number, cutH: number, rules: SheetRules, o: S
 	}
 	const empty: SheetResult = { ok: false, sheet: null, across: 0, down: 0, sheetsPerStrip: 0, piecesPerStrip: 0, sheetRot: false, strips: [] };
 	if (!cands.length) {
-		return { ...empty, error: rules.testa ? `Con ${cutW.toFixed(1)}×${cutH.toFixed(1)} mm non viene fuori un foglio adatto alla testa da ${rules.testa} aghi (colonne 1, 2, 5 o ${rules.testa} e totale multiplo di ${rules.testa}) nella striscia ${o.stripW}×${o.stripH} mm.` : `L'etichetta (${cutW.toFixed(1)}×${cutH.toFixed(1)} mm) non entra in un foglio sulla striscia ${o.stripW}×${o.stripH} mm.` };
+		return { ...empty, error: `L'etichetta (${cutW.toFixed(1)}×${cutH.toFixed(1)} mm) non entra in un foglio sulla striscia ${o.stripW}×${o.stripH} mm.` };
 	}
 	const areaA4 = A4[0] * A4[1];
 	// Il foglio "circa A4" viene prima di tutto (Mattia, 15/10/2026: "le regole devono essere uguali per tutti i fogli",
-	// niente fogli alti 43 cm). Poi, se si puo', la testa della resinatrice; se nessun foglio A4 la rispetta
-	// (Ø80: solo 2×5 = 433 mm) si abbassa il numero di etichette per foglio (Ø80: 3×2 = 6) e lo si scrive.
+	// niente fogli alti 43 cm). Poi la testa della resinatrice (colonne 1, 2, 5, 10: Ø80 = 2×3, 5 aghi a etichetta);
+	// se nessun foglio A4 la rispetta si prende un foglio A4 con altre colonne e lo si scrive.
 	// Solo senza alcun foglio A4 possibile (etichette oltre l'A4) si guarda il resto.
 	const near = cands.filter((c) => c.sheet.nearA4);
 	const nearTesta = near.filter((c) => c.testaOk);
@@ -330,7 +330,7 @@ export function layoutSheets(cutW: number, cutH: number, rules: SheetRules, o: S
 		ok: true,
 		warning: !best.sheet.nearA4
 			? `Nessun foglio "circa A4" possibile con questa misura: uso un foglio ${best.sheet.w}×${best.sheet.h} mm.`
-			: !best.testaOk ? `Nessun foglio "circa A4" rispetta la testa da ${rules.testa} aghi con questa misura: foglio ${best.sheet.grid.cols}×${best.sheet.grid.rows} = ${best.sheet.grid.n} etichette, fuori dai multipli di ${rules.testa}.` : undefined,
+			: !best.testaOk ? `Nessun foglio "circa A4" sta nella testa da ${rules.testa} aghi con questa misura: foglio con ${best.sheet.grid.cols} colonne (gli aghi si dividono in 1, 2, 5 o ${rules.testa}).` : undefined,
 		sheet: best.sheet,
 		across: best.across,
 		down: best.down,

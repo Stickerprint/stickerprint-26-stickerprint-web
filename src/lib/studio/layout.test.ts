@@ -9,17 +9,18 @@ const base = { stripW: pageWidthFor(700), margin: MARKED_MARGIN.x, marginY: MARK
 const auto = { ...base, stripH: 360, autoMaxH: SHEET_AUTO_MAX_H, frames: SHEET_FRAMES };
 
 describe('fogli resinati (testa da 10 aghi)', () => {
-	it('Ø80: foglio circa A4 da 3×2 = 6 (la testa da 10 non si puo\' rispettare), 3 fogli affiancati entro i 360', () => {
+	it('Ø80: foglio circa A4 da 2×3 = 6 (2 colonne = 5 aghi a etichetta), 3 fogli affiancati entro i 360', () => {
 		const r = layoutSheets(80, 80, SHEET_RULES.resinati, auto);
 		expect(r.ok).toBe(true);
 		expect(r.sheet!.nearA4).toBe(true);
+		expect(r.sheet!.grid.cols).toBe(2);
 		expect(r.sheet!.grid.n).toBe(6);
 		expect(Math.max(r.sheet!.w, r.sheet!.h)).toBeLessThan(300);
 		expect(r.across).toBe(3);
 		expect(r.piecesPerStrip).toBe(18);
 		expect(r.stripH!).toBeLessThanOrEqual(360);
 		expect(r.strips[0].h).toBe(r.stripH);
-		expect(r.warning).toMatch(/testa da 10/);
+		expect(r.warning).toBeUndefined();
 	});
 	it('Ø80 con 54 etichette: 9 fogli da 6 in 3 strisce', () => {
 		const r = layoutSheets(80, 80, SHEET_RULES.resinati, { ...auto, sheets: 9 });
@@ -40,15 +41,15 @@ describe('fogli resinati (testa da 10 aghi)', () => {
 		const r = layoutSheets(50, 50, SHEET_RULES.resinati, auto);
 		expect(r.ok).toBe(true);
 		expect(r.sheet!.nearA4).toBe(true);
-		expect(r.sheet!.grid.n % 10).toBe(0);
+		expect(r.sheet!.grid.cols).toBe(5);
 		expect(r.across).toBeGreaterThanOrEqual(2);
 	});
-	it('quando un foglio A4 lo permette, le colonne stanno nella testa e il totale e\' multiplo di 10', () => {
-		for (const [w, h] of [[25, 25], [80, 60], [40, 70], [50, 50]]) {
+	it('le colonne dividono sempre i 10 aghi (1, 2, 5 o 10); le righe sono libere', () => {
+		for (const [w, h] of [[25, 25], [80, 60], [40, 70], [50, 50], [60, 60], [100, 100], [120, 90]]) {
 			const r = layoutSheets(w, h, SHEET_RULES.resinati, auto);
 			expect(r.ok).toBe(true);
 			expect([1, 2, 5, 10]).toContain(r.sheet!.grid.cols);
-			expect(r.sheet!.grid.n % 10).toBe(0);
+			expect(r.warning).toBeUndefined();
 		}
 	});
 	it('senza alcun foglio A4 possibile (etichetta piu\' grande dell\'A4) si ripiega e lo si dice', () => {
