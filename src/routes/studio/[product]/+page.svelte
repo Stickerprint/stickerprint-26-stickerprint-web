@@ -508,10 +508,16 @@
 	   solo gli spigoli, di quanti millimetri lo decide l'operatore col cursore. */
 	let smusso = $state(0);
 	const vivi = $derived(ready ? angoliVivi(ready.pathD) : []);
-	/* non si smussa piu' di quanto reggano i tratti piu' corti attorno allo spigolo */
+	/* quanto regge lo spigolo piu' stretto: oltre questo, li' il raccordo si ferma da solo */
 	const smussoMax = $derived(vivi.length ? Math.max(0.5, Math.round(Math.min(...vivi.map((v) => v.max)) * 10) / 10) : 0);
+	/* Il cursore arriva SEMPRE almeno a 3 mm (Mattia, 17/10/2026: ci sono sagome che vogliono uno
+	   smusso piu' deciso). Non e' un azzardo: `smussa()` limita ogni angolo al 45% dei due tratti che
+	   lo formano, quindi gli spigoli stretti prendono quello che possono e gli altri i millimetri
+	   chiesti. Il cursore non deve fermarsi sul piu' stretto di tutti. */
+	const SMUSSO_CURSORE = 3;
+	const smussoCursore = $derived(vivi.length ? Math.max(SMUSSO_CURSORE, smussoMax) : 0);
 	/** il tracciato del file pronto come va in stampa: ritocco dei selettori + smusso degli spigoli */
-	const prontoFinale = (d: string) => (smusso > 0 && vivi.length ? smussa(d, Math.min(smusso, smussoMax)) : d);
+	const prontoFinale = (d: string) => (smusso > 0 && vivi.length ? smussa(d, smusso) : d);
 
 	async function pickReady(f: File | null | undefined) {
 		if (!f) return;
@@ -937,16 +943,19 @@
 							<p class="st-label">Smussa angoli vivi</p>
 							<p class="st-note">Il file ha <b>{vivi.length} {vivi.length === 1 ? 'angolo vivo' : 'angoli vivi'}</b>{#if vivi.length}, il più chiuso di <b>{Math.min(...vivi.map((v) => v.gradi))}°</b>{/if}. In resinatura uno spigolo è un punto debole: la resina ci si accumula e il pezzo si scheggia.</p>
 							<div class="st-smu">
-								<input class="st-smu__r" type="range" min="0" max={smussoMax} step="0.1" bind:value={smusso} aria-label="Quanto smussare gli angoli vivi" />
+								<input class="st-smu__r" type="range" min="0" max={smussoCursore} step="0.1" bind:value={smusso} aria-label="Quanto smussare gli angoli vivi" />
 								<span class="st-smu__v" class:is-on={smusso > 0}>{smusso > 0 ? `${smusso.toFixed(1)} mm` : 'spigoli'}</span>
 							</div>
 							<div class="st-smu__q">
 								<button type="button" class="st-chip" class:is-on={smusso === 0} onclick={() => (smusso = 0)}>Lascia gli spigoli</button>
 								{#each [1, 2, 3] as q (q)}
-									{#if q <= smussoMax}<button type="button" class="st-chip" class:is-on={Math.abs(smusso - q) < 0.05} onclick={() => (smusso = q)}>{q} mm</button>{/if}
+									{#if q <= smussoCursore}<button type="button" class="st-chip" class:is-on={Math.abs(smusso - q) < 0.05} onclick={() => (smusso = q)}>{q} mm</button>{/if}
 								{/each}
 							</div>
-							<p class="st-note">Oltre {smussoMax} mm gli spigoli si mangerebbero i tratti vicini. Si toccano solo gli angoli: il resto del tracciato del cliente resta identico.</p>
+							<p class="st-note">
+								{#if smussoCursore > smussoMax && smusso > smussoMax}Oltre {smussoMax} mm l&rsquo;angolo più stretto non ci sta: lì il raccordo si ferma da solo, gli altri prendono i millimetri che chiedi.
+								{:else}Si toccano solo gli angoli: il resto del tracciato del cliente resta identico.{/if}
+							</p>
 						</div>
 					{/if}
 					<div class="st-actions">
