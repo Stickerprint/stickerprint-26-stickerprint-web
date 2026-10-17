@@ -14,6 +14,7 @@
     "@sveltejs/adapter-vercel": "^5.7.0",
     "@sveltejs/kit": "^2.20.0",
     "@sveltejs/vite-plugin-svelte": "^5.0.0",
+    "@types/mailparser": "^3.9.0",
     "svelte": "^5.30.0",
     "svelte-check": "^4.2.0",
     "typescript": "^5.8.0",
@@ -28,6 +29,8 @@
     "@supabase/ssr": "^0.6.1",
     "@supabase/supabase-js": "^2.50.0",
     "@vercel/functions": "^3.9.11",
+    "imapflow": "^2.5.2",
+    "mailparser": "^3.9.40",
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^6.4.299",
     "web-push": "^3.6.7"

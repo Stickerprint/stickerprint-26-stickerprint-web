@@ -20,23 +20,27 @@
 <svelte:head><title>Posta → ordini | Dashboard</title></svelte:head>
 
 <div class="toolbar" style="justify-content:space-between;align-items:flex-start">
-	<div><h1>Posta → ordini dalle mail</h1><p class="lead">Le mail di mattia@stickerprint.it arrivano qui. Alle 9 e alle 15 l'assistente le legge: gli ordini entrano in Fatturazione → Ordini col cliente giusto, misure dai file e mockup; le richieste di preventivo in Aziende → Richieste. Quello che non torna lo scrive nei punti da controllare.</p></div>
+	<div><h1>Posta → ordini dalle mail</h1><p class="lead">Alle 9 e alle 15 il sito legge la casella mattia@stickerprint.it e l'assistente lavora le mail nuove: gli ordini entrano in Fatturazione → Ordini col cliente giusto, misure dai file e mockup; le richieste di preventivo in Aziende → Richieste. Quello che non torna lo scrive nei punti da controllare.</p></div>
 	<form method="POST" action="?/tutte" use:enhance={() => { inCorso = 'tutte'; return async ({ update }) => { inCorso = ''; await update(); }; }}>
-		<button class="btn btn--xs btn--yellow" type="submit" disabled={inCorso === 'tutte' || !data.conteggi.nuova}>{inCorso === 'tutte' ? 'Sto leggendo…' : `Elabora adesso le ${data.conteggi.nuova ?? 0} nuove`}</button>
+		<button class="btn btn--xs btn--yellow" type="submit" disabled={inCorso === 'tutte' || !data.casella.collegata}>{inCorso === 'tutte' ? 'Sto leggendo la casella…' : 'Leggi la casella adesso'}</button>
 	</form>
 </div>
 
 {#if form?.errore}<div class="mk-err" style="background:#fbe3e1;color:#b3261e;border-radius:12px;padding:12px 16px;font-size:13.5px">{form.errore}</div>{/if}
 {#if form?.messaggio}<div style="background:#e1f3e8;color:#1d7a46;border-radius:12px;padding:12px 16px;font-size:13.5px">{form.messaggio}{#if form.avviso} · <b>{form.avviso}</b>{/if}</div>{/if}
 {#if !data.assistente}<div style="background:#fff8e6;border:1px solid #f4d78a;border-radius:12px;padding:12px 16px;font-size:13px;color:#6b4d00"><b>Assistente spento</b>: manca ANTHROPIC_API_KEY su Vercel, le mail arrivano ma non si leggono.</div>{/if}
-{#if data.conferma}
-	<div class="dcard" style="border-color:var(--blue);background:#f2f6ff">
-		<h3 style="margin-bottom:6px">Gmail chiede di confermare l'inoltro</h3>
-		<p style="margin:0;font-size:14px">Mail di Google del {data.conferma.quando ? new Date(data.conferma.quando).toLocaleString('it-IT') : '—'}. {#if data.conferma.codice}Codice di conferma: <b style="font-size:20px;font-family:var(--font-display)">{data.conferma.codice}</b> (incollalo in Gmail → Impostazioni → Inoltro).{/if} {#if data.conferma.link}<a class="link" href={data.conferma.link} target="_blank" rel="noopener">Oppure conferma con un clic ↗</a>{/if}</p>
+{#if !data.casella.collegata}
+	<div class="dcard" style="border-color:#f4d78a;background:#fff8e6">
+		<h3 style="margin-bottom:6px">Casella non collegata</h3>
+		<p style="margin:0;font-size:14px;line-height:1.6">Su Vercel mancano: <b>{data.casella.mancanti.join(', ')}</b>. Serve una <b>password per le app</b> di Google (Account Google → Sicurezza → Verifica in due passaggi → Password per le app, nome "Dashboard Stickerprint"): su Vercel → Settings → Environment Variables metti GMAIL_IMAP_USER = mattia@stickerprint.it e GMAIL_IMAP_PASS = la password per le app (16 lettere, senza spazi), poi Redeploy.</p>
 	</div>
+{:else if data.casella.errore}
+	<div style="background:#fbe3e1;color:#b3261e;border-radius:12px;padding:12px 16px;font-size:13.5px">Ultima lettura della casella fallita{#if data.casella.lettaIl} ({new Date(data.casella.lettaIl).toLocaleString('it-IT')}){/if}: {data.casella.errore}</div>
+{:else if data.casella.lettaIl}
+	<p class="osub">Casella letta l'ultima volta il {new Date(data.casella.lettaIl).toLocaleString('it-IT')}.</p>
 {/if}
 {#if !data.totale}
-	<div class="soon"><b>Ancora nessuna mail</b>Quando l'inoltro da Gmail a Postmark è attivo, le mail compaiono qui da sole.</div>
+	<div class="soon"><b>Ancora nessuna mail</b>Con la casella collegata, alle 9 e alle 15 (o col bottone qui sopra) le mail nuove compaiono qui da sole. Si parte dalle mail di oggi: niente arretrato.</div>
 {/if}
 
 <div class="tabs">

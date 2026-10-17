@@ -1,6 +1,6 @@
--- Posta in arrivo (17/10/2026): le mail di mattia@stickerprint.it inoltrate da Gmail a Postmark arrivano al webhook
--- /api/posta/inbound e finiscono qui con gli allegati (bucket posta-in). Alle 9 e alle 15 il sito le legge,
--- riconosce ordini e richieste di preventivo e li inserisce in dashboard (src/lib/server/posta/).
+-- Posta in arrivo (17/10/2026): il sito legge la casella mattia@stickerprint.it via IMAP (password per le app di Google)
+-- alle 9 e alle 15, salva qui ogni mail nuova con gli allegati (bucket posta-in), riconosce ordini e richieste di
+-- preventivo e li inserisce in dashboard (src/lib/server/posta/). Il webhook Postmark Inbound resta come alternativa.
 
 create table if not exists public.posta_in (
   id              uuid primary key default gen_random_uuid(),
@@ -33,6 +33,18 @@ create policy "posta: staff scrive" on public.posta_in for update using (public.
 alter table public.contacts add column if not exists domini text[] not null default '{}';
 update public.contacts set domini = array['metrica.it'] where vat = '00584770242' and domini = '{}';
 update public.contacts set email = coalesce(email, 'comaplast@hotmail.it') where vat = '05545430968';
+
+-- dove e' arrivata la lettura IMAP: l'ultimo UID letto nella INBOX (UIDVALIDITY cambia se Google ricrea la casella)
+create table if not exists public.posta_sync (
+  id            int primary key default 1 check (id = 1),
+  uid_validity  bigint,
+  last_uid      bigint not null default 0,
+  letta_il      timestamptz,
+  errore        text
+);
+insert into public.posta_sync (id) values (1) on conflict do nothing;
+alter table public.posta_sync enable row level security;
+create policy "posta sync: staff legge" on public.posta_sync for select using (public.is_staff());
 
 insert into storage.buckets (id, name, public) values ('posta-in', 'posta-in', false) on conflict (id) do nothing;
 drop policy if exists "posta in: staff legge" on storage.objects;

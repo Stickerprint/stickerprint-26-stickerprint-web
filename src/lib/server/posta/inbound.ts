@@ -1,6 +1,6 @@
 /**
- * Webhook Postmark Inbound: Gmail inoltra la posta di mattia@stickerprint.it all'indirizzo inbound di Postmark,
- * Postmark la manda qui in JSON con gli allegati in base64. Si salva tutto in posta_in e nel bucket posta-in.
+ * Una mail in arrivo diventa una riga di posta_in con gli allegati nel bucket posta-in.
+ * Arriva dalla lettura IMAP (gmail.ts) o, in alternativa, dal webhook Postmark Inbound (stesso formato JSON di Postmark).
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { AllegatoPosta } from './tipi';
@@ -10,7 +10,8 @@ export interface PostmarkInbound {
 	MessageID: string; Date: string; Subject: string; TextBody?: string; HtmlBody?: string; StrippedTextReply?: string;
 	FromFull: PmAddr; ToFull?: PmAddr[]; CcFull?: PmAddr[]; OriginalRecipient?: string;
 	Headers?: { Name: string; Value: string }[];
-	Attachments?: { Name: string; Content: string; ContentType: string; ContentLength: number; ContentID?: string }[];
+	/** Content in base64 (Postmark) oppure Bytes gia' decodificati (lettura IMAP) */
+	Attachments?: { Name: string; Content: string; Bytes?: Uint8Array; ContentType: string; ContentLength: number; ContentID?: string }[];
 }
 
 /** base64 → byte senza Buffer (i tipi di Node non sono nel progetto) */
@@ -30,14 +31,15 @@ export async function salvaInbound(db: SupabaseClient, p: PostmarkInbound): Prom
 	const mail_id = p.Headers?.find((h) => h.Name.toLowerCase() === 'message-id')?.Value ?? null;
 	const { data: gia } = await db.from('posta_in').select('id').eq('message_id', p.MessageID).maybeSingle();
 	if (gia) return { id: gia.id, doppia: true };
+	if (mail_id) { const { data: gia2 } = await db.from('posta_in').select('id').eq('mail_id', mail_id).maybeSingle(); if (gia2) return { id: gia2.id, doppia: true }; }
 	const allegati: AllegatoPosta[] = [];
 	const base = p.MessageID.replace(/[^a-z0-9-]/gi, '');
 	let n = 0;
 	for (const a of p.Attachments ?? []) {
-		if (!a.Content || a.ContentID) continue; // le immagini in linea delle firme non servono
+		if ((!a.Content && !a.Bytes) || a.ContentID) continue; // le immagini in linea delle firme non servono
 		n++;
 		const path = `${base}/${n}-${safe(a.Name)}`;
-		const bytes = daBase64(a.Content);
+		const bytes = a.Bytes ?? daBase64(a.Content);
 		const { error } = await db.storage.from('posta-in').upload(path, bytes, { contentType: a.ContentType || 'application/octet-stream', upsert: true });
 		if (!error) allegati.push({ nome: a.Name, tipo: a.ContentType, byte: bytes.length, path });
 	}
