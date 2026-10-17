@@ -285,15 +285,24 @@ export function smussa(d: string, raggio: number, soglia = VIVO): string {
 		   sulle tangenti vere, e lo spigolo "virtuale" e' dove le due tangenti si incrociano. */
 		const k = 0.5523;
 		const raccordo = (A: P, B: P, V: P, tA: P, tB: P): Tratto => {
+			/* Lo spigolo "virtuale": dove si incrociano le due direzioni di marcia. Su uno spigolo
+			   netto coincide col vertice; dove il raccordo si innesta su una curva no, ed e' quello
+			   che conta per far partire e arrivare la curva dritta. */
+			const corda = len(sub(B, A));
 			const den = tA[0] * tB[1] - tA[1] * tB[0];
-			let W = V;
+			let W: P | null = null;
 			if (Math.abs(den) > 1e-6) {
 				const u = ((B[0] - A[0]) * tB[1] - (B[1] - A[1]) * tB[0]) / den;
-				if (u > 0 && u < len(sub(B, A)) * 6) W = add(A, mul(tA, u));
+				if (u > 0 && u < corda * 6) W = add(A, mul(tA, u));
 			}
-			const hA = Math.min(len(sub(W, A)), len(sub(B, A)) * 1.5) * k;
-			const hB = Math.min(len(sub(W, B)), len(sub(B, A)) * 1.5) * k;
-			return { tipo: 'C', p: [A, add(A, mul(tA, hA)), add(B, mul(tB, -hB)), B] };
+			/* Le due maniglie LUNGHE UGUALI. La tangenza non dipende dalla loro lunghezza, solo
+			   dalla direzione: tenendole diverse (una per lato, come prima) la curva usciva gobba da
+			   un lato e piatta dall'altro — e' lo "sformato" che si vedeva sul Rineau a 3 mm. */
+			const h = W
+				? Math.min(len(sub(W, A)), len(sub(W, B)), corda * 0.8) * k
+				: corda * 0.38;
+			void V;
+			return { tipo: 'C', p: [A, add(A, mul(tA, h)), add(B, mul(tB, -h)), B] };
 		};
 
 		if (G.chiusa) {
