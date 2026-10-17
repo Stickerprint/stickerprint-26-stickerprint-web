@@ -33,6 +33,7 @@
 		{ id: 'richieste', title: 'Richieste', items: [
 			{ label: 'Aziende', href: '/dashboard/aziende/richieste', count: data.counts?.aziende },
 			{ label: 'Richieste di aiuto', href: '/dashboard/supporto/ticket', count: data.counts?.supporto },
+			{ label: 'Posta → ordini', href: '/dashboard/richieste/posta', count: data.counts?.posta },
 			{ label: 'Assistente automatico', href: '/dashboard/richieste/assistente' },
 			{ label: 'Recensioni', href: '/dashboard/supporto/recensioni', count: data.counts?.recensioni }
 		] },

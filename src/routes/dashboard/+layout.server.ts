@@ -11,11 +11,12 @@ import { pendingReviews } from '$lib/server/recensioni';
 const countsCache: { at: number; value: Record<string, number> | null } = { at: 0, value: null };
 
 async function menuCounts(supabase: App.Locals['supabase']): Promise<Record<string, number>> {
-	const [{ data: rows }, { data: tasks }, { count: daAvviare }, az, sup, conf, invq, rev] = await Promise.all([
+	const [{ data: rows }, { data: tasks }, { count: daAvviare }, az, sup, conf, invq, rev, posta] = await Promise.all([
 		supabase.from('orders').select('prod_stage, status, transmitted_at, ddt_id').in('status', ['pronto', 'in_spedizione']),
 		supabase.from('production_tasks').select('stage, status, job:production_jobs!inner(status)').in('status', ['pronto', 'in_corso', 'bloccato']).in('job.status', ['READY_TO_START', 'IN_PROGRESS', 'WAITING_PASSIVE_TIME']),
 		supabase.from('production_jobs').select('id', { count: 'exact', head: true }).eq('status', 'READY_TO_START'),
-		aziendeCounts(supabase), supportoCounts(supabase), confirmCounts(supabase), invoiceCounts(supabase), pendingReviews(supabase)
+		aziendeCounts(supabase), supportoCounts(supabase), confirmCounts(supabase), invoiceCounts(supabase), pendingReviews(supabase),
+		supabase.from('posta_in').select('id', { count: 'exact', head: true }).in('stato', ['nuova', 'errore']).then((r) => r.count ?? 0)
 	]);
 	const counts: Record<string, number> = {};
 	for (const t of tasks ?? []) counts[t.stage] = (counts[t.stage] ?? 0) + 1;
@@ -27,6 +28,7 @@ async function menuCounts(supabase: App.Locals['supabase']): Promise<Record<stri
 	if (az.nuove) counts.aziende = az.nuove;
 	if (az.daSollecitare) counts.preventivi = az.daSollecitare;
 	if (sup.daLeggere) counts.supporto = sup.daLeggere;
+	if (posta) counts.posta = posta;
 	return counts;
 }
 

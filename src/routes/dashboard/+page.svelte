@@ -159,6 +159,7 @@
 					{/each}
 				</ul>
 			{/if}
+			{#if data.posta}<a class="hm-piede" href="/dashboard/richieste/posta">✉️ Dalle mail: {data.posta.ordiniOggi} ordini e {data.posta.richiesteOggi} richieste inseriti oggi{#if data.posta.daControllare} ({data.posta.daControllare} da controllare){/if}{#if data.posta.nuove} · {data.posta.nuove} mail da leggere alle 9 e alle 15{/if}{#if data.posta.problemi} · {data.posta.problemi} con problemi{/if} →</a>{/if}
 			{#if data.assistenza.aziendeNuove}<a class="hm-piede" href="/dashboard/aziende/richieste">🏢 {data.assistenza.aziendeNuove} {data.assistenza.aziendeNuove === 1 ? 'nuova richiesta azienda da leggere' : 'nuove richieste aziende da leggere'} →</a>{/if}
 		</section>
 

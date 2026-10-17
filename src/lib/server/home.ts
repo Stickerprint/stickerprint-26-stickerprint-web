@@ -102,8 +102,24 @@ export async function marginiHome(db: DB, oggi: string): Promise<MarginiHome | n
 	return out;
 }
 
+/** la posta: quante mail aspettano le 9/15, quanti ordini e richieste sono entrati oggi dalle mail, quante hanno problemi */
+export async function postaHome(db: DB, oggi: string): Promise<{ nuove: number; ordiniOggi: number; richiesteOggi: number; problemi: number; daControllare: number } | null> {
+	const { data, error } = await db.from('posta_in').select('stato, esito, elaborata_il').or(`stato.in.(nuova,errore),elaborata_il.gte.${inizioGiornoRoma(oggi).toISOString()}`).limit(500);
+	if (error) return null;
+	const out = { nuove: 0, ordiniOggi: 0, richiesteOggi: 0, problemi: 0, daControllare: 0 };
+	for (const r of data ?? []) {
+		if (r.stato === 'nuova') out.nuove++;
+		else if (r.stato === 'errore') out.problemi++;
+		if (r.elaborata_il && r.elaborata_il >= inizioGiornoRoma(oggi).toISOString()) {
+			if (r.stato === 'ordine') { out.ordiniOggi++; if ((r.esito as { blocchi?: string[] } | null)?.blocchi?.length) out.daControllare++; }
+			if (r.stato === 'preventivo') out.richiesteOggi++;
+		}
+	}
+	return out;
+}
+
 export async function caricaHome(db: DB) {
 	const oggi = giornoRoma();
-	const [fatturato, daPartire, nuovi, assistenza, margini] = await Promise.all([fatturatoHome(db, oggi), ordiniDaPartire(db, oggi), nuoviOrdiniOggi(db, oggi), assistenzaDaRispondere(db), marginiHome(db, oggi).catch(() => null)]);
-	return { oggi, fatturato, daPartire, nuovi, assistenza, margini };
+	const [fatturato, daPartire, nuovi, assistenza, margini, posta] = await Promise.all([fatturatoHome(db, oggi), ordiniDaPartire(db, oggi), nuoviOrdiniOggi(db, oggi), assistenzaDaRispondere(db), marginiHome(db, oggi).catch(() => null), postaHome(db, oggi)]);
+	return { oggi, fatturato, daPartire, nuovi, assistenza, margini, posta };
 }
