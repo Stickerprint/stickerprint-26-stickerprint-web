@@ -37,6 +37,7 @@ const add = (a: P, b: P): P => [a[0] + b[0], a[1] + b[1]];
 const mul = (a: P, k: number): P => [a[0] * k, a[1] * k];
 const len = (a: P) => Math.hypot(a[0], a[1]);
 const norm = (a: P): P => { const l = len(a) || 1; return [a[0] / l, a[1] / l]; };
+const EPS = 1e-9;
 const lerp = (a: P, b: P, t: number): P => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
 
 /** punto della curva al parametro t */
@@ -141,21 +142,117 @@ function angoloFra(a: Tratto, b: Tratto): number {
 /** sotto questo angolo interno il vertice e' uno SPIGOLO, sopra e' un raccordo dolce */
 const VIVO = 165;
 
+/* ------------------------------------------------------------------ lo spigolo nel suo giro
+
+   Il primo smusso tagliava i DUE TRATTI che formano lo spigolo, al massimo il 45% di ognuno.
+   Funziona finche' quei tratti sono lunghi, ma non e' cosi' che e' fatto un tracciato vero: il
+   logo Rineau (17/10/2026) ha una linguetta attaccata all'ovale con due monconi da 0,24 mm, e il
+   limite del 45% fermava il raccordo a 0,11 mm — invisibile, Mattia vedeva il tracciato "identico".
+
+   Qui lo spigolo si guarda lungo TUTTO il contorno, non sui due tratti che lo toccano: si cammina
+   all'indietro e in avanti per i millimetri chiesti, attraversando quanti tratti serve. Il limite
+   diventa la distanza dallo spigolo VICINO (meta' strada, cosi' due raccordi non si accavallano).
+   ------------------------------------------------------------------ */
+
+/** un contorno percorribile a millimetri: i tratti con la loro lunghezza progressiva */
+interface Giro {
+	t: Tratto[];
+	chiusa: boolean;
+	/** lunghezza di ogni tratto */
+	l: number[];
+	/** lunghezza progressiva all'INIZIO di ogni tratto (l'ultima voce e' il totale) */
+	s: number[];
+}
+
+function giro(g: { chiusa: boolean; t: Tratto[] }): Giro {
+	const l = g.t.map(lunghezza), s = [0];
+	for (const q of l) s.push(s[s.length - 1] + q);
+	return { t: g.t, chiusa: g.chiusa, l, s };
+}
+
+/** il punto del contorno a `d` millimetri dall'inizio */
+function puntoA(G: Giro, d: number): P {
+	const tot = G.s[G.s.length - 1];
+	let x = G.chiusa ? ((d % tot) + tot) % tot : Math.max(0, Math.min(tot, d));
+	for (let i = 0; i < G.t.length; i++) {
+		if (x <= G.l[i] + EPS) return punto(G.t[i], paramA(G.t[i], x, false));
+		x -= G.l[i];
+	}
+	return punto(G.t[G.t.length - 1], 1);
+}
+
+/** la direzione di marcia del contorno a `d` millimetri dall'inizio */
+function tangenteA(G: Giro, d: number): P {
+	const tot = G.s[G.s.length - 1];
+	let x = G.chiusa ? ((d % tot) + tot) % tot : Math.max(0, Math.min(tot, d));
+	for (let i = 0; i < G.t.length; i++) {
+		if (x <= G.l[i] + EPS) return tangente(G.t[i], paramA(G.t[i], x, false));
+		x -= G.l[i];
+	}
+	return tangente(G.t[G.t.length - 1], 1);
+}
+
+/** il pezzo di contorno fra due misure progressive, come tratti interi o porzioni */
+function pezzoDa(G: Giro, da: number, a: number): Tratto[] {
+	const tot = G.s[G.s.length - 1];
+	const out: Tratto[] = [];
+	if (a - da <= 1e-6) return out;
+	let resta = a - da;
+	let x = G.chiusa ? ((da % tot) + tot) % tot : Math.max(0, da);
+	let i = 0;
+	while (x > G.l[i] + EPS) { x -= G.l[i]; i = (i + 1) % G.t.length; }
+	while (resta > 1e-6) {
+		const t = G.t[i], disponibile = G.l[i] - x;
+		const prendo = Math.min(resta, disponibile);
+		if (prendo > 1e-6) {
+			const u0 = x <= 1e-9 ? 0 : paramA(t, x, false);
+			const u1 = x + prendo >= G.l[i] - 1e-9 ? 1 : paramA(t, x + prendo, false);
+			if (u1 > u0 + 1e-9) out.push(porzione(t, u0, u1));
+		}
+		resta -= prendo;
+		x = 0;
+		i = (i + 1) % G.t.length;
+		if (!G.chiusa && i === 0) break;
+	}
+	return out;
+}
+
+/** gli spigoli di un contorno: dove si trovano (in millimetri dal via) e quanto sono chiusi */
+function spigoli(G: Giro, soglia: number): { i: number; s: number; gradi: number }[] {
+	const out: { i: number; s: number; gradi: number }[] = [];
+	const n = G.t.length;
+	for (let i = 0; i < n; i++) {
+		const prec = i === 0 ? (G.chiusa ? n - 1 : -1) : i - 1;
+		if (prec < 0) continue;
+		const g = angoloFra(G.t[prec], G.t[i]);
+		if (g < soglia) out.push({ i, s: G.s[i], gradi: Math.round(g) });
+	}
+	return out;
+}
+
+/** quanto puo' aprirsi ogni raccordo senza toccare quello vicino: meta' strada fra due spigoli */
+function respiro(G: Giro, sp: { s: number }[]): number[] {
+	const tot = G.s[G.s.length - 1];
+	if (!sp.length) return [];
+	if (sp.length === 1) return [G.chiusa ? tot * 0.45 : Math.min(sp[0].s, tot - sp[0].s) * 0.9];
+	return sp.map((c, k) => {
+		const prima = k === 0 ? (G.chiusa ? tot - sp[sp.length - 1].s + c.s : c.s) : c.s - sp[k - 1].s;
+		const dopo = k === sp.length - 1 ? (G.chiusa ? tot - c.s + sp[0].s : tot - c.s) : sp[k + 1].s - c.s;
+		return Math.min(prima, dopo) * 0.45;
+	});
+}
+
 /**
  * Gli angoli vivi del tracciato: dove la direzione di marcia salta di colpo.
- * `max` dice fino a quanti millimetri si puo' smussare quell'angolo senza mangiare i tratti vicini.
+ * `max` dice fino a quanti millimetri si puo' aprire il raccordo prima di toccare lo spigolo vicino.
  */
 export function angoliVivi(d: string, soglia = VIVO): AngoloVivo[] {
 	const out: AngoloVivo[] = [];
 	for (const p of tratti(parsePath(d))) {
-		const n = p.t.length;
-		for (let i = 0; i < n; i++) {
-			const b = p.t[i], a = i === 0 ? (p.chiusa ? p.t[n - 1] : null) : p.t[i - 1];
-			if (!a) continue;
-			const g = angoloFra(a, b);
-			if (g >= soglia) continue;
-			out.push({ x: b.p[0][0], y: b.p[0][1], gradi: Math.round(g), max: Math.min(lunghezza(a), lunghezza(b)) * 0.45 });
-		}
+		const G = giro(p);
+		const sp = spigoli(G, soglia);
+		const resp = respiro(G, sp);
+		sp.forEach((c, k) => out.push({ x: G.t[c.i].p[0][0], y: G.t[c.i].p[0][1], gradi: c.gradi, max: resp[k] }));
 	}
 	return out;
 }
@@ -163,8 +260,8 @@ export function angoliVivi(d: string, soglia = VIVO): AngoloVivo[] {
 const n4 = (v: number) => Math.round(v * 1000) / 1000;
 
 /**
- * Smussa tutti gli angoli vivi di `raggio` millimetri. Il resto del tracciato non si tocca:
- * si accorciano solo i due tratti che formano lo spigolo e in mezzo si mette un raccordo.
+ * Smussa tutti gli angoli vivi di `raggio` millimetri. Il resto del tracciato non si tocca: si
+ * accorcia il contorno solo attorno agli spigoli e in mezzo si mette un raccordo.
  * Con raggio 0 torna il tracciato di partenza.
  */
 export function smussa(d: string, raggio: number, soglia = VIVO): string {
@@ -174,55 +271,65 @@ export function smussa(d: string, raggio: number, soglia = VIVO): string {
 	const fuori: string[] = [];
 
 	for (const g of gruppi) {
-		const n = g.t.length;
-		/* per ogni tratto: quanto accorciarlo all'inizio e alla fine */
-		const taglioIn = new Array(n).fill(0), taglioOut = new Array(n).fill(0);
-		const vertice: (P | null)[] = new Array(n).fill(null);
-		for (let i = 0; i < n; i++) {
-			const prev = i === 0 ? (g.chiusa ? n - 1 : -1) : i - 1;
-			if (prev < 0) continue;
-			const a = g.t[prev], b = g.t[i];
-			if (angoloFra(a, b) >= soglia) continue;
-			/* non si mangia piu' del 45% di un tratto, cosi' due spigoli vicini non si sovrappongono */
-			const q = Math.min(raggio, lunghezza(a) * 0.45, lunghezza(b) * 0.45);
-			if (q <= 1e-4) continue;
-			taglioOut[prev] = q; taglioIn[i] = q; vertice[i] = b.p[0];
-		}
+		const G = giro(g);
+		const sp = spigoli(G, soglia);
+		if (!sp.length) { fuori.push(scrivi(G.t, G.chiusa)); continue; }
+		const resp = respiro(G, sp);
+		const q = sp.map((_, k) => Math.max(0, Math.min(raggio, resp[k])));
+		const tot = G.s[G.s.length - 1];
 
-		/* si ricostruisce il contorno: tratti accorciati + raccordi negli spigoli */
 		const pezzi: Tratto[] = [];
-		for (let i = 0; i < n; i++) {
-			const t = g.t[i];
-			const u0 = taglioIn[i] > 0 ? paramA(t, taglioIn[i], false) : 0;
-			const u1 = taglioOut[i] > 0 ? paramA(t, taglioOut[i], true) : 1;
-			if (u1 <= u0 + 1e-6) continue;
-			/* il raccordo del PRIMO vertice di un contorno chiuso si mette in coda, non qui:
-			   qui il tratto precedente non e' ancora stato ricostruito */
-			if (vertice[i] && pezzi.length) {
-				const A = punto(pezzi[pezzi.length - 1], 1);
-				const B = punto(t, u0), V = vertice[i]!;
-				const k = 0.5523;
-				pezzi.push({ tipo: 'C', p: [A, add(A, mul(sub(V, A), k)), add(B, mul(sub(V, B), k)), B] });
+		/* Il raccordo deve ripartire NELLA STESSA DIREZIONE in cui il contorno arrivava, altrimenti
+		   all'innesto resta un gomito — si vedeva allargando lo smusso sull'ovale del Rineau, dove il
+		   raccordo si attacca a una curva e non a una retta. Quindi i punti di controllo si mettono
+		   sulle tangenti vere, e lo spigolo "virtuale" e' dove le due tangenti si incrociano. */
+		const k = 0.5523;
+		const raccordo = (A: P, B: P, V: P, tA: P, tB: P): Tratto => {
+			const den = tA[0] * tB[1] - tA[1] * tB[0];
+			let W = V;
+			if (Math.abs(den) > 1e-6) {
+				const u = ((B[0] - A[0]) * tB[1] - (B[1] - A[1]) * tB[0]) / den;
+				if (u > 0 && u < len(sub(B, A)) * 6) W = add(A, mul(tA, u));
 			}
-			pezzi.push(porzione(t, u0, u1));
-		}
-		if (!pezzi.length) continue;
+			const hA = Math.min(len(sub(W, A)), len(sub(B, A)) * 1.5) * k;
+			const hB = Math.min(len(sub(W, B)), len(sub(B, A)) * 1.5) * k;
+			return { tipo: 'C', p: [A, add(A, mul(tA, hA)), add(B, mul(tB, -hB)), B] };
+		};
 
-		/* l'eventuale raccordo del primo vertice su un contorno chiuso si aggiunge in coda */
-		if (g.chiusa && vertice[0] && pezzi.length) {
-			const A = punto(pezzi[pezzi.length - 1], 1), B = punto(pezzi[0], 0), V = vertice[0]!;
-			const k = 0.5523;
-			pezzi.push({ tipo: 'C', p: [A, add(A, mul(sub(V, A), k)), add(B, mul(sub(V, B), k)), B] });
+		if (G.chiusa) {
+			/* si parte subito DOPO il primo raccordo e si gira fino a tornarci */
+			for (let n = 0; n < sp.length; n++) {
+				const c = sp[n], dq = q[n];
+				const A = puntoA(G, c.s - dq), B = puntoA(G, c.s + dq);
+				if (dq > 1e-4) pezzi.push(raccordo(A, B, G.t[c.i].p[0], tangenteA(G, c.s - dq), tangenteA(G, c.s + dq)));
+				const prossimo = n === sp.length - 1 ? sp[0].s + tot : sp[n + 1].s;
+				const dqProssimo = n === sp.length - 1 ? q[0] : q[n + 1];
+				pezzi.push(...pezzoDa(G, c.s + dq, prossimo - dqProssimo));
+			}
+		} else {
+			let cursore = 0;
+			for (let n = 0; n < sp.length; n++) {
+				const c = sp[n], dq = q[n];
+				pezzi.push(...pezzoDa(G, cursore, c.s - dq));
+				const A = puntoA(G, c.s - dq), B = puntoA(G, c.s + dq);
+				if (dq > 1e-4) pezzi.push(raccordo(A, B, G.t[c.i].p[0], tangenteA(G, c.s - dq), tangenteA(G, c.s + dq)));
+				cursore = c.s + dq;
+			}
+			pezzi.push(...pezzoDa(G, cursore, tot));
 		}
-
-		const inizio = punto(pezzi[0], 0);
-		let s = `M ${n4(inizio[0])} ${n4(inizio[1])}`;
-		for (const p of pezzi) {
-			if (p.tipo === 'L') s += ` L ${n4(p.p[1][0])} ${n4(p.p[1][1])}`;
-			else s += ` C ${n4(p.p[1][0])} ${n4(p.p[1][1])} ${n4(p.p[2][0])} ${n4(p.p[2][1])} ${n4(p.p[3][0])} ${n4(p.p[3][1])}`;
-		}
-		if (g.chiusa) s += ' Z';
-		fuori.push(s);
+		if (pezzi.length) fuori.push(scrivi(pezzi, G.chiusa));
 	}
 	return fuori.join(' ') || d;
+}
+
+/** i tratti in un `d` SVG */
+function scrivi(pezzi: Tratto[], chiusa: boolean): string {
+	if (!pezzi.length) return '';
+	const inizio = pezzi[0].p[0];
+	let s = `M ${n4(inizio[0])} ${n4(inizio[1])}`;
+	for (const p of pezzi) {
+		if (p.tipo === 'L') s += ` L ${n4(p.p[1][0])} ${n4(p.p[1][1])}`;
+		else s += ` C ${n4(p.p[1][0])} ${n4(p.p[1][1])} ${n4(p.p[2][0])} ${n4(p.p[2][1])} ${n4(p.p[3][0])} ${n4(p.p[3][1])}`;
+	}
+	return s + (chiusa ? ' Z' : '');
 }
