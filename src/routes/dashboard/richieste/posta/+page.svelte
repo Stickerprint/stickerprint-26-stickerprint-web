@@ -29,15 +29,22 @@
 {#if form?.errore}<div class="mk-err" style="background:#fbe3e1;color:#b3261e;border-radius:12px;padding:12px 16px;font-size:13.5px">{form.errore}</div>{/if}
 {#if form?.messaggio}<div style="background:#e1f3e8;color:#1d7a46;border-radius:12px;padding:12px 16px;font-size:13.5px">{form.messaggio}{#if form.avviso} · <b>{form.avviso}</b>{/if}</div>{/if}
 {#if !data.assistente}<div style="background:#fff8e6;border:1px solid #f4d78a;border-radius:12px;padding:12px 16px;font-size:13px;color:#6b4d00"><b>Assistente spento</b>: manca ANTHROPIC_API_KEY su Vercel, le mail arrivano ma non si leggono.</div>{/if}
+{#if data.esitoGmail.stato === 'ok'}<div style="background:#e1f3e8;color:#1d7a46;border-radius:12px;padding:12px 16px;font-size:13.5px">Gmail collegata: {data.esitoGmail.email}. Da ora le mail si leggono alle 9 e alle 15, o col bottone qui sopra.</div>
+{:else if data.esitoGmail.stato === 'errore'}<div style="background:#fbe3e1;color:#b3261e;border-radius:12px;padding:12px 16px;font-size:13.5px">Collegamento Gmail non riuscito: {data.esitoGmail.msg}</div>{/if}
 {#if !data.casella.collegata}
 	<div class="dcard" style="border-color:#f4d78a;background:#fff8e6">
 		<h3 style="margin-bottom:6px">Casella non collegata</h3>
-		<p style="margin:0;font-size:14px;line-height:1.6">Su Vercel mancano: <b>{data.casella.mancanti.join(', ')}</b>. Serve una <b>password per le app</b> di Google (Account Google → Sicurezza → Verifica in due passaggi → Password per le app, nome "Dashboard Stickerprint"): su Vercel → Settings → Environment Variables metti GMAIL_IMAP_USER = mattia@stickerprint.it e GMAIL_IMAP_PASS = la password per le app (16 lettere, senza spazi), poi Redeploy.</p>
+		{#if data.casella.apiPronta}
+			<p style="margin:0 0 10px;font-size:14px;line-height:1.6">Premi il bottone, scegli mattia@stickerprint.it e dai il consenso in sola lettura: nessuna password da copiare.</p>
+			<a class="btn btn--sm btn--yellow" href="/api/posta/gmail/avvia">Collega Gmail</a>
+		{:else}
+			<p style="margin:0;font-size:14px;line-height:1.6">Per l'accesso con l'API di Gmail su Vercel mancano: <b>{data.casella.apiMancanti.join(', ')}</b> (client OAuth su Google Cloud). In alternativa, IMAP con una password per le app: <b>{data.casella.imapMancanti.join(', ')}</b>.</p>
+		{/if}
 	</div>
-{:else if data.casella.errore}
-	<div style="background:#fbe3e1;color:#b3261e;border-radius:12px;padding:12px 16px;font-size:13.5px">Ultima lettura della casella fallita{#if data.casella.lettaIl} ({new Date(data.casella.lettaIl).toLocaleString('it-IT')}){/if}: {data.casella.errore}</div>
-{:else if data.casella.lettaIl}
-	<p class="osub">Casella letta l'ultima volta il {new Date(data.casella.lettaIl).toLocaleString('it-IT')}.</p>
+{:else}
+	{#if data.casella.modo === 'api'}<p class="osub">Gmail collegata ({data.casella.gmail.email}) con l'API di Google{#if data.casella.lettaIl}, ultima lettura il {new Date(data.casella.lettaIl).toLocaleString('it-IT')}{/if}. <a class="link" href="/api/posta/gmail/avvia">Ricollega</a></p>
+	{:else if data.casella.lettaIl}<p class="osub">Casella letta via IMAP l'ultima volta il {new Date(data.casella.lettaIl).toLocaleString('it-IT')}.</p>{/if}
+	{#if data.casella.errore}<div style="background:#fbe3e1;color:#b3261e;border-radius:12px;padding:12px 16px;font-size:13.5px">Ultima lettura della casella fallita: {data.casella.errore}</div>{/if}
 {/if}
 {#if !data.totale}
 	<div class="soon"><b>Ancora nessuna mail</b>Con la casella collegata, alle 9 e alle 15 (o col bottone qui sopra) le mail nuove compaiono qui da sole. Si parte dalle mail di oggi: niente arretrato.</div>

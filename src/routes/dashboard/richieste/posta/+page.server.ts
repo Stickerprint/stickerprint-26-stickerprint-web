@@ -3,6 +3,7 @@ import { adminClient } from '$lib/server/admin';
 import { elaboraPosta } from '$lib/server/posta/elabora';
 import { assistentePosta } from '$lib/server/posta/estrai';
 import { gmailConfigurato, gmailMancanti, leggiCasella } from '$lib/server/posta/gmail';
+import { gmailApiConfigurata, gmailApiMancanti, statoGmail } from '$lib/server/posta/gmail-api';
 import type { PostaRiga } from '$lib/server/posta/tipi';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -11,10 +12,11 @@ export const load: PageServerLoad = async ({ url, locals: { supabase } }) => {
 	const stato = url.searchParams.get('stato') ?? 'tutte';
 	let q = supabase.from('posta_in').select('*').order('data_mail', { ascending: false, nullsFirst: false }).limit(150);
 	if (stato !== 'tutte') q = q.eq('stato', stato);
-	const [{ data }, { data: tutte }, { data: sync }] = await Promise.all([q, supabase.from('posta_in').select('stato'), supabase.from('posta_sync').select('*').eq('id', 1).maybeSingle()]);
+	const admin = adminClient();
+	const [{ data }, { data: tutte }, { data: sync }, gmail] = await Promise.all([q, supabase.from('posta_in').select('stato'), supabase.from('posta_sync').select('*').eq('id', 1).maybeSingle(), admin ? statoGmail(admin) : Promise.resolve({ collegata: false, email: null, collegatoIl: null, errore: 'chiave di servizio mancante' })]);
 	const conteggi: Record<string, number> = {};
 	for (const r of tutte ?? []) conteggi[r.stato] = (conteggi[r.stato] ?? 0) + 1;
-	return { mail: (data ?? []) as PostaRiga[], stato, conteggi, totale: tutte?.length ?? 0, assistente: assistentePosta(), casella: { collegata: gmailConfigurato(), mancanti: gmailMancanti(), lettaIl: (sync?.letta_il as string | null) ?? null, errore: (sync?.errore as string | null) ?? null } };
+	return { mail: (data ?? []) as PostaRiga[], stato, conteggi, totale: tutte?.length ?? 0, assistente: assistentePosta(), casella: { collegata: gmail.collegata || gmailConfigurato(), modo: gmail.collegata ? 'api' : gmailConfigurato() ? 'imap' : 'nessuno', apiPronta: gmailApiConfigurata(), apiMancanti: gmailApiMancanti(), imapMancanti: gmailMancanti(), gmail, lettaIl: (sync?.letta_il as string | null) ?? null, errore: (sync?.errore as string | null) ?? null }, esitoGmail: { stato: url.searchParams.get('gmail'), msg: url.searchParams.get('msg'), email: url.searchParams.get('email') } };
 };
 
 export const actions: Actions = {

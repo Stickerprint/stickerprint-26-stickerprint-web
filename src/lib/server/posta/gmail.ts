@@ -9,15 +9,22 @@ import { simpleParser, type AddressObject } from 'mailparser';
 import { env } from '$env/dynamic/private';
 import { giornoRoma, inizioGiornoRoma } from '$lib/dashboard/tempo';
 import { salvaInbound, type PostmarkInbound } from './inbound';
+import { gmailApiConfigurata, leggiCasellaApi, statoGmail } from './gmail-api';
 
 export const gmailConfigurato = () => Boolean(env.GMAIL_IMAP_USER && env.GMAIL_IMAP_PASS);
 export const gmailMancanti = () => ['GMAIL_IMAP_USER', 'GMAIL_IMAP_PASS'].filter((k) => !env[k]);
 
 const indirizzi = (a: AddressObject | AddressObject[] | undefined) => (Array.isArray(a) ? a : a ? [a] : []).flatMap((x) => x.value).map((v) => ({ Email: v.address ?? '', Name: v.name ?? '' })).filter((v) => v.Email);
 
+/** prima l'API di Gmail (accesso con "Consenti"), poi IMAP (password per le app) se configurato */
 export async function leggiCasella(db: SupabaseClient, opts: { max?: number } = {}): Promise<{ nuove: number; doppie: number; saltate: number; errore: string | null }> {
+	if (gmailApiConfigurata() && (await statoGmail(db)).collegata) return leggiCasellaApi(db, opts);
+	return leggiCasellaImap(db, opts);
+}
+
+export async function leggiCasellaImap(db: SupabaseClient, opts: { max?: number } = {}): Promise<{ nuove: number; doppie: number; saltate: number; errore: string | null }> {
 	const out = { nuove: 0, doppie: 0, saltate: 0, errore: null as string | null };
-	if (!gmailConfigurato()) { out.errore = `casella non collegata: mancano ${gmailMancanti().join(', ')} su Vercel`; return out; }
+	if (!gmailConfigurato()) { out.errore = gmailApiConfigurata() ? 'Gmail non collegata: premere "Collega Gmail" nella pagina Posta' : `casella non collegata: mancano ${gmailMancanti().join(', ')} su Vercel`; return out; }
 	const client = new ImapFlow({ host: 'imap.gmail.com', port: 993, secure: true, auth: { user: env.GMAIL_IMAP_USER!, pass: env.GMAIL_IMAP_PASS! }, logger: false, emitLogs: false });
 	try {
 		await client.connect();
