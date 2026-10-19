@@ -3,6 +3,7 @@
 	import Linee from '$lib/components/dashboard/Linee.svelte';
 	import { money, dmy, CHANNEL_ICON } from '$lib/dashboard/orders';
 	import { meseBreve, meseLungo } from '$lib/dashboard/tempo';
+	import { mediaOrdineEcommerce } from '$lib/dashboard/fatturato';
 	import { TICKET_KIND, TICKET_STATUS, SLA_HOURS } from '$lib/dashboard/helpdesk';
 	import { grado } from '$lib/margini/rating';
 	let { data } = $props();
@@ -22,6 +23,11 @@
 	const quota = (parte: number, tot: number) => (tot > 0 ? `${Math.round((parte / tot) * 100)}%` : '—');
 	const mesePrecedente = $derived.by(() => { const i = data.fatturato.mesi.findIndex((m) => m.mese === sel.mese); return i > 0 ? data.fatturato.mesi[i - 1] : null; });
 	const delta = $derived(mesePrecedente && mesePrecedente.totale > 0 ? Math.round(((sel.totale - mesePrecedente.totale) / mesePrecedente.totale) * 100) : null);
+	/* media ordine e-commerce (netto): il mese in corso nel riquadro in alto, il mese scelto nel riepilogo, l'anno come confronto */
+	const corrente = $derived(data.fatturato.mesi[data.fatturato.mesi.length - 1]);
+	const mediaMese = $derived(mediaOrdineEcommerce(corrente));
+	const mediaAnno = $derived(mediaOrdineEcommerce(data.fatturato.anno));
+	const mediaSel = $derived(mediaOrdineEcommerce(sel));
 
 	const oraDi = (iso: string) => new Date(iso).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Rome' });
 	const nuoviTotale = $derived(data.nuovi.reduce((s, o) => s + o.gross, 0));
@@ -42,7 +48,8 @@
 			<a class="hm-kpi__box" href="#nuovi"><small>Nuovi ordini oggi</small><b>{data.nuovi.length}</b><span>{data.nuovi.length ? money(nuoviTotale) : 'ancora nessuno'}</span></a>
 			<a class="hm-kpi__box" class:is-hot={inRitardo > 0} href="#partire"><small>Devono partire oggi</small><b>{data.daPartire.length}</b><span>{inRitardo ? `${inRitardo} in ritardo` : data.daPartire.length ? `${data.daPartire.filter((o) => o.pronto).length} pronti da spedire` : 'niente in scadenza'}</span></a>
 			<a class="hm-kpi__box" class:is-warn={data.assistenza.ticket.length > 0} href="#assistenza"><small>Da rispondere</small><b>{data.assistenza.ticket.length}</b><span>{data.assistenza.aperti} richieste aperte</span></a>
-			<a class="hm-kpi__box" href="#fatturato"><small>Fatturato {meseBreve(data.fatturato.meseCorrente)}</small><b>{corto(data.fatturato.mesi[data.fatturato.mesi.length - 1].totale)}</b><span>netto, {data.fatturato.mesi[data.fatturato.mesi.length - 1].fatture} fatture</span></a>
+			<a class="hm-kpi__box" href="#fatturato"><small>Fatturato {meseBreve(data.fatturato.meseCorrente)}</small><b>{corto(corrente.totale)}</b><span>netto, {corrente.fatture} fatture</span></a>
+			<a class="hm-kpi__box" href="#fatturato"><small>Media ordine e-commerce</small><b>{mediaMese == null ? '—' : money(mediaMese)}</b><span>{mediaMese == null ? `nessun ordine dal sito a ${meseBreve(data.fatturato.meseCorrente)}` : `netto, ${corrente.fattureEcommerce} ordini · anno ${mediaAnno == null ? '—' : money(mediaAnno)}`}</span></a>
 		</div>
 	</header>
 
@@ -58,7 +65,7 @@
 				<small>Fatturato netto · <span style="text-transform:capitalize">{meseLungo(sel.mese)}</span>{#if sel.mese === data.fatturato.meseCorrente} (in corso){/if}</small>
 				<b>{money(sel.totale)}</b>
 				<span class="hm-riep__sotto">
-					<span class="hm-riep__riga"><i class="hm-dot" style="background:#0e8bff"></i>E-commerce <strong>{money(sel.ecommerce)}</strong> <em>{quota(sel.ecommerce, sel.totale)} · {sel.fattureEcommerce} fatture</em></span>
+					<span class="hm-riep__riga"><i class="hm-dot" style="background:#0e8bff"></i>E-commerce <strong>{money(sel.ecommerce)}</strong> <em>{quota(sel.ecommerce, sel.totale)} · {sel.fattureEcommerce} fatture{#if mediaSel != null} · media ordine {money(mediaSel)}{/if}</em></span>
 					<span class="hm-riep__riga"><i class="hm-dot" style="background:#050538"></i>Manuali <strong>{money(sel.manuale)}</strong> <em>{quota(sel.manuale, sel.totale)} · {sel.fattureManuali} fatture</em></span>
 				</span>
 				{#if delta != null}<span class="hm-delta" class:su={delta > 0} class:giu={delta < 0}>{delta > 0 ? '▲' : delta < 0 ? '▼' : '='} {Math.abs(delta)}% rispetto a {meseLungo(mesePrecedente!.mese)}</span>{/if}
@@ -66,7 +73,7 @@
 			<div class="hm-riep__anno">
 				<small>Anno {data.oggi.slice(0, 4)}</small>
 				<b>{money(data.fatturato.anno.totale)}</b>
-				<span class="hm-riep__sotto"><span class="hm-riep__riga"><i class="hm-dot" style="background:#0e8bff"></i>E-commerce <strong>{money(data.fatturato.anno.ecommerce)}</strong> <em>{quota(data.fatturato.anno.ecommerce, data.fatturato.anno.totale)}</em></span><br /><span class="hm-riep__riga"><i class="hm-dot" style="background:#050538"></i>Manuali <strong>{money(data.fatturato.anno.manuale)}</strong> <em>{quota(data.fatturato.anno.manuale, data.fatturato.anno.totale)}</em></span></span>
+				<span class="hm-riep__sotto"><span class="hm-riep__riga"><i class="hm-dot" style="background:#0e8bff"></i>E-commerce <strong>{money(data.fatturato.anno.ecommerce)}</strong> <em>{quota(data.fatturato.anno.ecommerce, data.fatturato.anno.totale)}{#if mediaAnno != null} · media ordine {money(mediaAnno)}{/if}</em></span><br /><span class="hm-riep__riga"><i class="hm-dot" style="background:#050538"></i>Manuali <strong>{money(data.fatturato.anno.manuale)}</strong> <em>{quota(data.fatturato.anno.manuale, data.fatturato.anno.totale)}</em></span></span>
 			</div>
 		</div>
 	</section>
