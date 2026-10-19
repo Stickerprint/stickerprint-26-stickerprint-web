@@ -34,6 +34,8 @@ export function fatturatoPerMese(fatture: FatturaRiga[], mesi: string[]): MeseFa
 	}
 	return mesi.map((x) => m.get(x)!);
 }
+/** media ordine e-commerce (netto): ogni fattura del sito e' un ordine (un checkout = una fattura); null senza ordini */
+export const mediaOrdineEcommerce = (m: MeseFatturato): number | null => (m.fattureEcommerce > 0 ? r2(m.ecommerce / m.fattureEcommerce) : null);
 /** totale di piu' mesi (es. l'anno in corso) */
 export function sommaMesi(mesi: MeseFatturato[]): MeseFatturato {
 	const t = vuoto(mesi[0]?.mese ?? '');

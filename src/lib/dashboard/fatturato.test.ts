@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { canaleFattura, fatturatoPerMese, nettoFattura, sommaMesi, type FatturaRiga } from './fatturato';
+import { canaleFattura, fatturatoPerMese, mediaOrdineEcommerce, nettoFattura, sommaMesi, type FatturaRiga } from './fatturato';
 import { ultimiMesi, piuGiorni, inizioGiornoRoma, offsetRomaMinuti } from './tempo';
 
 const f = (p: Partial<FatturaRiga>): FatturaRiga => ({ number: 'SPF00001', issued_at: '2026-10-01', subtotal_net: 100, discount_net: 0, express_net: 0, amount_gross: 122, payment_method: 'stripe', ...p });
@@ -47,5 +47,16 @@ describe('tempo', () => {
 		expect(inizioGiornoRoma('2026-10-14').toISOString()).toBe('2026-10-13T22:00:00.000Z');
 		expect(inizioGiornoRoma('2026-12-14').toISOString()).toBe('2026-12-13T23:00:00.000Z');
 		expect(offsetRomaMinuti(new Date('2026-07-01T12:00:00Z'))).toBe(120);
+	});
+});
+
+describe('mediaOrdineEcommerce', () => {
+	it('divide il netto e-commerce per le sue fatture, le manuali non contano', () => {
+		const [m] = fatturatoPerMese([f({ subtotal_net: 40, discount_net: 5, express_net: 0 }), f({ subtotal_net: 60, express_net: 10 }), f({ subtotal_net: 500, payment_method: 'Bonifico' })], ['2026-10']);
+		expect(mediaOrdineEcommerce(m)).toBe(52.5);
+	});
+	it('senza ordini e-commerce non inventa un numero', () => {
+		const [m] = fatturatoPerMese([f({ payment_method: 'Bonifico' })], ['2026-10']);
+		expect(mediaOrdineEcommerce(m)).toBeNull();
 	});
 });
