@@ -234,3 +234,26 @@ sinistra (`AMB` 0,78; il versante opposto si scurisce, rinforzato sui fondi chia
 dipinte (mezzaluna, alone, luce secondaria) restano al 50% sui tondi/sagomati e al 12% su
 quadrati e rettangoli (li' facevano una cornice interna a L). Resinati sagomati: il bordo
 "piccolo" e' nascosto (solo medio e grande), `ppGeoUI()`.
+
+## Lingue (21 ottobre 2026)
+
+Il sito apre il motore con `?lang=en|es|fr|de|nl` (`EnginePreview.svelte`, `buildSrc`). Senza
+parametro resta tutto in italiano, byte per byte. In cima allo script di `index.html`:
+
+- `TR = { en, es, fr, de, nl }`, un dizionario per lingua indicizzato dalla **frase italiana
+  esatta** (spazi normalizzati): 287 voci per lingua, tono e glossario da `docs/traduzioni.md`.
+- `tr(s, vars)`: ritorna `TR[LANG][s] ?? s`; con `vars` sostituisce i segnaposto `{n}`, `{c}`...
+  (es. `tr('Genero il foglio ({n} pezzi)…',{n:L.n})`). In italiano restituisce la stringa com'e'.
+- all'avvio (solo se `lang` non e' `it`) un walker traduce i nodi di testo, `placeholder`,
+  `title`, `aria-label` e `value` dei bottoni di tutto il body, e mette `document.title` e
+  `<html lang>`; un `MutationObserver` (childList + characterData) traduce quello che il motore
+  scrive dopo con `textContent`/`innerHTML`, se il testo intero e' nel dizionario.
+- `toast()` e `busy()` passano da `tr()`; i messaggi con parti variabili sono stati
+  riscritti con segnaposto; le note HTML intere (`WT`, `bgFixBar`, `uFondoNota`,
+  `ppRimuoviNota`) usano l'HTML completo come chiave.
+
+Regole: `U_SHP`/`U_MAT` e i dati mandati al sito (`formaEtichetta`, `bordo.livello`...) restano
+in italiano, si traduce solo la visualizzazione. Una frase nuova nel motore va aggiunta a `TR`
+nelle cinque lingue (chiave = testo italiano trimmato); se contiene numeri, usare `{n}`. Non
+aggiungere una traduzione che sia a sua volta una chiave italiana con traduzione diversa:
+l'osservatore oscillerebbe.

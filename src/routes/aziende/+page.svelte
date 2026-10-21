@@ -9,6 +9,8 @@
 	import { track } from '$lib/tracking';
 	import { enhance } from '$app/forms';
 	import Carousel from '$lib/components/Carousel.svelte';
+	import { usaLingua } from '$lib/traduzioni';
+	const { t } = usaLingua();
 	let { form, data } = $props();
 	$effect(() => { if (form?.ok) track.generateLead('aziende'); });
 	/* Reel dei clienti: per ognuno il logo dell'azienda (in alto), il link YouTube
@@ -42,21 +44,21 @@
 	const gallery = ['1.webp', '2.webp', '3.webp', '4.webp', '5.webp', '6.webp', '7.webp', '8.webp', '9.webp'].map((g) => `/images/aziende/gallery/${g}`);
 </script>
 
-<Seo title="Adesivi personalizzati per aziende e grandi quantità | Stickerprint" description="Produzioni complesse, grandi volumi o richieste speciali: referente dedicato, preventivi su misura e un processo sotto controllo dall’inizio alla consegna." />
+<Seo title={t('pagine.aziende.seoTitolo')} description={t('pagine.aziende.seoDescrizione')} />
 
 <!-- hero su fascia blu scuro, come in home -->
 <div class="hero-band">
 <section class="container hero2">
 	<div>
-		<h1 class="hero2__big">Il tuo progetto è grande.<br /><span class="hl hl--periwinkle">Trattiamolo come tale.</span></h1>
-		<p class="lead">Produzioni complesse, grandi volumi o richieste speciali: ti affianchiamo con un referente dedicato, preventivi su misura e un processo sotto controllo dall’inizio alla consegna.</p>
+		<h1 class="hero2__big">{@html t('pagine.aziende.heroTitolo')}</h1>
+		<p class="lead">{t('pagine.aziende.heroTesto')}</p>
 		<div class="pills">
-			<div class="pills__row"><span class="pill pill--green">✦ Referente dedicato</span><span class="pill pill--yellow">✦ Preventivi su misura</span></div>
-			<div class="pills__row"><span class="pill pill--blue">✦ Produzione sotto controllo</span></div>
+			<div class="pills__row"><span class="pill pill--green">{t('pagine.aziende.pill1')}</span><span class="pill pill--yellow">{t('pagine.aziende.pill2')}</span></div>
+			<div class="pills__row"><span class="pill pill--blue">{t('pagine.aziende.pill3')}</span></div>
 		</div>
 		<div class="hero2__cta">
-			<a class="btn btn--yellow btn--lg" href="#contatto">Richiedi un preventivo</a>
-			<a class="btn btn--periwinkle btn--lg" href="#processo">Scopri come lavoriamo</a>
+			<a class="btn btn--yellow btn--lg" href="#contatto">{t('pagine.aziende.ctaPreventivo')}</a>
+			<a class="btn btn--periwinkle btn--lg" href="#processo">{t('pagine.aziende.ctaProcesso')}</a>
 		</div>
 	</div>
 	<!-- reel dell'hero, stesso blocco di quelli sotto: il link si mette in REEL (YouTube/Shorts oppure un file .mp4) -->
@@ -64,9 +66,9 @@
 		{#if REEL && /\.mp4($|\?)/i.test(REEL)}
 			<video class="reel" src={REEL} autoplay muted loop playsinline></video>
 		{:else if REEL}
-			<LiteYouTube id={ytId(REEL)} title="Stickerprint per le aziende" />
+			<LiteYouTube id={ytId(REEL)} title={t('pagine.aziende.reelHero')} />
 		{:else}
-			<div class="reel reel--soon"><span>▶</span><small>Reel in arrivo</small></div>
+			<div class="reel reel--soon"><span>▶</span><small>{t('pagine.comuni.reelInArrivo')}</small></div>
 		{/if}
 	</div>
 </section>
@@ -74,12 +76,12 @@
 
 <!-- subito sotto la testata: chi ci ha scelto e i reel dei progetti -->
 <section class="section container center">
-	<h2>Questi non sono mockup.<br /><span class="hl hl--blue">Sono lavori veri.</span></h2>
-	<p class="lead" style="margin-top:12px;max-width:720px;margin-inline:auto">Brand, agenzie e team che ci hanno scelto per progetti strutturati e produzioni che non ammettono improvvisazioni.</p>
-	<div class="reels-wrap" role="region" aria-label="Reel dei clienti" onmouseenter={() => (paused = true)} onmouseleave={() => (paused = false)} ontouchstart={tStart} ontouchend={tEnd}>
+	<h2>{@html t('pagine.aziende.lavoriTitolo')}</h2>
+	<p class="lead" style="margin-top:12px;max-width:720px;margin-inline:auto">{t('pagine.aziende.lavoriTesto')}</p>
+	<div class="reels-wrap" role="region" aria-label={t('pagine.aziende.reelClienti')} onmouseenter={() => (paused = true)} onmouseleave={() => (paused = false)} ontouchstart={tStart} ontouchend={tEnd}>
 		{#if REELS.length > 1}
-			<button type="button" class="reels__arrow reels__arrow--prev" onclick={prev} aria-label="Reel precedente">‹</button>
-			<button type="button" class="reels__arrow reels__arrow--next" onclick={next} aria-label="Reel successivo">›</button>
+			<button type="button" class="reels__arrow reels__arrow--prev" onclick={prev} aria-label={t('pagine.aziende.reelPrecedente')}>‹</button>
+			<button type="button" class="reels__arrow reels__arrow--next" onclick={next} aria-label={t('pagine.aziende.reelSuccessivo')}>›</button>
 		{/if}
 		<!-- desktop: quattro reel affiancati, come prima -->
 		<div class="reels reels--desktop">
@@ -87,9 +89,9 @@
 				<article class="reel-card">
 					<div class="reel-card__brand"><img src={r.logo} alt={r.brand} loading="lazy" /></div>
 					{#if r.url}
-						<LiteYouTube id={ytId(r.url)} title="Reel {r.brand}" />
+						<LiteYouTube id={ytId(r.url)} title={t('pagine.aziende.reelDi', { brand: r.brand })} />
 					{:else}
-						<div class="reel reel--soon"><span>▶</span><small>Reel in arrivo</small></div>
+						<div class="reel reel--soon"><span>▶</span><small>{t('pagine.comuni.reelInArrivo')}</small></div>
 					{/if}
 					{#if r.caso}<p class="reel-card__caso">{r.caso}</p>{/if}
 				</article>
@@ -101,9 +103,9 @@
 				<article class="reel-card reel-card--big">
 					<div class="reel-card__brand"><img src={reel.logo} alt={reel.brand} loading="lazy" /></div>
 					{#if reel.url}
-						<LiteYouTube id={ytId(reel.url)} title="Reel {reel.brand}" />
+						<LiteYouTube id={ytId(reel.url)} title={t('pagine.aziende.reelDi', { brand: reel.brand })} />
 					{:else}
-						<div class="reel reel--soon"><span>▶</span><small>Reel in arrivo</small></div>
+						<div class="reel reel--soon"><span>▶</span><small>{t('pagine.comuni.reelInArrivo')}</small></div>
 					{/if}
 					{#if reel.caso}<p class="reel-card__caso">{reel.caso}</p>{/if}
 				</article>
@@ -118,78 +120,78 @@
 <section class="section container">
 	<div class="split2">
 		<div>
-			<h2 class="h2-big">Quando ha senso<br /><span class="hl hl--blue">contattarci.</span></h2>
-			<p class="lead">Qui seguiamo progetti e produzioni che richiedono attenzione, esperienza e confronto. Perfetto se:</p>
+			<h2 class="h2-big">{@html t('pagine.aziende.quandoTitolo')}</h2>
+			<p class="lead">{t('pagine.aziende.quandoTesto')}</p>
 			<ul class="checks">
-				<li><span class="ck">✓</span>Devi gestire grandi volumi o produzioni ricorrenti</li>
-				<li><span class="ck">✓</span>Il progetto richiede studio, test o campioni</li>
-				<li><span class="ck">✓</span>Vuoi controllo sul risultato finale</li>
-				<li><span class="ck">✓</span>Hai scadenze reali da rispettare</li>
+				<li><span class="ck">✓</span>{t('pagine.aziende.quando1')}</li>
+				<li><span class="ck">✓</span>{t('pagine.aziende.quando2')}</li>
+				<li><span class="ck">✓</span>{t('pagine.aziende.quando3')}</li>
+				<li><span class="ck">✓</span>{t('pagine.aziende.quando4')}</li>
 			</ul>
-			<p class="note" style="margin-top:16px">Per ordini spot, piccole quantità e file regolari puoi usare i preventivatori del sito.</p>
+			<p class="note" style="margin-top:16px">{t('pagine.aziende.quandoNota')}</p>
 		</div>
-		<Carousel images={gallery} alt="Produzioni Stickerprint per aziende" />
+		<Carousel images={gallery} alt={t('pagine.aziende.galleriaAlt')} />
 	</div>
 </section>
 
 <section class="section container" id="processo">
 	<div class="split2">
-		<img src="/images/aziende/bus2.webp" alt="Il processo di produzione Stickerprint" loading="lazy" />
+		<img src="/images/aziende/bus2.webp" alt={t('pagine.aziende.processoAlt')} loading="lazy" />
 		<div>
-			<h2 class="h2-big">Un processo chiaro.<br /><span class="hl hl--yellow">Senza sorprese.</span></h2>
-			<p class="lead">Quando serve, ci sediamo, guardiamo il progetto e costruiamo la soluzione migliore.</p>
+			<h2 class="h2-big">{@html t('pagine.aziende.processoTitolo')}</h2>
+			<p class="lead">{t('pagine.aziende.processoTesto')}</p>
 			<ul class="checks">
-				<li><span class="ck">✓</span>Analisi del progetto e dei file</li>
-				<li><span class="ck">✓</span>Verifica tecnica e scelta dei materiali più adatti</li>
-				<li><span class="ck">✓</span>Campioni e test personalizzati</li>
-				<li><span class="ck">✓</span>Produzione su misura</li>
-				<li><span class="ck">✓</span>Spedizione organizzata</li>
+				<li><span class="ck">✓</span>{t('pagine.aziende.processo1')}</li>
+				<li><span class="ck">✓</span>{t('pagine.aziende.processo2')}</li>
+				<li><span class="ck">✓</span>{t('pagine.aziende.processo3')}</li>
+				<li><span class="ck">✓</span>{t('pagine.aziende.processo4')}</li>
+				<li><span class="ck">✓</span>{t('pagine.aziende.processo5')}</li>
 			</ul>
-			<p class="lead" style="margin-top:16px"><b>Produciamo solo quando siamo sicuri del risultato finale.</b></p>
+			<p class="lead" style="margin-top:16px"><b>{t('pagine.aziende.processoChiusura')}</b></p>
 		</div>
 	</div>
 </section>
 
 <!-- LOGHI (come nella home) -->
 <section class="section--tight logos container center">
-	<h2><span class="hl hl--purple">Produzioni realizzate per</span></h2>
-	<p class="lead" style="margin-top:14px;max-width:720px;margin-inline:auto">Dai brand internazionali alle realtà emergenti: ogni progetto riceve la stessa attenzione.</p>
+	<h2><span class="hl hl--purple">{t('pagine.aziende.loghiTitolo')}</span></h2>
+	<p class="lead" style="margin-top:14px;max-width:720px;margin-inline:auto">{t('pagine.aziende.loghiTesto')}</p>
 	<BrandMarquee />
 </section>
 
 <section class="section container" id="contatto">
 	<div class="split2">
 		<div>
-			<h2 class="h2-big">Raccontaci il progetto.<br /><span class="hl hl--green">Al resto pensiamo noi.</span></h2>
-			<p class="lead">Che siano 4000 o 400.000 pezzi, partiamo sempre da una cosa: capire cosa serve davvero. Ti rispondiamo con una proposta chiara, realistica e su misura.</p>
+			<h2 class="h2-big">{@html t('pagine.aziende.contattoTitolo')}</h2>
+			<p class="lead">{t('pagine.aziende.contattoTesto')}</p>
 			<ul class="checks">
-				<li><span class="ck">✓</span>Volumi importanti o produzioni programmate</li>
-				<li><span class="ck">✓</span>Progetti speciali, non standard o multi formato</li>
-				<li><span class="ck">✓</span>Eventi, campagne marketing, lancio prodotto</li>
-				<li><span class="ck">✓</span>Tempi stretti e scadenze da rispettare</li>
-				<li><span class="ck">✓</span>Dubbi tecnici? Li risolviamo prima di stampare</li>
+				<li><span class="ck">✓</span>{t('pagine.aziende.contatto1')}</li>
+				<li><span class="ck">✓</span>{t('pagine.aziende.contatto2')}</li>
+				<li><span class="ck">✓</span>{t('pagine.aziende.contatto3')}</li>
+				<li><span class="ck">✓</span>{t('pagine.aziende.contatto4')}</li>
+				<li><span class="ck">✓</span>{t('pagine.aziende.contatto5')}</li>
 			</ul>
-			<p class="stat-big" style="margin-top:26px"><mark>+580</mark> <span>aziende servite</span></p>
-			<div class="hero__stars" style="margin-top:10px"><Stars value={data.stats?.average ?? 4.9} count={data.stats?.total ?? null} size={22} countLabel="recensioni verificate" /></div>
+			<p class="stat-big" style="margin-top:26px"><mark>+580</mark> <span>{t('pagine.aziende.aziendeServite')}</span></p>
+			<div class="hero__stars" style="margin-top:10px"><Stars value={data.stats?.average ?? 4.9} count={data.stats?.total ?? null} size={22} countLabel={t('pagine.comuni.recensioniVerificate')} /></div>
 		</div>
 		<div class="card" style="padding:28px">
-			<h3 style="margin-bottom:14px">Iniziamo da qui.</h3>
+			<h3 style="margin-bottom:14px">{t('pagine.aziende.formTitolo')}</h3>
 			{#if form?.ok}
-				<p class="success">Richiesta ricevuta! Ti rispondiamo entro 24 ore con una proposta su misura. Ti abbiamo mandato anche un’email di conferma.</p>
+				<p class="success">{t('pagine.aziende.formOk')}</p>
 			{:else}
 				<form class="form2" method="POST" enctype="multipart/form-data" use:enhance={() => { sending = true; return async ({ update }) => { sending = false; await update(); }; }}>
 					<div class="row">
-						<label>Nome*<input name="name" required /></label>
-						<label>Azienda*<input name="company" required /></label>
+						<label>{t('pagine.aziende.nome')}<input name="name" required /></label>
+						<label>{t('pagine.aziende.azienda')}<input name="company" required /></label>
 					</div>
 					<div class="row">
-						<label>E-mail*<input name="email" type="email" required /></label>
-						<label>Telefono*<input name="phone" type="tel" required /></label>
+						<label>{t('pagine.aziende.email')}<input name="email" type="email" required /></label>
+						<label>{t('pagine.aziende.telefono')}<input name="phone" type="tel" required /></label>
 					</div>
-					<label>Carica il tuo file<input name="file" type="file" accept="image/*,.pdf,.ai,.eps,.svg,.zip" /></label>
-					<label>Richiesta*<textarea name="message" rows="5" required placeholder="Prodotto, quantità, tempi, materiali…"></textarea></label>
+					<label>{t('pagine.aziende.file')}<input name="file" type="file" accept="image/*,.pdf,.ai,.eps,.svg,.zip" /></label>
+					<label>{t('pagine.aziende.richiesta')}<textarea name="message" rows="5" required placeholder={t('pagine.aziende.richiestaPlaceholder')}></textarea></label>
 					{#if form?.error}<p class="error">{form.error}</p>{/if}
-					<button class="btn btn--green btn--lg" type="submit" disabled={sending}>{sending ? 'Invio…' : 'Ottieni una proposta su misura'}</button>
+					<button class="btn btn--green btn--lg" type="submit" disabled={sending}>{sending ? t('pagine.comuni.invio') : t('pagine.aziende.cta')}</button>
 				</form>
 			{/if}
 		</div>

@@ -5,14 +5,15 @@ import { loadReviews } from '$lib/server/reviews';
 import { categoryOf, type ProductCode } from '$lib/dashboard/orderDraft';
 import { PRODUCTS } from '$lib/products';
 import { CATS } from '$lib/dashboard/orders';
+import { t } from '$lib/traduzioni';
 import type { Actions, PageServerLoad } from './$types';
 
 /** Pagina pubblica del preventivo: anteprima con i mockup, riepilogo, conferma con un clic, PDF, domande. Ogni apertura viene registrata. */
 export const load: PageServerLoad = async ({ params, url, request, locals }) => {
 	const db = adminClient();
-	if (!db) error(503, 'Servizio non disponibile');
+	if (!db) error(503, t(locals.locale, 'account.errori.servizio'));
 	const q = await getQuoteByToken(db, params.token);
-	if (!q) error(404, 'Preventivo non trovato');
+	if (!q) error(404, t(locals.locale, 'account.errori.preventivoNonTrovato'));
 	/* anteprima dello staff su una bozza: la pagina si mostra come la vedra' il cliente dopo l'invio
 	   (bottoni di conferma, PDF, domanda) con il nome di chi la sta guardando come mittente */
 	const staffPreview = url.searchParams.get('anteprima') === '1' && q.status === 'bozza' && !!locals.user;
@@ -41,26 +42,26 @@ export const load: PageServerLoad = async ({ params, url, request, locals }) => 
 	};
 };
 
-const withDb = <T>(fn: (db: NonNullable<ReturnType<typeof adminClient>>) => Promise<T>) => { const db = adminClient(); return db ? fn(db) : Promise.resolve(fail(503, { error: 'Servizio non disponibile.' })); };
+const withDb = <T>(locale: App.Locals['locale'], fn: (db: NonNullable<ReturnType<typeof adminClient>>) => Promise<T>) => { const db = adminClient(); return db ? fn(db) : Promise.resolve(fail(503, { error: t(locale, 'account.errori.servizio') })); };
 export const actions: Actions = {
-	accetta: async ({ params, request, url }) => withDb(async (db) => {
+	accetta: async ({ params, request, url, locals: { locale } }) => withDb(locale, async (db) => {
 		const f = await request.formData();
 		const r = await acceptQuoteByToken(db, params.token, String(f.get('nome') ?? '').trim(), url.origin);
 		return r.ok ? { ok: true, accepted: true, message: r.message, orderNumber: r.orderNumber ?? null, due: r.due ?? 0 } : fail(400, { error: r.message });
 	}),
-	rifiuta: async ({ params, request }) => withDb(async (db) => {
+	rifiuta: async ({ params, request, locals: { locale } }) => withDb(locale, async (db) => {
 		const f = await request.formData();
 		const r = await rejectQuoteByToken(db, params.token, String(f.get('motivo') ?? ''));
 		return r.ok ? { ok: true, rejected: true, message: r.message } : fail(400, { error: r.message });
 	}),
-	domanda: async ({ params, request, url }) => withDb(async (db) => {
+	domanda: async ({ params, request, url, locals: { locale } }) => withDb(locale, async (db) => {
 		const f = await request.formData();
 		const e = await quoteQuestionByToken(db, params.token, String(f.get('testo') ?? ''), url.origin);
-		return e ? fail(400, { error: e }) : { ok: true, asked: true, message: 'Domanda inviata: ti rispondiamo il prima possibile, anche via email.' };
+		return e ? fail(400, { error: e }) : { ok: true, asked: true, message: t(locale, 'account.messaggi.domandaInviata') };
 	}),
-	aggiorna: async ({ params, request, url }) => withDb(async (db) => {
+	aggiorna: async ({ params, request, url, locals: { locale } }) => withDb(locale, async (db) => {
 		const f = await request.formData();
 		const e = await quoteQuestionByToken(db, params.token, String(f.get('testo') ?? ''), url.origin, 'aggiornamento');
-		return e ? fail(400, { error: e }) : { ok: true, asked: true, message: 'Richiesta inviata: ti mandiamo un preventivo aggiornato.' };
+		return e ? fail(400, { error: e }) : { ok: true, asked: true, message: t(locale, 'account.messaggi.aggiornamentoInviato') };
 	})
 };

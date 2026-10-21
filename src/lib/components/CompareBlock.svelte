@@ -7,26 +7,27 @@
 		usHead: string; themHead: string; rows: CompareRow[];
 		closing: string; closingNote?: string; cta: string; href: string;
 	}
+	import { usaLingua } from '$lib/traduzioni';
 	let { data = null }: { data?: CompareData | null } = $props();
+	const { t, path } = usaLingua();
 
-	/* versione della home */
+	/* versione della home: testi nel catalogo prodotti.confronto.home */
+	const k = 'prodotti.confronto.home';
+	const riga = (icon: string, nome: string): CompareRow => ({ icon, label: t(`${k}.righe.${nome}.etichetta`), us: t(`${k}.righe.${nome}.noi`), them: t(`${k}.righe.${nome}.loro`) });
 	const HOME: CompareData = {
-		titlePre: 'Perché', titleHl: 'Stickerprint?', hl: 'blue', sub: 'Noi investiamo nei materiali, non nelle promozioni.',
-		usHead: 'Stickerprint', themHead: 'Altri siti',
-		rows: [
-		{ icon: 'gem', label: 'Cosa ricevi?', us: 'Adesivi personalizzati di alta qualità', them: 'Adesivi economici sempre in promo' },
-		{ icon: 'file', label: 'Anteprima del file', us: 'Immediata, ancora prima di pagare', them: 'A pagamento o assente' },
-		{ icon: 'people', label: 'Esperienza', us: '19 anni di esperienza nella stampa', them: 'Non sempre dichiarata' },
-		{ icon: 'clock', label: 'Produzione', us: '5 giorni lavorativi', them: '7–15 giorni lavorativi' },
-		{ icon: 'layers', label: 'Materiali', us: 'Materiali premium selezionati', them: 'Materiali economici per contenere il prezzo' },
-		{ icon: 'shield', label: 'Durata della stampa', us: 'Stampa resistente che non sbiadisce', them: 'Sbiadiscono dopo pochi giorni' }
-		],
-		closing: 'Se cerchi competenza tecnica e adesivi di alta qualità, sei nel posto giusto.',
-		closingNote: "Se cerchi l'ennesima promo che scade domenica e ricomincia lunedì, purtroppo non possiamo aiutarti :(",
-		cta: 'Crea i tuoi adesivi →', href: '/adesivi-personalizzati'
+		titlePre: t(`${k}.titolo`), titleHl: t(`${k}.hl`), hl: 'blue', sub: t(`${k}.sotto`),
+		usHead: t(`${k}.noi`), themHead: t(`${k}.loro`),
+		rows: [riga('gem', 'cosa'), riga('file', 'anteprima'), riga('people', 'esperienza'), riga('clock', 'produzione'), riga('layers', 'materiali'), riga('shield', 'durata')],
+		closing: t(`${k}.chiusura`),
+		closingNote: t(`${k}.nota`),
+		cta: t(`${k}.cta`), href: '/adesivi-personalizzati'
 	};
 	const d = $derived(data ?? HOME);
 	const rows = $derived(d.rows);
+	/* le ancore (#preventivatore) restano, i percorsi interni prendono prefisso e slug della lingua */
+	const link = $derived(d.href.startsWith('/') ? path(d.href) : d.href);
+	/* etichetta della riga senza il punto di domanda (anche quello spagnolo di apertura), per la versione telefono "Materiali:" */
+	const senzaDomanda = (s: string) => s.replace(/[?¿]/g, '');
 
 	const icons: Record<string, string> = {
 		gem: '<path d="M3 9l4-5h10l4 5-9 12z"/><path d="M3 9h18M9 4l3 5 3-5M9 9l3 12 3-12"/>',
@@ -47,7 +48,7 @@
 
 	<div class="cmp2__grid">
 		<div class="cmp2__col cmp2__col--labels">
-			<div class="cmp2__head">Il confronto</div>
+			<div class="cmp2__head">{t('prodotti.confronto.intestazione')}</div>
 			{#each rows as r (r.label)}
 				<div class="cmp2__cell cmp2__label">
 					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">{@html icons[r.icon]}</svg>
@@ -61,7 +62,7 @@
 			{#each rows as r (r.label)}
 				<div class="cmp2__cell cmp2__us">
 					<span class="cmp2__ok" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 12.5l4 4 8-9"/></svg></span>
-					<span><b class="cmp2__mlabel">{r.label.replace("?", "")}:</b> {r.us}</span>
+					<span><b class="cmp2__mlabel">{senzaDomanda(r.label)}:</b> {r.us}</span>
 				</div>
 			{/each}
 		</div>
@@ -71,7 +72,7 @@
 			{#each rows as r (r.label)}
 				<div class="cmp2__cell cmp2__them">
 					<span class="cmp2__no" aria-hidden="true"></span>
-					<span><b class="cmp2__mlabel">{r.label.replace("?", "")}:</b> {r.them}</span>
+					<span><b class="cmp2__mlabel">{senzaDomanda(r.label)}:</b> {r.them}</span>
 				</div>
 			{/each}
 		</div>
@@ -79,7 +80,7 @@
 
 	<p class="cmp2__close">{d.closing}</p>
 	{#if d.closingNote}<p class="cmp2__note">{d.closingNote}</p>{/if}
-	<p class="cmp2__cta"><a class="btn btn--green btn--lg" href={d.href}>{d.cta}</a></p>
+	<p class="cmp2__cta"><a class="btn btn--green btn--lg" href={link}>{d.cta}</a></p>
 </section>
 
 <style>

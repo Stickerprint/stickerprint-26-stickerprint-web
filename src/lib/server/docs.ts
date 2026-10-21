@@ -1,6 +1,8 @@
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from 'pdf-lib';
 import { COMPANY } from './company';
 import { LOGO_PNG_B64 } from './logo-b64';
+import { LOCALES, type Lang } from '$lib/i18n';
+import { t as tradotto, perLingua, numeroIn } from '$lib/traduzioni';
 
 export interface LabelOrder { number: string; customer: string; shipping: Record<string, string>; email?: string | null; phone?: string | null; items: { qty: number; name: string; meta?: string }[] }
 const b64 = (s: string) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
@@ -50,7 +52,7 @@ export async function buildLabelsPdf(orders: (LabelOrder & { parcels: number; co
 
 export interface DdtData { number: string; issued_at: string; order_number: string; customer: Record<string, string>; shipping: Record<string, string>; lines: { code?: string | null; description: string; qty: number; unit_net: number; total_net: number }[]; parcels: number; weight_kg: number | null; causale: string; trasporto: string; subtotal_net: number; vat_amount: number; total_gross: number; notes?: string | null }
 
-function docHeader(page: PDFPage, font: PDFFont, bold: PDFFont, logo: Awaited<ReturnType<PDFDocument['embedPng']>>, title: string, number: string, date: string) {
+function docHeader(page: PDFPage, font: PDFFont, bold: PDFFont, logo: Awaited<ReturnType<PDFDocument['embedPng']>>, title: string, number: string, date: string, numLabel = 'N.') {
 	const M = 48; const top = 800;
 	const ld = logo.scale(52 / logo.height);
 	page.drawImage(logo, { x: M, y: top - ld.height + 8, width: ld.width, height: ld.height });
@@ -60,10 +62,10 @@ function docHeader(page: PDFPage, font: PDFFont, bold: PDFFont, logo: Awaited<Re
 	page.drawText(l3, { x: 547 - font.widthOfTextAtSize(l3, 9.5), y: top - 32, size: 9.5, font, color: gray });
 	page.drawLine({ start: { x: M, y: top - 56 }, end: { x: 547, y: top - 56 }, thickness: 1, color: rgb(0.85, 0.87, 0.92) });
 	page.drawText(title, { x: M, y: top - 76, size: 15, font: bold, color: navy });
-	const nd = `N. ${number} · ${date}`;
+	const nd = `${numLabel} ${number} · ${date}`;
 	page.drawText(nd, { x: 547 - bold.widthOfTextAtSize(nd, 11), y: top - 76, size: 11, font: bold, color: navy });
 }
-const addrLines = (a: Record<string, string>) => [a.company, [a.first_name, a.last_name].filter(Boolean).join(' '), [a.street, a.street2].filter(Boolean).join(', '), [a.zip, a.city, a.province ? `(${a.province})` : ''].filter(Boolean).join(' '), a.country && a.country !== 'IT' ? a.country : 'Italia', a.vat ? `P.IVA ${a.vat}` : '', a.fiscal_code ? `C.F. ${a.fiscal_code}` : ''].filter(Boolean);
+const addrLines = (a: Record<string, string>, l = { paese: 'Italia', piva: 'P.IVA {v}', cf: 'C.F. {v}' }) => [a.company, [a.first_name, a.last_name].filter(Boolean).join(' '), [a.street, a.street2].filter(Boolean).join(', '), [a.zip, a.city, a.province ? `(${a.province})` : ''].filter(Boolean).join(' '), a.country && a.country !== 'IT' ? a.country : l.paese, a.vat ? l.piva.replace('{v}', a.vat) : '', a.fiscal_code ? l.cf.replace('{v}', a.fiscal_code) : ''].filter(Boolean);
 // Numeri all'italiana: punto per le migliaia, virgola per i decimali (141.400,00 €)
 const fmtIt = (v: number, min: number, max: number) => new Intl.NumberFormat('it-IT', { minimumFractionDigits: min, maximumFractionDigits: max, useGrouping: 'always' }).format(v);
 export const qtyFmt = (v: number) => new Intl.NumberFormat('it-IT', { useGrouping: 'always', maximumFractionDigits: 0 }).format(v);
@@ -140,7 +142,19 @@ export function drawTotals(page: PDFPage, font: PDFFont, bold: PDFFont, y: numbe
 	}
 	return y;
 }
-export const DOC_COLS = (font?: PDFFont): TableCol[] => [{ label: 'Codice', width: 58, bold: true }, { label: 'Descrizione', width: 244, maxLines: 3 }, { label: 'Q.tà', width: 50, align: 'right' }, { label: 'Prezzo unit.', width: 70, align: 'right' }, { label: 'Imponibile', width: 77, align: 'right', bold: true }];
+/** colonne della tabella articoli (conferma d'ordine, preventivo, fattura); `font` non e' usato, resta per i chiamanti */
+export const DOC_COLS = (font?: PDFFont, lang: Lang = 'it'): TableCol[] => {
+	void font;
+	const D = docT(lang);
+	return [{ label: D('colonne.codice'), width: 58, bold: true }, { label: D('colonne.descrizione'), width: 244, maxLines: 3 }, { label: D('colonne.qta'), width: 50, align: 'right' }, { label: D('colonne.prezzoUnit'), width: 70, align: 'right' }, { label: D('colonne.imponibile'), width: 77, align: 'right', bold: true }];
+};
+/* ---------- lingua del cliente per conferma d'ordine e preventivo: etichette dal catalogo "documenti", numeri col formato della lingua ---------- */
+const docT = (lang: Lang) => (chiave: string, params?: Record<string, string | number>) => tradotto(perLingua(lang), `documenti.${chiave}`, params);
+/** Helvetica di pdf-lib e' WinAnsi: gli spazi stretti (fr-FR) diventano spazi normali */
+const winAnsi = (s: string) => s.replace(/[\u202F\u2009]/g, ' ');
+/** importi sempre in euro (documento fiscale italiano), ma col formato numerico della lingua: 1.234,50 €, €1,234.50, 1 234,50 € */
+const eurIn = (lang: Lang, v: number, max = 2) => winAnsi(new Intl.NumberFormat(LOCALES[perLingua(lang)].intl, { style: 'currency', currency: 'EUR', useGrouping: 'always', minimumFractionDigits: 2, maximumFractionDigits: max }).format(v));
+const dataBreve = (lang: Lang, d: string) => new Date(d).toLocaleDateString(LOCALES[perLingua(lang)].intl);
 
 const DDT_COLS: TableCol[] = [{ label: 'Codice', width: 70, bold: true }, { label: 'Descrizione', width: 369, maxLines: 3 }, { label: 'Q.tà', width: 60, align: 'right', bold: true }];
 
@@ -170,39 +184,46 @@ export async function buildDdtPdf(d: DdtData): Promise<Uint8Array> {
 
 export interface OrderDocData { kind?: 'ordine' | 'preventivo'; valid_until?: string | null; lead_time?: string | null; number: string; numbers: string[]; issued_at: string; customer: Record<string, string>; shipping: Record<string, string>; email: string | null; lines: { code?: string | null; description: string; qty: number; unit_net: number; total_net: number }[]; subtotal_net: number; vat_amount: number; total_gross: number; payment_method: string; payment_terms: { due: string; amount: number; method: string }[]; shipping_method: string; delivery_date: string | null; notes?: string | null }
 
-/** Conferma d'ordine A4: articoli, riepilogo con totali e scadenze di pagamento */
-export async function buildOrderPdf(d: OrderDocData): Promise<Uint8Array> {
+/** Conferma d'ordine A4: articoli, riepilogo con totali e scadenze di pagamento. `lang`: lingua del cliente per le etichette (importi sempre in euro) */
+export async function buildOrderPdf(d: OrderDocData, lang: Lang = 'it'): Promise<Uint8Array> {
+	const D = docT(lang);
+	const L = LOCALES[perLingua(lang)];
+	const money = (v: number) => eurIn(lang, v);
+	const moneyUnit = (v: number) => eurIn(lang, v, 4);
+	const qty = (v: number) => numeroIn(L, v);
+	const data = (x: string) => dataBreve(lang, x);
 	const pdf = await PDFDocument.create();
 	const page = pdf.addPage([595.28, 841.89]);
 	const font = await pdf.embedFont(StandardFonts.Helvetica); const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
 	const logo = await pdf.embedPng(b64(LOGO_PNG_B64));
 	const quote = d.kind === 'preventivo';
-	docHeader(page, font, bold, logo, quote ? 'PREVENTIVO' : "CONFERMA D'ORDINE", d.number, new Date(d.issued_at).toLocaleDateString('it-IT'));
+	docHeader(page, font, bold, logo, quote ? D('preventivo') : D('confermaOrdine'), d.number, data(d.issued_at), D('numero'));
 	const M = 48; let y = 700;
-	const t = (txt: string, x: number, yy: number, size = 10, f: PDFFont = font, color = navy) => page.drawText(txt, { x, y: yy, size, font: f, color });
-	t('Cliente', M, y, 8.5, bold, gray); t('Spedizione', 320, y, 8.5, bold, gray); y -= 14;
-	const L = addrLines(d.customer), R = addrLines(d.shipping);
-	if (d.email) L.push(d.email);
-	for (let i = 0; i < Math.max(L.length, R.length); i++) { if (L[i]) t(L[i], M, y, i === 0 ? 11 : 10, i === 0 ? bold : font); if (R[i]) t(R[i], 320, y, i === 0 ? 11 : 10, i === 0 ? bold : font); y -= 13; }
+	const t = (txt: string, x: number, yy: number, size = 10, f: PDFFont = font, color = navy) => page.drawText(winAnsi(txt), { x, y: yy, size, font: f, color });
+	t(D('cliente'), M, y, 8.5, bold, gray); t(D('spedizione'), 320, y, 8.5, bold, gray); y -= 14;
+	const etichette = { paese: D('paese'), piva: D('piva'), cf: D('cf') };
+	const Lc = addrLines(d.customer, etichette), R = addrLines(d.shipping, etichette);
+	if (d.email) Lc.push(d.email);
+	for (let i = 0; i < Math.max(Lc.length, R.length); i++) { if (Lc[i]) t(Lc[i], M, y, i === 0 ? 11 : 10, i === 0 ? bold : font); if (R[i]) t(R[i], 320, y, i === 0 ? 11 : 10, i === 0 ? bold : font); y -= 13; }
 	y -= 8;
-	for (const line of wrapText(font, `Spedizione: ${d.shipping_method}${d.delivery_date ? ` · prevista il ${new Date(d.delivery_date).toLocaleDateString('it-IT')}` : ''}${d.lead_time ? ` · Tempi: ${d.lead_time}` : ''}`, 9, 499, 3)) { t(line, M, y, 9, font, gray); y -= 12; }
+	for (const line of wrapText(font, `${D('spedizioneRiga', { metodo: d.shipping_method })}${d.delivery_date ? D('previstaIl', { data: data(d.delivery_date) }) : ''}${d.lead_time ? D('tempi', { tempi: d.lead_time }) : ''}`, 9, 499, 3)) { t(line, M, y, 9, font, gray); y -= 12; }
 	y -= 10;
-	y = drawTable({ page, x: M, y: y + 6, cols: DOC_COLS(), rows: d.lines.map((l) => [l.code ?? '', l.description, qtyFmt(l.qty), eurUnit(l.unit_net), eur(l.total_net)]), font, bold });
+	y = drawTable({ page, x: M, y: y + 6, cols: DOC_COLS(undefined, lang), rows: d.lines.map((l) => [l.code ?? '', l.description, qty(l.qty), moneyUnit(l.unit_net), money(l.total_net)]), font, bold });
 	y -= 14;
-	if (d.notes) { for (const line of wrapText(font, `Note: ${d.notes}`, 9, 499, 3)) { t(line, M, y, 9, font, gray); y -= 12; } }
+	if (d.notes) { for (const line of wrapText(font, D('note', { note: d.notes }), 9, 499, 3)) { t(line, M, y, 9, font, gray); y -= 12; } }
 	if (quote) {
-		for (const line of wrapText(font, `Preventivo valido fino al ${d.valid_until ? new Date(d.valid_until).toLocaleDateString('it-IT') : '30 giorni dalla data'}. Prezzi IVA esclusa salvo diversa indicazione.${d.lead_time ? ` Tempi: ${d.lead_time}.` : ''}`, 9, 499, 3)) { t(line, M, y, 9, font, gray); y -= 12; }
-		t('Per accettare basta un clic sul link ricevuto via email, oppure rispondere "confermo il preventivo".', M, y, 9, font, gray); y -= 13;
+		for (const line of wrapText(font, `${D('validoFino', { data: d.valid_until ? data(d.valid_until) : D('trentaGiorni') })}${d.lead_time ? D('tempiPunto', { tempi: d.lead_time }) : ''}`, 9, 499, 3)) { t(line, M, y, 9, font, gray); y -= 12; }
+		for (const line of wrapText(font, D('accetta'), 9, 499, 2)) { t(line, M, y, 9, font, gray); y -= 13; }
 	}
 	// in fondo alla pagina: metodo di pagamento e scadenze a sinistra, imponibile / IVA / totale a destra
 	const base = Math.min(y - 10, 200);
-	t(quote ? 'Condizioni di pagamento' : 'Scadenze di pagamento', M, base, 9, bold, gray);
-	const terms = d.payment_terms.length ? d.payment_terms.map((p) => [new Date(p.due).toLocaleDateString('it-IT'), eur(p.amount), p.method]) : [['—', '—', d.payment_method || '—']];
-	let yl = drawTable({ page, x: M, y: base - 8, cols: [{ label: 'Scadenza', width: 70 }, { label: 'Importo', width: 70, align: 'right' }, { label: 'Metodo', width: 160 }], rows: terms, font, bold, size: 9, headSize: 8, minRowH: 18 });
+	t(quote ? D('condizioniPagamento') : D('scadenzePagamento'), M, base, 9, bold, gray);
+	const terms = d.payment_terms.length ? d.payment_terms.map((p) => [data(p.due), money(p.amount), p.method]) : [['—', '—', d.payment_method || '—']];
+	let yl = drawTable({ page, x: M, y: base - 8, cols: [{ label: D('colScadenza'), width: 70 }, { label: D('colImporto'), width: 70, align: 'right' }, { label: D('colMetodo'), width: 160 }], rows: terms, font, bold, size: 9, headSize: 8, minRowH: 18 });
 	yl -= 12;
 	if (COMPANY.iban) t(`IBAN ${COMPANY.iban} · ${COMPANY.name}`, M, yl, 9, font, gray);
-	drawTotals(page, font, bold, base - 4, [['Imponibile', eur(d.subtotal_net)], ['IVA 22%', eur(d.vat_amount)], ['Totale IVA inclusa', eur(d.total_gross), true]]);
-	t('Documento generato da stickerprint.it', M, 40, 8, font, gray);
+	drawTotals(page, font, bold, base - 4, [[D('imponibile'), money(d.subtotal_net)], [D('iva'), money(d.vat_amount)], [D('totale'), money(d.total_gross), true]]);
+	t(D('generato'), M, 40, 8, font, gray);
 	return pdf.save();
 }
 

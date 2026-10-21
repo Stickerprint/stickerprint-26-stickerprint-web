@@ -2,38 +2,40 @@
 	import Seo from '$lib/components/Seo.svelte';
 	import '$lib/styles/pages.css';
 	import { enhance } from '$app/forms';
+	import { usaLingua } from '$lib/traduzioni';
+	const { t } = usaLingua();
 	let { form } = $props();
 	let sending = $state(false);
 </script>
 
-<Seo title="Resi e problemi con l’ordine | Stickerprint" description="Qualcosa non è andato come previsto? Succede raramente. Quando succede, ce ne occupiamo noi." />
+<Seo title={t('pagine.resi.seoTitolo')} description={t('pagine.resi.seoDescrizione')} />
 
 <section class="section container">
 	<div class="split2" style="align-items:start">
 		<div>
-			<h1 style="font-size:clamp(32px,4.4vw,54px);line-height:1.04">Qualcosa non è andato come previsto?</h1>
-			<p class="lead" style="margin-top:14px"><b>Succede raramente. Quando succede, ce ne occupiamo noi.</b></p>
-			<p class="lead">Controlliamo ogni ordine con attenzione per mantenere un alto standard qualitativo. Gli imprevisti sono l’eccezione, non la regola. Se qualcosa non torna, siamo qui per risolvere.</p>
-			<p class="ph__label" style="margin-top:18px">Come funziona:</p>
+			<h1 style="font-size:clamp(32px,4.4vw,54px);line-height:1.04">{t('pagine.resi.titolo')}</h1>
+			<p class="lead" style="margin-top:14px"><b>{t('pagine.resi.forte')}</b></p>
+			<p class="lead">{t('pagine.resi.testo')}</p>
+			<p class="ph__label" style="margin-top:18px">{t('pagine.resi.comeFunziona')}</p>
 			<ul class="checks">
-				<li><span class="ck">✓</span>Verifichiamo ogni ordine prima della stampa</li>
-				<li><span class="ck">✓</span>Se c’è un problema, lo analizziamo caso per caso</li>
-				<li><span class="ck">✓</span>Bastano numero d’ordine e qualche foto</li>
-				<li><span class="ck">✓</span>Ti rispondiamo in tempi rapidi</li>
-				<li><span class="ck">✓</span>Troviamo la soluzione migliore, senza rimbalzi</li>
+				<li><span class="ck">✓</span>{t('pagine.resi.p1')}</li>
+				<li><span class="ck">✓</span>{t('pagine.resi.p2')}</li>
+				<li><span class="ck">✓</span>{t('pagine.resi.p3')}</li>
+				<li><span class="ck">✓</span>{t('pagine.resi.p4')}</li>
+				<li><span class="ck">✓</span>{t('pagine.resi.p5')}</li>
 			</ul>
 		</div>
 		<div class="card" style="padding:28px">
 			{#if form?.ok}
-				<p class="success">Segnalazione ricevuta! La analizziamo e ti rispondiamo entro 24 ore. Ti abbiamo mandato anche un’email di conferma con il numero della richiesta.</p>
+				<p class="success">{t('pagine.resi.ok')}</p>
 			{:else}
 				<form class="form2" method="POST" enctype="multipart/form-data" use:enhance={() => { sending = true; return async ({ update }) => { sending = false; await update(); }; }}>
-					<label>Indirizzo email*<input name="email" type="email" required /></label>
-					<label>Numero d’ordine*<input name="order_number" required placeholder="es. SP-1234" /></label>
-					<label>Descrivi il problema*<textarea name="message" rows="5" required></textarea></label>
-					<label>Foto del problema*<input name="file" type="file" accept="image/*" required /></label>
+					<label>{t('pagine.resi.email')}<input name="email" type="email" required /></label>
+					<label>{t('pagine.resi.ordine')}<input name="order_number" required placeholder={t('pagine.resi.ordinePlaceholder')} /></label>
+					<label>{t('pagine.resi.problema')}<textarea name="message" rows="5" required></textarea></label>
+					<label>{t('pagine.resi.foto')}<input name="file" type="file" accept="image/*" required /></label>
 					{#if form?.error}<p class="error">{form.error}</p>{/if}
-					<button class="btn btn--green btn--lg" type="submit" disabled={sending}>{sending ? 'Invio…' : 'Contattaci per risolvere'}</button>
+					<button class="btn btn--green btn--lg" type="submit" disabled={sending}>{sending ? t('pagine.comuni.invio') : t('pagine.resi.cta')}</button>
 				</form>
 			{/if}
 		</div>

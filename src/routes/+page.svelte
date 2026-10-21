@@ -16,17 +16,27 @@
 	import HowTo from '$lib/components/HowTo.svelte';
 	import Seo from '$lib/components/Seo.svelte';
 	import { HOME_LD } from '$lib/seo-home';
+	import { usaLingua } from '$lib/traduzioni';
+	import { formatAmount } from '$lib/i18n';
 
 	let { data } = $props();
 
+	/* testi, link, prezzi e date nella lingua della pagina (docs/traduzioni.md); `data` e' gia' il nome dei dati della pagina */
+	const { t, path, prezzo, numero, data: giorno, locale } = usaLingua();
+	/* soglia della spedizione gratuita nella valuta del locale, mai scritta a mano nei testi */
+	const soglia = formatAmount(locale.freeShipping, locale, 0);
+	/* "venerdì 24 ottobre" / "Friday, October 24": la data stimata di spedizione, dal server come mezzogiorno locale */
+	const shipDate = $derived(giorno(data.shipAt, true));
+	/* media delle recensioni con una cifra decimale (4,8 / 4.8) nel formato della lingua */
+	const mediaRecensioni = $derived(new Intl.NumberFormat(locale.intl, { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(data.stats.average));
+
 	// card "Cosa creiamo oggi?": ordine fisso, un colore per card, prezzo minimo dal listino (data.fromPrices)
 	const products = [
-		{ slug: 'adesivi_resinati', href: '/adesivi-resinati', img: '/images/prodotti/resinati/other-3.webp', name: 'Adesivi resinati', desc: 'Effetto 3D con cupola in resina. Premium.', pill: 'pill--blue', color: 'var(--blue)' },
-		{ slug: 'adesivi_personalizzati', href: '/adesivi-personalizzati', img: '/images/prodotti/adesivi-personalizzati/other-3.webp', name: 'Adesivi personalizzati', desc: 'Vinile fustellato, qualsiasi forma. Opachi o lucidi.', pill: 'pill--yellow', color: 'var(--yellow)' },
-		{ slug: 'adesivi_rilievo', href: '/adesivi-rilievo', img: '/images/home/rilievo-card.webp', name: 'Adesivi in rilievo', desc: 'Dettagli in rilievo che si sentono al tatto.', pill: 'pill--pink', color: 'var(--pink)' },
-		{ slug: 'etichette', href: '/etichette', img: '/images/prodotti/etichette/other-4.webp', name: 'Etichette in fogli', desc: 'Per prodotti, packaging e confezioni.', pill: 'pill--green', color: 'var(--green)' }
+		{ slug: 'adesivi_resinati', href: '/adesivi-resinati', img: '/images/prodotti/resinati/other-3.webp', name: t('home.prodotti.resinati.nome'), desc: t('home.prodotti.resinati.desc'), pill: 'pill--blue', color: 'var(--blue)' },
+		{ slug: 'adesivi_personalizzati', href: '/adesivi-personalizzati', img: '/images/prodotti/adesivi-personalizzati/other-3.webp', name: t('home.prodotti.personalizzati.nome'), desc: t('home.prodotti.personalizzati.desc'), pill: 'pill--yellow', color: 'var(--yellow)' },
+		{ slug: 'adesivi_rilievo', href: '/adesivi-rilievo', img: '/images/home/rilievo-card.webp', name: t('home.prodotti.rilievo.nome'), desc: t('home.prodotti.rilievo.desc'), pill: 'pill--pink', color: 'var(--pink)' },
+		{ slug: 'etichette', href: '/etichette', img: '/images/prodotti/etichette/other-4.webp', name: t('home.prodotti.etichette.nome'), desc: t('home.prodotti.etichette.desc'), pill: 'pill--green', color: 'var(--green)' }
 	];
-	const eur0 = (v: number) => v.toLocaleString('it-IT', { maximumFractionDigits: 0 }) + ' €';
 
 	import { untrack } from 'svelte';
 	const IG_URL = 'https://www.instagram.com/stickerprint.it/';
@@ -36,6 +46,8 @@
 	// svelte-ignore state_referenced_locally
 	let shown = $state(data.instagram.followers ?? 6455);
 	const followers = $derived(Math.round(shown));
+	/* il numero dei follower sta dentro la frase tradotta: il contatore e' uno span con la classe "live", il testo viene dal catalogo (non da input utente) */
+	const igTitolo = $derived(t('home.instagram.titolo', { n: `<span class="ig-count${ig.live ? ' is-live' : ''}">${numero(followers)}</span>` }));
 	$effect(() => {
 		const target = ig.followers ?? 6455;
 		/* untrack: l'animazione scrive `shown` a ogni fotogramma; se l'effetto lo leggesse come dipendenza
@@ -57,29 +69,29 @@
 <svelte:head>
 	<link rel="preload" as="image" href="/images/ig-3.webp" fetchpriority="high" />
 </svelte:head>
-<Seo title="Adesivi personalizzati online, stampati in Italia | Stickerprint" description="Adesivi personalizzati, resinati, in rilievo, etichette e vetrofanie: carichi il file, vedi subito l’anteprima automatica e ordini. Spedizione in pochi giorni, gratuita da 50 €." image="/images/og-stickerprint.jpg" ld={HOME_LD} />
+<Seo title={t('home.seo.titolo')} description={t('home.seo.descrizione', { soglia })} image="/images/og-stickerprint.jpg" ld={HOME_LD} />
 
 <!-- HERO: fascia blu scuro come l'header, a tutta larghezza (solo in home) -->
 <div class="hero-band">
 <section class="hero container">
 	<div class="hero__grid">
 		<div>
-			<h1>Adesivi perfetti.<br /><span class="hl hl--green">Zero sorprese.</span></h1>
+			<h1>{t('home.hero.titolo')}<br /><span class="hl hl--green">{t('home.hero.evidenza')}</span></h1>
 			<p class="lead" style="margin-top:34px">
-				Carica il tuo file e visualizza <strong>subito l’anteprima automatica</strong> dei tuoi adesivi. Ti piace? Conferma. Vuoi cambiare qualcosa? Ce ne occupiamo noi.
+				{@html t('home.hero.testo')}
 			</p>
-			<div class="hero__stars"><Stars value={data.stats.average} count={data.stats.total} size={22} countLabel="recensioni verificate" /></div>
+			<div class="hero__stars"><Stars value={data.stats.average} count={data.stats.total} size={22} countLabel={t('home.hero.recensioni')} /></div>
 			<div class="hero__ctas">
-				<a class="btn btn--blue btn--lg" href="/adesivi-personalizzati">Stampa ora</a>
-				<a class="btn btn--yellow btn--lg" href="/campioni">Campioni</a>
+				<a class="btn btn--blue btn--lg" href={path('/adesivi-personalizzati')}>{t('home.hero.stampaOra')}</a>
+				<a class="btn btn--yellow btn--lg" href={path('/campioni')}>{t('home.hero.campioni')}</a>
 			</div>
-			<div class="pills"><div class="pills__row"><span class="pill pill--green">✦ Anteprima immediata</span><span class="pill pill--yellow">✦ Fino al 6% di Credito Stickerprint</span></div></div>
-			<p class="hero__ship"><span class="hero__rocket" aria-hidden="true">🚀</span><span class="hero__ship-txt"><span>Spedizione stimata</span><i class="hero__ship-sep">&nbsp;</i><b>{data.shipDate}</b><i class="hero__ship-sep">,&nbsp;</i><span>gratuita da 50 €</span></span></p>
+			<div class="pills"><div class="pills__row"><span class="pill pill--green">{t('home.hero.pillAnteprima')}</span><span class="pill pill--yellow">{t('home.hero.pillCredito')}</span></div></div>
+			<p class="hero__ship"><span class="hero__rocket" aria-hidden="true">🚀</span><span class="hero__ship-txt"><span>{t('home.hero.spedizioneStimata')}</span><i class="hero__ship-sep">&nbsp;</i><b>{shipDate}</b><i class="hero__ship-sep">,&nbsp;</i><span>{t('home.hero.gratuitaDa', { soglia })}</span></span></p>
 		</div>
 		<div class="hero__visual hero__visual--pile">
-			<img src="/images/hero-pila-adesivi.webp" alt="Pila di adesivi personalizzati stampati da Stickerprint" width="1400" height="660" fetchpriority="high" />
-			<div class="hero__sticker" style="left:18px;bottom:18px">✅ Anteprima pronta in 2 secondi</div>
-			<div class="hero__sticker" style="right:18px;top:18px">📦 Spedizione stimata {data.shipDate}</div>
+			<img src="/images/hero-pila-adesivi.webp" alt={t('home.hero.altPila')} width="1400" height="660" fetchpriority="high" />
+			<div class="hero__sticker" style="left:18px;bottom:18px">{t('home.hero.stickerAnteprima')}</div>
+			<div class="hero__sticker" style="right:18px;top:18px">{t('home.hero.stickerSpedizione', { giorno: shipDate })}</div>
 		</div>
 	</div>
 </section>
@@ -87,60 +99,60 @@
 
 <!-- LOGHI -->
 <section class="section--tight logos container center">
-	<h2><span class="hl hl--purple">Abbiamo stampato per</span></h2>
+	<h2><span class="hl hl--purple">{t('home.loghi.titolo')}</span></h2>
 	<BrandMarquee />
 </section>
 
 <!-- PRODOTTI -->
 <section class="section container center">
-	<h2><span class="hl hl--yellow">Cosa creiamo oggi?</span></h2>
+	<h2><span class="hl hl--yellow">{t('home.prodotti.titolo')}</span></h2>
 	<p class="lead" style="margin-top:18px">
-		Scelti ogni giorno da Brand, Creator e Aziende che vogliono lasciare il segno.<br /><strong>Per davvero.</strong>
+		{@html t('home.prodotti.testo')}
 	</p>
 	<div class="products" style="text-align:left">
-		{#each products as p}
-			<a class="product" href={p.href} style="--c:{p.color}">
+		{#each products as p (p.slug)}
+			<a class="product" href={path(p.href)} style="--c:{p.color}">
 				<div class="product__art"><img src={p.img} alt="" width="600" height="600" loading="lazy" /></div>
 				<div class="product__name">{p.name}</div>
 				<div class="product__desc">{p.desc}</div>
 				{#if data.fromPrices?.[p.slug]}
-					<div class="product__from {p.pill}"><span>a partire da</span> <b>{eur0(data.fromPrices[p.slug])}</b></div>
+					<div class="product__from {p.pill}"><span>{t('home.prodotti.aPartireDa')}</span> <b>{prezzo(data.fromPrices[p.slug], 0)}</b></div>
 				{/if}
 			</a>
 		{/each}
 	</div>
-	<p style="margin-top:32px"><a class="link" href="/prodotti">Vedi tutti i prodotti →</a></p>
+	<p style="margin-top:32px"><a class="link" href={path('/prodotti')}>{t('home.prodotti.tutti')}</a></p>
 </section>
 
 <!-- ANTEPRIMA AUTOMATICA -->
 <section class="section container" id="anteprima">
 	<div class="center">
-		<span class="tag tag--blue">Anteprima automatica</span>
-		<h2 style="margin-top:14px">Prima lo vedi. <span class="hl hl--blue">Poi lo stampiamo.</span></h2>
-		<p class="lead" style="margin-top:14px;max-width:640px;margin-inline:auto"><b>Ti diamo un assaggio della nostra anteprima automatica.</b><br />Carica il tuo file e vedi subito come verrà realizzato il tuo adesivo, con sagoma, materiale e linea di taglio.</p>
+		<span class="tag tag--blue">{t('home.anteprima.tag')}</span>
+		<h2 style="margin-top:14px">{t('home.anteprima.titolo')} <span class="hl hl--blue">{t('home.anteprima.evidenza')}</span></h2>
+		<p class="lead" style="margin-top:14px;max-width:640px;margin-inline:auto">{@html t('home.anteprima.testo')}</p>
 	</div>
 	<div class="up-card">
 		<UploadPreview />
 	</div>
 	<div class="up-strip">
-		<div><b>1 · Carica il file</b><span>PNG, PDF, JPG, SVG</span></div>
-		<div><b>2 · Guarda l'anteprima</b><span>Sagoma e linea di taglio in pochi secondi</span></div>
-		<div><b>3 · Completa la configurazione</b><span>Bordo, misura, quantità e lamina: il prezzo si aggiorna subito</span></div>
-		<div><b>4 · Controllo finale</b><span>Un umano verifica il file prima della stampa</span></div>
+		<div><b>{t('home.anteprima.passo1')}</b><span>{t('home.anteprima.passo1Nota')}</span></div>
+		<div><b>{t('home.anteprima.passo2')}</b><span>{t('home.anteprima.passo2Nota')}</span></div>
+		<div><b>{t('home.anteprima.passo3')}</b><span>{t('home.anteprima.passo3Nota')}</span></div>
+		<div><b>{t('home.anteprima.passo4')}</b><span>{t('home.anteprima.passo4Nota')}</span></div>
 	</div>
 </section>
 
 <!-- SOCIAL PROOF -->
 <section class="section container">
 	<div class="panel panel--navy social-proof center">
-		<h2>Scelti da chi vuole adesivi<br /><span class="hl hl--yellow">fatti come si deve.</span></h2>
+		<h2>{t('home.fiducia.titolo')}<br /><span class="hl hl--yellow">{t('home.fiducia.evidenza')}</span></h2>
 		<p class="lead" style="margin-top:22px">
-			Il <strong>100%</strong> di chi ordina su <strong>Stickerprint</strong> sa esattamente cosa riceverà.<br />E torna a stampare con noi.
+			{@html t('home.fiducia.testo')}
 		</p>
 		<div class="stats">
-			<div class="stat stat--blue"><b>3K+</b><span>Ordini spediti</span></div>
-			<div class="stat stat--yellow"><b>{data.stats.average.toLocaleString('it-IT', { minimumFractionDigits: 1 })} ★</b><span>Valutazione media</span></div>
-			<div class="stat stat--pink"><b>5 gg</b><span>Media di produzione</span></div>
+			<div class="stat stat--blue"><b>{t('home.fiducia.ordini')}</b><span>{t('home.fiducia.ordiniLabel')}</span></div>
+			<div class="stat stat--yellow"><b>{mediaRecensioni} ★</b><span>{t('home.fiducia.valutazioneLabel')}</span></div>
+			<div class="stat stat--pink"><b>{t('home.fiducia.produzione')}</b><span>{t('home.fiducia.produzioneLabel')}</span></div>
 		</div>
 		<ReviewsCarousel reviews={data.reviews} />
 	</div>
@@ -148,37 +160,38 @@
 
 <!-- CREDITO -->
 <!-- PERCHE' STICKERPRINT -->
-<HowTo shipDate={data.shipDate} />
+<HowTo {shipDate} />
 
 <section class="section container">
 	<div class="cred">
 		<div class="cred__text">
-			<span class="tag tag--green">Credito Stickerprint</span>
-			<h2 style="margin-top:14px">Ogni ordine ti lascia <span class="hl hl--green">qualcosa.</span></h2>
-			<p class="lead" style="margin-top:14px">Una parte di ogni acquisto torna nel tuo account come credito, pronto per il prossimo ordine. Più ordini, più sale la percentuale.</p>
-			<div class="cred__calc" aria-label="Esempio">
-				<div><small>Ordini per</small><b>100 €</b></div>
+			<span class="tag tag--green">{t('home.credito.tag')}</span>
+			<h2 style="margin-top:14px">{t('home.credito.titolo')} <span class="hl hl--green">{t('home.credito.evidenza')}</span></h2>
+			<p class="lead" style="margin-top:14px">{t('home.credito.testo')}</p>
+			<!-- esempio in proporzione (100 → 6): importi nella valuta del locale, senza cambio -->
+			<div class="cred__calc" aria-label={t('home.credito.esempio')}>
+				<div><small>{t('home.credito.ordiniPer')}</small><b>{formatAmount(100, locale, 0)}</b></div>
 				<span class="cred__arrow" aria-hidden="true">→</span>
-				<div><small>ti tornano fino a</small><b class="is-green">6 €</b></div>
+				<div><small>{t('home.credito.tiTornano')}</small><b class="is-green">{formatAmount(6, locale, 0)}</b></div>
 				<img src="/images/coin-sp.png" alt="" width="64" height="60" loading="lazy" />
 			</div>
-			<p style="margin-top:22px"><a class="btn btn--green btn--lg" href={data.user ? '/account' : '/signup'}>{data.user ? 'Vai al tuo credito →' : 'Crea il tuo account →'}</a></p>
-			<p class="note" style="margin-top:10px">Credito calcolato sui prodotti IVA esclusa, valido 6 mesi. 1 punto per ogni euro speso.</p>
+			<p style="margin-top:22px"><a class="btn btn--green btn--lg" href={path(data.user ? '/account' : '/signup')}>{data.user ? t('home.credito.vaiCredito') : t('home.credito.creaAccount')}</a></p>
+			<p class="note" style="margin-top:10px">{t('home.credito.nota')}</p>
 		</div>
 		<div class="cred__path" class:is-in={credIn} use:credObserve>
 			<div class="cred__line" aria-hidden="true"></div>
 			<div class="cred__lv">
 				<img src="/images/loyalty/creator.webp" alt="" loading="lazy" />
-				<b>Creator</b><span class="cred__pct">2%</span><small>dal primo ordine</small>
+				<b>{t('home.credito.creator')}</b><span class="cred__pct">2%</span><small>{t('home.credito.dalPrimoOrdine')}</small>
 			</div>
 			<div class="cred__lv is-mid">
 				<img src="/images/loyalty/partner.webp" alt="" loading="lazy" />
-				<b>Partner</b><span class="cred__pct">4%</span><small>da 500 punti</small>
+				<b>{t('home.credito.partner')}</b><span class="cred__pct">4%</span><small>{t('home.credito.daPunti', { punti: numero(500) })}</small>
 			</div>
 			<div class="cred__lv is-top">
 				<i class="cred__shine" aria-hidden="true"></i>
 				<img src="/images/loyalty/ambassador.webp" alt="" loading="lazy" />
-				<b>Ambassador</b><span class="cred__pct">6%</span><small>da 1.500 punti</small>
+				<b>{t('home.credito.ambassador')}</b><span class="cred__pct">6%</span><small>{t('home.credito.daPunti', { punti: numero(1500) })}</small>
 			</div>
 		</div>
 	</div>
@@ -188,12 +201,12 @@
 <section class="section--tight container">
 	<div class="business">
 		<div class="business__text">
-			<span class="tag tag--periwinkle">Stickerprint for business</span>
-			<h2 style="margin-top:16px">Grandi progetti.<br /><span class="hl hl--periwinkle">Un partner all’altezza.</span></h2>
-			<p>Dalla prima prova alle grandi tirature: affianchiamo aziende, agenzie e professionisti con assistenza dedicata, qualità costante e soluzioni su misura.</p>
-			<p style="margin-top:30px"><a class="btn btn--periwinkle" href="/aziende">Scopri le soluzioni business</a></p>
+			<span class="tag tag--periwinkle">{t('home.business.tag')}</span>
+			<h2 style="margin-top:16px">{t('home.business.titolo')}<br /><span class="hl hl--periwinkle">{t('home.business.evidenza')}</span></h2>
+			<p>{t('home.business.testo')}</p>
+			<p style="margin-top:30px"><a class="btn btn--periwinkle" href={path('/aziende')}>{t('home.business.cta')}</a></p>
 		</div>
-		<div class="business__visual"><img src="/images/home/business.webp" alt="Lo studio Stickerprint con la parete di adesivi" width="2000" height="1526" loading="lazy" /></div>
+		<div class="business__visual"><img src="/images/home/business.webp" alt={t('home.business.alt')} width="2000" height="1526" loading="lazy" /></div>
 	</div>
 </section>
 
@@ -204,19 +217,19 @@
 <section class="section container ig">
 	<div class="ig-head">
 		<a class="tag tag--pink" href={IG_URL} target="_blank" rel="noopener" style="text-decoration:none">@stickerprint.it</a>
-		<h2><span class="hl hl--pink">Più di <span class="ig-count" class:is-live={ig.live}>{followers.toLocaleString('it-IT')}</span> creativi sono già con noi.</span></h2>
-		<p class="lead">Lavorazioni, novità e progetti reali <strong>LIVE</strong> direttamente dal nostro laboratorio.</p>
+		<h2><span class="hl hl--pink">{@html igTitolo}</span></h2>
+		<p class="lead">{@html t('home.instagram.testo')}</p>
 	</div>
 	<div class="ig-grid">
 		{#each ig.media as m (m.id)}
-			<a href={m.permalink} target="_blank" rel="noopener" title={m.caption || 'Apri su Instagram'}>
-				<img src={m.image} alt={m.caption || 'Post Instagram di Stickerprint'} width="600" height="600" loading="lazy" />
+			<a href={m.permalink} target="_blank" rel="noopener" title={m.caption || t('home.instagram.apri')}>
+				<img src={m.image} alt={m.caption || t('home.instagram.altPost')} width="600" height="600" loading="lazy" />
 				{#if m.isVideo}<span class="ig-play" aria-hidden="true">▶</span>{/if}
 			</a>
 		{/each}
 	</div>
-<p class="center" style="margin-top:26px"><a class="btn btn--pink btn--lg" href={IG_URL} target="_blank" rel="noopener">Seguici su Instagram</a></p>
+<p class="center" style="margin-top:26px"><a class="btn btn--pink btn--lg" href={IG_URL} target="_blank" rel="noopener">{t('home.instagram.seguici')}</a></p>
 </section>
 
 <!-- FINALE -->
-<FinalCta shipDate={data.shipDate} />
+<FinalCta {shipDate} />

@@ -3,6 +3,7 @@
  * Il codice e' 10% sul prossimo ordine, minimo 50 € IVA inclusa, valido 6 mesi, monouso, legato all'email di chi recensisce.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { langOf } from '$lib/i18n';
 import { sendEmail } from './email';
 import { reviewRequestEmail, reviewThanksEmail } from './email-templates';
 import { invalidateReviews } from './reviews';
@@ -106,7 +107,7 @@ export async function inviaRichiestaRecensione(db: DB, rows: RigaOrdine[], origi
 	const reqId = await createReviewRequest(db, { orderId: f.id, checkoutGroup: f.checkout_group ?? null, number: f.number, email: f.email, name: f.shipping?.first_name ?? null });
 	const q = reqId ? `?r=${reqId}` : '';
 	const href = f.user_id ? `${origin}/account/recensioni${q}` : `${origin}/recensione/${f.checkout_group ?? f.id}${q}`;
-	const mail = reviewRequestEmail({ name: f.shipping?.first_name ?? null, number: f.number, items: rows.map((r) => ({ name: r.product_name, qty: r.qty, preview: r.proof_url ?? r.preview_url ?? r.mockup_url ?? null })), href });
+	const mail = reviewRequestEmail({ name: f.shipping?.first_name ?? null, number: f.number, items: rows.map((r) => ({ name: r.product_name, qty: r.qty, preview: r.proof_url ?? r.preview_url ?? r.mockup_url ?? null })), href }, langOf((f as { locale?: string | null }).locale));
 	const html = reqId ? mail.html.replace('</body>', `<img src="${origin}/api/track/open/${reqId}" width="1" height="1" alt="" style="display:block;width:1px;height:1px;border:0;"></body>`) : mail.html;
 	const r = await sendEmail({ to: f.email, subject: mail.subject, html, tag: mail.tag, metadata: { order: f.number } });
 	if (!r.ok) {

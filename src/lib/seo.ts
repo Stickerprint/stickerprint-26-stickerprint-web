@@ -61,8 +61,10 @@ export interface ProductLdInput {
 	sku: string;
 	category?: string;
 	material?: string;
-	/** prezzo "a partire da" davvero mostrato in pagina, IVA inclusa, in euro */
+	/** prezzo "a partire da" davvero mostrato in pagina, IVA inclusa, nella valuta di `currency` (euro se non indicata) */
 	fromPrice?: number | null;
+	/** valuta dell'offerta: EUR, o USD nella versione /us */
+	currency?: 'EUR' | 'USD';
 	/** media e numero recensioni del prodotto, SOLO se vengono da recensioni vere del database */
 	rating?: { average: number; count: number } | null;
 	/** recensioni vere mostrate in pagina (mai quelle di esempio) */
@@ -89,7 +91,7 @@ export function productLd(p: ProductLdInput) {
 		node.offers = {
 			'@type': 'AggregateOffer',
 			url,
-			priceCurrency: 'EUR',
+			priceCurrency: p.currency ?? 'EUR',
 			lowPrice: p.fromPrice.toFixed(2),
 			offerCount: 1,
 			availability: 'https://schema.org/InStock',

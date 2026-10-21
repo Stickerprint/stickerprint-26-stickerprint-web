@@ -14,51 +14,50 @@
 	import Breadcrumb from '$lib/components/Breadcrumb.svelte';
 	import { breadcrumbLd, productLd } from '$lib/seo';
 	import { kitBaseGross } from '$lib/pricing/kit';
+	import { usaLingua } from '$lib/traduzioni';
+	import { formatAmount } from '$lib/i18n';
 	let { data } = $props();
+	const { t, path, lang, locale } = usaLingua();
+	/* soglia della spedizione gratuita del locale (50 € IT, 69 € UE, 99 $ USA), mai scritta a mano */
+	const soglia = formatAmount(locale.freeShipping, locale, 0);
 
 	/* foto dei kit: le quattro dell'hero e quella del tavolo per "Zero ansia" */
 	const GALLERY = ['/images/prodotti/kit/1.webp', '/images/prodotti/kit/2.webp', '/images/prodotti/kit/3.webp', '/images/prodotti/kit/4.webp'];
 	/* le tre foto di "Cosa stai stampando" */
 	const MOSAIC = ['/images/prodotti/kit/other-1.webp', '/images/prodotti/kit/other-2.webp', '/images/prodotti/kit/other-3.webp'];
-	const avg = $derived((data.stats?.average ?? 0).toLocaleString('it-IT', { minimumFractionDigits: 1, maximumFractionDigits: 1 }));
-	const crumbs = [{ name: 'Home', path: '/' }, { name: 'Adesivi', path: '/prodotti' }, { name: 'Kit di adesivi', path: '/kit-adesivi' }];
+	/* media recensioni con un decimale fisso (4,0 / 4.0), nel formato della lingua */
+	const avg = $derived(new Intl.NumberFormat(locale.intl, { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(data.stats?.average ?? 0));
+	const crumbs = [{ name: t('kit.pagina.briciole.home'), path: path('/') }, { name: t('kit.pagina.briciole.adesivi'), path: path('/prodotti') }, { name: t('kit.pagina.briciole.kit'), path: path('/kit-adesivi') }];
 	/* JSON-LD: prezzo del kit tipo (10 kit, 6 adesivi da 50 mm) come mostrato in pagina; niente recensioni finche' non ce ne sono di specifiche del kit */
 	const ld = [
-		productLd({ path: '/kit-adesivi', name: 'Kit di adesivi personalizzati', description: 'Bustina trasparente con cavallotto personalizzato stampato fronte e retro e fino a 6 adesivi sagomati. Confezionato a mano, pronto da vendere o regalare.', images: GALLERY, sku: 'kit_adesivi', category: 'Kit di adesivi', material: 'Vinile', fromPrice: kitBaseGross(10) }),
+		productLd({ path: path('/kit-adesivi'), name: t('kit.pagina.ldNome'), description: t('kit.pagina.ldDesc'), images: GALLERY, sku: 'kit_adesivi', category: t('kit.pagina.ldCategoria'), material: t('kit.pagina.ldMateriale'), fromPrice: kitBaseGross(10) }),
 		breadcrumbLd(crumbs)
 	];
-	/* domande frequenti del kit (se in dashboard c'e' la categoria FAQ del kit, vince quella) */
-	const FAQ = [
-		{ q: 'Quanti adesivi posso mettere in un kit?', a: 'Fino a 6 adesivi diversi tra loro. Carichi un file per ogni adesivo e ognuno viene scontornato come un adesivo sagomato. Puoi anche farne meno di sei: il prezzo del kit scende di conseguenza.' },
-		{ q: 'Gli adesivi possono avere materiali o misure diverse?', a: 'No. Tutti gli adesivi del kit condividono la stessa misura, lo stesso materiale e la stessa finitura: è quello che rende il kit un prodotto unico e coerente. Se vuoi materiali diversi, puoi ordinare più kit.' },
-		{ q: 'Cosa devo caricare per il cavallotto?', a: 'Un solo file con la tua grafica (logo, nome della collezione, illustrazione). Lo impaginiamo noi sulla linguetta piegata in cima alla bustina, stampata fronte e retro e fissata con due punti metallici. Nell’anteprima vedi subito come viene.' },
-		{ q: 'Qual è la quantità minima?', a: 'Si parte da 10 kit. Il prezzo per kit scende salendo di quantità: 50, 100, 250, 500 e 1000 kit.' },
-		{ q: 'Che misura hanno gli adesivi del kit?', a: 'Scegli tu il lato lungo: 40, 50, 60 o 80 mm. La misura vale per tutti gli adesivi del kit, e la vedi in anteprima dentro la bustina prima di ordinare.' },
-		{ q: 'Posso vedere il kit prima di pagare?', a: 'Sì. Mentre carichi i file l’anteprima si compone in tempo reale: cavallotto, bustina e adesivi. Prima di stampare controlliamo comunque a mano ogni file e, se troviamo un problema, fermiamo la stampa e ti contattiamo.' },
-		{ q: 'Come arrivano i kit?', a: 'Già confezionati a mano: bustina trasparente chiusa dal cavallotto, adesivi dentro. Pronti da vendere, regalare o inserire nei tuoi ordini, senza altro lavoro da parte tua.' }
-	];
+	/* domande frequenti del kit dal catalogo; in italiano, se in dashboard c'e' la categoria FAQ del kit, vince quella */
+	const FAQ = [1, 2, 3, 4, 5, 6, 7].map((i) => ({ q: t(`kit.pagina.faq.d${i}q`), a: t(`kit.pagina.faq.d${i}a`) }));
+	const faq = $derived(lang === 'it' && data.faq?.length ? data.faq : FAQ);
 </script>
 
-<Seo title="Kit di adesivi personalizzati con cavallotto | Sticker pack" description="Crea il tuo kit di adesivi personalizzati con fino a 6 grafiche, bustina trasparente e cavallotto stampato. Confezionato e pronto da vendere o regalare." image={GALLERY[0]} type="product" {ld} />
+<Seo title={t('kit.pagina.seoTitolo')} description={t('kit.pagina.seoDesc')} image={GALLERY[0]} type="product" {ld} />
 
 <!-- HERO -->
 <section class="container ph">
 	<div>
 		<Breadcrumb items={crumbs} />
-		<h1 style="margin-top:10px">Pacchetti di adesivi <span class="hl hl--yellow">personalizzati.</span></h1>
-		<p class="ph__desc" style="margin-top:18px">Crea il tuo sticker pack pronto da vendere, regalare o inserire nei tuoi ordini. Personalizzi gli adesivi e il cavallotto; noi stampiamo, tagliamo e confezioniamo ogni bustina.</p>
-		{#if data.stats?.total}<div class="ph__stars" style="margin-top:14px"><Stars value={data.stats.average} count={data.stats.total} size={22} /></div>{/if}
+		<h1 style="margin-top:10px">{t('kit.pagina.hero.titolo')} <span class="hl hl--yellow">{t('kit.pagina.hero.titoloHl')}</span></h1>
+		<p class="ph__desc" style="margin-top:18px">{t('kit.pagina.hero.desc')}</p>
+		{#if data.stats?.total}<div class="ph__stars" style="margin-top:14px"><Stars value={data.stats.average} count={data.stats.total} size={22} countLabel={t('kit.pagina.recensioni.verificate')} /></div>{/if}
 		<ul class="ph__list" style="margin-top:22px">
-			<li><span class="ck">✓</span><span>Fino a 6 adesivi diversi in ogni kit</span></li>
-			<li><span class="ck">✓</span><span>Cavallotto personalizzato fronte e retro</span></li>
-			<li><span class="ck">✓</span><span>Anteprima completa prima di ordinare</span></li>
-			<li><span class="ck">✓</span><span>Confezionati a mano e pronti da distribuire</span></li>
-			<li><span class="ck">✓</span><span>A partire da 10 kit</span></li>
-			<li><span class="ck">✓</span><span>Spedizione stimata <mark class="ph__date">{data.shipDate}</mark> · gratuita da 50 €</span></li>
+			<li><span class="ck">✓</span><span>{t('kit.pagina.hero.sei')}</span></li>
+			<li><span class="ck">✓</span><span>{t('kit.pagina.hero.cavallotto')}</span></li>
+			<li><span class="ck">✓</span><span>{t('kit.pagina.hero.anteprima')}</span></li>
+			<li><span class="ck">✓</span><span>{t('kit.pagina.hero.confezionati')}</span></li>
+			<li><span class="ck">✓</span><span>{t('kit.pagina.hero.minimo')}</span></li>
+			<li><span class="ck">✓</span><span>{t('kit.pagina.hero.spedizione')} <mark class="ph__date">{data.shipDate}</mark> · {t('kit.pagina.hero.spedizioneGratis', { soglia })}</span></li>
 		</ul>
-		<a class="ph__go" href="#kit">Configura il tuo kit qui sotto ↓</a>
+		<a class="ph__go" href="#kit">{t('kit.pagina.hero.vai')}</a>
 	</div>
-	<Carousel images={GALLERY} alt="Kit di adesivi personalizzati con cavallotto" />
+	<Carousel images={GALLERY} alt={t('kit.pagina.hero.altCarosello')} />
 </section>
 
 <!-- CONFIGURATORE -->
@@ -69,28 +68,28 @@
 <!-- ZERO ANSIA -->
 <section class="section container">
 	<div class="split">
-		<img src="/images/prodotti/kit/care.webp" alt="Kit di adesivi Wild Goods con i sei adesivi sagomati sul tavolo" loading="lazy" />
+		<img src="/images/prodotti/kit/care.webp" alt={t('kit.pagina.zeroAnsia.alt')} loading="lazy" />
 		<div>
-			<h2>Zero ansia. <span class="hl hl--green">Ci pensiamo noi.</span></h2>
-			<p class="lead">Più grafiche, un solo prodotto, nessuna complicazione. Prima di stampare controlliamo che ogni elemento del kit funzioni come deve.</p>
+			<h2>{t('kit.pagina.zeroAnsia.titolo')} <span class="hl hl--green">{t('kit.pagina.zeroAnsia.hl')}</span></h2>
+			<p class="lead">{t('kit.pagina.zeroAnsia.lead')}</p>
 			<ul class="checks">
-				<li><span class="ck">✓</span>Controllo manuale del cavallotto e di ogni adesivo</li>
-				<li><span class="ck">✓</span>Verifica di qualità, taglio, margini e proporzioni</li>
-				<li><span class="ck">✓</span>Anteprima automatica del kit prima del pagamento</li>
-				<li><span class="ck">✓</span>Se troviamo un problema, fermiamo la stampa e ti contattiamo</li>
-				<li><span class="ck">✓</span>Confezionamento finale eseguito e controllato a mano</li>
+				<li><span class="ck">✓</span>{t('kit.pagina.zeroAnsia.controllo')}</li>
+				<li><span class="ck">✓</span>{t('kit.pagina.zeroAnsia.verifica')}</li>
+				<li><span class="ck">✓</span>{t('kit.pagina.zeroAnsia.anteprima')}</li>
+				<li><span class="ck">✓</span>{t('kit.pagina.zeroAnsia.problema')}</li>
+				<li><span class="ck">✓</span>{t('kit.pagina.zeroAnsia.confezionamento')}</li>
 			</ul>
-			<p class="lead" style="margin-top:16px"><b>Tu carichi le grafiche. Noi ti consegniamo i kit pronti.</b></p>
+			<p class="lead" style="margin-top:16px"><b>{t('kit.pagina.zeroAnsia.chiusura')}</b></p>
 		</div>
 	</div>
 </section>
 
 <!-- COSA STAI STAMPANDO -->
 <section class="section container center">
-	<h2><span class="hl hl--yellow">Cosa stai stampando esattamente?</span></h2>
-	<p class="lead" style="margin-top:16px">Non stai ordinando una semplice manciata di adesivi. Stai creando un prodotto completo.</p>
-	<p class="lead" style="margin-top:12px">Ogni bustina viene confezionata a mano nel nostro laboratorio, ed è pronta per essere venduta, regalata o inserita nei tuoi ordini.</p>
-	<p style="margin-top:20px"><span class="pill pill--yellow">Ideale per creator, artisti, brand, negozi, eventi e welcome kit.</span></p>
+	<h2><span class="hl hl--yellow">{t('kit.pagina.cosa.titolo')}</span></h2>
+	<p class="lead" style="margin-top:16px">{t('kit.pagina.cosa.lead1')}</p>
+	<p class="lead" style="margin-top:12px">{t('kit.pagina.cosa.lead2')}</p>
+	<p style="margin-top:20px"><span class="pill pill--yellow">{t('kit.pagina.cosa.pill')}</span></p>
 	<div class="mosaic">
 		{#each MOSAIC as src (src)}<img {src} alt="" loading="lazy" />{/each}
 	</div>
@@ -99,8 +98,8 @@
 <!-- RECENSIONI -->
 <section class="section container">
 	<div class="panel panel--navy social-proof center">
-		<h2>Cosa dicono di <span class="hl hl--yellow">questi kit.</span></h2>
-		<p class="lead" style="margin-top:18px">Ordini reali. Risultati concreti. Valutazione media {avg} su 5.</p>
+		<h2>{t('kit.pagina.recensioni.titolo')} <span class="hl hl--yellow">{t('kit.pagina.recensioni.hl')}</span></h2>
+		<p class="lead" style="margin-top:18px">{t('kit.pagina.recensioni.lead', { media: avg })}</p>
 		<ReviewsCarousel reviews={data.reviews} />
 	</div>
 </section>
@@ -112,7 +111,7 @@
 <SamplesBlock />
 
 <!-- FAQ -->
-<FaqList items={data.faq?.length ? data.faq : FAQ} title="Le domande" hl="più frequenti." intro={`Cerchi altre risposte? Guarda la nostra <a class="link" href="/support" style="color:var(--blue)">sezione di supporto</a>.`} />
+<FaqList items={faq} title={t('kit.pagina.faq.titolo')} hl={t('kit.pagina.faq.hl')} intro={t('kit.pagina.faq.intro', { href: path('/support') })} />
 
 <!-- CTA FINALE -->
-<FinalCta shipDate={data.shipDate} href="#kit" label="Voglio i miei kit" />
+<FinalCta shipDate={data.shipDate} href="#kit" label={t('kit.pagina.cta')} />

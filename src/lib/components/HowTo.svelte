@@ -1,14 +1,17 @@
 <script lang="ts">
-	/** "Te li portiamo fino alla porta": i quattro passi, in home e nelle offerte */
+	/** "Te li portiamo fino alla porta": i quattro passi, in home, nelle offerte e nelle pagine prodotto. Testi nel catalogo prodotti.comeFunziona */
+	import { usaLingua } from '$lib/traduzioni';
 	let { shipDate, dark = false }: { shipDate: string; dark?: boolean } = $props();
+	const { t } = usaLingua();
+	const k = 'prodotti.comeFunziona';
 </script>
 
 <section class="section container center howto-wrap" class:is-dark={dark}>
-	<h2>Te li portiamo <span class="hl hl--blue">fino alla porta.</span></h2>
+	<h2>{t(`${k}.titolo`)} <span class="hl hl--blue">{t(`${k}.hl`)}</span></h2>
 	<div class="howto" style="text-align:left">
-		<div class="howto__step"><div class="howto__n">1</div><b>Carica il tuo file</b><p>PNG, PDF, JPG, SVG. Va bene anche se non è pronto per la stampa: lo sistemiamo noi.</p></div>
-		<div class="howto__step"><div class="howto__n">2</div><b>Anteprima immediata</b><p>Vedi subito sagoma e linea di taglio, prima di pagare. Nessun salto nel buio.</p></div>
-		<div class="howto__step"><div class="howto__n">3</div><b>Confermi, stampiamo</b><p>Ti piace l’anteprima? Confermi e l’ordine entra subito in produzione. Spedizione stimata <b>{shipDate}</b>.</p></div>
-		<div class="howto__step"><div class="howto__n">4</div><b>Ricevi gli adesivi</b><p>Corriere espresso tracciato. E quando arrivano, ci lasci una recensione come gli altri.</p></div>
+		<div class="howto__step"><div class="howto__n">1</div><b>{t(`${k}.uno.titolo`)}</b><p>{t(`${k}.uno.testo`)}</p></div>
+		<div class="howto__step"><div class="howto__n">2</div><b>{t(`${k}.due.titolo`)}</b><p>{t(`${k}.due.testo`)}</p></div>
+		<div class="howto__step"><div class="howto__n">3</div><b>{t(`${k}.tre.titolo`)}</b><p>{t(`${k}.tre.testo`)} {t(`${k}.tre.spedizione`)} <b>{shipDate}</b>.</p></div>
+		<div class="howto__step"><div class="howto__n">4</div><b>{t(`${k}.quattro.titolo`)}</b><p>{t(`${k}.quattro.testo`)}</p></div>
 	</div>
 </section>

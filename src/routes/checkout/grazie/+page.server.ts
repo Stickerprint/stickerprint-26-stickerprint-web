@@ -1,4 +1,6 @@
-import { estimatedShipDate, formatItDate } from '$lib/utils/shipping';
+import { estimatedShipDate } from '$lib/utils/shipping';
+import { LOCALES } from '$lib/i18n';
+import { dataIn, t } from '$lib/traduzioni';
 import { adminClient } from '$lib/server/admin';
 import { retrievePaymentIntent, retrieveSession, stripeConfigured } from '$lib/server/stripe';
 import { finalizeCheckout, readCheckout, type CheckoutPayload } from '$lib/server/checkout';
@@ -9,9 +11,10 @@ import type { PageServerLoad } from './$types';
  * Pagina dopo l'ordine. Con ritorno da Stripe (session_id) verifica l'incasso e, se il webhook non l'ha gia' fatto,
  * chiude l'ordine: fattura, email, produzione. Restituisce i dati per il tracciamento dell'acquisto.
  */
-export const load: PageServerLoad = async ({ url, locals: { user } }) => {
+export const load: PageServerLoad = async ({ url, locals: { user, locale } }) => {
 	const express = url.searchParams.get('e') === '1';
-	const base = { shipDate: formatItDate(estimatedShipDate(express ? 3 : 5)), loggedIn: !!user, paid: null as null | { numbers: string[]; group: string; payload: CheckoutPayload }, pending: false, ppError: null as string | null };
+	/* data di spedizione nella lingua del sito (giorno della settimana, giorno, mese) */
+	const base = { shipDate: dataIn(LOCALES[locale] ?? LOCALES.it, estimatedShipDate(express ? 3 : 5), true), loggedIn: !!user, paid: null as null | { numbers: string[]; group: string; payload: CheckoutPayload }, pending: false, ppError: null as string | null };
 	const db = adminClient();
 	if (!db) return base;
 	// ritorno da PayPal (?pp=1&token=ID): cattura dell'incasso e chiusura dell'ordine
@@ -19,7 +22,7 @@ export const load: PageServerLoad = async ({ url, locals: { user } }) => {
 	if (pp && paypalConfigured()) {
 		const r = await settlePayPalReturn(db, pp, 'checkout:');
 		const group = r.customId?.split(':')[1] ?? null;
-		if (!group) return { ...base, ppError: r.error ?? 'Pagamento non riconosciuto.' };
+		if (!group) return { ...base, ppError: r.error ?? t(locale, 'checkout.errori.pagamentoNonRiconosciuto') };
 		if (!r.ok) return { ...base, pending: true, ppError: r.error ?? null };
 		const payload = (await readCheckout(db, group))?.payload ?? null;
 		return payload ? { ...base, paid: { numbers: payload.numbers, group, payload } } : base;

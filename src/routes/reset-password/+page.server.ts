@@ -1,11 +1,12 @@
 import { fail } from '@sveltejs/kit';
 import { PUBLIC_SITE_URL } from '$env/static/public';
+import { t } from '$lib/traduzioni';
 import type { Actions } from './$types';
 
 export const actions: Actions = {
-	default: async ({ request, locals: { supabase }, url }) => {
+	default: async ({ request, locals: { supabase, locale }, url }) => {
 		const email = String((await request.formData()).get('email') ?? '').trim().toLowerCase();
-		if (!email) return fail(400, { error: 'Inserisci la tua email.' });
+		if (!email) return fail(400, { error: t(locale, 'account.errori.inserisciEmail') });
 
 		const origin = PUBLIC_SITE_URL || url.origin;
 		await supabase.auth.resetPasswordForEmail(email, {

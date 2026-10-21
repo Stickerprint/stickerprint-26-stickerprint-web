@@ -3,14 +3,18 @@
 	 * Stelle disegnate dalla media: arrotondata al mezzo punto (4,7 → 4 stelle e mezza), accanto il
 	 * numero esatto con una cifra decimale. Stessa resa ovunque: home, pagine prodotto, aziende.
 	 */
+	import { usaLingua } from '$lib/traduzioni';
 	/* showCount: il numero totale delle recensioni resta nascosto finche' non e' abbastanza alto da fare effetto */
-	let { value, size = 20, count, label = true, countLabel = 'recensioni verificate', showCount = false }: { value: number; size?: number; count?: number | null; label?: boolean; countLabel?: string; showCount?: boolean } = $props();
+	let { value, size = 20, count, label = true, countLabel, showCount = false }: { value: number; size?: number; count?: number | null; label?: boolean; countLabel?: string; showCount?: boolean } = $props();
+	const { t, numero, locale } = usaLingua();
 	const half = $derived(Math.max(0, Math.min(5, Math.round(value * 2) / 2)));
-	const fmt = $derived(value.toLocaleString('it-IT', { minimumFractionDigits: 1, maximumFractionDigits: 1 }));
+	/* una cifra decimale sempre (4,0), nel formato della lingua */
+	const fmt = $derived(new Intl.NumberFormat(locale.intl, { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(value));
+	const etichetta = $derived(countLabel ?? t('prodotti.stelle.recensioniVerificate'));
 	const kind = (i: number) => (half >= i ? 'full' : half >= i - 0.5 ? 'half' : 'empty');
 </script>
 
-<span class="rating" style="--s:{size}px" aria-label="{fmt} su 5">
+<span class="rating" style="--s:{size}px" aria-label={t('prodotti.stelle.valutazione', { voto: fmt })}>
 	<span class="rating__stars">
 		{#each [1, 2, 3, 4, 5] as i (i)}
 			<svg class="star star--{kind(i)}" viewBox="0 0 24 24" width={size} height={size} aria-hidden="true">
@@ -20,7 +24,7 @@
 			</svg>
 		{/each}
 	</span>
-	{#if label}<b class="rating__n">{fmt}</b><span class="rating__sub"> su 5{#if count}{` · ${showCount ? count.toLocaleString('it-IT') + ' ' : ''}${countLabel}`}{/if}</span>{/if}
+	{#if label}<b class="rating__n">{fmt}</b><span class="rating__sub"> {t('prodotti.stelle.su5')}{#if count}{` · ${showCount ? numero(count) + ' ' : ''}${etichetta}`}{/if}</span>{/if}
 </span>
 
 <style>

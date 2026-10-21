@@ -1,12 +1,16 @@
 <script lang="ts">
+	import { formatAmount } from '$lib/i18n';
 	import '$lib/styles/quote.css';
 	import { enhance } from '$app/forms';
 	import Stars from '$lib/components/Stars.svelte';
-	import { money } from '$lib/dashboard/orders';
+	import { usaLingua } from '$lib/traduzioni';
+	const { t, path, prezzo, numero, data: dataL, locale } = usaLingua();
+	/* documenti reali in euro (ordini manuali, preventivi, fatture): formato della lingua, valuta sempre EUR, niente cambio in dollari */
+	const money = (v: number) => formatAmount(v, { ...locale, currency: 'EUR' });
 	let { data, form } = $props();
 	const q = $derived(data.q);
 	const first = $derived(data.customer.first_name?.trim() || data.customer.name);
-	const it = (d: string | null) => (d ? new Date(d + 'T12:00:00').toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' }) : '');
+	const it = (d: string | null) => (d ? dataL(d + 'T12:00:00') : '');
 	const daysLeft = $derived(q.valid_until ? Math.ceil((new Date(q.valid_until + 'T23:59:59').getTime() - Date.now()) / 864e5) : null);
 	const done = $derived(q.status === 'accettato' || q.status === 'ordinato' || form?.accepted);
 	const dead = $derived(!done && (q.status === 'rifiutato' || q.status === 'scaduto' || form?.rejected));
@@ -15,30 +19,31 @@
 	let rejecting = $state(false);
 	let sending = $state(false);
 	const initials = $derived((q.sender_name ?? 'SP').split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase());
-	const when = (d: string) => new Date(d).toLocaleString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+	const when = (d: string) => new Date(d).toLocaleString(locale.intl, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+	const ordine = $derived(form?.orderNumber ? ` <b>${String(form.orderNumber).replace(/[<>&]/g, '')}</b>` : '');
 	const submit = () => { sending = true; return async ({ update }: { update: (o?: { reset?: boolean }) => Promise<void> }) => { await update({ reset: false }); sending = false; asking = false; rejecting = false; }; };
 </script>
 
-<svelte:head><title>Preventivo {q.number} | Stickerprint</title><meta name="robots" content="noindex" /></svelte:head>
+<svelte:head><title>{t('account.preventivo.titolo', { n: q.number })}</title><meta name="robots" content="noindex" /></svelte:head>
 
 <section class="qp">
-	{#if data.staffPreview}<p style="max-width:820px;margin:0 auto 12px;padding:10px 14px;border-radius:10px;background:#fef6db;color:#8a5a00;font-size:13px">Anteprima: così la vedrà il cliente dopo "Invia preventivo". Qui bottoni e PDF non sono attivi.</p>{/if}
+	{#if data.staffPreview}<p style="max-width:820px;margin:0 auto 12px;padding:10px 14px;border-radius:10px;background:#fef6db;color:#8a5a00;font-size:13px">{t('account.preventivo.anteprima')}</p>{/if}
 	<div class="qp__wrap">
 		<header class="qp__head">
-			<p class="qp__kicker">Preventivo {q.number}{#if q.version > 1} · rev. {q.version}{/if} · {it(q.created_at.slice(0, 10))}</p>
+			<p class="qp__kicker">{t('account.preventivo.kicker', { n: q.number })}{#if q.version > 1}{t('account.preventivo.rev', { v: q.version })}{/if} · {it(q.created_at.slice(0, 10))}</p>
 			{#if done}
-				<h1>Grazie {first}, è tutto <span class="hl">confermato</span> ✅</h1>
+				<h1>{t('account.preventivo.grazie', { nome: first })} <span class="hl">{t('account.preventivo.grazieEvidenza')}</span> ✅</h1>
 				{#if form?.due}
-					<p class="qp__lead">Abbiamo registrato l'ordine{#if form?.orderNumber} <b>{form.orderNumber}</b>{/if} e ti abbiamo appena mandato la conferma via email. <b>Per far partire la produzione manca il primo pagamento di {money(form.due)}</b>: lo trovi nell'email, con carta, PayPal o bonifico. Appena arriva, si parte.</p>
+					<p class="qp__lead">{@html t('account.preventivo.leadDue', { ordine, importo: money(form.due) })}</p>
 				{:else}
-					<p class="qp__lead">L'ordine{#if form?.orderNumber} <b>{form.orderNumber}</b>{/if} è registrato e già in lavorazione: la conferma d'ordine con tutti i dettagli è nella tua email. Per qualsiasi cosa scrivici qui sotto o rispondi all'email.</p>
+					<p class="qp__lead">{@html t('account.preventivo.leadFatto', { ordine })}</p>
 				{/if}
 			{:else if dead}
-				<h1>{q.status === 'rifiutato' || form?.rejected ? 'Preventivo chiuso' : 'Preventivo scaduto'}</h1>
-				<p class="qp__lead">Questa proposta non è più attiva. Se ti serve ancora, chiedici un aggiornamento: te lo rifacciamo con prezzi e tempi di oggi.</p>
+				<h1>{q.status === 'rifiutato' || form?.rejected ? t('account.preventivo.chiuso') : t('account.preventivo.scaduto')}</h1>
+				<p class="qp__lead">{t('account.preventivo.leadChiuso')}</p>
 			{:else}
-				<h1>Ciao {first}, ecco il preventivo per <span class="hl">{data.customer.name}</span></h1>
-				<p class="qp__lead">Ecco cosa riceverai: controlla il totale e conferma con un clic: la commessa entra subito in lavorazione. {#if daysLeft !== null}<b class="qp__valid" class:is-soon={daysLeft <= 5}>{daysLeft > 0 ? `Valido ancora ${daysLeft} ${daysLeft === 1 ? 'giorno' : 'giorni'}` : 'Scade oggi'}</b> (fino al {it(q.valid_until)}).{/if}</p>
+				<h1>{t('account.preventivo.h1', { nome: first })} <span class="hl">{data.customer.name}</span></h1>
+				<p class="qp__lead">{t('account.preventivo.lead')} {#if daysLeft !== null}<b class="qp__valid" class:is-soon={daysLeft <= 5}>{daysLeft > 0 ? (daysLeft === 1 ? t('account.preventivo.validoUno') : t('account.preventivo.validoTanti', { n: daysLeft })) : t('account.preventivo.scadeOggi')}</b> {t('account.preventivo.finoAl', { data: it(q.valid_until) })}{/if}</p>
 			{/if}
 			{#if form?.error}<p class="error">{form.error}</p>{/if}
 			{#if form?.message && !form?.accepted}<p class="ok">{form.message}</p>{/if}
@@ -51,8 +56,8 @@
 					<div class="qp__item-body">
 						<span class="qp__cat">{i.category}</span>
 						<h3>{i.description}</h3>
-						<div class="qp__meta">{i.qty.toLocaleString('it-IT')} pezzi{#if i.lamination && i.lamination !== 'nessuna'} · lamina {i.lamination}{/if}{#if i.code} · cod. {i.code}{/if}</div>
-						<div class="qp__price"><span>{money(i.price)} <small>cad.{data.lordi ? ' IVA incl.' : ''}</small></span><b>{money(i.total)}</b></div>
+						<div class="qp__meta">{t('account.doc.pezzi', { n: numero(i.qty) })}{#if i.lamination && i.lamination !== 'nessuna'} · {t('account.preventivo.lamina', { tipo: i.lamination })}{/if}{#if i.code} · {t('account.preventivo.cod', { codice: i.code })}{/if}</div>
+						<div class="qp__price"><span>{money(i.price)} <small>{t('account.doc.cad')}{data.lordi ? ` ${t('account.doc.ivaIncl')}` : ''}</small></span><b>{money(i.total)}</b></div>
 					</div>
 				</article>
 			{/each}
@@ -60,66 +65,66 @@
 
 		<div class="qp__two">
 			<div class="qp__sum">
-				<h2 class="qp__h2">Riepilogo</h2>
-				<div class="qp__row"><span>Imponibile</span><b>{money(q.total_net)}</b></div>
-				<div class="qp__row"><span>IVA 22%</span><b>{money(q.total_gross - q.total_net)}</b></div>
-				<div class="qp__row qp__row--tot"><span>Totale</span><b>{money(q.total_gross)}</b></div>
+				<h2 class="qp__h2">{t('account.doc.riepilogo')}</h2>
+				<div class="qp__row"><span>{t('account.doc.imponibile')}</span><b>{money(q.total_net)}</b></div>
+				<div class="qp__row"><span>{t('account.doc.iva')}</span><b>{money(q.total_gross - q.total_net)}</b></div>
+				<div class="qp__row qp__row--tot"><span>{t('account.doc.totale')}</span><b>{money(q.total_gross)}</b></div>
 				<ul class="qp__terms">
 					{#if data.leadTime}<li>⏱ {data.leadTime}.</li>{/if}
-					<li>🚚 {data.shipMethod === 'Consegna diretta Stickerprint' ? 'Consegna diretta' : data.shipMethod?.includes('destinatario') ? 'Ritiro con il tuo corriere' : 'Spedizione con corriere espresso, tracking via email'}.</li>
-					{#if data.terms.length}<li>💳 Pagamento: {data.terms.join(' + ')}.</li>{/if}
+					<li>🚚 {data.shipMethod === 'Consegna diretta Stickerprint' ? t('account.doc.consegnaDiretta') : data.shipMethod?.includes('destinatario') ? t('account.doc.ritiroCorriere') : t('account.doc.corriereEspresso')}.</li>
+					{#if data.terms.length}<li>{t('account.preventivo.pagamentoTermini', { termini: data.terms.join(' + ') })}</li>{/if}
 				</ul>
 			</div>
 			<aside class="qp__why">
-				<div class="qp__person"><span class="qp__avatar">{initials}</span><div><b>{q.sender_name ?? 'Il team Stickerprint'}</b><br /><span>ti seguo io: per qualsiasi dubbio scrivimi qui sotto o rispondi all'email.</span></div></div>
+				<div class="qp__person"><span class="qp__avatar">{initials}</span><div><b>{q.sender_name ?? t('account.preventivo.team')}</b><br /><span>{t('account.preventivo.tiSeguo')}</span></div></div>
 				<ul class="qp__perks">
-					<li>🇮🇹 Stampato in Italia, nel nostro laboratorio</li>
-					<li>🖨️ Materiali premium e taglio di precisione</li>
+					<li>{t('account.doc.stampatoInItalia')}</li>
+					<li>{t('account.doc.materialiPremium')}</li>
 				</ul>
-				{#if data.shipDate}<p class="qp__ship"><span class="qp__rocket" aria-hidden="true">🚀</span><span>Spedizione stimata<b>{it(data.shipDate)}</b></span></p>{/if}
-				{#if data.stats}<div class="qp__stars"><Stars value={data.stats.average ?? 4.9} count={data.stats.total ?? null} size={18} countLabel="recensioni verificate" /></div>{/if}
+				{#if data.shipDate}<p class="qp__ship"><span class="qp__rocket" aria-hidden="true">🚀</span><span>{t('account.doc.spedizioneStimata')}<b>{it(data.shipDate)}</b></span></p>{/if}
+				{#if data.stats}<div class="qp__stars"><Stars value={data.stats.average ?? 4.9} count={data.stats.total ?? null} size={18} /></div>{/if}
 			</aside>
 		</div>
 
 		<div class="qp__cta" id="conferma">
 			{#if open}
 				<form method="POST" action="?/accetta" use:enhance={submit} class="qp__accept">
-					<input name="nome" placeholder="Nome e cognome di chi conferma" required />
-					<button class="btn btn--green btn--lg" type="submit" disabled={sending}>✓ Confermo il preventivo</button>
+					<input name="nome" placeholder={t('account.preventivo.nomePlaceholder')} required />
+					<button class="btn btn--green btn--lg" type="submit" disabled={sending}>{t('account.preventivo.confermo')}</button>
 				</form>
 				<div class="qp__more">
-					<a class="btn btn--blue" href="/preventivo/{location_token()}/pdf">📄 Scarica il PDF</a>
-					<button class="btn btn--yellow" type="button" onclick={() => { asking = !asking; rejecting = false; }}>💬 Ho una domanda</button>
-					<button class="link-btn" type="button" onclick={() => { rejecting = !rejecting; asking = false; }}>Non fa per me</button>
+					<a class="btn btn--blue" href={path(`/preventivo/${location_token()}/pdf`)}>{t('account.doc.scaricaPdf')}</a>
+					<button class="btn btn--yellow" type="button" onclick={() => { asking = !asking; rejecting = false; }}>{t('account.doc.hoUnaDomanda')}</button>
+					<button class="link-btn" type="button" onclick={() => { rejecting = !rejecting; asking = false; }}>{t('account.preventivo.nonFaPerMe')}</button>
 				</div>
-				<p class="note">Confermando accetti la proposta alle condizioni indicate. Nessun pagamento adesso: ricevi la conferma d'ordine con i dettagli.</p>
+				<p class="note">{t('account.preventivo.nota')}</p>
 			{:else if done}
-				<div class="qp__more"><a class="btn btn--blue" href="/preventivo/{location_token()}/pdf">📄 Scarica il PDF</a><button class="btn btn--yellow" type="button" onclick={() => (asking = !asking)}>💬 Scrivici</button></div>
+				<div class="qp__more"><a class="btn btn--blue" href={path(`/preventivo/${location_token()}/pdf`)}>{t('account.doc.scaricaPdf')}</a><button class="btn btn--yellow" type="button" onclick={() => (asking = !asking)}>{t('account.preventivo.scrivici')}</button></div>
 			{:else}
 				<form method="POST" action="?/aggiorna" use:enhance={submit} class="qp__ask">
-					<textarea name="testo" rows="2" placeholder="Se qualcosa è cambiato (quantità, misura, materiale) scrivilo qui."></textarea>
-					<button class="btn btn--blue" type="submit" disabled={sending}>Chiedi un preventivo aggiornato</button>
+					<textarea name="testo" rows="2" placeholder={t('account.preventivo.aggiornaPlaceholder')}></textarea>
+					<button class="btn btn--blue" type="submit" disabled={sending}>{t('account.preventivo.aggiorna')}</button>
 				</form>
 			{/if}
 			{#if asking}
 				<form method="POST" action="?/domanda" use:enhance={submit} class="qp__ask">
-					<textarea name="testo" rows="3" required placeholder="Scrivi qui: materiali, tempi, quantità diverse, fatturazione…"></textarea>
-					<button class="btn btn--blue" type="submit" disabled={sending}>Invia la domanda</button>
+					<textarea name="testo" rows="3" required placeholder={t('account.preventivo.domandaPlaceholder')}></textarea>
+					<button class="btn btn--blue" type="submit" disabled={sending}>{t('account.doc.inviaDomanda')}</button>
 				</form>
 			{/if}
 			{#if rejecting && open}
 				<form method="POST" action="?/rifiuta" use:enhance={submit} class="qp__ask">
-					<textarea name="motivo" rows="2" placeholder="Se ci dici cosa non torna (prezzo, tempi, materiale) proviamo a sistemarlo."></textarea>
-					<button class="btn btn--ghost" type="submit" disabled={sending}>Chiudi il preventivo</button>
+					<textarea name="motivo" rows="2" placeholder={t('account.preventivo.rifiutaPlaceholder')}></textarea>
+					<button class="btn btn--ghost" type="submit" disabled={sending}>{t('account.preventivo.rifiuta')}</button>
 				</form>
 			{/if}
 		</div>
 
 		{#if data.messages.length}
 			<div class="qp__thread">
-				<h2 class="qp__h2">Conversazione</h2>
+				<h2 class="qp__h2">{t('account.doc.conversazione')}</h2>
 				{#each data.messages as m (m.id)}
-					<div class="qp__msg qp__msg--{m.direction}"><div class="qp__msg-head"><b>{m.direction === 'in' ? 'Tu' : (m.author ?? 'Stickerprint')}</b><span>{when(m.created_at)}</span></div><p>{m.body}</p></div>
+					<div class="qp__msg qp__msg--{m.direction}"><div class="qp__msg-head"><b>{m.direction === 'in' ? t('account.doc.tu') : (m.author ?? t('account.doc.stickerprint'))}</b><span>{when(m.created_at)}</span></div><p>{m.body}</p></div>
 				{/each}
 			</div>
 		{/if}

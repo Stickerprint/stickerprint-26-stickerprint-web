@@ -15,6 +15,8 @@
 	import { onMount } from 'svelte';
 	import { PRODUCT_ENGINES } from '$lib/pricing/engine';
 	import type { Promo } from '$lib/server/promos';
+	import { usaLingua } from '$lib/traduzioni';
+	const { t, path, prezzo, numero, data: dataIn, locale } = usaLingua();
 
 	let { data } = $props();
 	// svelte-ignore state_referenced_locally
@@ -22,8 +24,13 @@
 	let cur = $state(0);
 	const promo = $derived(promos[cur]);
 	const price = $derived(promo?.price ?? 0);
-	const eur = (v: number) => v.toLocaleString('it-IT', { maximumFractionDigits: v % 1 ? 2 : 0 }) + ' €';
-	const mm = (v: number) => v.toLocaleString('it-IT', { maximumFractionDigits: 1 });
+	const eur = (v: number) => prezzo(v, v % 1 ? 2 : 0);
+	const mm = (v: number) => numero(v, 1);
+	/* nome della sagoma nella lingua (gli id sono quelli del sito: tondo, sagomato…); se manca resta l'id */
+	const nomeForma = (id: string) => { const k = `pagine.offerte.forme.${id}`; const s = t(k); return s === k ? id : s; };
+	const media1 = (v: number) => new Intl.NumberFormat(locale.intl, { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(v);
+	const shipDate = $derived(dataIn(data.shipDate, true));
+	const deliveryDate = $derived(dataIn(data.deliveryDate, true));
 	const href = $derived(PRODUCT_ENGINES.find((p) => p.slug === promo?.product_slug)?.href ?? '/adesivi-personalizzati');
 	const engineInfo = $derived(PRODUCT_ENGINES.find((p) => p.slug === promo?.product_slug));
 	const engine = $derived(promo ? data.engines[promo.product_slug] : null);
@@ -39,7 +46,7 @@
 	});
 	const two = (n: number) => String(n).padStart(2, '0');
 	/* "come ti facciamo risparmiare tempo": dalla dashboard se compilato, altrimenti le voci standard */
-	const PERKS_STD = [{ label: 'Anteprima immediata', saves: '1-2 giorni' }, { label: 'Produzione in 5 giorni', saves: '3-4 giorni' }, { label: 'Corriere espresso tracciato', saves: '1-2 giorni' }];
+	const PERKS_STD = [{ label: t('pagine.offerte.perkAnteprima'), saves: t('pagine.offerte.giorni12') }, { label: t('pagine.offerte.perkProduzione'), saves: t('pagine.offerte.giorni34') }, { label: t('pagine.offerte.perkCorriere'), saves: t('pagine.offerte.giorni12') }];
 	const perks = $derived(promo?.perks?.length ? promo.perks : PERKS_STD);
 	const normally = $derived(promo?.price_normal ? eur(promo.price_normal) : (promo?.includes?.[0]?.normally ?? ''));
 	/* misura dell'offerta: il lato lungo e' quello deciso in dashboard, l'altro segue le proporzioni del file */
@@ -66,8 +73,8 @@
 	function pick(f: File | undefined) {
 		error = '';
 		if (!f || !promo) return;
-		if (!ACCEPT.includes(f.type)) { error = 'Formati accettati: PNG, JPG, SVG, PDF.'; return; }
-		if (f.size > 25 * 1024 * 1024) { error = 'Il file supera i 25 MB.'; return; }
+		if (!ACCEPT.includes(f.type)) { error = t('pagine.offerte.formati'); return; }
+		if (f.size > 25 * 1024 * 1024) { error = t('pagine.offerte.troppoGrande'); return; }
 		const forma = promo.forma || 'sagomato';
 		pop = { file: f, forma, ...sizeFor(forma, 1), ratio: 0, last: null, busy: true, forced: 0 };
 	}
@@ -107,7 +114,7 @@
 	}
 </script>
 
-<Seo title="Offerte: adesivi personalizzati a prezzo promo | Stickerprint" description="Offerte a tempo sugli adesivi personalizzati: quantità fissa, prezzo bloccato, prova automatica immediata e pronti per la spedizione in pochi giorni." />
+<Seo title={t('pagine.offerte.seoTitolo')} description={t('pagine.offerte.seoDescrizione')} />
 
 <div class="promo-page">
 {#if promo}
@@ -115,46 +122,46 @@
 		<span class="offer__spark" style="left:6%;top:14%">✦</span><span class="offer__spark" style="right:8%;top:22%;font-size:26px">✦</span><span class="offer__spark" style="left:12%;bottom:18%;font-size:22px">✦</span><span class="offer__spark" style="right:5%;bottom:26%">✦</span>
 		<div class="container offer__inner">
 			<div class="offer__head">
-			<h1><mark>{promo.qty.toLocaleString('it-IT')}</mark> {promo.product_label}<br />a <mark>{eur(price)}</mark></h1>
+			<h1>{@html t('pagine.offerte.titolo', { qty: numero(promo.qty), prodotto: promo.product_label, prezzo: eur(price) })}</h1>
 			{#if left}
-				<div class="offer__count" aria-live="off"><span class="offer__count-lbl">Scade tra</span>
+				<div class="offer__count" aria-live="off"><span class="offer__count-lbl">{t('pagine.offerte.scadeTra')}</span>
 					<div class="offer__count-box">
-						<span><b>{left.d}</b><small>{left.d === 1 ? 'giorno' : 'giorni'}</small></span><i>:</i>
-						<span><b>{two(left.h)}</b><small>ore</small></span><i>:</i>
-						<span><b>{two(left.m)}</b><small>min</small></span><i>:</i>
-						<span><b>{two(left.s)}</b><small>sec</small></span>
+						<span><b>{left.d}</b><small>{left.d === 1 ? t('pagine.offerte.giorno') : t('pagine.offerte.giorni')}</small></span><i>:</i>
+						<span><b>{two(left.h)}</b><small>{t('pagine.offerte.ore')}</small></span><i>:</i>
+						<span><b>{two(left.m)}</b><small>{t('pagine.offerte.min')}</small></span><i>:</i>
+						<span><b>{two(left.s)}</b><small>{t('pagine.offerte.sec')}</small></span>
 					</div>
 				</div>
 			{/if}
-			<p class="offer__sub"><span class="hl hl--yellow">Anteprima immediata inclusa</span></p>
-			<div class="offer__stars"><Stars value={data.stats?.average ?? 4.9} count={data.stats?.total ?? null} size={22} countLabel="recensioni verificate" /></div>
+			<p class="offer__sub"><span class="hl hl--yellow">{t('pagine.offerte.anteprimaInclusa')}</span></p>
+			<div class="offer__stars"><Stars value={data.stats?.average ?? 4.9} count={data.stats?.total ?? null} size={22} /></div>
 			<div class="offer__chips"><span class="is-size">{mm(promo.w)}×{mm(promo.h)} mm</span>{#each promo.chips as c (c)}<span>{c}</span>{/each}</div>
 			</div>
 
 			<div class="offer__grid">
 				<div class="offer__box">
-					<h4>Cosa ricevi</h4>
-					<div class="offer__row"><span>{promo.qty.toLocaleString('it-IT')} {promo.product_label}</span><b>{normally ? `Normalmente ${normally}` : ''}</b></div>
-					<div class="offer__row"><span>Anteprima automatica del file</span><b>Sempre inclusa</b></div>
-					<h4>Come ti facciamo risparmiare tempo rispetto ai competitor</h4>
-					{#each perks as p (p.label)}<div class="offer__row"><span>{p.label}</span><b>{p.saves ? `Risparmi ${p.saves}` : ''}</b></div>{/each}
-					<div class="offer__row is-date"><span>Consegna stimata</span><b>{data.deliveryDate}</b></div>
-					{#if promo.save_text}<div class="offer__row is-save"><span>Risparmi</span><b>{promo.save_text}</b></div>{/if}
-					<div class="offer__row is-pay"><span>Paghi</span><b>{eur(price)}</b></div>
+					<h4>{t('pagine.offerte.cosaRicevi')}</h4>
+					<div class="offer__row"><span>{numero(promo.qty)} {promo.product_label}</span><b>{normally ? t('pagine.offerte.normalmente', { prezzo: normally }) : ''}</b></div>
+					<div class="offer__row"><span>{t('pagine.offerte.anteprimaFile')}</span><b>{t('pagine.offerte.sempreInclusa')}</b></div>
+					<h4>{t('pagine.offerte.risparmioTempo')}</h4>
+					{#each perks as p (p.label)}<div class="offer__row"><span>{p.label}</span><b>{p.saves ? t('pagine.offerte.risparmi', { tempo: p.saves }) : ''}</b></div>{/each}
+					<div class="offer__row is-date"><span>{t('pagine.offerte.consegnaStimata')}</span><b>{deliveryDate}</b></div>
+					{#if promo.save_text}<div class="offer__row is-save"><span>{t('pagine.offerte.risparmiLabel')}</span><b>{promo.save_text}</b></div>{/if}
+					<div class="offer__row is-pay"><span>{t('pagine.offerte.paghi')}</span><b>{eur(price)}</b></div>
 				</div>
 
 				<div class="offer__right">
 					{#if done}
 						<!-- anteprima confermata, su fondo blu -->
 						<div class="offer__proof">
-							<img src={done.png} alt="Anteprima del tuo adesivo" />
+							<img src={done.png} alt={t('pagine.offerte.anteprimaAlt')} />
 							<div class="offer__proof-meta">
-								<b>{promo.qty.toLocaleString('it-IT')} {promo.product_label} · {mm(done.w)}×{mm(done.h)} mm</b>
-								<span>Sagoma {done.forma} · {done.file.name}</span>
-								<button type="button" class="link-btn" onclick={() => { done = null; }}>Cambia file o sagoma</button>
+								<b>{numero(promo.qty)} {promo.product_label} · {mm(done.w)}×{mm(done.h)} mm</b>
+								<span>{t('pagine.offerte.sagomaFile', { forma: nomeForma(done.forma), file: done.file.name })}</span>
+								<button type="button" class="link-btn" onclick={() => { done = null; }}>{t('pagine.offerte.cambiaFile')}</button>
 							</div>
 						</div>
-						<button type="button" class="btn btn--green btn--xl offer__add" disabled={adding} onclick={addCart}>{adding ? 'Un attimo…' : `Aggiungi al carrello · ${eur(price)}`}</button>
+						<button type="button" class="btn btn--green btn--xl offer__add" disabled={adding} onclick={addCart}>{adding ? t('pagine.offerte.unAttimo') : t('pagine.offerte.aggiungi', { prezzo: eur(price) })}</button>
 					{:else}
 						<label class="dropzone dropzone--compact offer__dz" class:is-over={over}
 							ondragenter={(e) => { e.preventDefault(); over = true; }}
@@ -164,8 +171,8 @@
 							<input bind:this={fileInput} type="file" accept={ACCEPT.join(',')} onchange={(e) => { pick((e.currentTarget as HTMLInputElement).files?.[0]); (e.currentTarget as HTMLInputElement).value = ''; }} />
 							<div>
 								<div class="dropzone__icon"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 16V4m0 0l-4 4m4-4l4 4" /><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" /></svg></div>
-								<div class="dropzone__title">Trascina qui il tuo file</div>
-								<div class="dropzone__sub">oppure clicca per sceglierlo · PNG, JPG, SVG, PDF · anteprima immediata</div>
+								<div class="dropzone__title">{t('pagine.offerte.trascina')}</div>
+								<div class="dropzone__sub">{t('pagine.offerte.oppureClicca')}</div>
 							</div>
 						</label>
 						{#if error}<p class="error" style="margin-top:10px">{error}</p>{/if}
@@ -178,8 +185,8 @@
 				<div class="offer__more">
 					{#each promos as p, i (p.id)}
 						<button type="button" class="offer__card" class:is-on={i === cur} onclick={() => { cur = i; done = null; pop = null; }}>
-							<b>{p.qty.toLocaleString('it-IT')} × {eur(p.price)}</b>
-							<small>{p.product_label} · {mm(p.w)}×{mm(p.h)} mm{#if p.price_normal} · invece di {eur(p.price_normal)}{/if}</small>
+							<b>{numero(p.qty)} × {eur(p.price)}</b>
+							<small>{p.product_label} · {mm(p.w)}×{mm(p.h)} mm{#if p.price_normal} · {t('pagine.offerte.inveceDi', { prezzo: eur(p.price_normal) })}{/if}</small>
 						</button>
 					{/each}
 				</div>
@@ -188,53 +195,53 @@
 	</section>
 {:else}
 	<section class="section container center">
-		<h1>Nessuna offerta attiva <span class="hl hl--yellow">in questo momento.</span></h1>
-		<p class="lead" style="margin-top:16px">Torna a trovarci, oppure vai ai preventivatori: i prezzi migliori li vedi subito.</p>
-		<p style="margin-top:22px"><a class="btn btn--blue btn--lg" href="/adesivi-personalizzati">Vai agli adesivi personalizzati</a></p>
+		<h1>{@html t('pagine.offerte.nessunaTitolo')}</h1>
+		<p class="lead" style="margin-top:16px">{t('pagine.offerte.nessunaTesto')}</p>
+		<p style="margin-top:22px"><a class="btn btn--blue btn--lg" href={path('/adesivi-personalizzati')}>{t('pagine.offerte.nessunaCta')}</a></p>
 	</section>
 {/if}
 
 <!-- RECENSIONI -->
 <section class="section container">
 	<div class="panel offer__reviews center">
-		<h2>Consigliati da <span class="hl hl--green">persone come te.</span></h2>
-		<p class="lead">Il <strong>100%</strong> di chi ha lasciato una recensione ha detto che ordinerebbe di nuovo.</p>
+		<h2>{@html t('pagine.offerte.recensioniTitolo')}</h2>
+		<p class="lead">{@html t('pagine.offerte.recensioniTesto')}</p>
 		<div class="stats">
-			<div class="stat stat--blue"><b>3K+</b><span>Ordini spediti</span></div>
-			<div class="stat stat--yellow"><b>{(data.stats?.average ?? 4.9).toLocaleString('it-IT', { minimumFractionDigits: 1 })} ★</b><span>Valutazione media</span></div>
-			<div class="stat stat--pink"><b>5 gg</b><span>Media di produzione</span></div>
+			<div class="stat stat--blue"><b>3K+</b><span>{t('pagine.offerte.ordiniSpediti')}</span></div>
+			<div class="stat stat--yellow"><b>{media1(data.stats?.average ?? 4.9)} ★</b><span>{t('pagine.offerte.valutazioneMedia')}</span></div>
+			<div class="stat stat--pink"><b>{t('pagine.offerte.cinqueGg')}</b><span>{t('pagine.offerte.mediaProduzione')}</span></div>
 		</div>
 		<ReviewsCarousel reviews={data.reviews} />
 	</div>
 </section>
 
 <!-- COME FUNZIONA -->
-<HowTo shipDate={data.shipDate} dark />
+<HowTo shipDate={shipDate} dark />
 
 <!-- DOMANDE -->
 <section class="section container center">
-	<h2>Le domande <span class="hl hl--yellow">più frequenti.</span></h2>
+	<h2>{@html t('pagine.offerte.faqTitolo')}</h2>
 	<div class="faq3" style="text-align:left">
-		<details><summary>Serve un file pronto per la stampa?</summary><p>No. Carica quello che hai: l'anteprima automatica trova sagoma e problemi da sola, e prima di stampare un umano controlla tutto e ti avvisa.</p></details>
-		<details><summary>Quanto ci mettono ad arrivare?</summary><p>In media 5 giorni di produzione più il corriere espresso. La data di spedizione prevista la vedi già nel preventivatore, prima di ordinare.</p></details>
-		<details><summary>E se qualcosa arriva sbagliato?</summary><p>Lo ristampiamo. Scrivici dalla pagina Resi con foto e numero d'ordine: succede raramente e, quando succede, ce ne occupiamo noi.</p></details>
+		<details><summary>{t('pagine.offerte.faq1q')}</summary><p>{t('pagine.offerte.faq1a')}</p></details>
+		<details><summary>{t('pagine.offerte.faq2q')}</summary><p>{t('pagine.offerte.faq2a')}</p></details>
+		<details><summary>{t('pagine.offerte.faq3q')}</summary><p>{t('pagine.offerte.faq3a')}</p></details>
 	</div>
 </section>
 
 <!-- CHIUSURA -->
-<FinalCta shipDate={data.shipDate} href={promo ? `${href}?forma=${promo.forma}&materiale=${promo.materiale}` : '/adesivi-personalizzati'} />
+<FinalCta shipDate={shipDate} href={promo ? `${path(href)}?forma=${promo.forma}&materiale=${promo.materiale}` : path('/adesivi-personalizzati')} />
 </div>
 
 {#if added && promo && done}
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div class="added-bg" onclick={(e) => { if (e.target === e.currentTarget) added = false; }} onkeydown={(e) => { if (e.key === 'Escape') added = false; }}>
-		<div class="added" role="dialog" aria-modal="true" aria-label="Prodotto aggiunto al carrello">
+		<div class="added" role="dialog" aria-modal="true" aria-label={t('pagine.comuni.aggiuntoCarrello')}>
 			<span class="added__ck">✓</span>
-			<h3>Prodotto aggiunto al carrello</h3>
-			<p>{promo.qty.toLocaleString('it-IT')} × {promo.product_label} · {mm(done.w)} × {mm(done.h)} mm · {eur(price)}</p>
+			<h3>{t('pagine.comuni.aggiuntoCarrello')}</h3>
+			<p>{t('pagine.offerte.aggiuntoTesto', { qty: numero(promo.qty), prodotto: promo.product_label, w: mm(done.w), h: mm(done.h), prezzo: eur(price) })}</p>
 			<div class="added__cta">
-				<a class="btn btn--green btn--lg" href="/checkout">Vai al checkout →</a>
-				<a class="btn btn--ghost btn--lg" href="/prodotti">Continua gli acquisti</a>
+				<a class="btn btn--green btn--lg" href={path('/checkout')}>{t('pagine.comuni.vaiCheckout')}</a>
+				<a class="btn btn--ghost btn--lg" href={path('/prodotti')}>{t('pagine.comuni.continuaAcquisti')}</a>
 			</div>
 		</div>
 	</div>
@@ -242,18 +249,18 @@
 
 <!-- POPUP: solo la sagoma (e i comandi del motore: bordo, sfondo, zoom); la misura la decide l'offerta -->
 {#if pop && promo && engine}
-	<div class="modal-backdrop" role="dialog" aria-modal="true" aria-label="Scegli la sagoma">
+	<div class="modal-backdrop" role="dialog" aria-modal="true" aria-label={t('pagine.offerte.popupTitolo')}>
 		<div class="modal kit__modal">
-			<button type="button" class="modal__close" aria-label="Chiudi" onclick={() => (pop = null)}>✕</button>
-			<h3>Scegli la sagoma <small>{pop.file.name}</small></h3>
-			<div class="kit__shapes">{#each SHAPES as sh (sh.id)}<button type="button" class="kit__shape" class:is-on={pop.forma === sh.id} onclick={() => setShape(sh.id)}><img src={sh.img} alt="" /><b>{sh.label}</b></button>{/each}</div>
+			<button type="button" class="modal__close" aria-label={t('pagine.comuni.chiudi')} onclick={() => (pop = null)}>✕</button>
+			<h3>{t('pagine.offerte.popupTitolo')} <small>{pop.file.name}</small></h3>
+			<div class="kit__shapes">{#each SHAPES as sh (sh.id)}<button type="button" class="kit__shape" class:is-on={pop.forma === sh.id} onclick={() => setShape(sh.id)}><img src={sh.img} alt="" /><b>{nomeForma(sh.id) === sh.id ? sh.label : nomeForma(sh.id)}</b></button>{/each}</div>
 			<div class="kit__modal-engine">
 				<EnginePreview bind:this={popEngine} file={pop.file} forma={pop.forma} materiale={promo.materiale} finitura={promo.finitura ?? 'nessuna'} prodotto={engineInfo?.engineProduct ?? 'sticker'} w={pop.w} h={pop.h} panel stage={300} onrender={popRender} />
 			</div>
-			<div class="offer__promo-size"><span>Misura in promo</span><b>{mm(pop.w)}×{mm(pop.h)} mm</b><small>il lato lungo è {mm(lato)} mm, l'altro segue le proporzioni del tuo file</small></div>
+			<div class="offer__promo-size"><span>{t('pagine.offerte.misuraPromo')}</span><b>{mm(pop.w)}×{mm(pop.h)} mm</b><small>{t('pagine.offerte.latoLungo', { mm: mm(lato) })}</small></div>
 			<div class="kit__modal-actions">
-				<button type="button" class="btn btn--sm" onclick={() => (pop = null)}>Annulla</button>
-				<button type="button" class="btn btn--green" disabled={pop.busy || !pop.last} onclick={confirmPop}>{pop.busy ? 'Preparo l’anteprima…' : 'Conferma la sagoma'}</button>
+				<button type="button" class="btn btn--sm" onclick={() => (pop = null)}>{t('pagine.comuni.annulla')}</button>
+				<button type="button" class="btn btn--green" disabled={pop.busy || !pop.last} onclick={confirmPop}>{pop.busy ? t('pagine.offerte.preparo') : t('pagine.offerte.confermaSagoma')}</button>
 			</div>
 		</div>
 	</div>

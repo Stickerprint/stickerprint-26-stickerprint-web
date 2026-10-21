@@ -7,6 +7,7 @@
  * 95 rientrato, 99 consegnato.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { langOf } from '$lib/i18n';
 import { sendEmail } from './email';
 import { shippingUpdateEmail } from './email-templates';
 import { pushStaff } from './push';
@@ -58,7 +59,7 @@ export async function applyQaplaUpdate(db: SupabaseClient, u: QaplaUpdate, origi
 	let emailed: string | null = null;
 	if (kind && !sent.includes(kind) && first.email) {
 		const ship = first.shipping ?? {};
-		const mail = shippingUpdateEmail({ kind, name: ship.first_name || first.customer_name || null, number: first.number, trackingUrl: first.tracking_url || trackingPageUrl(u.trackingNumber), courier: u.courier ?? first.courier ?? null, detail, place: u.place ?? null, shippedAt: first.shipped_at ? new Date(first.shipped_at).toLocaleDateString('it-IT') : null, items: rows.map((r) => ({ name: r.product_name, qty: r.qty, preview: thumbOf(r) })), accountUrl: first.user_id ? `${origin}/account/ordini` : null });
+		const mail = shippingUpdateEmail({ kind, name: ship.first_name || first.customer_name || null, number: first.number, trackingUrl: first.tracking_url || trackingPageUrl(u.trackingNumber), courier: u.courier ?? first.courier ?? null, detail, place: u.place ?? null, shippedAt: first.shipped_at ? new Date(first.shipped_at).toLocaleDateString('it-IT') : null, items: rows.map((r) => ({ name: r.product_name, qty: r.qty, preview: thumbOf(r) })), accountUrl: first.user_id ? `${origin}/account/ordini` : null }, langOf((first as { locale?: string | null }).locale));
 		const r = await sendEmail({ to: first.email, subject: mail.subject, html: mail.html, tag: mail.tag, metadata: { order: first.number } });
 		if (r.ok) { emailed = kind; for (const k of keys) await db.from('orders').update({ shipping_notified: [...sent, kind] }).eq(first.checkout_group ? 'checkout_group' : 'id', k); }
 	}

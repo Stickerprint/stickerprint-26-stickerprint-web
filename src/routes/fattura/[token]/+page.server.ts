@@ -4,14 +4,15 @@ import { getInvoiceByToken, invoiceQuestion, setInvoicePaymentStatus, trackInvoi
 import { COMPANY } from '$lib/server/company';
 import { onlinePaymentsOn, retrieveSession, stripeConfigured } from '$lib/server/stripe';
 import { paypalConfigured, settlePayPalReturn } from '$lib/server/paypal';
+import { t } from '$lib/traduzioni';
 import type { Actions, PageServerLoad } from './$types';
 
 /** Pagina pubblica della fattura: righe, totali, scadenze (pagabili o informative), PDF, domande. Ogni apertura viene registrata. */
-export const load: PageServerLoad = async ({ params, url, request }) => {
+export const load: PageServerLoad = async ({ params, url, request, locals: { locale } }) => {
 	const db = adminClient();
-	if (!db) error(503, 'Servizio non disponibile');
+	if (!db) error(503, t(locale, 'account.errori.servizio'));
 	let c = await getInvoiceByToken(db, params.token);
-	if (!c) error(404, 'Fattura non trovata');
+	if (!c) error(404, t(locale, 'account.errori.fatturaNonTrovata'));
 	if (request.method === 'GET' && url.searchParams.get('anteprima') !== '1' && c.inv.sent_at) await trackInvoiceOpen(db, c.inv);
 	const sid = url.searchParams.get('session_id');
 	if (sid && stripeConfigured()) {
@@ -36,10 +37,10 @@ export const load: PageServerLoad = async ({ params, url, request }) => {
 };
 
 export const actions: Actions = {
-	domanda: async ({ params, request, url }) => {
+	domanda: async ({ params, request, url, locals: { locale } }) => {
 		const db = adminClient();
-		if (!db) return fail(503, { error: 'Servizio non disponibile.' });
+		if (!db) return fail(503, { error: t(locale, 'account.errori.servizio') });
 		const e = await invoiceQuestion(db, params.token, String((await request.formData()).get('testo') ?? ''), url.origin);
-		return e ? fail(400, { error: e }) : { ok: true, message: 'Messaggio inviato: ti rispondiamo il prima possibile, anche via email.' };
+		return e ? fail(400, { error: e }) : { ok: true, message: t(locale, 'account.messaggi.messaggioInviato') };
 	}
 };

@@ -17,6 +17,13 @@
 	import { kitQuote, KIT_QTY, KIT_SIZES, KIT_MAX } from '$lib/pricing/kit';
 	import type { EngineConfig } from '$lib/pricing/engine';
 	import EnginePreview from './EnginePreview.svelte';
+	import { usaLingua } from '$lib/traduzioni';
+	import { formatAmount } from '$lib/i18n';
+	const { t, lang, locale, prezzo, prezzoUnit, numero } = usaLingua();
+	/** etichetta di una voce del listino (materiale, lamina, sagoma) nella lingua: dal catalogo se c'e', altrimenti quella del listino */
+	const opz = (id: string, campo: 'label' | 'description' | 'tag', fallback?: string) => { const k = `kit.opzioni.${id}.${campo}`; const v = t(k); return v === k ? (fallback ?? '') : v; };
+	/* soglia della spedizione gratuita del locale (50 € IT, 69 € UE, 99 $ USA), mai scritta a mano */
+	const soglia = formatAmount(locale.freeShipping, locale, 0);
 
 	/* totale prodotti gia' nel carrello (per la barra della spedizione gratuita) */
 	let cartGross = $state(0);
@@ -58,8 +65,6 @@
 	const misuraMedia = $derived(n ? Math.round(filled.reduce((a, s) => a + s.misura, 0) / n) : 50);
 	const q = $derived(kitQuote(cfg, { materiale, finitura, misura: misuraMedia, n: n || KIT_MAX, qty }));
 	const ready = $derived(n > 0 && !!cav.png && slots.every((s) => !s.busy));
-	const eur0 = (v: number) => v.toLocaleString('it-IT', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
-	const eur2 = (v: number) => v.toLocaleString('it-IT', { style: 'currency', currency: 'EUR' });
 	const progress = $derived((stepNo(step) / STEPS.length) * 100);
 
 	/* ---- popup con il motore: cavallotto o adesivo ---- */
@@ -200,7 +205,7 @@
 		if (pop) return;
 		const f = pending.shift(); if (!f) return;
 		const i = slots.findIndex((s) => !s.file);
-		if (i < 0) { flash = 'Il kit è completo: 6 adesivi.'; pending = []; return; }
+		if (i < 0) { flash = t('kit.builder.adesivi.completo', { max: KIT_MAX }); pending = []; return; }
 		openPop('sticker', i, f);
 	}
 	$effect(() => { if (!pop && pending.length) setTimeout(nextPending, 250); });
@@ -287,11 +292,11 @@
 <section class="cfg kitcfg" id="configura">
 	<!-- ANTEPRIMA: la bustina -->
 	<div class="cfg__preview kit__preview">
-		<div class="kit__stage" class:is-over={over} role="region" aria-label="Anteprima del kit" ondragover={(e) => { e.preventDefault(); over = true; }} ondragleave={() => (over = false)} ondrop={onDrop}>
+		<div class="kit__stage" class:is-over={over} role="region" aria-label={t('kit.builder.anteprima')} ondragover={(e) => { e.preventDefault(); over = true; }} ondragleave={() => (over = false)} ondrop={onDrop}>
 			<div class="bag">
-				<label class="cav" class:has={!!cav.png} title="Carica il file del cavallotto">
+				<label class="cav" class:has={!!cav.png} title={t('kit.builder.caricaCavallottoTitolo')}>
 					<input type="file" hidden accept={ACCEPT} onchange={pickCav} />
-					{#if cav.png}<img src={cav.png} alt="Cavallotto" />{:else}<span class="cav__plus">+</span><span class="cav__txt">Carica il cavallotto</span>{/if}
+					{#if cav.png}<img src={cav.png} alt={t('kit.builder.cavallottoAlt')} />{:else}<span class="cav__plus">+</span><span class="cav__txt">{t('kit.builder.caricaCavallotto')}</span>{/if}
 					<i class="cav__hole"></i>
 					<i class="cav__staple cav__staple--l"></i><i class="cav__staple cav__staple--r"></i>
 				</label>
@@ -300,24 +305,24 @@
 					<div class="bag__inner" role="presentation" bind:this={inner} onpointermove={move} onpointerup={up} onpointercancel={up}>
 						{#each slots as s, i (i)}
 							{#if s.png}
-								<img class="stk" class:drop={s.dropped && !s.landed} class:grab={s.landed} src={s.png} alt="Adesivo {i + 1}" draggable="false" style="--rot:{s.rot}deg; --x:{s.x}%; --y:{s.y}%; --k:{filled.indexOf(s)}" onanimationend={() => (slots[i].landed = true)} onpointerdown={(e) => down(e, i)} />
+								<img class="stk" class:drop={s.dropped && !s.landed} class:grab={s.landed} src={s.png} alt={t('kit.builder.adesivoAlt', { n: i + 1 })} draggable="false" style="--rot:{s.rot}deg; --x:{s.x}%; --y:{s.y}%; --k:{filled.indexOf(s)}" onanimationend={() => (slots[i].landed = true)} onpointerdown={(e) => down(e, i)} />
 							{/if}
 						{/each}
-						{#if !n}<p class="bag__hint">Trascina qui i file degli adesivi<br /><small>uno per ogni adesivo, fino a 6</small></p>{/if}
+						{#if !n}<p class="bag__hint">{t('kit.builder.trascina')}<br /><small>{t('kit.builder.trascinaSub', { max: KIT_MAX })}</small></p>{/if}
 					</div>
 					<i class="bag__shine"></i>
 					<i class="bag__fold"></i>
 				</div>
 			</div>
-			{#if n}<p class="kit__tip">Puoi spostare gli adesivi nella bustina con il mouse.</p>{/if}
+			{#if n}<p class="kit__tip">{t('kit.builder.tip')}</p>{/if}
 		</div>
 	</div>
 
 	<!-- PASSAGGI -->
 	<aside class="cfg__steps">
 		<div class="cfg__head">
-			<div><p class="eyebrow">Configura in 30 secondi</p><h2 class="cfg__title">Crea il tuo Kit di adesivi</h2></div>
-			<span class="cfg__stepcount">Passaggio {stepNo(step)} di {STEPS.length}</span>
+			<div><p class="eyebrow">{t('kit.builder.eyebrow')}</p><h2 class="cfg__title">{t('kit.builder.titolo')}</h2></div>
+			<span class="cfg__stepcount">{t('kit.builder.passaggio', { n: stepNo(step), tot: STEPS.length })}</span>
 		</div>
 		<div class="progress"><span style="width:{progress}%"></span></div>
 
@@ -325,22 +330,22 @@
 		<div class="step" class:is-open={step === 'materiale'}>
 			<button class="step__head" type="button" onclick={() => (step = 'materiale')} aria-expanded={step === 'materiale'}>
 				<span class="step__n">{#if stepNo(step) > 1}✓{:else}1{/if}</span>
-				<span class="step__title">Su che materiale stampiamo? {#if step !== 'materiale'}<em>{material?.label}{#if finish && FINISHES.length > 1}, {finish.label}{/if}</em>{/if}</span>
-				<span class="step__edit">{step === 'materiale' ? '' : 'Modifica'}</span>
+				<span class="step__title">{t('kit.builder.materiale.titolo')} {#if step !== 'materiale'}<em>{material ? opz(material.id, 'label', material.label) : ''}{#if finish && FINISHES.length > 1}, {opz(finish.id, 'label', finish.label)}{/if}</em>{/if}</span>
+				<span class="step__edit">{step === 'materiale' ? '' : t('kit.builder.modifica')}</span>
 			</button>
 			{#if step === 'materiale'}
 				<div class="step__body">
-					<p class="step__hint">Un materiale per tutto il kit: tutti gli adesivi escono uguali. Il bianco va bene quasi sempre.</p>
+					<p class="step__hint">{t('kit.builder.materiale.hint')}</p>
 					<div class="pic-grid pic-grid--3 pic-grid--sm">
 						{#each MATERIALS as m (m.id)}
 							<button type="button" class="pic" class:is-active={materiale === m.id} onclick={() => { materiale = m.id; step = cav.png ? 'adesivi' : 'cavallotto'; }}>
-								<img src={m.img} alt="" /><b>{m.label}</b>{#if m.tag}<span class="pic__tag">{m.tag}</span>{/if}
+								<img src={m.img} alt="" /><b>{opz(m.id, 'label', m.label)}</b>{#if m.tag}<span class="pic__tag">{opz(m.id, 'tag', m.tag)}</span>{/if}
 							</button>
 						{/each}
 					</div>
 					{#if FINISHES.length > 1}
-						<p class="step__hint" style="margin-top:12px">{cfg.finishTitle ?? 'Lamina protettiva'}</p>
-						<div class="kit__chips">{#each FINISHES as f (f.id)}<button type="button" class="chip" class:is-on={finitura === f.id} onclick={() => (finitura = f.id)}>{f.label}</button>{/each}</div>
+						<p class="step__hint" style="margin-top:12px">{lang === 'it' && cfg.finishTitle ? cfg.finishTitle : t('kit.builder.materiale.lamina')}</p>
+						<div class="kit__chips">{#each FINISHES as f (f.id)}<button type="button" class="chip" class:is-on={finitura === f.id} onclick={() => (finitura = f.id)}>{opz(f.id, 'label', f.label)}</button>{/each}</div>
 					{/if}
 				</div>
 			{/if}
@@ -350,17 +355,17 @@
 		<div class="step" class:is-open={step === 'cavallotto'}>
 			<button class="step__head" type="button" onclick={() => (step = 'cavallotto')} aria-expanded={step === 'cavallotto'}>
 				<span class="step__n">{#if cav.png}✓{:else}2{/if}</span>
-				<span class="step__title">Il cavallotto {#if step !== 'cavallotto'}<em>{cav.file ? cav.file.name : 'da caricare'}</em>{/if}</span>
-				<span class="step__edit">{step === 'cavallotto' ? '' : 'Modifica'}</span>
+				<span class="step__title">{t('kit.builder.cavallotto.titolo')} {#if step !== 'cavallotto'}<em>{cav.file ? cav.file.name : t('kit.builder.cavallotto.daCaricare')}</em>{/if}</span>
+				<span class="step__edit">{step === 'cavallotto' ? '' : t('kit.builder.modifica')}</span>
 			</button>
 			{#if step === 'cavallotto'}
 				<div class="step__body">
-					<p class="step__hint">La linguetta in cima alla bustina, {CAV.w} × {CAV.h} mm: logo, grafica o nome. Lo impaginiamo noi sul fronte.</p>
+					<p class="step__hint">{t('kit.builder.cavallotto.hint', { w: CAV.w, h: CAV.h })}</p>
 					<label class="kit__cav" class:has={!!cav.png}>
 						<input type="file" hidden accept={ACCEPT} onchange={pickCav} />
-						{#if cav.png}<img src={cav.png} alt="" /><span>{cav.file?.name}</span><b>Cambia</b>{:else}<span class="kit__plus">+</span><span>Carica il file del cavallotto</span>{/if}
+						{#if cav.png}<img src={cav.png} alt="" /><span>{cav.file?.name}</span><b>{t('kit.builder.cavallotto.cambia')}</b>{:else}<span class="kit__plus">+</span><span>{t('kit.builder.cavallotto.carica')}</span>{/if}
 					</label>
-					{#if cav.png}<button type="button" class="btn btn--blue btn--sm" style="margin-top:12px" onclick={() => (step = 'adesivi')}>Avanti: gli adesivi →</button>{/if}
+					{#if cav.png}<button type="button" class="btn btn--blue btn--sm" style="margin-top:12px" onclick={() => (step = 'adesivi')}>{t('kit.builder.cavallotto.avanti')}</button>{/if}
 				</div>
 			{/if}
 		</div>
@@ -369,24 +374,24 @@
 		<div class="step" class:is-open={step === 'adesivi'}>
 			<button class="step__head" type="button" onclick={() => (step = 'adesivi')} aria-expanded={step === 'adesivi'}>
 				<span class="step__n">{#if n > 0 && step !== 'adesivi'}✓{:else}3{/if}</span>
-				<span class="step__title">Gli adesivi {#if step !== 'adesivi'}<em>{n} di {KIT_MAX}</em>{/if}</span>
-				<span class="step__edit">{step === 'adesivi' ? '' : 'Modifica'}</span>
+				<span class="step__title">{t('kit.builder.adesivi.titolo')} {#if step !== 'adesivi'}<em>{t('kit.builder.adesivi.nDi', { n, max: KIT_MAX })}</em>{/if}</span>
+				<span class="step__edit">{step === 'adesivi' ? '' : t('kit.builder.modifica')}</span>
 			</button>
 			{#if step === 'adesivi'}
 				<div class="step__body">
-					<p class="step__hint">Un file per ogni adesivo, fino a {KIT_MAX}. Per ciascuno scegli bordo, sfondo e misura, poi lo vedi cadere nella bustina.</p>
+					<p class="step__hint">{t('kit.builder.adesivi.hint', { max: KIT_MAX })}</p>
 					<div class="kit__slots">
 						{#each slots as s, i (i)}
 							<label class="slot" class:has={!!s.file} class:busy={s.busy}>
 								<input type="file" hidden accept={ACCEPT} onchange={(e) => pickSlot(e, i)} />
 								{#if s.png}<img src={s.png} alt="" />{:else}<span class="slot__plus">+</span>{/if}
 								<em>{i + 1}</em>
-								{#if s.file}<button type="button" class="slot__x" aria-label="Togli" onclick={(e) => { e.preventDefault(); removeSticker(i); }}>✕</button>{/if}
+								{#if s.file}<button type="button" class="slot__x" aria-label={t('kit.builder.adesivi.togli')} onclick={(e) => { e.preventDefault(); removeSticker(i); }}>✕</button>{/if}
 							</label>
 						{/each}
 					</div>
 					{#if flash}<p class="kit__flash">{flash}</p>{/if}
-					{#if n}<button type="button" class="btn btn--blue btn--sm" style="margin-top:12px" onclick={() => (step = 'qty')}>Avanti: quanti kit →</button>{/if}
+					{#if n}<button type="button" class="btn btn--blue btn--sm" style="margin-top:12px" onclick={() => (step = 'qty')}>{t('kit.builder.adesivi.avanti')}</button>{/if}
 				</div>
 			{/if}
 		</div>
@@ -395,8 +400,8 @@
 		<div class="step step--qty" class:is-open={step === 'qty'}>
 			<button class="step__head" type="button" onclick={() => (step = 'qty')} aria-expanded={step === 'qty'}>
 				<span class="step__n">4</span>
-				<span class="step__title">Quanti kit <em>{qty.toLocaleString('it-IT')} kit · {eur0(vatIncluded ? q.gross : q.net)}</em></span>
-				<span class="step__edit">{step === 'qty' ? '' : 'Modifica'}</span>
+				<span class="step__title">{t('kit.builder.qty.titolo')} <em>{t('kit.builder.qty.riepilogo', { n: numero(qty), prezzo: prezzo(vatIncluded ? q.gross : q.net, 0) })}</em></span>
+				<span class="step__edit">{step === 'qty' ? '' : t('kit.builder.modifica')}</span>
 			</button>
 			{#if step === 'qty'}
 				<div class="step__body">
@@ -404,44 +409,44 @@
 						{#each KIT_QTY as k (k)}
 							{@const qq = kitQuote(cfg, { materiale, finitura, misura: misuraMedia, n: n || KIT_MAX, qty: k })}
 							<button type="button" class="qty" class:is-active={qty === k} onclick={() => (qty = k)}>
-								<span class="qty__top"><b>{k.toLocaleString('it-IT')}</b><b>{eur0(vatIncluded ? qq.gross : qq.net)}</b></span>
-								<span class="qty__bottom">{(vatIncluded ? qq.perKitGross : qq.perKitNet).toFixed(2).replace('.', ',')} €/kit</span>
+								<span class="qty__top"><b>{numero(k)}</b><b>{prezzo(vatIncluded ? qq.gross : qq.net, 0)}</b></span>
+								<span class="qty__bottom">{t('kit.builder.qty.perKit', { prezzo: prezzoUnit(vatIncluded ? qq.perKitGross : qq.perKitNet) })}</span>
 							</button>
 						{/each}
 					</div>
-					<p class="step__hint">Il prezzo del kit dipende da quanti adesivi ci metti dentro: ora {Math.max(1, n)}.</p>
+					<p class="step__hint">{t('kit.builder.qty.hint', { n: Math.max(1, n) })}</p>
 				</div>
 			{/if}
 		</div>
 	</aside>
 
 	<!-- RIEPILOGO: spedizione, credito, totale, come negli altri preventivatori -->
-	<div class="cfg__freeship"><FreeShippingBar gross={cartGross + q.gross} compact prefix={cartGross > 0 ? 'Con il carrello attuale: ' : 'Con questo ordine: '} /></div>
+	<div class="cfg__freeship"><FreeShippingBar gross={cartGross + q.gross} compact prefix={cartGross > 0 ? t('kit.builder.riepilogo.conCarrello') : t('kit.builder.riepilogo.conOrdine')} /></div>
 	<div class="cfg__summary">
-		<div class="sum sum--ship"><span class="sum__ico">🚀</span><div class="sum__text"><span class="sum__label">Spedizione stimata</span><span class="sum__value">{shipDate}</span><span class="sum__sub">Spedizione gratuita da 50 €</span></div></div>
-		<div class="sum sum--credit"><span class="sum__ico"><img src="/images/coin-sp.png" alt="Credito Stickerprint" /></span><div class="sum__text"><span class="sum__label">Guadagni in credito</span><span class="sum__value">{eur2(q.net * cfg.creditRate)}</span><span class="sum__sub">da usare sul prossimo ordine</span></div></div>
+		<div class="sum sum--ship"><span class="sum__ico">🚀</span><div class="sum__text"><span class="sum__label">{t('kit.builder.riepilogo.spedizione')}</span><span class="sum__value">{shipDate}</span><span class="sum__sub">{t('kit.builder.riepilogo.spedizioneGratis', { soglia })}</span></div></div>
+		<div class="sum sum--credit"><span class="sum__ico"><img src="/images/coin-sp.png" alt={t('kit.builder.riepilogo.creditoAlt')} /></span><div class="sum__text"><span class="sum__label">{t('kit.builder.riepilogo.credito')}</span><span class="sum__value">{prezzo(q.net * cfg.creditRate)}</span><span class="sum__sub">{t('kit.builder.riepilogo.creditoSub')}</span></div></div>
 		<div class="sum sum--total">
 			<div class="sum__text">
-				<span class="sum__label">Totale {vatIncluded ? 'IVA inclusa' : 'IVA esclusa'}</span>
-				<span class="sum__value sum__value--big">{eur0(vatIncluded ? q.gross : q.net)}</span>
-				<div class="vat-toggle"><span class:active={!vatIncluded}>IVA esclusa</span><button type="button" class="switch" class:on={vatIncluded} role="switch" aria-checked={vatIncluded} aria-label="Mostra prezzi IVA inclusa" onclick={() => (vatIncluded = !vatIncluded)}><i></i></button><span class:active={vatIncluded}>IVA inclusa</span></div>
+				<span class="sum__label">{t('kit.builder.riepilogo.totale')} {vatIncluded ? t('kit.builder.riepilogo.ivaInclusa') : t('kit.builder.riepilogo.ivaEsclusa')}</span>
+				<span class="sum__value sum__value--big">{prezzo(vatIncluded ? q.gross : q.net, 0)}</span>
+				<div class="vat-toggle"><span class:active={!vatIncluded}>{t('kit.builder.riepilogo.ivaEsclusa')}</span><button type="button" class="switch" class:on={vatIncluded} role="switch" aria-checked={vatIncluded} aria-label={t('kit.builder.riepilogo.mostraIva')} onclick={() => (vatIncluded = !vatIncluded)}><i></i></button><span class:active={vatIncluded}>{t('kit.builder.riepilogo.ivaInclusa')}</span></div>
 			</div>
-			<span class="sum__per">{(vatIncluded ? q.perKitGross : q.perKitNet).toFixed(2).replace('.', ',')} €/kit</span>
+			<span class="sum__per">{t('kit.builder.qty.perKit', { prezzo: prezzoUnit(vatIncluded ? q.perKitGross : q.perKitNet) })}</span>
 		</div>
-		<button class="btn btn--green btn--cart" type="button" onclick={addKit} disabled={!ready || adding} title={ready ? '' : 'Carica cavallotto e almeno un adesivo'}>{adding ? 'Un attimo…' : ready ? 'Aggiungi al carrello →' : !cav.png ? 'Carica il cavallotto' : !n ? 'Carica almeno un adesivo' : 'Un attimo…'}</button>
+		<button class="btn btn--green btn--cart" type="button" onclick={addKit} disabled={!ready || adding} title={ready ? '' : t('kit.builder.riepilogo.serve')}>{adding ? t('kit.builder.riepilogo.unAttimo') : ready ? t('kit.builder.riepilogo.aggiungi') : !cav.png ? t('kit.builder.riepilogo.caricaCavallotto') : !n ? t('kit.builder.riepilogo.caricaAdesivo') : t('kit.builder.riepilogo.unAttimo')}</button>
 	</div>
 </section>
 
 <!-- POPUP: il motore per il file appena caricato (bordo, sfondo, zoom dal pannello del motore; misura qui sotto).
      Il contenitore resta nel DOM anche da chiuso: il motore dentro non si ricrea a ogni file. -->
 {#if engines.length}
-	<div class="modal-backdrop" role="dialog" aria-modal="true" aria-label={pop?.kind === 'cav' ? 'Cavallotto' : 'Adesivo'} hidden={!pop}>
+	<div class="modal-backdrop" role="dialog" aria-modal="true" aria-label={pop?.kind === 'cav' ? t('kit.builder.popup.cavallotto') : t('kit.builder.popup.adesivo')} hidden={!pop}>
 		<div class="modal kit__modal">
-			<button type="button" class="modal__close" aria-label="Chiudi" onclick={cancelPop}>✕</button>
+			<button type="button" class="modal__close" aria-label={t('kit.builder.popup.chiudi')} onclick={cancelPop}>✕</button>
 			{#if pop}
-				<h3>{pop.kind === 'cav' ? 'Il cavallotto' : `Adesivo ${pop.index + 1}`} <small>{pop.file.name}</small></h3>
+				<h3>{pop.kind === 'cav' ? t('kit.builder.popup.titoloCavallotto') : t('kit.builder.popup.titoloAdesivo', { n: pop.index + 1 })} <small>{pop.file.name}</small></h3>
 				{#if pop.kind === 'sticker'}
-					<div class="kit__shapes">{#each SHAPES as sh (sh.id)}<button type="button" class="kit__shape" class:is-on={pop.forma === sh.id} onclick={() => setPopShape(sh.id)}><img src={sh.img} alt="" /><b>{sh.label}</b></button>{/each}</div>
+					<div class="kit__shapes">{#each SHAPES as sh (sh.id)}<button type="button" class="kit__shape" class:is-on={pop.forma === sh.id} onclick={() => setPopShape(sh.id)}><img src={sh.img} alt="" /><b>{opz(sh.id, 'label', sh.label)}</b></button>{/each}</div>
 				{/if}
 			{/if}
 			{#each engines as e (e.key)}
@@ -452,26 +457,26 @@
 			{#if pop}
 				{#if pop.kind === 'sticker'}
 					<div class="kit__row kit__row--size">
-						<span class="step__hint">Misura (lato lungo)</span>
+						<span class="step__hint">{t('kit.builder.popup.misura')}</span>
 						<div class="kit__chips">{#each KIT_SIZES as m (m)}<button type="button" class="chip" class:is-on={pop.misura === m} onclick={() => setPopSize(m)}>{m} mm</button>{/each}</div>
 						<label class="kit__free">
-							<span>Su misura</span>
+							<span>{t('kit.builder.popup.suMisura')}</span>
 							{#if pop.forma === 'ovale' || pop.forma === 'rettangolare'}
-								<input type="number" min={FREE_MIN} max={FREE_MAX} step="0.5" value={pop.w} onchange={(e) => setPopWH(+e.currentTarget.value, pop?.h ?? 0)} aria-label="Larghezza in mm" /> ×
-								<input type="number" min={FREE_MIN} max={FREE_MAX} step="0.5" value={pop.h} onchange={(e) => setPopWH(pop?.w ?? 0, +e.currentTarget.value)} aria-label="Altezza in mm" /> mm
+								<input type="number" min={FREE_MIN} max={FREE_MAX} step="0.5" value={pop.w} onchange={(e) => setPopWH(+e.currentTarget.value, pop?.h ?? 0)} aria-label={t('kit.builder.popup.larghezza')} /> ×
+								<input type="number" min={FREE_MIN} max={FREE_MAX} step="0.5" value={pop.h} onchange={(e) => setPopWH(pop?.w ?? 0, +e.currentTarget.value)} aria-label={t('kit.builder.popup.altezza')} /> mm
 							{:else}
-								<input type="number" min={FREE_MIN} max={FREE_MAX} step="0.5" value={pop.misura} onchange={(e) => setPopSize(+e.currentTarget.value)} aria-label="Lato lungo in mm" /> mm
-								<small>proporzioni bloccate</small>
+								<input type="number" min={FREE_MIN} max={FREE_MAX} step="0.5" value={pop.misura} onchange={(e) => setPopSize(+e.currentTarget.value)} aria-label={t('kit.builder.popup.latoLungo')} /> mm
+								<small>{t('kit.builder.popup.proporzioni')}</small>
 							{/if}
 						</label>
-						{#if pop.last}<span class="step__hint">esce {pop.last.w.toFixed(1).replace('.', ',')} × {pop.last.h.toFixed(1).replace('.', ',')} mm</span>{/if}
+						{#if pop.last}<span class="step__hint">{t('kit.builder.popup.esce', { w: numero(pop.last.w, 1), h: numero(pop.last.h, 1) })}</span>{/if}
 					</div>
 				{:else}
-					<div class="kit__row kit__row--cav"><span class="step__hint">Anteprima esatta del cavallotto, {CAV.w} × {CAV.h} mm: il file deve coprirlo tutto. Sposta e ingrandisci con i comandi sotto l'anteprima.</span><button type="button" class="btn btn--sm" onclick={() => coverCav(null)}>Riempi tutto il cavallotto</button></div>
+					<div class="kit__row kit__row--cav"><span class="step__hint">{t('kit.builder.popup.cavallottoHint', { w: CAV.w, h: CAV.h })}</span><button type="button" class="btn btn--sm" onclick={() => coverCav(null)}>{t('kit.builder.popup.riempi')}</button></div>
 				{/if}
 				<div class="kit__modal-actions">
-					<button type="button" class="btn btn--sm" onclick={cancelPop}>Annulla</button>
-					<button type="button" class="btn btn--green" disabled={pop.busy || !pop.last} onclick={confirmPop}>{pop.busy ? 'Preparo l’anteprima…' : pop.kind === 'cav' ? 'Conferma il cavallotto' : 'Conferma: mettilo nella bustina'}</button>
+					<button type="button" class="btn btn--sm" onclick={cancelPop}>{t('kit.builder.popup.annulla')}</button>
+					<button type="button" class="btn btn--green" disabled={pop.busy || !pop.last} onclick={confirmPop}>{pop.busy ? t('kit.builder.popup.preparo') : pop.kind === 'cav' ? t('kit.builder.popup.confermaCavallotto') : t('kit.builder.popup.confermaAdesivo')}</button>
 				</div>
 			{/if}
 		</div>

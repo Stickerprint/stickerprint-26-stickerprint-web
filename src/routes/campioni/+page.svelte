@@ -3,41 +3,46 @@
 	import '$lib/styles/product.css';
 	import '$lib/styles/pages.css';
 	import { addToCart } from '$lib/cart';
+	import { usaLingua } from '$lib/traduzioni';
+	const { t, path, prezzo, data: dataIn } = usaLingua();
 	let { data } = $props();
 	let added = $state(false);
 	// Reel YouTube del kit campioni: inserire qui i link (anche Shorts)
 	import LiteYouTube from '$lib/components/LiteYouTube.svelte';
 	const REELS: string[] = [];
 	const ytId = (u: string) => u.match(/(?:v=|youtu\.be\/|shorts\/|embed\/)([\w-]{6,})/)?.[1] ?? u;
+	/* prezzo del kit in euro: nella pagina si mostra con prezzo() (dollari in /us) */
+	const KIT_EUR = 10;
+	const prezzoKit = $derived(prezzo(KIT_EUR, 0));
 	function add() {
-		addToCart({ product: 'campioni', productName: 'Kit campioni', forma: 'kit', materiale: 'misto', w: 0, h: 0, qty: 1, net: Math.round((10 / 1.22) * 100) / 100, gross: 10, fileName: null, filePath: 'campioni', note: '' });
+		addToCart({ product: 'campioni', productName: t('header.kitCampioni'), forma: 'kit', materiale: 'misto', w: 0, h: 0, qty: 1, net: Math.round((KIT_EUR / 1.22) * 100) / 100, gross: KIT_EUR, fileName: null, filePath: 'campioni', note: '' });
 		added = true;
 	}
 </script>
 
-<Seo title="Kit campioni a 10 € | Stickerprint" description="Scopri materiali e finiture dei nostri adesivi personalizzati, resinati e in rilievo: pacchetto campioni a 10 € con spedizione gratuita." />
+<Seo title={t('pagine.campioni.seoTitolo', { prezzo: prezzoKit })} description={t('pagine.campioni.seoDescrizione', { prezzo: prezzoKit })} />
 
 <section class="container hero2 hero2--about">
 	<div>
-		<span class="tag tag--yellow">Offerta speciale</span>
-		<h1 style="margin-top:14px"><span class="hl hl--yellow">Ordina un pacchetto di campioni</span></h1>
-		<p class="lead">Scopri i materiali e le combinazioni che utilizziamo per preparare fantastici adesivi personalizzati, adesivi resinati e adesivi in rilievo. Tutto incluso in questo pacchetto di campioni per <b>10 euro e spedizione gratuita</b>.</p>
+		<span class="tag tag--yellow">{t('pagine.campioni.tag')}</span>
+		<h1 style="margin-top:14px"><span class="hl hl--yellow">{t('pagine.campioni.titolo')}</span></h1>
+		<p class="lead">{@html t('pagine.campioni.testo', { prezzo: prezzoKit })}</p>
 		<ul class="checks">
-			<li><span class="ck">✓</span>Ricevi i nostri migliori adesivi</li>
-			<li><span class="ck">✓</span>Tocchi con mano la nostra qualità</li>
-			<li><span class="ck">✓</span>Li recuperi subito sul primo ordine</li>
+			<li><span class="ck">✓</span>{t('pagine.campioni.p1')}</li>
+			<li><span class="ck">✓</span>{t('pagine.campioni.p2')}</li>
+			<li><span class="ck">✓</span>{t('pagine.campioni.p3')}</li>
 		</ul>
 		<div class="kit-buy">
-			<span class="kit-buy__price hl hl--yellow">10€</span>
-			<button type="button" class="btn btn--yellow btn--lg" onclick={add}>Aggiungi al carrello</button>
+			<span class="kit-buy__price hl hl--yellow">{prezzoKit}</span>
+			<button type="button" class="btn btn--yellow btn--lg" onclick={add}>{t('pagine.campioni.aggiungi')}</button>
 		</div>
-		<p class="note" style="margin-top:10px">🚀 Spedizione stimata <b>{data.shipDate}</b> · nessun file da caricare</p>
+		<p class="note" style="margin-top:10px">{@html t('pagine.campioni.spedizione', { data: dataIn(data.shipDate, true) })}</p>
 	</div>
 	<div class="reels reels--kit">
 		{#if REELS.length}
-			{#each REELS as r (r)}<LiteYouTube id={ytId(r)} title="Kit campioni Stickerprint" />{/each}
+			{#each REELS as r (r)}<LiteYouTube id={ytId(r)} title={t('pagine.campioni.reelTitolo')} />{/each}
 		{:else}
-			<div class="reel reel--soon"><span>▶</span><small>Reel in arrivo</small></div>
+			<div class="reel reel--soon"><span>▶</span><small>{t('pagine.comuni.reelInArrivo')}</small></div>
 		{/if}
 	</div>
 </section>
@@ -46,13 +51,13 @@
 {#if added}
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div class="added-bg" onclick={(e) => { if (e.target === e.currentTarget) added = false; }} onkeydown={(e) => { if (e.key === 'Escape') added = false; }}>
-		<div class="added" role="dialog" aria-modal="true" aria-label="Prodotto aggiunto al carrello">
+		<div class="added" role="dialog" aria-modal="true" aria-label={t('pagine.comuni.aggiuntoCarrello')}>
 			<span class="added__ck">✓</span>
-			<h3>Kit campioni aggiunto al carrello</h3>
-			<p>10 € · spedizione gratuita</p>
+			<h3>{t('pagine.campioni.aggiuntoTitolo')}</h3>
+			<p>{t('pagine.campioni.aggiuntoTesto', { prezzo: prezzoKit })}</p>
 			<div class="added__cta">
-				<a class="btn btn--green btn--lg" href="/checkout">Vai al checkout →</a>
-				<a class="btn btn--ghost btn--lg" href="/prodotti">Continua gli acquisti</a>
+				<a class="btn btn--green btn--lg" href={path('/checkout')}>{t('pagine.comuni.vaiCheckout')}</a>
+				<a class="btn btn--ghost btn--lg" href={path('/prodotti')}>{t('pagine.comuni.continuaAcquisti')}</a>
 			</div>
 		</div>
 	</div>

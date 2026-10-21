@@ -9,13 +9,16 @@
 	import { goto } from '$app/navigation';
 	import { saveDraft } from '$lib/utils/draftStore';
 	import EnginePreview from '$lib/components/EnginePreview.svelte';
+	import { usaLingua } from '$lib/traduzioni';
 
+	const { t, path } = usaLingua();
 	type Product = 'personalizzati' | 'resinati' | 'fogli';
 
+	/* testi di prodotti, sagome e materiali nel catalogo `configuratore` (anteprima.prodotti.* e opzioni.*) */
 	const PRODUCTS: { id: Product; label: string; href: string; hint: string; img: string }[] = [
-		{ id: 'personalizzati', label: 'Adesivi personalizzati', href: '/adesivi-personalizzati', hint: 'Sagoma libera, tagliati uno a uno', img: '/images/prodotti/adesivi-personalizzati/1.webp' },
-		{ id: 'resinati', label: 'Adesivi resinati', href: '/adesivi-resinati', hint: 'Cupola in resina, effetto 3D', img: '/images/prodotti/resinati/1.webp' },
-		{ id: 'fogli', label: 'Etichette in fogli', href: '/etichette', hint: 'Tante etichette su un foglio', img: '/images/prodotti/etichette/1.webp' }
+		{ id: 'personalizzati', label: t('configuratore.anteprima.prodotti.personalizzati.label'), href: '/adesivi-personalizzati', hint: t('configuratore.anteprima.prodotti.personalizzati.hint'), img: '/images/prodotti/adesivi-personalizzati/1.webp' },
+		{ id: 'resinati', label: t('configuratore.anteprima.prodotti.resinati.label'), href: '/adesivi-resinati', hint: t('configuratore.anteprima.prodotti.resinati.hint'), img: '/images/prodotti/resinati/1.webp' },
+		{ id: 'fogli', label: t('configuratore.anteprima.prodotti.fogli.label'), href: '/etichette', hint: t('configuratore.anteprima.prodotti.fogli.hint'), img: '/images/prodotti/etichette/1.webp' }
 	];
 	/* icone delle sagome: cambiano con il prodotto (adesivi, resinati, etichette) */
 	const SHAPE_IMG: Record<Product, Record<string, string>> = {
@@ -25,21 +28,15 @@
 	};
 	const shapeImg = (id: string) => SHAPE_IMG[product][id] ?? SHAPE_IMG.personalizzati[id];
 
-	const FORME = [
-		{ id: 'sagomato', label: 'Sagomato' },
-		{ id: 'tondo', label: 'Rotondo' },
-		{ id: 'quadrato', label: 'Quadrato' },
-		{ id: 'rettangolare', label: 'Rettangolare' },
-		{ id: 'ovale', label: 'Ovale' }
-	];
+	const FORME = ['sagomato', 'tondo', 'quadrato', 'rettangolare', 'ovale'].map((id) => ({ id, label: t(`configuratore.opzioni.sagome.${id}.label`) }));
 	const MATERIALI = [
-		{ id: 'bianco', label: 'Bianco', img: '/images/estimator/white.webp' },
-		{ id: 'olografico', label: 'Olografico', img: '/images/estimator/olo.webp' },
-		{ id: 'glitterato', label: 'Glitterato', img: '/images/estimator/glitter.webp' },
-		{ id: 'trasparente', label: 'Trasparente', img: '/images/estimator/transparent.webp' },
-		{ id: 'oro', label: 'Oro', img: '/images/estimator/gold.webp' },
-		{ id: 'argento', label: 'Argento', img: '/images/estimator/silver.webp' }
-	];
+		{ id: 'bianco', img: '/images/estimator/white.webp' },
+		{ id: 'olografico', img: '/images/estimator/olo.webp' },
+		{ id: 'glitterato', img: '/images/estimator/glitter.webp' },
+		{ id: 'trasparente', img: '/images/estimator/transparent.webp' },
+		{ id: 'oro', img: '/images/estimator/gold.webp' },
+		{ id: 'argento', img: '/images/estimator/silver.webp' }
+	].map((m) => ({ ...m, label: t(`configuratore.opzioni.materiali.${m.id}.label`) }));
 
 	/* resinati: solo i materiali dei resinati (niente olografico ne' glitterato; il supertack resta nella pagina prodotto) */
 	const MAT_RESINATI = ['bianco', 'trasparente', 'oro', 'argento'];
@@ -79,8 +76,8 @@
 	function pick(f: File | undefined) {
 		error = '';
 		if (!f) return;
-		if (!ACCEPT.includes(f.type)) { error = 'Formati accettati: PNG, JPG, SVG, PDF.'; return; }
-		if (f.size > 25 * 1024 * 1024) { error = 'Il file supera i 25 MB.'; return; }
+		if (!ACCEPT.includes(f.type)) { error = t('configuratore.anteprima.formati'); return; }
+		if (f.size > 25 * 1024 * 1024) { error = t('configuratore.anteprima.troppoGrande'); return; }
 		warm = true;
 		snapshot = null;
 		file = f;
@@ -113,7 +110,7 @@
 				savedAt: Date.now()
 			});
 			const q = `?forma=${forma}&materiale=${materiale}`;
-			await goto(`${current.href}${q}#configura`);
+			await goto(`${path(current.href)}${q}#configura`);
 		} finally {
 			saving = false;
 		}
@@ -124,8 +121,8 @@
 	<!-- sinistra: le scelte, in ordine -->
 	<div class="up__choices">
 		<div class="up__step">
-			<div class="up__head"><span class="up__n">1</span><b>Cosa vuoi stampare?</b></div>
-			<div class="up__tiles" role="radiogroup" aria-label="Prodotto">
+			<div class="up__head"><span class="up__n">1</span><b>{t('configuratore.anteprima.cosaStampare')}</b></div>
+			<div class="up__tiles" role="radiogroup" aria-label={t('configuratore.anteprima.prodotto')}>
 				{#each PRODUCTS as p (p.id)}
 					<button type="button" class="up__tile" class:is-on={product === p.id} role="radio" aria-checked={product === p.id} onclick={() => setProduct(p.id)}>
 						<img src={p.img} alt="" loading="lazy" /><b>{p.label}</b><small>{p.hint}</small>
@@ -134,16 +131,16 @@
 			</div>
 		</div>
 		<div class="up__step">
-			<div class="up__head"><span class="up__n">2</span><b>Che sagoma?</b><span class="up__pick">{FORME.find((f) => f.id === forma)?.label}</span></div>
-			<div class="up__shapes" role="radiogroup" aria-label="Sagoma">
+			<div class="up__head"><span class="up__n">2</span><b>{t('configuratore.anteprima.cheSagoma')}</b><span class="up__pick">{FORME.find((f) => f.id === forma)?.label}</span></div>
+			<div class="up__shapes" role="radiogroup" aria-label={t('configuratore.anteprima.sagoma')}>
 				{#each FORME as f (f.id)}
 					<button type="button" class="up__shape" class:is-on={forma === f.id} role="radio" aria-checked={forma === f.id} title={f.label} onclick={() => setForma(f.id)}><img src={shapeImg(f.id)} alt="" loading="lazy" /><span>{f.label}</span></button>
 				{/each}
 			</div>
 		</div>
 		<div class="up__step">
-			<div class="up__head"><span class="up__n">3</span><b>Che materiale?</b><span class="up__pick">{MATERIALI.find((m) => m.id === materiale)?.label}</span></div>
-			<div class="up__mats" data-n={materiali.length} role="radiogroup" aria-label="Materiale">
+			<div class="up__head"><span class="up__n">3</span><b>{t('configuratore.anteprima.cheMateriale')}</b><span class="up__pick">{MATERIALI.find((m) => m.id === materiale)?.label}</span></div>
+			<div class="up__mats" data-n={materiali.length} role="radiogroup" aria-label={t('configuratore.anteprima.materiale')}>
 				{#each materiali as m (m.id)}
 					<button type="button" class="up__mat" class:is-on={materiale === m.id} role="radio" aria-checked={materiale === m.id} title={m.label} onclick={() => setMateriale(m.id)}><img src={m.img} alt="" loading="lazy" /><span>{m.label}</span></button>
 				{/each}
@@ -153,7 +150,7 @@
 
 	<!-- destra: il file e l'anteprima viva -->
 	<div class="up__file">
-		<div class="up__head"><span class="up__n">4</span><b>Il tuo file</b>{#if file}<button type="button" class="link-btn" onclick={reset}>Cambia file</button>{/if}</div>
+		<div class="up__head"><span class="up__n">4</span><b>{t('configuratore.anteprima.tuoFile')}</b>{#if file}<button type="button" class="link-btn" onclick={reset}>{t('configuratore.file.cambia')}</button>{/if}</div>
 		{#if !file}
 			<label
 				class="dropzone up__dz"
@@ -168,9 +165,9 @@
 					<div class="dropzone__icon">
 						<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 16V4m0 0l-4 4m4-4l4 4" /><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" /></svg>
 					</div>
-					<div class="dropzone__title">Trascina qui il tuo file</div>
-					<div class="dropzone__sub">oppure clicca per sceglierlo · PNG, JPG, SVG, PDF</div>
-					<div class="up__dz-hint">In pochi secondi vedi sagoma, linea di taglio e materiale scelti</div>
+					<div class="dropzone__title">{t('configuratore.file.trascina')}</div>
+					<div class="dropzone__sub">{t('configuratore.file.oppure')}</div>
+					<div class="up__dz-hint">{t('configuratore.anteprima.hint')}</div>
 					{#if error}<p class="error" style="margin-top:14px">{error}</p>{/if}
 				</div>
 			</label>
@@ -182,8 +179,8 @@
 			</div>
 		{/if}
 		<button class="btn btn--blue btn--xl up__cta" type="button" disabled={!file || saving || engineBusy || !snapshot} onclick={continua}>
-			{saving ? 'Un attimo…' : file ? 'Continua la configurazione →' : 'Carica il file per continuare'}
+			{saving ? t('configuratore.anteprima.attimo') : file ? t('configuratore.anteprima.continua') : t('configuratore.anteprima.caricaContinua')}
 		</button>
-		<p class="up__note">Anteprima gratuita e senza impegno. Prima della stampa un umano controlla il file.</p>
+		<p class="up__note">{t('configuratore.anteprima.nota')}</p>
 	</div>
 </div>

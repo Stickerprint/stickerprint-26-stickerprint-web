@@ -1,31 +1,33 @@
 <script lang="ts">
 	import Seo from '$lib/components/Seo.svelte';
 	import '$lib/styles/pages.css';
+	import { usaLingua } from '$lib/traduzioni';
+	const { t } = usaLingua();
 </script>
 
-<Seo title="Chi siamo | Stickerprint" description="Siamo Stickerprint: creatività, stampa e attenzione maniacale ai dettagli, dal primo file all’ultimo adesivo." />
+<Seo title={t('pagine.chiSiamo.seoTitolo')} description={t('pagine.chiSiamo.seoDescrizione')} />
 
 <section class="container hero2 hero2--about">
 	<div>
-		<h1>Siamo Stickerprint.<br />Stampiamo idee<br /><span class="hl hl--yellow">che si fanno notare.</span></h1>
-		<p class="lead">Creatività, stampa e attenzione maniacale ai dettagli. Dal primo file all’ultimo adesivo.</p>
-		<p class="lead">Siamo un team di creativi che lavorano tra Milano e New York. Due città dove il design non è un optional e la qualità non è un’opinione.</p>
-		<p class="lead">Questo approccio ce lo portiamo dietro in tutto quello che stampiamo: materiali giusti, scelte chiare, risultati solidi. Se scegli Stickerprint per stampare, deve uscire fatto bene.</p>
+		<h1>{@html t('pagine.chiSiamo.titolo')}</h1>
+		<p class="lead">{t('pagine.chiSiamo.p1')}</p>
+		<p class="lead">{t('pagine.chiSiamo.p2')}</p>
+		<p class="lead">{t('pagine.chiSiamo.p3')}</p>
 	</div>
-	<img class="photo" src="/images/chi-siamo/team.webp" alt="Il team Stickerprint" />
+	<img class="photo" src="/images/chi-siamo/team.webp" alt={t('pagine.chiSiamo.teamAlt')} />
 </section>
 
 <section class="section container">
 	<div class="split2">
 		<img class="photo" src="/images/chi-siamo/mastersp.webp" alt="" loading="lazy" />
 		<div>
-			<h2>Stesso metodo.<br />Che sia un brand<br /><span class="hl hl--green">o un’idea nata alle due di notte.</span></h2>
-			<p class="lead">Ci capita di seguire produzioni per brand importanti e il giorno dopo lavorare a un’idea nata alle due di notte. Non fa differenza. Ogni progetto viene trattato allo stesso modo: con testa, esperienza e attenzione.</p>
+			<h2>{@html t('pagine.chiSiamo.metodoTitolo')}</h2>
+			<p class="lead">{t('pagine.chiSiamo.metodoTesto')}</p>
 			<ul class="checks">
-				<li><span class="ck">✓</span>Materiali scelti per durare, non per risparmiare</li>
-				<li><span class="ck">✓</span>File controllati, colori coerenti, tagli precisi</li>
-				<li><span class="ck">✓</span>Nessuna scorciatoia</li>
-				<li><span class="ck">✓</span>Nessun “va bene così”.</li>
+				<li><span class="ck">✓</span>{t('pagine.chiSiamo.metodo1')}</li>
+				<li><span class="ck">✓</span>{t('pagine.chiSiamo.metodo2')}</li>
+				<li><span class="ck">✓</span>{t('pagine.chiSiamo.metodo3')}</li>
+				<li><span class="ck">✓</span>{t('pagine.chiSiamo.metodo4')}</li>
 			</ul>
 		</div>
 	</div>
@@ -34,14 +36,14 @@
 <section class="section container">
 	<div class="split2">
 		<div>
-			<h2>Arriviamo ovunque.<br /><span class="hl hl--blue">Con lo stesso standard.</span></h2>
-			<p class="lead">Ogni anno spediamo adesivi in oltre 70 paesi. Da piccoli brand indipendenti a produzioni strutturate. La distanza non cambia il metodo né la qualità.</p>
+			<h2>{@html t('pagine.chiSiamo.mondoTitolo')}</h2>
+			<p class="lead">{t('pagine.chiSiamo.mondoTesto')}</p>
 			<ul class="checks">
-				<li><span class="ck">✓</span>Produzioni gestite internamente</li>
-				<li><span class="ck">✓</span>Spedizioni tracciate e affidabili</li>
-				<li><span class="ck">✓</span>Stessa qualità, ovunque arrivi il pacco</li>
+				<li><span class="ck">✓</span>{t('pagine.chiSiamo.mondo1')}</li>
+				<li><span class="ck">✓</span>{t('pagine.chiSiamo.mondo2')}</li>
+				<li><span class="ck">✓</span>{t('pagine.chiSiamo.mondo3')}</li>
 			</ul>
-			<p class="lead" style="margin-top:16px"><b>Con Stickerprint, la tua idea viaggia. Il livello resta lo stesso.</b></p>
+			<p class="lead" style="margin-top:16px"><b>{t('pagine.chiSiamo.mondoChiusura')}</b></p>
 		</div>
 		<img src="/images/chi-siamo/worldsp.webp" alt="" loading="lazy" />
 	</div>

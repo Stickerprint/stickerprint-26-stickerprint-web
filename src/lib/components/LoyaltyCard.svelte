@@ -1,6 +1,8 @@
 <script lang="ts">
 	/** Livello fedeltà: badge, barra di avanzamento e cosa serve per il prossimo livello */
-	import { pct, dateIt, type Loyalty } from '$lib/account';
+	import { pct, type Loyalty } from '$lib/account';
+	import { usaLingua } from '$lib/traduzioni';
+	const { t, numero, data } = usaLingua();
 	let { l, compact = false }: { l: Loyalty; compact?: boolean } = $props();
 	const target = $derived(l.next ? l.next.points : l.keep_points);
 	const progress = $derived(target > 0 ? Math.min(100, Math.round((l.period_points / target) * 100)) : 100);
@@ -12,24 +14,25 @@
 <div class="loy" class:loy--compact={compact}>
 	<img class="loy__badge" src={l.img} alt="" />
 	<div class="loy__body">
-		<p class="eyebrow">Il tuo livello</p>
-		<h3 class="loy__name">{l.name} <small>· guadagni il {pct(l.credit_rate)} in credito su ogni ordine</small></h3>
+		<p class="eyebrow">{t('checkout.fedelta.tuoLivello')}</p>
+		<h3 class="loy__name">{l.name} <small>{t('checkout.fedelta.guadagni', { pct: pct(l.credit_rate) })}</small></h3>
 		<div class="loy__bar"><span style="width:{progress}%"></span></div>
 		<p class="loy__msg">
+			<!-- testi dal catalogo (mai da input utente): i grassetti sono nelle stringhe -->
 			{#if l.next}
-				{#if missing > 0}Ti mancano <b>{missing.toLocaleString('it-IT')} SP</b> per diventare <b>{l.next.name}</b> e guadagnare il {pct(l.next.credit_rate)}.{:else}Sei pronto per diventare <b>{l.next.name}</b>!{/if}
+				{#if missing > 0}{@html t('checkout.fedelta.mancano', { n: numero(missing), livello: l.next.name, pct: pct(l.next.credit_rate) })}{:else}{@html t('checkout.fedelta.pronto', { livello: l.next.name })}{/if}
 			{:else if missing > 0}
-				Ti mancano <b>{missing.toLocaleString('it-IT')} SP</b> entro il {dateIt(l.expires_at, true)} per confermare <b>{l.name}</b> anche il prossimo anno.
+				{@html t('checkout.fedelta.mancanoConferma', { n: numero(missing), data: data(l.expires_at), livello: l.name })}
 			{:else}
-				Livello <b>{l.name}</b> confermato fino al {dateIt(l.expires_at, true)}. Sei al massimo!
+				{@html t('checkout.fedelta.confermato', { livello: l.name, data: data(l.expires_at) })}
 			{/if}
-			<small>{l.period_points.toLocaleString('it-IT')} SP in questo periodo · 1 SP per ogni euro netto speso (campioni esclusi)</small>
+			<small>{t('checkout.fedelta.periodo', { n: numero(l.period_points) })}</small>
 		</p>
 		{#if !compact}
-			<button type="button" class="loy__more" aria-expanded={showLevels} onclick={() => (showLevels = !showLevels)}>{showLevels ? 'Nascondi i livelli' : 'Vedi tutti i livelli'} <span aria-hidden="true">{showLevels ? '▴' : '▾'}</span></button>
+			<button type="button" class="loy__more" aria-expanded={showLevels} onclick={() => (showLevels = !showLevels)}>{showLevels ? t('checkout.fedelta.nascondi') : t('checkout.fedelta.vedi')} <span aria-hidden="true">{showLevels ? '▴' : '▾'}</span></button>
 			<div class="loy__levels" class:is-open={showLevels}>
 				{#each l.levels as lv (lv.level)}
-					<div class="loy__lv" class:is-current={lv.level === l.level}><img src={lv.img} alt="" /><b>{lv.name}</b><small>{pct(lv.credit_rate)} di credito</small>{#if lv.rank > 1}<small>{(l.levels[lv.rank - 2]?.next_points ?? 0).toLocaleString('it-IT')} SP per arrivarci · {lv.keep_points.toLocaleString('it-IT')} SP l’anno per restare</small>{:else}<small>livello di partenza</small>{/if}</div>
+					<div class="loy__lv" class:is-current={lv.level === l.level}><img src={lv.img} alt="" /><b>{lv.name}</b><small>{t('checkout.fedelta.diCredito', { pct: pct(lv.credit_rate) })}</small>{#if lv.rank > 1}<small>{t('checkout.fedelta.perArrivarci', { n: numero(l.levels[lv.rank - 2]?.next_points ?? 0), k: numero(lv.keep_points) })}</small>{:else}<small>{t('checkout.fedelta.partenza')}</small>{/if}</div>
 				{/each}
 			</div>
 		{/if}

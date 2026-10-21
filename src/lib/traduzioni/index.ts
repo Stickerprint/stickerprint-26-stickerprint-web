@@ -5,7 +5,7 @@
  * Nei componenti: const { t, path, prezzo } = usaLingua(); nel server: t(locale, 'chiave').
  */
 import { getContext, setContext } from 'svelte';
-import { LOCALES, localizePath, toCurrency, formatAmount, type LocaleCode, type Locale, type Lang } from '$lib/i18n';
+import { LOCALES, PRICE_BOOKS, localizePath, toCurrency, formatAmount, type LocaleCode, type Locale, type Lang } from '$lib/i18n';
 import { comune } from './comune';
 import { home } from './home';
 import { prodotti } from './prodotti';
@@ -15,10 +15,12 @@ import { fogli } from './fogli';
 import { checkout } from './checkout';
 import { account } from './account';
 import { pagine } from './pagine';
+import { email } from './email';
+import { documenti } from './documenti';
 
 const LINGUE: Lang[] = ['it', 'en', 'es', 'fr', 'de', 'nl'];
 /** tutte le aree insieme, per lingua */
-export const MESSAGGI = Object.fromEntries(LINGUE.map((l) => [l, { ...comune[l], home: home[l], prodotti: prodotti[l], configuratore: configuratore[l], kit: kit[l], fogli: fogli[l], checkout: checkout[l], account: account[l], pagine: pagine[l] }])) as unknown as Record<Lang, Record<string, unknown>>;
+export const MESSAGGI = Object.fromEntries(LINGUE.map((l) => [l, { ...comune[l], home: home[l], prodotti: prodotti[l], configuratore: configuratore[l], kit: kit[l], fogli: fogli[l], checkout: checkout[l], account: account[l], pagine: pagine[l], email: email[l], documenti: documenti[l] }])) as unknown as Record<Lang, Record<string, unknown>>;
 export type Params = Record<string, string | number>;
 export type T = (chiave: string, params?: Params) => string;
 
@@ -41,7 +43,7 @@ export const perLingua = (lang: Lang): LocaleCode => (Object.values(LOCALES).fin
 /** prezzo a partire dagli euro: nella valuta del locale (dollari col listino), formato della lingua */
 export const prezzoIn = (locale: Locale, eur: number, decimali = 2) => formatAmount(toCurrency(eur, locale.currency), locale, decimali);
 /** prezzo al pezzo: fino a 4 decimali (0,295 €), mai meno di 2 */
-export const prezzoUnitIn = (locale: Locale, eur: number) => new Intl.NumberFormat(locale.intl, { style: 'currency', currency: locale.currency, minimumFractionDigits: 2, maximumFractionDigits: 4 }).format(locale.currency === 'EUR' ? eur : eur * toCurrency(1, 'USD'));
+export const prezzoUnitIn = (locale: Locale, eur: number) => new Intl.NumberFormat(locale.intl, { style: 'currency', currency: locale.currency, minimumFractionDigits: 2, maximumFractionDigits: 4 }).format(locale.currency === 'EUR' ? eur : (eur / 1.22) * PRICE_BOOKS.USD.rate * PRICE_BOOKS.USD.markup);
 export const numeroIn = (locale: Locale, n: number, decimali = 0) => new Intl.NumberFormat(locale.intl, { maximumFractionDigits: decimali }).format(n);
 export const dataIn = (locale: Locale, d: string | Date, lunga = false) => new Date(d).toLocaleDateString(locale.intl, lunga ? { weekday: 'long', day: 'numeric', month: 'long' } : { day: 'numeric', month: 'long', year: 'numeric' });
 

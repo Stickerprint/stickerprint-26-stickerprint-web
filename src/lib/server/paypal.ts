@@ -34,11 +34,11 @@ async function call(path: string, body?: unknown, method = body ? 'POST' : 'GET'
 }
 
 /** custom_id: "checkout:<gruppo>" (ordine del sito), "order:<gruppo>:<seq>" (conferma), "invoice:<id>:<seq>" (fattura) */
-export async function createPayPalOrder(o: { amount: number; description: string; reference: string; customId: string; returnUrl: string; cancelUrl: string }): Promise<{ id: string; approveUrl: string }> {
+export async function createPayPalOrder(o: { amount: number; currency?: 'EUR' | 'USD'; locale?: string; description: string; reference: string; customId: string; returnUrl: string; cancelUrl: string }): Promise<{ id: string; approveUrl: string }> {
 	const j = await call('/v2/checkout/orders', {
 		intent: 'CAPTURE',
-		purchase_units: [{ reference_id: o.reference, custom_id: o.customId, invoice_id: undefined, description: o.description.slice(0, 127), amount: { currency_code: 'EUR', value: o.amount.toFixed(2) } }],
-		payment_source: { paypal: { experience_context: { brand_name: 'Stickerprint', locale: 'it-IT', landing_page: 'LOGIN', user_action: 'PAY_NOW', shipping_preference: 'NO_SHIPPING', return_url: o.returnUrl, cancel_url: o.cancelUrl } } }
+		purchase_units: [{ reference_id: o.reference, custom_id: o.customId, invoice_id: undefined, description: o.description.slice(0, 127), amount: { currency_code: o.currency ?? 'EUR', value: o.amount.toFixed(2) } }],
+		payment_source: { paypal: { experience_context: { brand_name: 'Stickerprint', locale: o.locale ?? 'it-IT', landing_page: 'LOGIN', user_action: 'PAY_NOW', shipping_preference: 'NO_SHIPPING', return_url: o.returnUrl, cancel_url: o.cancelUrl } } }
 	});
 	const links = (j.links ?? []) as { rel: string; href: string }[];
 	const approve = links.find((l) => l.rel === 'payer-action' || l.rel === 'approve')?.href;

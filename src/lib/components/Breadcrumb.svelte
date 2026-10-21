@@ -1,13 +1,16 @@
 <script lang="ts">
-	/** Briciole di pane visibili (Home › Adesivi › Adesivi resinati); il JSON-LD BreadcrumbList lo genera la pagina con breadcrumbLd() */
+	/** Briciole di pane visibili (Home › Adesivi › Adesivi resinati); il JSON-LD BreadcrumbList lo genera la pagina con breadcrumbLd().
+	 *  I percorsi arrivano interni (slug italiani) e passano da path(): prefisso e slug della lingua. */
+	import { usaLingua } from '$lib/traduzioni';
 	let { items }: { items: { name: string; path: string }[] } = $props();
+	const { t, path } = usaLingua();
 </script>
 
-<nav class="crumbs" aria-label="Percorso">
+<nav class="crumbs" aria-label={t('prodotti.briciole.percorso')}>
 	<ol>
 		{#each items as it, i (it.path)}
 			<li>
-				{#if i < items.length - 1}<a href={it.path}>{it.name}</a><span aria-hidden="true">›</span>{:else}<span aria-current="page">{it.name}</span>{/if}
+				{#if i < items.length - 1}<a href={path(it.path)}>{it.name}</a><span aria-hidden="true">›</span>{:else}<span aria-current="page">{it.name}</span>{/if}
 			</li>
 		{/each}
 	</ol>

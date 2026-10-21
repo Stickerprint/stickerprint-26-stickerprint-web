@@ -1,7 +1,11 @@
 <script lang="ts">
+	import { formatAmount } from '$lib/i18n';
 	/* Cassa simulata: stessa struttura di Stripe Checkout, nessun addebito. Quando arrivano le chiavi Stripe questa pagina non si vede più. */
 	import { enhance } from '$app/forms';
-	import { money } from '$lib/dashboard/orders';
+	import { usaLingua } from '$lib/traduzioni';
+	const { t, path, prezzo, locale } = usaLingua();
+	/* documenti reali in euro (ordini manuali, preventivi, fatture): formato della lingua, valuta sempre EUR, niente cambio in dollari */
+	const money = (v: number) => formatAmount(v, { ...locale, currency: 'EUR' });
 	let { data, form } = $props();
 	let paying = $state(false);
 	let card = $state('4242 4242 4242 4242');
@@ -10,27 +14,27 @@
 	let name = $state(data.order.customer);
 </script>
 
-<svelte:head><title>Pagamento fattura {data.order.number} | Stickerprint</title><meta name="robots" content="noindex" /></svelte:head>
+<svelte:head><title>{t('account.paga.titoloFattura', { n: data.order.number })}</title><meta name="robots" content="noindex" /></svelte:head>
 
 <section class="sim">
 	<div class="sim__box">
 		<div class="sim__summary">
-			<a class="sim__back" href={data.back}>← Torna alla fattura</a>
+			<a class="sim__back" href={path(data.back)}>{t('account.paga.tornaFattura')}</a>
 			<div class="sim__brand">Stickerprint</div>
-			<p class="sim__label">Fattura {data.order.number}{#if data.payment.of > 1} · scadenza {data.payment.seq} di {data.payment.of}{/if}</p>
+			<p class="sim__label">{t('account.paga.fattura', { n: data.order.number })}{#if data.payment.of > 1}{t('account.paga.scadenzaDi', { seq: data.payment.seq, tot: data.payment.of })}{/if}</p>
 			<p class="sim__amount">{money(data.payment.amount)}</p>
-			<p class="sim__meta">{data.payment.method} · IVA inclusa</p>
-			<div class="sim__test">SIMULAZIONE · nessun addebito. Con le chiavi Stripe qui c'è la cassa vera (carta, Apple Pay, Google Pay, PayPal).</div>
+			<p class="sim__meta">{data.payment.method} · {t('account.paga.ivaInclusa')}</p>
+			<div class="sim__test">{t('account.paga.simulazione')}</div>
 		</div>
 		<form method="POST" class="sim__form" use:enhance={() => { paying = true; return async ({ update }) => { await update(); paying = false; }; }}>
 			<div class="sim__wallets"><span>🍎 Apple Pay</span><span>G Pay</span><span>PayPal</span></div>
-			<div class="sim__or"><span>oppure paga con la carta</span></div>
-			<label>Email<input type="email" value={data.order.email ?? ''} readonly /></label>
-			<label>Dati della carta<input bind:value={card} inputmode="numeric" /><div class="sim__row"><input bind:value={exp} placeholder="MM / AA" /><input bind:value={cvc} placeholder="CVC" /></div></label>
-			<label>Nome sulla carta<input bind:value={name} /></label>
+			<div class="sim__or"><span>{t('account.paga.oppureCarta')}</span></div>
+			<label>{t('account.paga.email')}<input type="email" value={data.order.email ?? ''} readonly /></label>
+			<label>{t('account.paga.datiCarta')}<input bind:value={card} inputmode="numeric" /><div class="sim__row"><input bind:value={exp} placeholder={t('account.paga.scadenzaPlaceholder')} /><input bind:value={cvc} placeholder="CVC" /></div></label>
+			<label>{t('account.paga.nomeCarta')}<input bind:value={name} /></label>
 			{#if form?.error}<p class="error">{form.error}</p>{/if}
-			<button class="sim__pay" type="submit" disabled={paying}>{paying ? 'Elaborazione…' : `Paga ${money(data.payment.amount)}`}</button>
-			<p class="sim__foot">🔒 Pagamento protetto · Stickerprint Srl</p>
+			<button class="sim__pay" type="submit" disabled={paying}>{paying ? t('account.paga.elaborazione') : t('account.paga.paga', { importo: money(data.payment.amount) })}</button>
+			<p class="sim__foot">{t('account.paga.protetto')}</p>
 		</form>
 	</div>
 </section>

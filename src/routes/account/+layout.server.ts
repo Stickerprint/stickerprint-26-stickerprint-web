@@ -1,7 +1,8 @@
 import type { LayoutServerLoad } from './$types';
 import type { Loyalty } from '$lib/account';
+import { t } from '$lib/traduzioni';
 
-export const load: LayoutServerLoad = async ({ locals: { supabase, user } }) => {
+export const load: LayoutServerLoad = async ({ locals: { supabase, user, locale } }) => {
 	const uid = user!.id;
 	const [{ data: profile }, { count: ordersCount }, { count: openCount }, { data: delivered }, { data: reviewed }, { data: loyalty }] = await Promise.all([
 		supabase.from('profiles').select('full_name, email, created_at, role, avatar_url').eq('id', uid).maybeSingle(),
@@ -16,7 +17,7 @@ export const load: LayoutServerLoad = async ({ locals: { supabase, user } }) => 
 	const raw = (profile?.full_name || user?.user_metadata?.full_name || '').trim();
 	// senza nome salvato: dalla parte prima della @ (es. mario.rossi → Mario Rossi)
 	const fromEmail = (user?.email ?? '').split('@')[0].split(/[._-]+/).filter(Boolean).map((w) => w[0].toUpperCase() + w.slice(1)).join(' ');
-	const name = raw || fromEmail || 'Cliente';
+	const name = raw || fromEmail || t(locale, 'account.layout.cliente');
 	return {
 		profile: { name, email: profile?.email ?? user?.email ?? '', avatar: profile?.avatar_url ?? null, since: profile?.created_at ? new Date(profile.created_at).getFullYear() : new Date().getFullYear() },
 		loyalty: (loyalty ?? null) as Loyalty | null,

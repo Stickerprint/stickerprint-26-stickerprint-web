@@ -15,7 +15,9 @@
 	import EnginePreview from './EnginePreview.svelte';
 	import { loadDraft, saveDraft, saveCartFile, saveCartPreview } from '$lib/utils/draftStore';
 	import { addToCart } from '$lib/cart';
-	import { quoteWith, minForShape, startSize, sizeProposals, roundHalf, proportionalSize, sizeRule, eur0, eur2, showFinishStep, showMaterialStep, type EngineConfig } from '$lib/pricing/engine';
+	import { quoteWith, minForShape, startSize, sizeProposals, roundHalf, proportionalSize, sizeRule, showFinishStep, showMaterialStep, type EngineConfig } from '$lib/pricing/engine';
+	import { usaLingua } from '$lib/traduzioni';
+	import { formatAmount } from '$lib/i18n';
 
 	/* totale prodotti gia' nel carrello (per la barra della spedizione gratuita) */
 	let cartGross = $state(0);
@@ -36,6 +38,21 @@
 		/** offerte: il cliente sceglie solo la sagoma; materiale, finitura, misura, quantita' e prezzo sono fissati dall'offerta */
 		promoOnly?: boolean;
 	} = $props();
+
+	const { t, path, prezzo, prezzoUnit, numero, locale } = usaLingua();
+	/* etichette delle scelte del listino: il listino e' in italiano (dal database), il catalogo le traduce per id;
+	   se la voce non c'e' nel catalogo resta quella del listino */
+	const opz = (tipo: 'materiali' | 'sagome' | 'fogli' | 'finiture', id: string, campo: 'label' | 'description' | 'tag', fallback?: string) => {
+		const k = `configuratore.opzioni.${tipo}.${id}.${campo}`;
+		const v = t(k);
+		return v === k ? (fallback ?? '') : v;
+	};
+	const tipoSagome = $derived(product === 'fogli_adesivi' ? 'fogli' : 'sagome');
+	/* titolo e nota del passo finitura: il listino li scrive in italiano, qui si traducono i due testi noti */
+	const finishTitle = $derived(cfg.finishTitle === 'Stampa' ? t('configuratore.passi.finituraStampa') : (cfg.finishTitle ?? t('configuratore.passi.finitura')));
+	const finishNote = $derived(cfg.finishNote === "L'effetto rilievo è sempre lucido." ? t('configuratore.hint.rilievoLucido') : (cfg.finishNote ?? ''));
+	const eur0 = (v: number) => prezzo(v, 0);
+	const eur2 = (v: number) => prezzo(v, 2);
 
 	const SHAPES = $derived(cfg.shapes.filter((s) => s.visible));
 	const MATERIALS = $derived(cfg.materials.filter((m) => m.visible));
@@ -271,7 +288,8 @@
 		}
 		added = true;
 	}
-	const fmt = (v: number) => (Number.isInteger(v) ? String(v) : v.toFixed(1).replace('.', ','));
+	const fmt = (v: number) => numero(v, 1);
+	const pezzi = (n: number) => t('configuratore.qty.pezzi', { n: numero(n) });
 </script>
 
 <section class="cfg" class:cfg--test={test} id="configura">
@@ -284,25 +302,25 @@
 				<div class="cfg__bar">
 					{#if !vetro}
 					<div class="cfg__bar-group">
-						<span class="cfg__bar-label">Sfondo</span>
+						<span class="cfg__bar-label">{t('configuratore.file.sfondo')}</span>
 						<div class="cfg__dots">
 							{#each palette as c, i (i)}
-								<button type="button" class="cfg__dot" class:is-on={i === palIdx} style={c.img === 'checker' ? 'background:repeating-conic-gradient(#cfd6dd 0 25%,#fff 0 50%) 0 0/10px 10px' : c.img ? `background-image:url(${c.img});background-size:cover` : `background:${c.hex}`} title={c.img ? 'Colore del materiale' : c.hex.toUpperCase()} aria-label="Sfondo {c.hex}" onclick={() => engine?.post('bg', { idx: i })}></button>
+								<button type="button" class="cfg__dot" class:is-on={i === palIdx} style={c.img === 'checker' ? 'background:repeating-conic-gradient(#cfd6dd 0 25%,#fff 0 50%) 0 0/10px 10px' : c.img ? `background-image:url(${c.img});background-size:cover` : `background:${c.hex}`} title={c.img ? t('configuratore.file.coloreMateriale') : c.hex.toUpperCase()} aria-label={t('configuratore.file.sfondoHex', { hex: c.hex })} onclick={() => engine?.post('bg', { idx: i })}></button>
 							{/each}
 							<!-- colore libero: il pallino arcobaleno apre il selettore e il colore scelto si aggiunge alla tavolozza -->
-							<button type="button" class="cfg__dot cfg__dot--arc" title="Scegli un colore tuo" aria-label="Scegli un colore di sfondo" onclick={() => colInput?.click()}></button>
+							<button type="button" class="cfg__dot cfg__dot--arc" title={t('configuratore.file.colore')} aria-label={t('configuratore.file.coloreSfondo')} onclick={() => colInput?.click()}></button>
 							<input bind:this={colInput} type="color" class="cfg__col" value={palette[palIdx]?.hex ?? '#ffffff'} oninput={(e) => engine?.post('bgcol', { hex: (e.currentTarget as HTMLInputElement).value })} />
 						</div>
-						<button type="button" class="cfg__tool" class:is-on={rimuovi} onclick={() => engine?.post('rimuovi')} title="Toglie lo sfondo del file: resta solo il disegno">✨ Rimuovi sfondo</button>
+						<button type="button" class="cfg__tool" class:is-on={rimuovi} onclick={() => engine?.post('rimuovi')} title={t('configuratore.file.rimuoviSfondoTitolo')}>{t('configuratore.file.rimuoviSfondo')}</button>
 					</div>
 					{/if}
 					<div class="cfg__bar-group">
 						<input bind:this={fileInput} type="file" accept="image/png,image/jpeg,image/svg+xml,application/pdf" hidden onchange={(e) => pick((e.currentTarget as HTMLInputElement).files?.[0])} />
-						<button type="button" class="cfg__tool cfg__tool--blue" onclick={() => fileInput?.click()} title={file.name}>Cambia file</button>
-						<button type="button" class="eye" class:is-off={!showCut} onclick={() => (showCut = !showCut)} aria-pressed={showCut} title={showCut ? 'Nascondi la linea di taglio' : 'Mostra la linea di taglio'}>
+						<button type="button" class="cfg__tool cfg__tool--blue" onclick={() => fileInput?.click()} title={file.name}>{t('configuratore.file.cambia')}</button>
+						<button type="button" class="eye" class:is-off={!showCut} onclick={() => (showCut = !showCut)} aria-pressed={showCut} title={showCut ? t('configuratore.file.nascondiTaglio') : t('configuratore.file.mostraTaglio')}>
 							<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" />{#if !showCut}<path d="M3 3l18 18" />{/if}</svg>
 							<span class="eye__dash" aria-hidden="true"></span>
-							<span class="sr-only">Linea di taglio</span>
+							<span class="sr-only">{t('configuratore.file.lineaTaglio')}</span>
 						</button>
 					</div>
 				</div>
@@ -315,8 +333,8 @@
 					<input bind:this={fileInput} type="file" accept="image/png,image/jpeg,image/svg+xml,application/pdf" onchange={(e) => pick((e.currentTarget as HTMLInputElement).files?.[0])} />
 					<div>
 						<div class="dropzone__icon"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 16V4m0 0l-4 4m4-4l4 4" /><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" /></svg></div>
-						<div class="dropzone__title">Trascina qui il tuo file</div>
-						<div class="dropzone__sub">oppure clicca per sceglierlo · PNG, JPG, SVG, PDF</div>
+						<div class="dropzone__title">{t('configuratore.file.trascina')}</div>
+						<div class="dropzone__sub">{t('configuratore.file.oppure')}</div>
 					</div>
 				</label>
 			{/if}
@@ -327,10 +345,10 @@
 	<aside class="cfg__steps">
 		<div class="cfg__head">
 			<div>
-				<p class="eyebrow">{test ? 'Test preventivatore' : 'Configura in 30 secondi'}</p>
-				<h2 class="cfg__title">Crea {productName}</h2>
+				<p class="eyebrow">{test ? t('configuratore.passi.eyebrowTest') : t('configuratore.passi.eyebrow')}</p>
+				<h2 class="cfg__title">{t('configuratore.passi.crea', { prodotto: productName })}</h2>
 			</div>
-			<span class="cfg__stepcount">Passaggio {stepNo(step)} di {steps.length}</span>
+			<span class="cfg__stepcount">{t('configuratore.passi.passaggio', { n: stepNo(step), tot: steps.length })}</span>
 		</div>
 		<div class="progress"><span style="width:{progress}%"></span></div>
 
@@ -338,8 +356,8 @@
 		<div class="step" class:is-open={step === 'forma'}>
 			<button class="step__head" type="button" onclick={() => (step = 'forma')} aria-expanded={step === 'forma'}>
 				<span class="step__n">{#if stepNo(step) > stepNo('forma')}✓{:else}{stepNo('forma')}{/if}</span>
-				<span class="step__title">Seleziona sagoma {#if step !== 'forma'}<em>{shape?.label}</em>{/if}</span>
-				<span class="step__edit">{step === 'forma' ? '' : 'Modifica'}</span>
+				<span class="step__title">{t('configuratore.passi.forma')} {#if step !== 'forma'}<em>{opz(tipoSagome, shape?.id ?? '', 'label', shape?.label)}</em>{/if}</span>
+				<span class="step__edit">{step === 'forma' ? '' : t('configuratore.passi.modifica')}</span>
 			</button>
 			{#if step === 'forma'}
 				<div class="step__body">
@@ -347,7 +365,7 @@
 						{#each SHAPES as s (s.id)}
 							<button type="button" class="pic" class:is-active={forma === s.id} onclick={() => choose(() => (forma = s.id), 'forma')}>
 								<img src={s.img} alt="" />
-								<b>{s.label}</b>
+								<b>{opz(tipoSagome, s.id, 'label', s.label)}</b>
 							</button>
 						{/each}
 					</div>
@@ -360,18 +378,18 @@
 			<div class="step" class:is-open={step === 'materiale'}>
 				<button class="step__head" type="button" onclick={() => (step = 'materiale')} aria-expanded={step === 'materiale'}>
 					<span class="step__n">{#if stepNo(step) > stepNo('materiale')}✓{:else}{stepNo('materiale')}{/if}</span>
-					<span class="step__title">Materiale {#if step !== 'materiale'}<em>{material?.label}</em>{/if}</span>
-					<span class="step__edit">{step === 'materiale' ? '' : 'Modifica'}</span>
+					<span class="step__title">{t('configuratore.passi.materiale')} {#if step !== 'materiale'}<em>{opz('materiali', material?.id ?? '', 'label', material?.label)}</em>{/if}</span>
+						<span class="step__edit">{step === 'materiale' ? '' : t('configuratore.passi.modifica')}</span>
 				</button>
 				{#if step === 'materiale'}
 					<div class="step__body">
-						<p class="step__hint">Non sai quale scegliere? Il bianco va bene quasi sempre.</p>
+						<p class="step__hint">{t('configuratore.hint.materiale')}</p>
 						<div class="pic-grid pic-grid--3 pic-grid--sm">
 							{#each MATERIALS as m (m.id)}
 								<button type="button" class="pic" class:is-active={materiale === m.id} onclick={() => choose(() => (materiale = m.id), 'materiale')}>
 									<img src={m.img} alt="" />
-									<b>{m.label}</b>
-									{#if m.tag}<span class="pic__tag">{m.tag}</span>{/if}
+									<b>{opz('materiali', m.id, 'label', m.label)}</b>
+									{#if m.tag}<span class="pic__tag">{opz('materiali', m.id, 'tag', m.tag)}</span>{/if}
 								</button>
 							{/each}
 						</div>
@@ -385,23 +403,23 @@
 			<div class="step" class:is-open={step === 'finitura'}>
 				<button class="step__head" type="button" onclick={() => (step = 'finitura')} aria-expanded={step === 'finitura'}>
 					<span class="step__n">{#if stepNo(step) > stepNo('finitura')}✓{:else}{stepNo('finitura')}{/if}</span>
-					<span class="step__title">{cfg.finishTitle ?? 'Lamina protettiva'} {#if step !== 'finitura'}<em>{finish?.label}</em>{/if}</span>
-					<span class="step__edit">{step === 'finitura' ? '' : 'Modifica'}</span>
+					<span class="step__title">{finishTitle} {#if step !== 'finitura'}<em>{opz('finiture', finish?.id ?? '', 'label', finish?.label)}</em>{/if}</span>
+						<span class="step__edit">{step === 'finitura' ? '' : t('configuratore.passi.modifica')}</span>
 				</button>
 				{#if step === 'finitura'}
 					<div class="step__body">
 						<div class="pic-grid pic-grid--3 pic-grid--sm">
 							{#each FINISHES as f (f.id)}
 								<button type="button" class="pic" class:is-active={finitura === f.id} onclick={() => choose(() => (finitura = f.id), 'finitura')}>
-									{#if f.tag}<span class="pic__tag">{f.tag}</span>{/if}
+									{#if f.tag}<span class="pic__tag">{opz('finiture', f.id, 'tag', f.tag)}</span>{/if}
 									<img src={f.img} alt="" />
-									<b>{f.label}</b>
-									<small>{f.description ?? ''}</small>
+									<b>{opz('finiture', f.id, 'label', f.label)}</b>
+									<small>{opz('finiture', f.id, 'description', f.description ?? '')}</small>
 								</button>
 							{/each}
 						</div>
-						{#if finitura === 'nessuna'}<p class="step__hint">Ideale se ti servono adesivi di alta qualità per uso promozionale provvisorio. Tradotto: poca spesa, tantissima resa.</p>{/if}
-						{#if cfg.finishNote}<p class="step__hint">{cfg.finishNote}</p>{/if}
+						{#if finitura === 'nessuna'}<p class="step__hint">{t('configuratore.hint.senzaLamina')}</p>{/if}
+						{#if finishNote}<p class="step__hint">{finishNote}</p>{/if}
 					</div>
 				{/if}
 			</div>
@@ -412,20 +430,20 @@
 		<div class="step" class:is-open={step === 'misura'}>
 			<button class="step__head" type="button" onclick={() => (step = 'misura')} aria-expanded={step === 'misura'}>
 				<span class="step__n">{#if stepNo(step) > stepNo('misura')}✓{:else}{stepNo('misura')}{/if}</span>
-				<span class="step__title">Dimensione {#if step !== 'misura'}<em>{fmt(w)} × {fmt(h)} mm</em>{/if}</span>
-				<span class="step__edit">{step === 'misura' ? '' : 'Modifica'}</span>
+				<span class="step__title">{t('configuratore.passi.misura')} {#if step !== 'misura'}<em>{fmt(w)} × {fmt(h)} mm</em>{/if}</span>
+				<span class="step__edit">{step === 'misura' ? '' : t('configuratore.passi.modifica')}</span>
 			</button>
 			{#if step === 'misura'}
 				<div class="step__body">
 					<div class="size-presets">
 						{#each presets as [pw, ph], k (pw)}
-							<button type="button" class="size-btn" class:is-active={w === pw && h === ph} onclick={() => { w = pw; h = ph; }}>{#if k === 0}<small>Partenza</small>{/if}{fmt(pw)} × {fmt(ph)} mm</button>
+							<button type="button" class="size-btn" class:is-active={w === pw && h === ph} onclick={() => { w = pw; h = ph; }}>{#if k === 0}<small>{t('configuratore.misura.partenza')}</small>{/if}{fmt(pw)} × {fmt(ph)} mm</button>
 						{/each}
 					</div>
 					<div class="size-inputs">
-						<label><span>Larghezza</span><input type="number" min={MIN_MM} max={MAX_MM} step="0.5" value={w} onchange={(e) => { const el = e.currentTarget as HTMLInputElement; setW(+el.value); el.value = String(w); }} /><em>mm</em></label>
+						<label><span>{t('configuratore.misura.larghezza')}</span><input type="number" min={MIN_MM} max={MAX_MM} step="0.5" value={w} onchange={(e) => { const el = e.currentTarget as HTMLInputElement; setW(+el.value); el.value = String(w); }} /><em>mm</em></label>
 						<span class="size-x">×</span>
-						<label><span>Altezza</span><input type="number" min={MIN_MM} max={MAX_MM} step="0.5" value={h} onchange={(e) => { const el = e.currentTarget as HTMLInputElement; setH(+el.value); el.value = String(h); }} /><em>mm</em></label>
+						<label><span>{t('configuratore.misura.altezza')}</span><input type="number" min={MIN_MM} max={MAX_MM} step="0.5" value={h} onchange={(e) => { const el = e.currentTarget as HTMLInputElement; setH(+el.value); el.value = String(h); }} /><em>mm</em></label>
 					</div>
 				</div>
 			{/if}
@@ -435,12 +453,12 @@
 		{#if promoOnly && promo}
 			<!-- offerta: quantita', misura, materiale e finitura sono fissi -->
 			<div class="step is-open step--qty promo-fixed">
-				<div class="step__head" role="presentation"><span class="step__n">{stepNo('forma') + 1}</span><span class="step__title">La tua offerta</span></div>
-				<div class="step__body">
-					<ul class="promo-fixed__list">
-						<li><b>{promo.qty.toLocaleString('it-IT')} pezzi</b> · quantità dell'offerta</li>
-						<li><b>{fmt(w)} × {fmt(h)} mm</b> · misura dell'offerta</li>
-						<li><b>{material?.label ?? materiale}</b>{#if finish}, {finish.label}{/if} · materiale e finitura dell'offerta</li>
+				<div class="step__head" role="presentation"><span class="step__n">{stepNo('forma') + 1}</span><span class="step__title">{t('configuratore.offerta.titolo')}</span></div>
+					<div class="step__body">
+						<ul class="promo-fixed__list">
+							<li><b>{pezzi(promo.qty)}</b> · {t('configuratore.offerta.qty')}</li>
+							<li><b>{fmt(w)} × {fmt(h)} mm</b> · {t('configuratore.offerta.misura')}</li>
+							<li><b>{opz('materiali', materiale, 'label', material?.label ?? materiale)}</b>{#if finish}, {opz('finiture', finish.id, 'label', finish.label)}{/if} · {t('configuratore.offerta.materiale')}</li>
 					</ul>
 				</div>
 			</div>
@@ -451,30 +469,32 @@
 		<div class="step is-open step--qty" id="qty-step">
 			<div class="step__head" role="presentation">
 				<span class="step__n">{stepNo('qty')}</span>
-				<span class="step__title">Scegli quantità <em>{qty.toLocaleString('it-IT')} pezzi · {eur0(vatIncluded ? q.gross : q.net)}</em></span>
+				<span class="step__title">{t('configuratore.passi.qty')} <em>{t('configuratore.qty.riepilogo', { n: numero(qty), totale: eur0(vatIncluded ? q.gross : q.net) })}</em></span>
 			</div>
 				<div class="step__body">
 					{#if foglio && perSheet && file}
-						<p class="step__hint step__hint--box">Con questa misura entrano <b>{perSheet.n} etichette per foglio</b> ({perSheet.cols} × {perSheet.rows} su un foglio {perSheet.w} × {perSheet.h} mm): {qty.toLocaleString('it-IT')} pezzi sono <b>{Math.ceil(qty / perSheet.n)} {Math.ceil(qty / perSheet.n) === 1 ? 'foglio' : 'fogli'}</b>.</p>
+						{@const nf = Math.ceil(qty / perSheet.n)}
+						<!-- testo dal catalogo (mai da input utente): i numeri si inseriscono nei segnaposto -->
+						<p class="step__hint step__hint--box">{@html t('configuratore.hint.foglio', { n: perSheet.n, cols: perSheet.cols, rows: perSheet.rows, w: perSheet.w, h: perSheet.h, qty: numero(qty), fogli: t(nf === 1 ? 'configuratore.hint.foglioUno' : 'configuratore.hint.foglioTanti', { n: numero(nf) }) })}</p>
 					{/if}
 					<div class="qty-grid">
 						{#each cfg.quantities as n (n)}
 							{@const qq = quoteWith(cfg, { w, h, forma, materiale, finitura: fin, qty: n, vatIncluded })}
 							{@const disc = Math.max(0, Math.round((1 - qq.perPiece / basePerPiece) * 100))}
 							<button type="button" class="qty" class:is-active={qty === n} onclick={() => { custom = false; qty = n; }}>
-								{#if n === cfg.recommendedQty}<span class="qty__tag">Consigliato</span>{/if}
-								<span class="qty__top"><b>{n.toLocaleString('it-IT')}</b><b>{eur0(vatIncluded ? qq.gross : qq.net)}</b></span>
-								<span class="qty__bottom">{qq.perPiece.toFixed(2).replace('.', ',')} €/pz {#if disc > 0}<b>−{disc}%</b>{/if}</span>
+								{#if n === cfg.recommendedQty}<span class="qty__tag">{t('configuratore.qty.consigliato')}</span>{/if}
+								<span class="qty__top"><b>{numero(n)}</b><b>{eur0(vatIncluded ? qq.gross : qq.net)}</b></span>
+								<span class="qty__bottom">{t('configuratore.qty.perPezzo', { prezzo: prezzoUnit(qq.perPiece) })} {#if disc > 0}<b>−{disc}%</b>{/if}</span>
 							</button>
 						{/each}
 					</div>
 					{#if !test}
-						<button type="button" class="link-btn" style="justify-self:start;font-size:14px" onclick={() => (customOpen = !customOpen)}>Ti serve un’altra quantità?</button>
+						<button type="button" class="link-btn" style="justify-self:start;font-size:14px" onclick={() => (customOpen = !customOpen)}>{t('configuratore.qty.altraQuantita')}</button>
 						{#if customOpen}
 							<div class="qty-custom">
-								<label>Quantità<input type="number" min={minQty} step="1" bind:value={customQty} placeholder={String(minQty)} onkeydown={(e) => { if (e.key === 'Enter') applyCustom(); }} /></label>
-								<button type="button" class="btn btn--blue btn--sm" onclick={applyCustom}>Calcola</button>
-								{#if custom}<span class="qty-custom__res"><b>{qty.toLocaleString('it-IT')} pezzi</b> · {eur0(vatIncluded ? q.gross : q.net)} · {q.perPiece.toFixed(2).replace('.', ',')} €/pz</span>{/if}
+								<label>{t('configuratore.qty.quantita')}<input type="number" min={minQty} step="1" bind:value={customQty} placeholder={String(minQty)} onkeydown={(e) => { if (e.key === 'Enter') applyCustom(); }} /></label>
+								<button type="button" class="btn btn--blue btn--sm" onclick={applyCustom}>{t('configuratore.qty.calcola')}</button>
+									{#if custom}<span class="qty-custom__res"><b>{pezzi(qty)}</b> · {eur0(vatIncluded ? q.gross : q.net)} · {t('configuratore.qty.perPezzo', { prezzo: prezzoUnit(q.perPiece) })}</span>{/if}
 							</div>
 						{/if}
 					{/if}
@@ -485,27 +505,27 @@
 	</aside>
 
 	<!-- RIEPILOGO: spedizione, credito, totale e bottone, tutti alla stessa altezza -->
-	<div class="cfg__freeship"><FreeShippingBar gross={cartGross + (added ? 0 : q.gross)} compact prefix={cartGross > 0 ? (added ? 'Con il carrello attuale: ' : 'Con il carrello e questo ordine: ') : 'Con questo ordine: '} /></div>
+	<div class="cfg__freeship"><FreeShippingBar gross={cartGross + (added ? 0 : q.gross)} compact prefix={cartGross > 0 ? (added ? t('configuratore.spedizione.conCarrello') : t('configuratore.spedizione.conCarrelloOrdine')) : t('configuratore.spedizione.conOrdine')} /></div>
 	<div class="cfg__summary">
 		<div class="sum sum--ship">
 			<span class="sum__ico">🚀</span>
-			<div class="sum__text"><span class="sum__label">Spedizione stimata</span><span class="sum__value">{shipDate}</span><span class="sum__sub">Spedizione gratuita da 50 €</span></div>
+			<div class="sum__text"><span class="sum__label">{t('configuratore.riepilogo.spedizioneStimata')}</span><span class="sum__value">{shipDate}</span><span class="sum__sub">{t('configuratore.riepilogo.spedizioneGratis', { soglia: formatAmount(locale.freeShipping, locale, 0) })}</span></div>
 		</div>
 		<div class="sum sum--credit">
-			<span class="sum__ico"><img src="/images/coin-sp.png" alt="Credito Stickerprint" /></span>
-			<div class="sum__text"><span class="sum__label">Guadagni in credito</span><span class="sum__value">{eur2(q.credit)}</span><span class="sum__sub">da usare sul prossimo ordine</span></div>
+			<span class="sum__ico"><img src="/images/coin-sp.png" alt={t('configuratore.riepilogo.creditoAlt')} /></span>
+				<div class="sum__text"><span class="sum__label">{t('configuratore.riepilogo.guadagniCredito')}</span><span class="sum__value">{eur2(q.credit)}</span><span class="sum__sub">{t('configuratore.riepilogo.prossimoOrdine')}</span></div>
 		</div>
 		<div class="sum sum--total">
 			<div class="sum__text">
-				<span class="sum__label">{promoOk ? 'Prezzo offerta · ' : 'Totale '}{vatIncluded ? 'IVA inclusa' : 'IVA esclusa'}</span>
+				<span class="sum__label">{promoOk ? t('configuratore.offerta.prezzo') : t('configuratore.riepilogo.totale')}{vatIncluded ? t('configuratore.riepilogo.ivaInclusa') : t('configuratore.riepilogo.ivaEsclusa')}</span>
 				<span class="sum__value sum__value--big">{eur0(vatIncluded ? q.gross : q.net)}</span>
 				<div class="vat-toggle">
-					<span class:active={!vatIncluded}>IVA esclusa</span>
-					<button type="button" class="switch" class:on={vatIncluded} role="switch" aria-checked={vatIncluded} aria-label="Mostra prezzi IVA inclusa" onclick={() => (vatIncluded = !vatIncluded)}><i></i></button>
-					<span class:active={vatIncluded}>IVA inclusa</span>
+					<span class:active={!vatIncluded}>{t('configuratore.riepilogo.ivaEsclusa')}</span>
+					<button type="button" class="switch" class:on={vatIncluded} role="switch" aria-checked={vatIncluded} aria-label={t('configuratore.riepilogo.mostraIva')} onclick={() => (vatIncluded = !vatIncluded)}><i></i></button>
+					<span class:active={vatIncluded}>{t('configuratore.riepilogo.ivaInclusa')}</span>
 				</div>
 			</div>
-			<span class="sum__per">{q.perPiece.toFixed(2).replace('.', ',')} €/pz</span>
+			<span class="sum__per">{t('configuratore.qty.perPezzo', { prezzo: prezzoUnit(q.perPiece) })}</span>
 		</div>
 		{#if test}
 			<div class="test-detail">
@@ -513,45 +533,45 @@
 				{q.breakdown.m2.toFixed(3)} m² · commercial range ×{(1 + q.breakdown.cr).toFixed(2)} · price range ×{(1 + q.breakdown.pr).toFixed(2)}
 			</div>
 		{:else}
-			<button class="btn btn--green btn--cart" type="button" onclick={addCart} disabled={!file} title={file ? '' : 'Carica il tuo file per ordinare'}>{file ? 'Aggiungi al carrello →' : 'Carica il file per ordinare'}</button>
+			<button class="btn btn--green btn--cart" type="button" onclick={addCart} disabled={!file} title={file ? '' : t('configuratore.riepilogo.caricaTitolo')}>{file ? t('configuratore.riepilogo.aggiungi') : t('configuratore.riepilogo.caricaPerOrdinare')}</button>
 		{/if}
 	</div>
 	{#if !test}
 		<!-- MOBILE: barra prezzo fissa in basso. Il prezzo resta sempre visibile mentre si scorre;
 		     −/+ cambia la quantità sulle fasce del listino, il prezzo porta al passo quantità -->
-		<div class="cfg__mobar" role="region" aria-label="Prezzo e quantità">
-			<div class="mobar__qty">
-				{#if !promoOnly}<button type="button" class="mobar__step" onclick={() => stepQty(-1)} aria-label="Meno pezzi">−</button>{/if}
-				<button type="button" class="mobar__n" onclick={goQty}>{qty.toLocaleString('it-IT')} pz</button>
-				{#if !promoOnly}<button type="button" class="mobar__step" onclick={() => stepQty(1)} aria-label="Più pezzi">+</button>{/if}
-			</div>
-			<button type="button" class="mobar__price" onclick={goQty}>
-				<b>{eur0(vatIncluded ? q.gross : q.net)}</b>
-				<small>{q.perPiece.toFixed(2).replace('.', ',')} €/pz · {vatIncluded ? 'IVA incl.' : 'IVA escl.'}</small>
-			</button>
-			<button type="button" class="btn btn--green mobar__cta" onclick={file ? addCart : goFile}>{file ? 'Al carrello →' : 'Carica il file'}</button>
+		<div class="cfg__mobar" role="region" aria-label={t('configuratore.riepilogo.barraPrezzo')}>
+				<div class="mobar__qty">
+					{#if !promoOnly}<button type="button" class="mobar__step" onclick={() => stepQty(-1)} aria-label={t('configuratore.qty.meno')}>−</button>{/if}
+					<button type="button" class="mobar__n" onclick={goQty}>{t('configuratore.qty.pz', { n: numero(qty) })}</button>
+					{#if !promoOnly}<button type="button" class="mobar__step" onclick={() => stepQty(1)} aria-label={t('configuratore.qty.piu')}>+</button>{/if}
+				</div>
+				<button type="button" class="mobar__price" onclick={goQty}>
+					<b>{eur0(vatIncluded ? q.gross : q.net)}</b>
+					<small>{t('configuratore.qty.perPezzo', { prezzo: prezzoUnit(q.perPiece) })} · {vatIncluded ? t('configuratore.riepilogo.ivaIncl') : t('configuratore.riepilogo.ivaEscl')}</small>
+				</button>
+				<button type="button" class="btn btn--green mobar__cta" onclick={file ? addCart : goFile}>{file ? t('configuratore.riepilogo.alCarrello') : t('configuratore.riepilogo.caricaFile')}</button>
 		</div>
 	{/if}
 </section>
 
 {#if !test}
 	<details class="special special--below">
-		<summary><span class="special__ico">💬</span> Hai una richiesta particolare? <em>Scrivicela qui: la leggiamo davvero, promesso.</em></summary>
-		<p class="special__beta">La prova automatica è nuova (è in beta) e qualche volta può sbagliare. Se l'anteprima non ti convince o vuoi delle modifiche, scrivici qui cosa cambiare: la prova corretta te la mandiamo su WhatsApp o via email entro 24-48 ore, e in stampa si va solo con il tuo ok.</p>
-		<textarea rows="3" placeholder="Es. colore Pantone da rispettare, consegna entro una data, file da sistemare, modifiche all'anteprima…" bind:value={note}></textarea>
+		<summary><span class="special__ico">💬</span> {t('configuratore.richiesta.titolo')} <em>{t('configuratore.richiesta.sotto')}</em></summary>
+		<p class="special__beta">{t('configuratore.richiesta.beta')}</p>
+		<textarea rows="3" placeholder={t('configuratore.richiesta.placeholder')} bind:value={note}></textarea>
 	</details>
 {/if}
 
 {#if added}
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div class="added-bg" onclick={(e) => { if (e.target === e.currentTarget) added = false; }} onkeydown={(e) => { if (e.key === 'Escape') added = false; }}>
-		<div class="added" role="dialog" aria-modal="true" aria-label="Prodotto aggiunto al carrello">
+		<div class="added" role="dialog" aria-modal="true" aria-label={t('configuratore.aggiunto.titolo')}>
 			<span class="added__ck">✓</span>
-			<h3>Prodotto aggiunto al carrello</h3>
-			<p>{qty.toLocaleString('it-IT')} × {productName.replace(/^(i tuoi|le tue) /, '')} · {fmt(w)} × {fmt(h)} mm · {eur0(q.gross)}</p>
+			<h3>{t('configuratore.aggiunto.titolo')}</h3>
+			<p>{t('configuratore.aggiunto.riepilogo', { qty: numero(qty), prodotto: productName.replace(/^(i tuoi|le tue) /, ''), w: fmt(w), h: fmt(h), totale: eur0(q.gross) })}</p>
 			<div class="added__cta">
-				<a class="btn btn--green btn--lg" href="/checkout">Vai al checkout →</a>
-				<a class="btn btn--ghost btn--lg" href="/prodotti">Continua gli acquisti</a>
+				<a class="btn btn--green btn--lg" href={path('/checkout')}>{t('configuratore.aggiunto.checkout')}</a>
+				<a class="btn btn--ghost btn--lg" href={path('/prodotti')}>{t('configuratore.aggiunto.continua')}</a>
 			</div>
 		</div>
 	</div>

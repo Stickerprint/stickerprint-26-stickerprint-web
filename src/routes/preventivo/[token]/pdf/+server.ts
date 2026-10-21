@@ -1,14 +1,15 @@
 import { error } from '@sveltejs/kit';
 import { adminClient } from '$lib/server/admin';
 import { getQuoteByToken, quotePdf, trackQuotePdf } from '$lib/server/richieste';
+import { t } from '$lib/traduzioni';
 import type { RequestHandler } from './$types';
 
 /** PDF del preventivo dalla pagina del cliente (il download viene registrato) */
-export const GET: RequestHandler = async ({ params }) => {
+export const GET: RequestHandler = async ({ params, locals: { locale } }) => {
 	const db = adminClient();
-	if (!db) error(503, 'Servizio non disponibile');
+	if (!db) error(503, t(locale, 'account.errori.servizio'));
 	const q = await getQuoteByToken(db, params.token);
-	if (!q) error(404, 'Preventivo non trovato');
+	if (!q) error(404, t(locale, 'account.errori.preventivoNonTrovato'));
 	const pdf = await quotePdf(q);
 	await trackQuotePdf(db, q.id);
 	return new Response(pdf as unknown as BodyInit, { headers: { 'content-type': 'application/pdf', 'content-disposition': `attachment; filename="Preventivo-${q.number}.pdf"`, 'cache-control': 'no-store' } });

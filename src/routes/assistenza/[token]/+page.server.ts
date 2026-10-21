@@ -1,31 +1,32 @@
 import { error, fail } from '@sveltejs/kit';
 import { adminClient } from '$lib/server/admin';
 import { customerReply, getTicketByToken, signedFiles } from '$lib/server/helpdesk';
+import { t } from '$lib/traduzioni';
 import type { Actions, PageServerLoad } from './$types';
 
 /** Pagina pubblica della richiesta: il cliente vede la conversazione e risponde (anche con un allegato) */
-export const load: PageServerLoad = async ({ params }) => {
+export const load: PageServerLoad = async ({ params, locals: { locale } }) => {
 	const db = adminClient();
-	if (!db) error(503, 'Servizio non disponibile');
+	if (!db) error(503, t(locale, 'account.errori.servizio'));
 	const c = await getTicketByToken(db, params.token);
-	if (!c) error(404, 'Richiesta non trovata');
+	if (!c) error(404, t(locale, 'account.errori.richiestaNonTrovata'));
 	const files = await signedFiles(db, c.messages, 3600, true);
 	return { ticket: { number: c.ticket.number, status: c.ticket.status, name: c.ticket.name, order_number: c.ticket.order_number, created_at: c.ticket.created_at }, messages: c.messages, files };
 };
 
 export const actions: Actions = {
-	default: async ({ params, request, url }) => {
+	default: async ({ params, request, url, locals: { locale } }) => {
 		const db = adminClient();
-		if (!db) return fail(503, { error: 'Servizio non disponibile.' });
+		if (!db) return fail(503, { error: t(locale, 'account.errori.servizio') });
 		const f = await request.formData();
 		let filePath: string | null = null;
 		const file = f.get('file');
 		if (file instanceof File && file.size > 0) {
-			if (file.size > 25 * 1024 * 1024) return fail(400, { error: 'Il file supera i 25 MB.' });
+			if (file.size > 25 * 1024 * 1024) return fail(400, { error: t(locale, 'account.errori.fileTroppoGrande') });
 			const ext = (file.name.split('.').pop() ?? 'bin').toLowerCase().replace(/[^a-z0-9]/g, '') || 'bin';
 			filePath = `support/${Date.now()}-${crypto.randomUUID().slice(0, 8)}.${ext}`;
 			const { error: e } = await db.storage.from('requests').upload(filePath, file, { contentType: file.type || undefined });
-			if (e) return fail(400, { error: `Allegato non caricato: ${e.message}` });
+			if (e) return fail(400, { error: t(locale, 'account.errori.allegatoNonCaricato', { errore: e.message }) });
 		}
 		const e = await customerReply(db, params.token, String(f.get('body') ?? ''), filePath, url.origin);
 		return e ? fail(400, { error: e }) : { ok: true };

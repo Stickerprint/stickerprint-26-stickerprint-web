@@ -5,6 +5,8 @@
 	import { readCart, clearCart } from '$lib/cart';
 	import { deleteCartFile } from '$lib/utils/draftStore';
 	import { track, cartItems } from '$lib/tracking';
+	import { usaLingua } from '$lib/traduzioni';
+	const { t, path } = usaLingua();
 	let { data } = $props();
 	const numbers = $derived(data.paid?.numbers ?? (page.url.searchParams.get('n') ?? '').split(',').filter(Boolean));
 	/* ritorno da Stripe: il carrello si svuota qui e l'acquisto viene tracciato una volta sola */
@@ -25,10 +27,12 @@
 	// stelle e scie sparse a caso (una volta sola)
 	const stars = Array.from({ length: 26 }, (_, i) => ({ x: (i * 37) % 100, y: (i * 53) % 100, d: (i % 7) * 0.3 }));
 	const streaks = Array.from({ length: 9 }, (_, i) => ({ x: 10 + ((i * 29) % 80), y: 8 + ((i * 41) % 84), d: 0.3 + i * 0.08 }));
-	const areaHref = $derived(data.loggedIn ? '/account/ordini' : '/signup');
+	const areaHref = $derived(path(data.loggedIn ? '/account/ordini' : '/signup'));
+	/* l'errore PayPal finisce dentro una stringa resa con {@html}: niente tag dentro */
+	const esc = (v: string) => v.replace(/[<>&]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' })[c] ?? c);
 </script>
 
-<svelte:head><title>Ordine ricevuto | Stickerprint</title></svelte:head>
+<svelte:head><title>{t('checkout.grazie.titolo')} | Stickerprint</title></svelte:head>
 
 <section class="thanks">
 	<!-- il razzo Stickerprint parte a velocita' supersonica e si posa al centro -->
@@ -41,29 +45,30 @@
 	</div>
 
 	<div class="container thanks__inner">
-		<h1 class="launch-title thanks__ottimo">Ottimo!</h1>
+		<h1 class="launch-title thanks__ottimo">{t('checkout.grazie.ottimo')}</h1>
 		<div class="launch-rest">
-			{#if data.ppError && !data.pending}<p class="thanks__sub">Il pagamento PayPal non è andato a buon fine ({data.ppError}). Torna al <a href="/checkout">checkout</a> e riprova.</p>
-			{:else if data.pending}<p class="thanks__sub">Stiamo aspettando la conferma del pagamento: appena arriva ricevi l'email con la fattura.</p>
-			{:else}<p class="thanks__sub">Il tuo ordine è andato correttamente in produzione</p>{/if}
-			<p class="thanks__line">spedizione stimata <mark>{data.shipDate}</mark></p>
-			{#if numbers.length}<p class="thanks__line">Numero d'ordine <mark>{numbers.join(', ')}</mark></p>{/if}
-			<p class="thanks__meanwhile">Nel frattempo puoi controllare lo stato della produzione dalla tua<a href={areaHref}>area personale</a></p>
+			<!-- il messaggio PayPal viene dal catalogo (link al carrello dentro la stringa); l'errore e' testo del nostro server -->
+			{#if data.ppError && !data.pending}<p class="thanks__sub">{@html t('checkout.grazie.paypalErrore', { errore: esc(data.ppError), href: path('/checkout') })}</p>
+			{:else if data.pending}<p class="thanks__sub">{t('checkout.grazie.attesa')}</p>
+			{:else}<p class="thanks__sub">{t('checkout.grazie.inProduzione')}</p>{/if}
+			<p class="thanks__line">{t('checkout.grazie.spedizione')} <mark>{data.shipDate}</mark></p>
+			{#if numbers.length}<p class="thanks__line">{t('checkout.grazie.numero')} <mark>{numbers.join(', ')}</mark></p>{/if}
+			<p class="thanks__meanwhile">{t('checkout.grazie.frattempo')}<a href={areaHref}>{t('checkout.grazie.areaPersonale')}</a></p>
 
 			{#if !data.loggedIn}
 				<div class="thanks__reg">
-					<img src="/images/coin-sp.png" alt="Credito Stickerprint" />
+					<img src="/images/coin-sp.png" alt={t('checkout.riepilogo.credito')} />
 					<div>
-						<b>Non sei ancora registrato?</b>
-						<p>Registrati ora e inizia a guadagnare credito da spendere in negozio: il 2% di ogni ordine torna nel tuo portafoglio, fino al 6% salendo di livello.</p>
-						<a class="btn btn--yellow" href="/signup">Registrati ora</a>
+						<b>{t('checkout.grazie.nonRegistrato')}</b>
+						<p>{t('checkout.grazie.registratiTesto')}</p>
+						<a class="btn btn--yellow" href={path('/signup')}>{t('checkout.grazie.registratiCta')}</a>
 					</div>
 				</div>
 			{/if}
 
 			<div class="thanks__btns">
-				<a class="btn btn--pink btn--lg" href={areaHref}>Vai ai tuoi ordini</a>
-				<a class="btn btn--purple btn--lg" href="/prodotti">Continua i tuoi acquisti</a>
+				<a class="btn btn--pink btn--lg" href={areaHref}>{t('checkout.grazie.vaiOrdini')}</a>
+				<a class="btn btn--purple btn--lg" href={path('/prodotti')}>{t('checkout.grazie.continua')}</a>
 			</div>
 		</div>
 	</div>

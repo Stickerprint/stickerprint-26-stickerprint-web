@@ -1,20 +1,22 @@
 <script lang="ts">
 	import Seo from '$lib/components/Seo.svelte';
 	import '$lib/styles/pages.css';
+	import { usaLingua } from '$lib/traduzioni';
+	const { t, path } = usaLingua();
 	let { data } = $props();
 	let current = $state(0);
 	const cats = $derived(data.categories);
 	const cat = $derived(cats[current] ?? cats[0]);
 </script>
 
-<Seo title="Supporto: le domande più frequenti | Stickerprint" description="Materiali, finiture, ordini, spedizioni, resi: le risposte alle domande più frequenti su Stickerprint." />
+<Seo title={t('pagine.support.seoTitolo')} description={t('pagine.support.seoDescrizione')} />
 
 <section class="section container center" style="padding-bottom:8px">
-	<h1 style="font-size:clamp(34px,4.5vw,56px)">Le domande <span class="hl hl--yellow">più frequenti.</span></h1>
-	<p class="lead" style="margin-top:12px">Cerca qui la risposta. Se non la trovi, scrivici: rispondiamo entro 24 ore.</p>
-	<a class="support__mail" style="margin-top:20px" href="/support/email">Manda un’email al servizio clienti</a>
+	<h1 style="font-size:clamp(34px,4.5vw,56px)">{@html t('pagine.support.titolo')}</h1>
+	<p class="lead" style="margin-top:12px">{t('pagine.support.testo')}</p>
+	<a class="support__mail" style="margin-top:20px" href={path('/support/email')}>{t('pagine.support.scrivi')}</a>
 	{#if cats.length}
-		<div class="faq-cats" role="tablist" aria-label="Argomenti">
+		<div class="faq-cats" role="tablist" aria-label={t('pagine.support.argomenti')}>
 			{#each cats as c, i (c.id)}
 				<button type="button" role="tab" aria-selected={current === i} class:is-active={current === i} onclick={() => (current = i)}>{c.name}</button>
 			{/each}
@@ -33,6 +35,6 @@
 			{/key}
 		</div>
 	{:else}
-		<p class="lead">Nessuna domanda ancora pubblicata.</p>
+		<p class="lead">{t('pagine.support.nessuna')}</p>
 	{/if}
 </section>

@@ -1,7 +1,9 @@
 import { renewedEndsAt, normalizePromo } from '$lib/server/promos';
 import { fail } from '@sveltejs/kit';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { shippingGrossFor, isRemote } from '$lib/shipping-rules';
+import { shippingForCountry, isRemote } from '$lib/shipping-rules';
+import { capValido, ivaDi, paesiPer, valutaDi, zonaDi, STATI_USA } from '$lib/mercati';
+import { PROVINCES } from '$lib/provinces';
 import { env } from '$env/dynamic/private';
 import { PUBLIC_SUPABASE_URL, PUBLIC_SITE_URL } from '$env/static/public';
 import { loadEngine } from '$lib/server/pricing';
@@ -10,7 +12,9 @@ import { kitQuote, kitN } from '$lib/pricing/kit';
 import { checkDiscount } from '$lib/server/discount';
 import { normalizeLines, type InvoiceLine } from '$lib/server/invoice';
 import { CATS } from '$lib/dashboard/orders';
-import { estimatedShipDate, formatItDate } from '$lib/utils/shipping';
+import { estimatedShipDate } from '$lib/utils/shipping';
+import { LOCALES, PRICE_BOOKS, toCurrency } from '$lib/i18n';
+import { dataIn, t } from '$lib/traduzioni';
 import { MATERIAL_LABEL } from '$lib/account';
 import { createCheckoutSession, createPaymentIntent, stripeConfigured } from '$lib/server/stripe';
 import { env as pub } from '$env/dynamic/public';
@@ -23,6 +27,7 @@ import type { Actions, PageServerLoad } from './$types';
 const EXPRESS_RATE = 0.3;
 /** Kit campioni: prezzo IVA inclusa, spedizione gratuita */
 const SAMPLES_GROSS = 10;
+/** IVA italiana sui prezzi del sito (i prezzi del motore la includono) */
 const VAT = 1.22;
 
 /** Client con chiave di servizio (ordini degli ospiti): serve SUPABASE_SERVICE_ROLE_KEY su Vercel */
@@ -31,13 +36,15 @@ function adminClient(): SupabaseClient | null {
 	return key ? createClient(PUBLIC_SUPABASE_URL, key, { auth: { persistSession: false } }) : null;
 }
 
-export const load: PageServerLoad = async ({ url, locals: { supabase, user } }) => {
+export const load: PageServerLoad = async ({ url, locals: { supabase, user, locale } }) => {
 	const ship = estimatedShipDate(5);
+	/* date di spedizione nella lingua del sito (giorno della settimana, giorno, mese) */
+	const loc = LOCALES[locale] ?? LOCALES.it;
 	/* ritorno da Stripe senza pagare: gli ordini in attesa vengono tolti, il carrello e' ancora nel browser */
 	const cancelledGroup = url.searchParams.get('annullato') === '1' ? url.searchParams.get('g') : null;
 	if (cancelledGroup && /^[0-9a-f-]{36}$/.test(cancelledGroup)) { const a = adminClient(); if (a) await cancelPendingCheckout(a, cancelledGroup); }
 	{ const a = adminClient(); if (a) expireStaleCheckouts(a).catch(() => {}); }
-	const base = { shipDate: formatItDate(ship), expressDate: formatItDate(estimatedShipDate(3)), expressRate: EXPRESS_RATE, guestAllowed: !!env.SUPABASE_SERVICE_ROLE_KEY, online: stripeConfigured(), stripeKey: stripeConfigured() ? (pub.PUBLIC_STRIPE_PUBLISHABLE_KEY ?? '') : '', paypal: paypalConfigured(), cancelled: !!cancelledGroup };
+	const base = { paesi: paesiPer(locale), paeseDefault: paesiPer(locale)[0], stati: locale === 'us' ? STATI_USA : null, shipDate: dataIn(loc, ship, true), expressDate: dataIn(loc, estimatedShipDate(3), true), expressRate: EXPRESS_RATE, guestAllowed: !!env.SUPABASE_SERVICE_ROLE_KEY, online: stripeConfigured(), stripeKey: stripeConfigured() ? (pub.PUBLIC_STRIPE_PUBLISHABLE_KEY ?? '') : '', paypal: paypalConfigured(), cancelled: !!cancelledGroup };
 	if (!user) return { ...base, profile: null, addresses: [], credit: 0, loyalty: null, orderCount: 0, lifetimeValue: 0, savedCards: [], canSaveCard: false };
 	const [{ data: profile }, { data: addresses }, { data: credit }, { data: loyalty }] = await Promise.all([
 		supabase.from('profiles').select('full_name, email, phone, company_name, vat_number, fiscal_code, sdi_code').eq('id', user.id).maybeSingle(),
@@ -65,11 +72,13 @@ function deviceFrom(ua: string): 'mobile' | 'tablet' | 'desktop' {
 const r2 = (v: number) => Math.round(v * 100) / 100;
 
 export const actions: Actions = {
-	order: async ({ request, url, locals: { supabase, user } }) => {
+	order: async ({ request, url, locals: { supabase, user, locale } }) => {
+		/* messaggi di errore nella lingua del sito (catalogo checkout.errori) */
+		const msg = (k: string, params?: Record<string, string | number>) => t(locale, `checkout.errori.${k}`, params);
 		const ua = request.headers.get('user-agent') ?? '';
 		const device = deviceFrom(ua);
 		const admin = adminClient();
-		if (!user && !admin) return fail(401, { error: 'Accedi o registrati per completare l’ordine.' });
+		if (!user && !admin) return fail(401, { error: msg('accedi') });
 		const db = user ? supabase : admin!; // ospite: chiave di servizio
 		const f = await request.formData();
 		const s = (k: string) => String(f.get(k) ?? '').trim();
@@ -77,29 +86,40 @@ export const actions: Actions = {
 		try {
 			lines = JSON.parse(String(f.get('items') ?? '[]'));
 		} catch {
-			return fail(400, { error: 'Carrello non leggibile.' });
+			return fail(400, { error: msg('carrelloNonLeggibile') });
 		}
-		if (!lines.length) return fail(400, { error: 'Il carrello è vuoto.' });
-		if (lines.some((l) => !l.filePath && l.product !== 'campioni')) return fail(400, { error: 'Manca il file di un prodotto: caricalo per continuare.' });
+		if (!lines.length) return fail(400, { error: msg('carrelloVuoto') });
+		if (lines.some((l) => !l.filePath && l.product !== 'campioni')) return fail(400, { error: msg('mancaFileCarica') });
 
 		const email = (user?.email ?? s('email')).toLowerCase();
-		if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return fail(400, { error: 'Inserisci un indirizzo email valido.' });
-		const ship = { first_name: s('first_name'), last_name: s('last_name'), street: s('street'), street2: s('street2'), city: s('city'), zip: s('zip'), province: s('province'), country: 'IT', phone: s('phone') };
-		if (!ship.first_name || !ship.last_name || !ship.street || !ship.city || !ship.zip || !ship.province || !ship.phone) return fail(400, { error: 'Compila tutti i dati di spedizione obbligatori.' });
+		if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return fail(400, { error: msg('emailNonValida') });
+		/* paese: fra quelli della lingua (Italia, UE o USA); Italia e USA vogliono provincia/stato, gli altri no */
+		const paesi = paesiPer(locale);
+		const country = paesi.includes(s('country').toUpperCase()) ? s('country').toUpperCase() : paesi[0];
+		const zona = zonaDi(country);
+		const provinciaOk = (p: string) => country === 'IT' ? PROVINCES.some(([sigla]) => sigla === p.toUpperCase()) : country === 'US' ? p.toUpperCase() in STATI_USA : true;
+		const ship = { first_name: s('first_name'), last_name: s('last_name'), street: s('street'), street2: s('street2'), city: s('city'), zip: s('zip'), province: s('province').toUpperCase().slice(0, country === 'IT' || country === 'US' ? 2 : 40), country, phone: s('phone') };
+		if (!ship.first_name || !ship.last_name || !ship.street || !ship.city || !ship.zip || !ship.phone || !provinciaOk(ship.province) || ((country === 'IT' || country === 'US') && !ship.province)) return fail(400, { error: msg('datiSpedizione') });
+		if (!capValido(ship.zip, country)) return fail(400, { error: msg('capNonValido') });
 		const fiscal = { fiscal_code: s('fiscal_code'), company: s('company'), vat: s('vat'), sdi: s('sdi') };
-		if (!fiscal.fiscal_code && !fiscal.vat) return fail(400, { error: 'Inserisci il codice fiscale (o la partita IVA).' });
+		if (country === 'IT' && !fiscal.fiscal_code && !fiscal.vat) return fail(400, { error: msg('codiceFiscale') });
 		const sameBilling = f.get('same_billing') !== 'off';
-		const bill = sameBilling ? { ...ship, ...fiscal } : { first_name: s('b_first_name'), last_name: s('b_last_name'), street: s('b_street'), street2: s('b_street2'), city: s('b_city'), zip: s('b_zip'), province: s('b_province'), country: 'IT', phone: ship.phone, ...fiscal };
-		if (!sameBilling && (!bill.street || !bill.city || !bill.zip || !bill.province)) return fail(400, { error: 'Compila l’indirizzo di fatturazione.' });
+		const bill = sameBilling ? { ...ship, ...fiscal } : { first_name: s('b_first_name'), last_name: s('b_last_name'), street: s('b_street'), street2: s('b_street2'), city: s('b_city'), zip: s('b_zip'), province: s('b_province').toUpperCase().slice(0, 40), country, phone: ship.phone, ...fiscal };
+		if (!sameBilling && (!bill.street || !bill.city || !bill.zip || ((country === 'IT' || country === 'US') && !bill.province))) return fail(400, { error: msg('fatturazione') });
+		/* IVA: Italia e UE 22% (i prezzi del motore la includono); USA niente IVA (esportazione): si lavora sul netto */
+		const vatRate = ivaDi(zona);
+		const VATF = 1 + vatRate;
+		const currency = valutaDi(zona);
+		const fx = currency === 'USD' ? PRICE_BOOKS.USD.rate * PRICE_BOOKS.USD.markup : 1;
 		let payment = s('payment') || (stripeConfigured() ? 'stripe' : 'test');
 		let inline = (payment === 'card' || payment === 'wallet') && stripeConfigured() && !!pub.PUBLIC_STRIPE_PUBLISHABLE_KEY; // carta o wallet inseriti sul sito
 		let online = payment === 'stripe' || payment === 'paypal' || inline;
 		let viaPayPal = payment === 'paypal' && paypalConfigured();
-		if (online && !stripeConfigured() && !viaPayPal) return fail(400, { error: 'Il pagamento online non è ancora attivo. Per ora usa "Test".' });
-		if (!online && payment !== 'test' && payment !== 'credito') return fail(400, { error: 'Metodo di pagamento non valido.' });
-		if (payment === 'credito' && !user) return fail(400, { error: 'Il Credito Stickerprint si usa solo da un account registrato.' });
-		if (payment === 'test' && (stripeConfigured() || paypalConfigured())) return fail(400, { error: 'L’ordine di prova non è più disponibile: scegli un metodo di pagamento.' });
-		if (online && !admin) return fail(400, { error: 'Pagamento online non disponibile in questo momento.' });
+		if (online && !stripeConfigured() && !viaPayPal) return fail(400, { error: msg('onlineNonAttivo') });
+		if (!online && payment !== 'test' && payment !== 'credito') return fail(400, { error: msg('metodoNonValido') });
+		if (payment === 'credito' && !user) return fail(400, { error: msg('creditoSoloAccount') });
+		if (payment === 'test' && (stripeConfigured() || paypalConfigured())) return fail(400, { error: msg('provaNonDisponibile') });
+		if (online && !admin) return fail(400, { error: msg('onlineNonDisponibile') });
 		const express = f.get('express') === 'on';
 		const useCredit = !!user && f.get('use_credit') === 'on';
 
@@ -137,7 +157,7 @@ export const actions: Actions = {
 				}
 			}
 			const net = r2(express ? baseNet * (1 + EXPRESS_RATE) : baseNet);
-			priced.push({ ...l, baseNet, net, gross: r2(net * VAT), expressNet: r2(net - baseNet) });
+			priced.push({ ...l, baseNet, net, gross: r2(net * VATF), expressNet: r2(net - baseNet) });
 		}
 		const productsNet = r2(priced.reduce((a, l) => a + l.baseNet, 0));
 		const expressNet = r2(priced.reduce((a, l) => a + l.expressNet, 0));
@@ -149,11 +169,12 @@ export const actions: Actions = {
 			discount = d.amount;
 			discountCode = d.code;
 		}
-		/* spedizione: gratuita da 50 € di prodotti IVA inclusa (dopo lo sconto), altrimenti 10 €; il kit campioni da solo viaggia gratis */
-		const shippingGross = shippingGrossFor(r2(Math.max(0, productsNet - discount) * VAT), priced.every((l) => l.product === 'campioni'), ship.province);
-		const shippingNet = r2(shippingGross / VAT);
+		/* spedizione per zona (src/lib/mercati.ts): Italia gratis da 50 €, UE da 69 €, USA da 99 $; il kit campioni da solo viaggia gratis */
+		const sped = shippingForCountry(r2(Math.max(0, productsNet - discount) * VAT), priced.every((l) => l.product === 'campioni'), country, ship.province);
+		const shippingNet = zona === 'us' ? sped.gross : r2(sped.gross / VAT);
+		const shippingGross = r2(shippingNet * VATF);
 		const taxable = r2(Math.max(0, productsNet + expressNet + shippingNet - discount));
-		const vatAmount = r2(taxable * (VAT - 1));
+		const vatAmount = r2(taxable * vatRate);
 		const totalGross = r2(taxable + vatAmount);
 		let creditUsed = 0;
 		if (useCredit) {
@@ -161,9 +182,11 @@ export const actions: Actions = {
 			creditUsed = r2(Math.min(Number(bal ?? 0), totalGross));
 		}
 		const toPay = r2(totalGross - creditUsed);
+		/* quanto incassare nella valuta del cliente: in dollari il totale (gia' senza IVA) al cambio del listino */
+		const toPayCurrency = currency === 'USD' ? r2(toPay * fx) : toPay;
 		/* credito che copre tutto il totale: non c'e' niente da incassare, niente cassa (Stripe rifiuta gli importi a zero);
 		   l'ordine si chiude subito come pagato col credito, qualunque metodo fosse selezionato */
-		if (payment === 'credito' && (toPay > 0 || creditUsed <= 0)) return fail(400, { error: 'Il credito non copre tutto l’ordine: scegli un metodo di pagamento.' });
+		if (payment === 'credito' && (toPay > 0 || creditUsed <= 0)) return fail(400, { error: msg('creditoNonCopre') });
 		if (online && creditUsed > 0 && toPay <= 0) payment = 'credito';
 		if (payment === 'credito') { online = false; inline = false; viaPayPal = false; }
 
@@ -175,7 +198,7 @@ export const actions: Actions = {
 		const items: CheckoutItem[] = [];
 		const autoProof: boolean[] = [];
 		const { data: num0, error: ne0 } = await db.rpc('next_order_number');
-		if (ne0 || !num0) return fail(400, { error: 'Numero d’ordine non disponibile, riprova.' });
+		if (ne0 || !num0) return fail(400, { error: msg('numeroOrdine') });
 		let num = num0 as string;
 		for (const l of priced) {
 			const share = productsNet > 0 ? l.baseNet / productsNet : 1 / priced.length;
@@ -199,10 +222,17 @@ export const actions: Actions = {
 				discount_code: discountCode, discount_amount: r2(discount * share),
 				credit_used: r2(creditUsed * share), express, checkout_group: group,
 				total_paid: r2(toPay * share),
+				locale, currency, fx_rate: fx, vat_rate: vatRate, zona, total_paid_currency: r2(toPayCurrency * share),
 				// regolazioni del motore approvate (per Stickerprint Studio); scartate se anomale
 				engine_state: l.engineState && typeof l.engineState === 'object' && JSON.stringify(l.engineState).length < 300_000 ? l.engineState : null
 			};
 			let { error } = await db.from('orders').insert(row);
+			/* colonne lingua/valuta non ancora create (migrazione 0059): l'ordine passa senza */
+			if (error && /locale|currency|fx_rate|vat_rate|zona|total_paid_currency/.test(error.message)) {
+				const { locale: _l, currency: _c, fx_rate: _f, vat_rate: _v, zona: _z, total_paid_currency: _t, ...senza } = row;
+				void [_l, _c, _f, _v, _z, _t];
+				({ error } = await db.from('orders').insert(senza));
+			}
 			/* colonna engine_state non ancora creata (migrazione 0046 in arrivo): l'ordine passa senza */
 			if (error && /engine_state/.test(error.message)) {
 				const { engine_state: _skip, ...senza } = row;
@@ -215,7 +245,7 @@ export const actions: Actions = {
 				const { data: n2 } = await db.rpc('next_order_number');
 				if (n2) { row.number = n2 as string; num = row.number; ({ error } = await db.from('orders').insert(row)); }
 			}
-			if (error) return fail(400, { error: `Ordine non registrato: ${error.message}` });
+			if (error) return fail(400, { error: msg('ordineNonRegistrato', { errore: error.message }) });
 			if (!numbers.includes(row.number)) numbers.push(row.number);
 			invLines.push({ code: CATS[l.product]?.code ?? null, description: l.product === 'campioni' ? `Kit campioni` : l.product === 'kit_adesivi' ? `Kit di adesivi (${kitN(l.forma)} adesivi da ${l.w} mm, ${MATERIAL_LABEL[l.materiale] ?? l.materiale}${l.finitura && l.finitura !== 'nessuna' ? ', lamina ' + l.finitura : ''})` : `${name} ${l.forma} ${MATERIAL_LABEL[l.materiale] ?? l.materiale}${l.finitura && l.finitura !== 'nessuna' ? ' lamina ' + l.finitura : ''} ${l.w}×${l.h} mm`, qty: l.qty, unit_net: r2(l.baseNet / l.qty), total_net: l.baseNet });
 			items.push({ product: l.product, productName: name, forma: l.forma, materiale: l.materiale, finitura: l.finitura ?? null, w: l.w, h: l.h, qty: Number(l.qty), gross: l.gross, previewUrl: l.previewUrl ?? null });
@@ -223,10 +253,10 @@ export const actions: Actions = {
 		}
 		const invoiceLines = normalizeLines(invLines, discount, creditUsed);
 		if (shippingNet > 0) invoiceLines.push({ description: isRemote(ship.province) ? 'Spedizione (isole e zone remote)' : 'Spedizione', qty: 1, unit_net: shippingNet, total_net: shippingNet });
-		const payload: CheckoutPayload = { userId: user?.id ?? null, email, firstName: ship.first_name, lastName: ship.last_name, payment: payment === 'card' ? 'stripe' : payment, ship, bill, numbers, invoiceLines, emailLines: invLines, items, productsNet, expressNet, discount, discountCode, creditUsed, vatAmount, totalGross, toPay, express, autoProof };
+		const payload: CheckoutPayload = { userId: user?.id ?? null, email, firstName: ship.first_name, lastName: ship.last_name, payment: payment === 'card' ? 'stripe' : payment, ship, bill, numbers, invoiceLines, emailLines: invLines, items, productsNet, expressNet, discount, discountCode, creditUsed, vatAmount, totalGross, toPay, express, autoProof , locale, currency, fxRate: fx, vatRate, zona, toPayCurrency };
 		const fdb = admin ?? db;
-		const se = await savePendingCheckout(fdb, group, payload, viaPayPal ? 'paypal' : online ? 'stripe' : payment === 'credito' ? 'credit' : 'test');
-		if (se) return fail(400, { error: `Ordine non registrato: ${se}` });
+		const se = await savePendingCheckout(fdb, group, payload, viaPayPal ? 'paypal' : online ? 'stripe' : payment === 'credito' ? 'credit' : 'test', { locale, currency });
+		if (se) return fail(400, { error: msg('ordineNonRegistrato', { errore: se }) });
 		// scadenza unica, anticipata: pagata online (o subito, con l'ordine di prova)
 		await fdb.from('order_payments').insert({ checkout_group: group, seq: 1, method: ({ paypal: 'PayPal', stripe: 'Carta di credito (Stripe)', card: 'Carta di credito (Stripe)', wallet: 'Apple Pay / Google Pay (Stripe)', credito: 'Credito Stickerprint' } as Record<string, string>)[payment] ?? 'Test', due: new Date().toISOString().slice(0, 10), amount: toPay, upfront: true, status: 'da_pagare' });
 
@@ -248,42 +278,42 @@ export const actions: Actions = {
 				if (user && payment === 'card' && savedCardsOn()) {
 					if (savedPm) {
 						customer = await ownsCard(user.id, savedPm);
-						if (!customer) { await cancelPendingCheckout(fdb, group); return fail(400, { error: 'La carta salvata non è più disponibile: inseriscine una nuova.' }); }
+						if (!customer) { await cancelPendingCheckout(fdb, group); return fail(400, { error: msg('cartaSalvataNonDisponibile') }); }
 						paymentMethod = savedPm;
 					} else if (saveCard) {
 						customer = await ensureCustomer({ id: user.id, email, name: `${ship.first_name} ${ship.last_name}`.trim() });
 					}
 				}
-				const pi = await createPaymentIntent({ amountCents: Math.round(toPay * 100), description: `Ordine ${numbers.join(', ')} · Stickerprint`, email, orderNumber: numbers[0], group, seq: 1, customer, saveCard: saveCard && !paymentMethod, paymentMethod });
+				const pi = await createPaymentIntent({ amountCents: Math.round(toPayCurrency * 100), currency: currency === 'USD' ? 'usd' : 'eur', description: `Ordine ${numbers.join(', ')} · Stickerprint`, email, orderNumber: numbers[0], group, seq: 1, customer, saveCard: saveCard && !paymentMethod, paymentMethod });
 				await setCheckoutSession(fdb, group, pi.id);
-				return { ok: true, clientSecret: pi.clientSecret, group, numbers, toPay };
+				return { ok: true, clientSecret: pi.clientSecret, group, numbers, toPay, toPayCurrency, currency };
 			} catch (e) {
 				await cancelPendingCheckout(fdb, group);
-				return fail(400, { error: `Pagamento non avviato: ${e instanceof Error ? e.message : 'errore Stripe'}` });
+				return fail(400, { error: msg('pagamentoNonAvviato', { errore: e instanceof Error ? e.message : msg('erroreStripe') }) });
 			}
 		}
 		if (viaPayPal) {
 			// PayPal diretto: il cliente paga sul sito PayPal e torna sulla pagina Grazie, che cattura l'incasso e chiude l'ordine
 			const origin = PUBLIC_SITE_URL || url.origin;
 			try {
-				const o = await createPayPalOrder({ amount: toPay, description: `Ordine ${numbers.join(', ')} · Stickerprint`, reference: numbers[0], customId: `checkout:${group}`, returnUrl: `${origin}/checkout/grazie?pp=1${express ? '&e=1' : ''}`, cancelUrl: `${origin}/checkout?annullato=1&g=${group}` });
+				const o = await createPayPalOrder({ amount: toPayCurrency, currency, locale: LOCALES[locale].intl.replace('-', '_'), description: `Ordine ${numbers.join(', ')} · Stickerprint`, reference: numbers[0], customId: `checkout:${group}`, returnUrl: `${origin}/checkout/grazie?pp=1${express ? '&e=1' : ''}`, cancelUrl: `${origin}/checkout?annullato=1&g=${group}` });
 				await setCheckoutSession(fdb, group, o.id);
 				return { ok: true, redirect: o.approveUrl, numbers, toPay };
 			} catch (e) {
 				await cancelPendingCheckout(fdb, group);
-				return fail(400, { error: `Pagamento PayPal non avviato: ${e instanceof Error ? e.message : 'errore'}` });
+				return fail(400, { error: msg('paypalNonAvviato', { errore: e instanceof Error ? e.message : msg('erroreGenerico') }) });
 			}
 		}
 		if (online) {
 			// cassa Stripe: carta, Apple Pay, Google Pay, Link (e PayPal se scelto); al ritorno la pagina Grazie chiude l'ordine
 			const origin = PUBLIC_SITE_URL || url.origin;
 			try {
-				const sess = await createCheckoutSession({ amountCents: Math.round(toPay * 100), description: `Ordine ${numbers.join(', ')} · Stickerprint`, email, orderNumber: numbers[0], group, seq: 1, checkout: true, methods: payment === 'paypal' ? ['paypal'] : undefined, successUrl: `${origin}/checkout/grazie?session_id={CHECKOUT_SESSION_ID}${express ? '&e=1' : ''}`, cancelUrl: `${origin}/checkout?annullato=1&g=${group}` });
+				const sess = await createCheckoutSession({ amountCents: Math.round(toPayCurrency * 100), currency: currency === 'USD' ? 'usd' : 'eur', locale: LOCALES[locale].lang, description: `Ordine ${numbers.join(', ')} · Stickerprint`, email, orderNumber: numbers[0], group, seq: 1, checkout: true, methods: payment === 'paypal' ? ['paypal'] : undefined, successUrl: `${origin}/checkout/grazie?session_id={CHECKOUT_SESSION_ID}${express ? '&e=1' : ''}`, cancelUrl: `${origin}/checkout?annullato=1&g=${group}` });
 				await setCheckoutSession(fdb, group, sess.id);
 				return { ok: true, redirect: sess.url, numbers, toPay };
 			} catch (e) {
 				await cancelPendingCheckout(fdb, group);
-				return fail(400, { error: `Pagamento non avviato: ${e instanceof Error ? e.message : 'errore Stripe'}` });
+				return fail(400, { error: msg('pagamentoNonAvviato', { errore: e instanceof Error ? e.message : msg('erroreStripe') }) });
 			}
 		}
 		const fin = await finalizeCheckout(fdb, group, { provider: payment === 'credito' ? 'credit' : 'test', ref: null });

@@ -79,6 +79,8 @@ export interface OrderRow {
 	email: string | null; shipping: Record<string, string> | null; billing: Record<string, string> | null;
 	payment_method: string | null; payment_status: string; discount_code: string | null; discount_amount: number; credit_used: number;
 	express: boolean; checkout_group: string | null; total_paid: number | null;
+	/** lingua/valuta del cliente (migrazione 0059; assenti sugli ordini vecchi) */
+	locale?: string | null; currency?: string | null; fx_rate?: number | null; vat_rate?: number | null; zona?: string | null; total_paid_currency?: number | null;
 	channel: string; starred: boolean; product_code: string | null; description: string | null; unit_net: number | null; price_type: string;
 	shipping_method: string | null; delivery_date: string | null; customer_name: string | null; country: string; mockup_url: string | null;
 	prod_stage: string | null; internal_notes: string | null; lamination: string | null; created_at: string; updated_at: string;

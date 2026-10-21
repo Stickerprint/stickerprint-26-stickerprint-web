@@ -8,14 +8,15 @@ import { CATS, itemMeta, thumbOf } from '$lib/dashboard/orders';
 import { onlinePaymentsOn, retrieveSession, stripeConfigured } from '$lib/server/stripe';
 import { setPaymentStatus } from '$lib/server/conferme';
 import { paypalConfigured, settlePayPalReturn } from '$lib/server/paypal';
+import { t } from '$lib/traduzioni';
 import type { Actions, PageServerLoad } from './$types';
 
 /** Pagina pubblica della conferma d'ordine: articoli, indirizzi, scadenze con pagamento, PDF, domande e segnalazioni. */
-export const load: PageServerLoad = async ({ params, url, request }) => {
+export const load: PageServerLoad = async ({ params, url, request, locals: { locale } }) => {
 	const db = adminClient();
-	if (!db) error(503, 'Servizio non disponibile');
+	if (!db) error(503, t(locale, 'account.errori.servizio'));
 	const c = await getByToken(db, params.token);
-	if (!c) error(404, 'Conferma non trovata');
+	if (!c) error(404, t(locale, 'account.errori.confermaNonTrovata'));
 	if (request.method === 'GET' && url.searchParams.get('anteprima') !== '1' && c.conf.sent_at) await trackOpen(db, c.conf);
 	// ritorno da Stripe: se il webhook non e' ancora arrivato, si controlla la sessione e si segna il pagamento
 	const sid = url.searchParams.get('session_id');
@@ -44,14 +45,14 @@ export const load: PageServerLoad = async ({ params, url, request }) => {
 	};
 };
 
-const withDb = <T>(fn: (db: NonNullable<ReturnType<typeof adminClient>>) => Promise<T>) => { const db = adminClient(); return db ? fn(db) : Promise.resolve(fail(503, { error: 'Servizio non disponibile.' })); };
+const withDb = <T>(locale: App.Locals['locale'], fn: (db: NonNullable<ReturnType<typeof adminClient>>) => Promise<T>) => { const db = adminClient(); return db ? fn(db) : Promise.resolve(fail(503, { error: t(locale, 'account.errori.servizio') })); };
 export const actions: Actions = {
-	domanda: async ({ params, request, url }) => withDb(async (db) => {
+	domanda: async ({ params, request, url, locals: { locale } }) => withDb(locale, async (db) => {
 		const e = await customerMessage(db, params.token, String((await request.formData()).get('testo') ?? ''), 'domanda', url.origin);
-		return e ? fail(400, { error: e }) : { ok: true, message: 'Domanda inviata: ti rispondiamo il prima possibile, anche via email.' };
+		return e ? fail(400, { error: e }) : { ok: true, message: t(locale, 'account.messaggi.domandaInviata') };
 	}),
-	errore: async ({ params, request, url }) => withDb(async (db) => {
+	errore: async ({ params, request, url, locals: { locale } }) => withDb(locale, async (db) => {
 		const e = await customerMessage(db, params.token, String((await request.formData()).get('testo') ?? ''), 'errore', url.origin);
-		return e ? fail(400, { error: e }) : { ok: true, message: 'Segnalazione ricevuta: fermiamo tutto finché non è sistemata e ti scriviamo.' };
+		return e ? fail(400, { error: e }) : { ok: true, message: t(locale, 'account.messaggi.segnalazioneRicevuta') };
 	})
 };

@@ -18,16 +18,24 @@
 	import { saveCartFile, saveCartPreview } from '$lib/utils/draftStore';
 	import { quoteWith, type EngineConfig } from '$lib/pricing/engine';
 	import { matKindOf, paintSheetBackground } from '$lib/material-texture';
+	import { usaLingua } from '$lib/traduzioni';
+	import { formatAmount } from '$lib/i18n';
+	const { t, lang, locale, prezzo, prezzoUnit, numero } = usaLingua();
+	/** etichetta di una voce del listino (materiale, lamina, sagoma, orientamento, formato) nella lingua: dal catalogo se c'e', altrimenti quella del listino */
+	const opz = (id: string, campo: 'label' | 'description' | 'tag', fallback?: string) => { const k = `fogli.opzioni.${id}.${campo}`; const v = t(k); return v === k ? (fallback ?? '') : v; };
+	/* soglia della spedizione gratuita del locale (50 € IT, 69 € UE, 99 $ USA), mai scritta a mano */
+	const soglia = formatAmount(locale.freeShipping, locale, 0);
 
 	let { cfg, shipDate }: { cfg: EngineConfig; shipDate: string } = $props();
 	let cartGross = $state(0);
 	onMount(() => { cartGross = cartGrossOf(); return onCartChange(() => { cartGross = cartGrossOf(); }); });
 
 	/* ---- formati del foglio (misure in mm, lato corto × lato lungo) e quanti design ci stanno ---- */
+	/* le etichette (Piccolo / Medio / Grande) stanno nel catalogo: fogli.opzioni.S/M/L */
 	const FORMATI = [
-		{ id: 'S', label: 'Piccolo', a: 100, b: 150, max: 6, cols: 2, rows: 3 },
-		{ id: 'M', label: 'Medio', a: 148, b: 210, max: 8, cols: 2, rows: 4 },
-		{ id: 'L', label: 'Grande', a: 213, b: 275, max: 12, cols: 3, rows: 4 }
+		{ id: 'S', a: 100, b: 150, max: 6, cols: 2, rows: 3 },
+		{ id: 'M', a: 148, b: 210, max: 8, cols: 2, rows: 4 },
+		{ id: 'L', a: 213, b: 275, max: 12, cols: 3, rows: 4 }
 	] as const;
 	type FormatoId = (typeof FORMATI)[number]['id'];
 	let orientamento = $state<'verticale' | 'orizzontale'>('verticale');
@@ -51,9 +59,8 @@
 	/* il materiale si vede sotto lo sfondo: la stampa non e' coprente (olografico → foglio olografico, blu su glitter → blu glitterato) */
 	const matKind = $derived(matKindOf(materiale));
 	const finish = $derived(FINISHES.find((f) => f.id === finitura));
-	const SHAPES = [
-		{ id: 'sagomato', label: 'Sagomato' }, { id: 'tondo', label: 'Rotondo' }, { id: 'quadrato', label: 'Quadrato' }, { id: 'ovale', label: 'Ovale' }, { id: 'rettangolare', label: 'Rettangolo' }
-	];
+	/* sagome del popup: etichette dal catalogo (fogli.opzioni.<id>.label) */
+	const SHAPES = ['sagomato', 'tondo', 'quadrato', 'ovale', 'rettangolare'];
 
 	/* ---- sfondo del foglio: colore o immagine ---- */
 	let bgColor = $state('#ffffff');
@@ -87,8 +94,6 @@
 	let vatIncluded = $state(true);
 	const QTY = $derived(cfg.quantities.length ? cfg.quantities : [15, 50, 100, 200, 300, 500, 1000]);
 	const q = $derived(quoteWith(cfg, { w: sheetW, h: sheetH, forma, materiale, finitura, qty, vatIncluded }));
-	const eur0 = (v: number) => v.toLocaleString('it-IT', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
-	const eur2 = (v: number) => v.toLocaleString('it-IT', { style: 'currency', currency: 'EUR' });
 
 	/* ---- passaggi ---- */
 	let pronto = $state(false);   // "ho gia' il foglio impaginato": un solo file, niente anteprima
@@ -206,7 +211,7 @@
 		if (pop) return;
 		const f = pending.shift(); if (!f) return;
 		const i = slots.slice(0, MAX).findIndex((s) => !s.file);
-		if (i < 0) { flash = `Il foglio è pieno: ${MAX} design.`; pending = []; return; }
+		if (i < 0) { flash = t('fogli.builder.design.pieno', { max: MAX }); pending = []; return; }
 		openPop(i, f);
 	}
 	$effect(() => { if (!pop && pending.length) setTimeout(nextPending, 250); });
@@ -287,7 +292,7 @@
 		/* anche il motore passa alla nuova misura: cosi' l'adesivo viene ridisegnato alla risoluzione giusta e la misura resta quando cambia il materiale */
 		if (s.cfgW && s.cfgH) { s.cfgW = Math.round(s.cfgW * f * 2) / 2; s.cfgH = Math.round(s.cfgH * f * 2) / 2; s.busy = true; setTimeout(() => { if (slots[i]?.busy) slots[i].busy = false; }, 15000); }
 	}
-	const mm1 = (v: number) => v.toFixed(v % 1 ? 1 : 0).replace('.', ',');
+	const mm1 = (v: number) => numero(v, 1);
 	function centerAll() { slots.forEach((s, i) => { if (s.file) { const [cx, cy] = cellCenter(i); s.x = cx; s.y = cy; } }); }
 
 	/* ---- file di stampa e anteprima: il foglio composto (sfondo + adesivi) a 12 px/mm, trasparente fuori dal taglio ---- */
@@ -342,45 +347,45 @@
 <section class="cfg kitcfg sheetcfg" id="configura">
 	<!-- ANTEPRIMA: il foglio -->
 	<div class="cfg__preview kit__preview">
-		<div class="sheet__stage" class:is-over={over} bind:this={stage} style="height:{px(sheetH + 2 * PAD)}px" role="region" aria-label="Anteprima del foglio" ondragover={(e) => { e.preventDefault(); over = true; }} ondragleave={() => (over = false)} ondrop={onDrop} onpointermove={move} onpointerup={up} onpointercancel={up}>
+		<div class="sheet__stage" class:is-over={over} bind:this={stage} style="height:{px(sheetH + 2 * PAD)}px" role="region" aria-label={t('fogli.builder.anteprima')} ondragover={(e) => { e.preventDefault(); over = true; }} ondragleave={() => (over = false)} ondrop={onDrop} onpointermove={move} onpointerup={up} onpointercancel={up}>
 			{#if pronto}
 				<div class="sheet" class:is-dark={!readyUrl} style="left:{px(PAD)}px;top:{px(PAD)}px;width:{px(sheetW)}px;height:{px(sheetH)}px;background:#fff">
-					{#if readyUrl}<img class="sheet__ready" src={readyUrl} alt="" />{:else}<p class="sheet__hint">{readyFile ? `${readyFile.name}: si stampa così com’è` : 'Carica il tuo foglio già impaginato'}</p>{/if}
+					{#if readyUrl}<img class="sheet__ready" src={readyUrl} alt="" />{:else}<p class="sheet__hint">{readyFile ? t('fogli.builder.prontoCosi', { file: readyFile.name }) : t('fogli.builder.prontoHint')}</p>{/if}
 				</div>
 			{:else}
 				<div class="sheet" class:is-cut={sagomato} style="left:{px(PAD)}px;top:{px(PAD)}px;width:{px(sheetW)}px;height:{px(sheetH)}px;background:{bgColor}">
 					<canvas class="sheet__bg" bind:this={bgCanvas}></canvas>
 					{#if bgUrl}<img class="sheet__bg" src={bgUrl} alt="" />{/if}
-					{#if !n}<p class="sheet__hint">Trascina qui i tuoi design<br /><small>fino a {MAX} per questo foglio</small></p>{/if}
+					{#if !n}<p class="sheet__hint">{t('fogli.builder.trascina')}<br /><small>{t('fogli.builder.trascinaSub', { max: MAX })}</small></p>{/if}
 				</div>
 				{#each slots.slice(0, MAX) as s, i (i)}
 					{#if s.png}
-						<img class="sheet__stk" class:is-out={overhang(s)} class:is-sel={selected === i} class:busy={s.busy} src={s.png} alt="Design {i + 1}" draggable="false" style="left:{px(PAD + s.x - s.w / 2)}px;top:{px(PAD + s.y - s.h / 2)}px;width:{px(s.w)}px;height:{px(s.h)}px;transform:rotate({s.rot}deg)" onpointerdown={(e) => down(e, i)} />
+						<img class="sheet__stk" class:is-out={overhang(s)} class:is-sel={selected === i} class:busy={s.busy} src={s.png} alt={t('fogli.builder.designAlt', { n: i + 1 })} draggable="false" style="left:{px(PAD + s.x - s.w / 2)}px;top:{px(PAD + s.y - s.h / 2)}px;width:{px(s.w)}px;height:{px(s.h)}px;transform:rotate({s.rot}deg)" onpointerdown={(e) => down(e, i)} />
 						{#if selected === i}
 							<div class="sheet__tools" bind:clientWidth={toolsW} style="left:{toolsPos(s).left}px;top:{toolsPos(s).top}px">
-								<button type="button" title="Ruota a sinistra" onclick={() => rotate(i, -15)}>↺</button>
-								<button type="button" title="Ruota a destra" onclick={() => rotate(i, 15)}>↻</button>
+								<button type="button" title={t('fogli.builder.ruotaSx')} onclick={() => rotate(i, -15)}>↺</button>
+								<button type="button" title={t('fogli.builder.ruotaDx')} onclick={() => rotate(i, 15)}>↻</button>
 								<span class="sheet__tools-sep"></span>
-								<button type="button" title="Riduci" onclick={() => resize(i, 0.9)}>−</button>
+								<button type="button" title={t('fogli.builder.riduci')} onclick={() => resize(i, 0.9)}>−</button>
 								<span class="sheet__tools-mm">{mm1(s.w)} × {mm1(s.h)} mm</span>
-								<button type="button" title="Ingrandisci" onclick={() => resize(i, 1.1)}>+</button>
+								<button type="button" title={t('fogli.builder.ingrandisci')} onclick={() => resize(i, 1.1)}>+</button>
 								<span class="sheet__tools-sep"></span>
-								<button type="button" title="Chiudi" onclick={() => (selected = null)}>✕</button>
+								<button type="button" title={t('fogli.builder.chiudi')} onclick={() => (selected = null)}>✕</button>
 							</div>
 						{/if}
 					{/if}
 				{/each}
 			{/if}
-			<div class="sheet__size">{sheetW} × {sheetH} mm{#if sagomato} · foglio sagomato{/if}</div>
+			<div class="sheet__size">{sheetW} × {sheetH} mm{#if sagomato} · {t('fogli.builder.sagomato')}{/if}</div>
 		</div>
-		{#if n && !pronto}<p class="kit__tip">Clicca un design per ruotarlo o cambiarne la misura, trascinalo per spostarlo. Se esce dal bordo, il foglio viene tagliato seguendo la sua sagoma. <button type="button" class="link-btn" onclick={centerAll}>Riallinea</button></p>{/if}
+		{#if n && !pronto}<p class="kit__tip">{t('fogli.builder.tip')} <button type="button" class="link-btn" onclick={centerAll}>{t('fogli.builder.riallinea')}</button></p>{/if}
 	</div>
 
 	<!-- PASSAGGI -->
 	<aside class="cfg__steps">
 		<div class="cfg__head">
-			<div><p class="eyebrow">Configura in 30 secondi</p><h2 class="cfg__title">Crea i tuoi Fogli di adesivi</h2></div>
-			<span class="cfg__stepcount">Passaggio {stepNo(step)} di {STEPS.length}</span>
+			<div><p class="eyebrow">{t('fogli.builder.eyebrow')}</p><h2 class="cfg__title">{t('fogli.builder.titolo')}</h2></div>
+			<span class="cfg__stepcount">{t('fogli.builder.passaggio', { n: stepNo(step), tot: STEPS.length })}</span>
 		</div>
 		<div class="progress"><span style="width:{progress}%"></span></div>
 
@@ -388,23 +393,23 @@
 		<div class="step" class:is-open={step === 'foglio'}>
 			<button class="step__head" type="button" onclick={() => (step = 'foglio')} aria-expanded={step === 'foglio'}>
 				<span class="step__n">{#if stepNo(step) > 1}✓{:else}1{/if}</span>
-				<span class="step__title">Il foglio {#if step !== 'foglio'}<em>{orientamento} · {fmt.label} {sheetW}×{sheetH} mm</em>{/if}</span>
-				<span class="step__edit">{step === 'foglio' ? '' : 'Modifica'}</span>
+				<span class="step__title">{t('fogli.builder.foglio.titolo')} {#if step !== 'foglio'}<em>{opz(orientamento, 'label', orientamento)} · {opz(fmt.id, 'label', fmt.id)} {sheetW}×{sheetH} mm</em>{/if}</span>
+				<span class="step__edit">{step === 'foglio' ? '' : t('fogli.builder.modifica')}</span>
 			</button>
 			{#if step === 'foglio'}
 				<div class="step__body">
-					<p class="step__hint">Orientamento del foglio</p>
+					<p class="step__hint">{t('fogli.builder.foglio.orientamento')}</p>
 					<div class="sheet__opts">
-						<button type="button" class="sheet__opt" class:is-active={orientamento === 'verticale'} onclick={() => (orientamento = 'verticale')}><i class="sheet__ico sheet__ico--v"></i><b>Verticale</b></button>
-						<button type="button" class="sheet__opt" class:is-active={orientamento === 'orizzontale'} onclick={() => (orientamento = 'orizzontale')}><i class="sheet__ico sheet__ico--h"></i><b>Orizzontale</b></button>
+						<button type="button" class="sheet__opt" class:is-active={orientamento === 'verticale'} onclick={() => (orientamento = 'verticale')}><i class="sheet__ico sheet__ico--v"></i><b>{opz('verticale', 'label', 'Verticale')}</b></button>
+						<button type="button" class="sheet__opt" class:is-active={orientamento === 'orizzontale'} onclick={() => (orientamento = 'orizzontale')}><i class="sheet__ico sheet__ico--h"></i><b>{opz('orizzontale', 'label', 'Orizzontale')}</b></button>
 					</div>
-					<p class="step__hint" style="margin-top:12px">Formato</p>
+					<p class="step__hint" style="margin-top:12px">{t('fogli.builder.foglio.formato')}</p>
 					<div class="sheet__opts sheet__opts--3">
 						{#each FORMATI as f (f.id)}
-							<button type="button" class="sheet__opt" class:is-active={formato === f.id} onclick={() => (formato = f.id)}><b>{f.label}</b><span>{orientamento === 'verticale' ? `${f.a}×${f.b}` : `${f.b}×${f.a}`} mm</span><small>fino a {f.max} design</small></button>
+							<button type="button" class="sheet__opt" class:is-active={formato === f.id} onclick={() => (formato = f.id)}><b>{opz(f.id, 'label', f.id)}</b><span>{orientamento === 'verticale' ? `${f.a}×${f.b}` : `${f.b}×${f.a}`} mm</span><small>{t('fogli.builder.foglio.finoA', { max: f.max })}</small></button>
 						{/each}
 					</div>
-					<button type="button" class="btn btn--blue btn--sm" style="margin-top:12px" onclick={() => (step = 'materiale')}>Avanti: il materiale →</button>
+					<button type="button" class="btn btn--blue btn--sm" style="margin-top:12px" onclick={() => (step = 'materiale')}>{t('fogli.builder.foglio.avanti')}</button>
 				</div>
 			{/if}
 		</div>
@@ -413,22 +418,22 @@
 		<div class="step" class:is-open={step === 'materiale'}>
 			<button class="step__head" type="button" onclick={() => (step = 'materiale')} aria-expanded={step === 'materiale'}>
 				<span class="step__n">{#if stepNo(step) > 2}✓{:else}2{/if}</span>
-				<span class="step__title">Su che materiale stampiamo? {#if step !== 'materiale'}<em>{material?.label}{#if finish && FINISHES.length > 1}, {finish.label}{/if}</em>{/if}</span>
-				<span class="step__edit">{step === 'materiale' ? '' : 'Modifica'}</span>
+				<span class="step__title">{t('fogli.builder.materiale.titolo')} {#if step !== 'materiale'}<em>{material ? opz(material.id, 'label', material.label) : ''}{#if finish && FINISHES.length > 1}, {opz(finish.id, 'label', finish.label)}{/if}</em>{/if}</span>
+				<span class="step__edit">{step === 'materiale' ? '' : t('fogli.builder.modifica')}</span>
 			</button>
 			{#if step === 'materiale'}
 				<div class="step__body">
-					<p class="step__hint">Un materiale per tutto il foglio: se scegli l'olografico, tutti i design escono olografici.</p>
+					<p class="step__hint">{t('fogli.builder.materiale.hint')}</p>
 					<div class="pic-grid pic-grid--3 pic-grid--sm">
 						{#each MATERIALS as m (m.id)}
 							<button type="button" class="pic" class:is-active={materiale === m.id} onclick={() => { materiale = m.id; step = pronto ? 'adesivi' : 'sfondo'; }}>
-								<img src={m.img} alt="" /><b>{m.label}</b>{#if m.tag}<span class="pic__tag">{m.tag}</span>{/if}
+								<img src={m.img} alt="" /><b>{opz(m.id, 'label', m.label)}</b>{#if m.tag}<span class="pic__tag">{opz(m.id, 'tag', m.tag)}</span>{/if}
 							</button>
 						{/each}
 					</div>
 					{#if FINISHES.length > 1}
-						<p class="step__hint" style="margin-top:12px">{cfg.finishTitle ?? 'Lamina protettiva'}</p>
-						<div class="kit__chips">{#each FINISHES as f (f.id)}<button type="button" class="chip" class:is-on={finitura === f.id} onclick={() => (finitura = f.id)}>{f.label}</button>{/each}</div>
+						<p class="step__hint" style="margin-top:12px">{lang === 'it' && cfg.finishTitle ? cfg.finishTitle : t('fogli.builder.materiale.lamina')}</p>
+						<div class="kit__chips">{#each FINISHES as f (f.id)}<button type="button" class="chip" class:is-on={finitura === f.id} onclick={() => (finitura = f.id)}>{opz(f.id, 'label', f.label)}</button>{/each}</div>
 					{/if}
 				</div>
 			{/if}
@@ -439,22 +444,22 @@
 			<div class="step" class:is-open={step === 'sfondo'}>
 				<button class="step__head" type="button" onclick={() => (step = 'sfondo')} aria-expanded={step === 'sfondo'}>
 					<span class="step__n">{#if stepNo(step) > 3}✓{:else}3{/if}</span>
-					<span class="step__title">Lo sfondo del foglio {#if step !== 'sfondo'}<em>{bgFile ? 'immagine' : bgColor === '#ffffff' ? 'bianco' : bgColor}</em>{/if}</span>
-					<span class="step__edit">{step === 'sfondo' ? '' : 'Modifica'}</span>
+					<span class="step__title">{t('fogli.builder.sfondo.titolo')} {#if step !== 'sfondo'}<em>{bgFile ? t('fogli.builder.sfondo.immagine') : bgColor === '#ffffff' ? t('fogli.builder.sfondo.bianco') : bgColor}</em>{/if}</span>
+					<span class="step__edit">{step === 'sfondo' ? '' : t('fogli.builder.modifica')}</span>
 				</button>
 				{#if step === 'sfondo'}
 					<div class="step__body">
-						<p class="step__hint">Un colore, oppure una tua immagine che riempie tutto il foglio dietro agli adesivi.{#if matKind !== 'white'} Sul {material?.label?.toLowerCase()} la stampa non è coprente: il colore si vede sopra all'effetto del materiale.{/if}</p>
+						<p class="step__hint">{t('fogli.builder.sfondo.hint')}{#if matKind !== 'white' && material} {t('fogli.builder.sfondo.hintMateriale', { materiale: opz(material.id, 'label', material.label).toLowerCase() })}{/if}</p>
 						<div class="sheet__colors">
-							{#each PRESET_COLORS as c (c)}<button type="button" class="sheet__color" class:is-on={bgColor === c && !bgFile} style="background:{c}" aria-label="Sfondo {c}" onclick={() => { bgColor = c; clearBg(); }}></button>{/each}
-							<label class="sheet__color sheet__color--free" title="Scegli un colore tuo"><input type="color" value={bgColor} oninput={(e) => { bgColor = (e.currentTarget as HTMLInputElement).value; clearBg(); }} /></label>
+							{#each PRESET_COLORS as c (c)}<button type="button" class="sheet__color" class:is-on={bgColor === c && !bgFile} style="background:{c}" aria-label={t('fogli.builder.sfondo.colore', { colore: c })} onclick={() => { bgColor = c; clearBg(); }}></button>{/each}
+							<label class="sheet__color sheet__color--free" title={t('fogli.builder.sfondo.coloreTuo')}><input type="color" value={bgColor} oninput={(e) => { bgColor = (e.currentTarget as HTMLInputElement).value; clearBg(); }} /></label>
 						</div>
 						<label class="kit__cav sheet__bgpick" class:has={!!bgFile}>
 							<input type="file" hidden accept="image/png,image/jpeg,image/webp" onchange={pickBg} />
-							{#if bgUrl}<img src={bgUrl} alt="" /><span>{bgFile?.name}</span><b>Cambia</b>{:else}<span class="kit__plus">+</span><span>Oppure carica un'immagine di sfondo</span>{/if}
+							{#if bgUrl}<img src={bgUrl} alt="" /><span>{bgFile?.name}</span><b>{t('fogli.builder.sfondo.cambia')}</b>{:else}<span class="kit__plus">+</span><span>{t('fogli.builder.sfondo.caricaImmagine')}</span>{/if}
 						</label>
-						{#if bgFile}<button type="button" class="link-btn" style="margin-top:6px" onclick={clearBg}>Togli l'immagine</button>{/if}
-						<button type="button" class="btn btn--blue btn--sm" style="margin-top:12px" onclick={() => (step = 'adesivi')}>Avanti: i design →</button>
+						{#if bgFile}<button type="button" class="link-btn" style="margin-top:6px" onclick={clearBg}>{t('fogli.builder.sfondo.togliImmagine')}</button>{/if}
+						<button type="button" class="btn btn--blue btn--sm" style="margin-top:12px" onclick={() => (step = 'adesivi')}>{t('fogli.builder.sfondo.avanti')}</button>
 					</div>
 				{/if}
 			</div>
@@ -464,37 +469,37 @@
 		<div class="step" class:is-open={step === 'adesivi'}>
 			<button class="step__head" type="button" onclick={() => (step = 'adesivi')} aria-expanded={step === 'adesivi'}>
 				<span class="step__n">{#if (pronto ? !!readyFile : n > 0) && step !== 'adesivi'}✓{:else}{stepNo('adesivi')}{/if}</span>
-				<span class="step__title">{pronto ? 'Il tuo foglio' : 'I design'} {#if step !== 'adesivi'}<em>{pronto ? (readyFile?.name ?? 'da caricare') : `${n} di ${MAX}`}</em>{/if}</span>
-				<span class="step__edit">{step === 'adesivi' ? '' : 'Modifica'}</span>
+				<span class="step__title">{pronto ? t('fogli.builder.design.tuoFoglio') : t('fogli.builder.design.titolo')} {#if step !== 'adesivi'}<em>{pronto ? (readyFile?.name ?? t('fogli.builder.design.daCaricare')) : t('fogli.builder.design.nDi', { n, max: MAX })}</em>{/if}</span>
+				<span class="step__edit">{step === 'adesivi' ? '' : t('fogli.builder.modifica')}</span>
 			</button>
 			{#if step === 'adesivi'}
 				<div class="step__body">
 					{#if pronto}
-						<p class="step__hint">Carica il foglio già impaginato (PDF, PNG o JPG a misura del foglio). Lo stampiamo così com'è, senza anteprima.</p>
+						<p class="step__hint">{t('fogli.builder.design.prontoHint')}</p>
 						<label class="kit__cav" class:has={!!readyFile}>
 							<input type="file" hidden accept={ACCEPT} onchange={pickReady} />
 							{#if readyUrl}<img src={readyUrl} alt="" />{:else if readyFile}<span class="kit__plus">📄</span>{:else}<span class="kit__plus">+</span>{/if}
-							<span>{readyFile ? readyFile.name : 'Carica il file del foglio'}</span>{#if readyFile}<b>Cambia</b>{/if}
+							<span>{readyFile ? readyFile.name : t('fogli.builder.design.caricaFile')}</span>{#if readyFile}<b>{t('fogli.builder.design.cambia')}</b>{/if}
 						</label>
-						<button type="button" class="link-btn" style="margin-top:10px" onclick={() => { pronto = false; step = 'adesivi'; }}>← Preferisco comporre il foglio con l'anteprima</button>
-						{#if readyFile}<button type="button" class="btn btn--blue btn--sm" style="margin-top:12px;display:block" onclick={() => (step = 'qty')}>Avanti: quanti fogli →</button>{/if}
+						<button type="button" class="link-btn" style="margin-top:10px" onclick={() => { pronto = false; step = 'adesivi'; }}>{t('fogli.builder.design.preferisco')}</button>
+						{#if readyFile}<button type="button" class="btn btn--blue btn--sm" style="margin-top:12px;display:block" onclick={() => (step = 'qty')}>{t('fogli.builder.design.avanti')}</button>{/if}
 					{:else}
-						<p class="step__hint">Un file per ogni design, fino a {MAX} su questo foglio. Per ciascuno scegli sagoma, bordo e misura, poi lo vedi comparire sul foglio.</p>
+						<p class="step__hint">{t('fogli.builder.design.hint', { max: MAX })}</p>
 						<div class="kit__slots sheet__slots" style="--n:{cols * 2}">
 							{#each slots.slice(0, MAX) as s, i (i)}
 								<label class="slot" class:has={!!s.file} class:busy={s.busy}>
 									<input type="file" hidden accept={ACCEPT} onchange={(e) => pickSlot(e, i)} />
 									{#if s.png}<img src={s.png} alt="" />{:else}<span class="slot__plus">+</span>{/if}
 									<em>{i + 1}</em>
-									{#if s.file}<button type="button" class="slot__x" aria-label="Togli" onclick={(e) => { e.preventDefault(); removeSticker(i); }}>✕</button>{/if}
+									{#if s.file}<button type="button" class="slot__x" aria-label={t('fogli.builder.design.togli')} onclick={(e) => { e.preventDefault(); removeSticker(i); }}>✕</button>{/if}
 								</label>
 							{/each}
 						</div>
 						{#if flash}<p class="kit__flash">{flash}</p>{/if}
-						{#if n}<button type="button" class="btn btn--blue btn--sm" style="margin-top:12px" onclick={() => (step = 'qty')}>Avanti: quanti fogli →</button>{/if}
+						{#if n}<button type="button" class="btn btn--blue btn--sm" style="margin-top:12px" onclick={() => (step = 'qty')}>{t('fogli.builder.design.avanti')}</button>{/if}
 						<div class="sheet__ready">
-							<b>Hai già il tuo foglio di adesivi impaginato e pronto per la stampa?</b>
-							<button type="button" class="btn btn--ghost btn--sm" onclick={() => { pronto = true; step = 'adesivi'; }}>Caricalo qui, senza anteprima</button>
+							<b>{t('fogli.builder.design.haiGia')}</b>
+							<button type="button" class="btn btn--ghost btn--sm" onclick={() => { pronto = true; step = 'adesivi'; }}>{t('fogli.builder.design.caricaQui')}</button>
 						</div>
 					{/if}
 				</div>
@@ -505,8 +510,8 @@
 		<div class="step step--qty" class:is-open={step === 'qty'}>
 			<button class="step__head" type="button" onclick={() => (step = 'qty')} aria-expanded={step === 'qty'}>
 				<span class="step__n">{stepNo('qty')}</span>
-				<span class="step__title">Quanti fogli <em>{qty.toLocaleString('it-IT')} fogli · {eur0(vatIncluded ? q.gross : q.net)}</em></span>
-				<span class="step__edit">{step === 'qty' ? '' : 'Modifica'}</span>
+				<span class="step__title">{t('fogli.builder.qty.titolo')} <em>{t('fogli.builder.qty.riepilogo', { n: numero(qty), prezzo: prezzo(vatIncluded ? q.gross : q.net, 0) })}</em></span>
+				<span class="step__edit">{step === 'qty' ? '' : t('fogli.builder.modifica')}</span>
 			</button>
 			{#if step === 'qty'}
 				<div class="step__body">
@@ -514,42 +519,42 @@
 						{#each QTY as k (k)}
 							{@const qq = quoteWith(cfg, { w: sheetW, h: sheetH, forma, materiale, finitura, qty: k, vatIncluded })}
 							<button type="button" class="qty" class:is-active={qty === k} onclick={() => (qty = k)}>
-								<span class="qty__top"><b>{k.toLocaleString('it-IT')}</b><b>{eur0(vatIncluded ? qq.gross : qq.net)}</b></span>
-								<span class="qty__bottom">{qq.perPiece.toFixed(2).replace('.', ',')} €/foglio</span>
+								<span class="qty__top"><b>{numero(k)}</b><b>{prezzo(vatIncluded ? qq.gross : qq.net, 0)}</b></span>
+								<span class="qty__bottom">{t('fogli.builder.qty.perFoglio', { prezzo: prezzoUnit(qq.perPiece) })}</span>
 							</button>
 						{/each}
 					</div>
-					<p class="step__hint">Ogni foglio è uguale: stesso sfondo e stessi design. Vuoi fogli diversi? Aggiungine un altro al carrello.</p>
+					<p class="step__hint">{t('fogli.builder.qty.hint')}</p>
 				</div>
 			{/if}
 		</div>
 	</aside>
 
 	<!-- RIEPILOGO -->
-	<div class="cfg__freeship"><FreeShippingBar gross={cartGross + q.gross} compact prefix={cartGross > 0 ? 'Con il carrello attuale: ' : 'Con questo ordine: '} /></div>
+	<div class="cfg__freeship"><FreeShippingBar gross={cartGross + q.gross} compact prefix={cartGross > 0 ? t('fogli.builder.riepilogo.conCarrello') : t('fogli.builder.riepilogo.conOrdine')} /></div>
 	<div class="cfg__summary">
-		<div class="sum sum--ship"><span class="sum__ico">🚀</span><div class="sum__text"><span class="sum__label">Spedizione stimata</span><span class="sum__value">{shipDate}</span><span class="sum__sub">Spedizione gratuita da 50 €</span></div></div>
-		<div class="sum sum--credit"><span class="sum__ico"><img src="/images/coin-sp.png" alt="Credito Stickerprint" /></span><div class="sum__text"><span class="sum__label">Guadagni in credito</span><span class="sum__value">{eur2(q.net * cfg.creditRate)}</span><span class="sum__sub">da usare sul prossimo ordine</span></div></div>
+		<div class="sum sum--ship"><span class="sum__ico">🚀</span><div class="sum__text"><span class="sum__label">{t('fogli.builder.riepilogo.spedizione')}</span><span class="sum__value">{shipDate}</span><span class="sum__sub">{t('fogli.builder.riepilogo.spedizioneGratis', { soglia })}</span></div></div>
+		<div class="sum sum--credit"><span class="sum__ico"><img src="/images/coin-sp.png" alt={t('fogli.builder.riepilogo.creditoAlt')} /></span><div class="sum__text"><span class="sum__label">{t('fogli.builder.riepilogo.credito')}</span><span class="sum__value">{prezzo(q.net * cfg.creditRate)}</span><span class="sum__sub">{t('fogli.builder.riepilogo.creditoSub')}</span></div></div>
 		<div class="sum sum--total">
 			<div class="sum__text">
-				<span class="sum__label">Totale {vatIncluded ? 'IVA inclusa' : 'IVA esclusa'}</span>
-				<span class="sum__value sum__value--big">{eur0(vatIncluded ? q.gross : q.net)}</span>
-				<div class="vat-toggle"><span class:active={!vatIncluded}>IVA esclusa</span><button type="button" class="switch" class:on={vatIncluded} role="switch" aria-checked={vatIncluded} aria-label="Mostra prezzi IVA inclusa" onclick={() => (vatIncluded = !vatIncluded)}><i></i></button><span class:active={vatIncluded}>IVA inclusa</span></div>
+				<span class="sum__label">{t('fogli.builder.riepilogo.totale')} {vatIncluded ? t('fogli.builder.riepilogo.ivaInclusa') : t('fogli.builder.riepilogo.ivaEsclusa')}</span>
+				<span class="sum__value sum__value--big">{prezzo(vatIncluded ? q.gross : q.net, 0)}</span>
+				<div class="vat-toggle"><span class:active={!vatIncluded}>{t('fogli.builder.riepilogo.ivaEsclusa')}</span><button type="button" class="switch" class:on={vatIncluded} role="switch" aria-checked={vatIncluded} aria-label={t('fogli.builder.riepilogo.mostraIva')} onclick={() => (vatIncluded = !vatIncluded)}><i></i></button><span class:active={vatIncluded}>{t('fogli.builder.riepilogo.ivaInclusa')}</span></div>
 			</div>
-			<span class="sum__per">{q.perPiece.toFixed(2).replace('.', ',')} €/foglio</span>
+			<span class="sum__per">{t('fogli.builder.qty.perFoglio', { prezzo: prezzoUnit(q.perPiece) })}</span>
 		</div>
-		<button class="btn btn--green btn--cart" type="button" onclick={addSheet} disabled={!readyToAdd || adding} title={readyToAdd ? '' : 'Carica almeno un design'}>{adding ? 'Un attimo…' : readyToAdd ? 'Aggiungi al carrello →' : pronto ? 'Carica il file del foglio' : 'Carica almeno un design'}</button>
+		<button class="btn btn--green btn--cart" type="button" onclick={addSheet} disabled={!readyToAdd || adding} title={readyToAdd ? '' : t('fogli.builder.riepilogo.serve')}>{adding ? t('fogli.builder.riepilogo.unAttimo') : readyToAdd ? t('fogli.builder.riepilogo.aggiungi') : pronto ? t('fogli.builder.riepilogo.caricaFile') : t('fogli.builder.riepilogo.caricaDesign')}</button>
 	</div>
 </section>
 
 <!-- POPUP: il motore per il design appena caricato (sagoma, bordo, sfondo, zoom; misura qui sotto) -->
 {#if engines.length}
-	<div class="modal-backdrop" role="dialog" aria-modal="true" aria-label="Design" hidden={!pop}>
+	<div class="modal-backdrop" role="dialog" aria-modal="true" aria-label={t('fogli.builder.popup.design')} hidden={!pop}>
 		<div class="modal kit__modal">
-			<button type="button" class="modal__close" aria-label="Chiudi" onclick={cancelPop}>✕</button>
+			<button type="button" class="modal__close" aria-label={t('fogli.builder.popup.chiudi')} onclick={cancelPop}>✕</button>
 			{#if pop}
-				<h3>Design {pop.index + 1} <small>{pop.file.name}</small></h3>
-				<div class="kit__chips">{#each SHAPES as sh (sh.id)}<button type="button" class="chip" class:is-on={pop.forma === sh.id} onclick={() => setPopShape(sh.id)}>{sh.label}</button>{/each}</div>
+				<h3>{t('fogli.builder.popup.titolo', { n: pop.index + 1 })} <small>{pop.file.name}</small></h3>
+				<div class="kit__chips">{#each SHAPES as sh (sh)}<button type="button" class="chip" class:is-on={pop.forma === sh} onclick={() => setPopShape(sh)}>{opz(sh, 'label', sh)}</button>{/each}</div>
 			{/if}
 			{#each engines as e (e.key)}
 				<div class="kit__modal-engine" hidden={pop?.key !== e.key}>
@@ -558,22 +563,22 @@
 			{/each}
 			{#if pop}
 				<div class="kit__row kit__row--size">
-					<span class="step__hint">Misura (lato lungo) · su questo foglio fino a {freeMax} mm</span>
+					<span class="step__hint">{t('fogli.builder.popup.misura', { max: freeMax })}</span>
 					<label class="kit__free">
-						<span>Misura</span>
+						<span>{t('fogli.builder.popup.misuraLabel')}</span>
 						{#if pop.forma === 'ovale' || pop.forma === 'rettangolare'}
-							<input type="number" min={FREE_MIN} max={freeMax} step="0.5" value={pop.w} onchange={(e) => setPopWH(+e.currentTarget.value, pop?.h ?? 0)} aria-label="Larghezza in mm" /> ×
-							<input type="number" min={FREE_MIN} max={freeMax} step="0.5" value={pop.h} onchange={(e) => setPopWH(pop?.w ?? 0, +e.currentTarget.value)} aria-label="Altezza in mm" /> mm
+							<input type="number" min={FREE_MIN} max={freeMax} step="0.5" value={pop.w} onchange={(e) => setPopWH(+e.currentTarget.value, pop?.h ?? 0)} aria-label={t('fogli.builder.popup.larghezza')} /> ×
+							<input type="number" min={FREE_MIN} max={freeMax} step="0.5" value={pop.h} onchange={(e) => setPopWH(pop?.w ?? 0, +e.currentTarget.value)} aria-label={t('fogli.builder.popup.altezza')} /> mm
 						{:else}
-							<input type="number" min={FREE_MIN} max={freeMax} step="0.5" value={pop.misura} onchange={(e) => setPopSize(+e.currentTarget.value)} aria-label="Lato lungo in mm" /> mm
-							<small>proporzioni bloccate</small>
+							<input type="number" min={FREE_MIN} max={freeMax} step="0.5" value={pop.misura} onchange={(e) => setPopSize(+e.currentTarget.value)} aria-label={t('fogli.builder.popup.latoLungo')} /> mm
+							<small>{t('fogli.builder.popup.proporzioni')}</small>
 						{/if}
 					</label>
-					{#if pop.last}<span class="step__hint">esce {pop.last.w.toFixed(1).replace('.', ',')} × {pop.last.h.toFixed(1).replace('.', ',')} mm</span>{/if}
+					{#if pop.last}<span class="step__hint">{t('fogli.builder.popup.esce', { w: numero(pop.last.w, 1), h: numero(pop.last.h, 1) })}</span>{/if}
 				</div>
 				<div class="kit__modal-actions">
-					<button type="button" class="btn btn--sm" onclick={cancelPop}>Annulla</button>
-					<button type="button" class="btn btn--green" disabled={pop.busy || !pop.last} onclick={confirmPop}>{pop.busy ? 'Preparo l’anteprima…' : 'Conferma: mettilo sul foglio'}</button>
+					<button type="button" class="btn btn--sm" onclick={cancelPop}>{t('fogli.builder.popup.annulla')}</button>
+					<button type="button" class="btn btn--green" disabled={pop.busy || !pop.last} onclick={confirmPop}>{pop.busy ? t('fogli.builder.popup.preparo') : t('fogli.builder.popup.conferma')}</button>
 				</div>
 			{/if}
 		</div>

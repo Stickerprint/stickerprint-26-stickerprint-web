@@ -39,6 +39,8 @@ export const LOCALE_CODES = Object.keys(LOCALES) as LocaleCode[];
 export const LOCALE_COOKIE = 'sp-locale';
 export const PREVIEW_COOKIE = 'sp-locale-preview';
 export const isLocale = (v: unknown): v is LocaleCode => typeof v === 'string' && v in LOCALES;
+/** lingua da un locale salvato (ordine, profilo, cookie): sconosciuto o assente → italiano */
+export const langOf = (code: unknown): Lang => LOCALES[isLocale(code) ? code : 'it'].lang;
 
 /** lingue online (PUBLIC_LOCALES su Vercel, es. "it,de,us"); l'italiano c'e' sempre */
 export function activeLocales(): LocaleCode[] {
@@ -82,18 +84,24 @@ export function detectLocale(country: string | null, acceptLanguage: string | nu
 }
 
 /* ------------------------------------------------------------------ valute */
-/** listino per valuta: il motore prezzi calcola in euro; in dollari si applica cambio × maggiorazione (spedizione USA dentro il prezzo)
- *  e si arrotonda a 0,05. Da spostare in dashboard (tabella) quando si parte davvero con gli USA. */
+/** listino per valuta: il motore prezzi calcola in euro IVA inclusa; in dollari si toglie l'IVA (export) e si applica
+ *  cambio × maggiorazione (spedizione USA dentro il prezzo), arrotondando a 0,05. Da spostare in dashboard (tabella)
+ *  quando si parte davvero con gli USA: cambio e maggiorazione li decide Mattia. */
 export const PRICE_BOOKS: Record<Currency, { rate: number; markup: number; step: number }> = {
 	EUR: { rate: 1, markup: 1, step: 0.01 },
-	USD: { rate: 1.08, markup: 1, step: 0.05 }
+	USD: { rate: 1.08, markup: 1.1, step: 0.05 }
 };
 /** @deprecated usa PRICE_BOOKS.USD.rate */
 export const USD_RATE = PRICE_BOOKS.USD.rate;
-/** importo in euro → importo nella valuta del locale (numero), con l'arrotondamento del listino */
-export function toCurrency(amountEur: number, currency: Currency): number {
+/** IVA italiana: i prezzi del sito sono IVA inclusa; fuori dall'UE (dollari) l'IVA non c'e' e si parte dal netto */
+export const IVA_IT = 0.22;
+/** importo in euro → importo nella valuta del locale (numero), con l'arrotondamento del listino.
+ *  `lordo` (default) = l'importo in euro e' IVA inclusa: in dollari si toglie l'IVA prima del cambio (export senza IVA). */
+export function toCurrency(amountEur: number, currency: Currency, lordo = true): number {
+	if (currency === 'EUR') return Math.round(amountEur * 100) / 100;
 	const b = PRICE_BOOKS[currency];
-	const v = amountEur * b.rate * b.markup;
+	const base = lordo ? amountEur / (1 + IVA_IT) : amountEur;
+	const v = base * b.rate * b.markup;
 	return Math.round(Math.round(v / b.step) * b.step * 100) / 100;
 }
 export function formatMoney(amountEur: number, locale: Locale, decimals = 2): string {

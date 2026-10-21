@@ -2,6 +2,7 @@
  * Helpdesk: ticket (supporto, resi, lamentele) con conversazione via email e pagina pubblica per il cliente.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
+import type { Lang } from '$lib/i18n';
 import { adminClient } from './admin';
 import { sendEmail } from './email';
 import { OWNER_EMAIL, ownerNotifyEmail, ticketReceivedEmail, ticketReplyEmail } from './email-templates';
@@ -13,7 +14,7 @@ import { OPEN_TICKET, TICKET_KIND, TICKET_STATUS, type Ticket, type TicketKind, 
 type DB = SupabaseClient;
 
 /** Nuovo ticket dai moduli pubblici (supporto, reso): salva, avvisa il cliente con il link e lo staff */
-export async function createTicket(db: DB, kind: TicketKind, f: { name?: string; email: string; phone?: string; order_number?: string; message: string; file_path?: string | null }, origin: string): Promise<{ ok: true; number: string } | { ok: false; error: string }> {
+export async function createTicket(db: DB, kind: TicketKind, f: { name?: string; email: string; phone?: string; order_number?: string; message: string; file_path?: string | null }, origin: string, lang: Lang = 'it'): Promise<{ ok: true; number: string } | { ok: false; error: string }> {
 	const admin = adminClient() ?? db;
 	const subject = f.message.trim().split('\n')[0].slice(0, 80);
 	const row = { kind, name: f.name?.trim() || null, email: f.email.trim().toLowerCase(), phone: f.phone?.trim() || null, order_number: f.order_number?.trim() || null, subject };
@@ -28,7 +29,7 @@ export async function createTicket(db: DB, kind: TicketKind, f: { name?: string;
 	await admin.from('ticket_messages').insert({ ticket_id: ticket.id, direction: 'in', author: ticket.name ?? ticket.email, body: f.message.trim(), file_path: f.file_path ?? null });
 	const href = `${origin}/assistenza/${ticket.token}`;
 	await Promise.all([
-		sendEmail({ to: ticket.email, ...ticketReceivedEmail({ name: ticket.name, number: ticket.number, href }) }),
+		sendEmail({ to: ticket.email, ...ticketReceivedEmail({ name: ticket.name, number: ticket.number, href }, lang) }),
 		sendEmail({ to: OWNER_EMAIL, ...ownerNotifyEmail({ title: `Nuova richiesta ${ticket.number} (${TICKET_KIND[kind].label})`, lines: [`${ticket.name ?? ''} · ${ticket.email}`, ticket.order_number ? `Ordine ${ticket.order_number}` : 'Nessun ordine indicato', f.message.slice(0, 300)], href: `${origin}/dashboard/supporto/ticket/${ticket.id}` }) }),
 		pushStaff({ title: `Richiesta ${ticket.number}: ${TICKET_KIND[kind].label}`, body: `${ticket.name ?? ticket.email}: ${subject}`, url: `/dashboard/supporto/ticket/${ticket.id}`, tag: `ticket-${ticket.id}` })
 	]);

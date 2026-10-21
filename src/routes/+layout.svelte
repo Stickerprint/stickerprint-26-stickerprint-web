@@ -11,6 +11,7 @@
 	import { GTM_BODY, GTM_HEAD, track, trackingOn } from '$lib/tracking';
 	import Header from '$lib/components/Header.svelte';
 	import Footer from '$lib/components/Footer.svelte';
+	import AvvisoLingua from '$lib/components/AvvisoLingua.svelte';
 	import { LOCALES, activeLocales, localizePath, stripLocale } from '$lib/i18n';
 	import { impostaLingua } from '$lib/traduzioni';
 
@@ -55,7 +56,7 @@
 
 <div class="app">
 	{#if tracking && !isDashboard}{@html GTM_BODY}{/if}
-	{#if !isDashboard}<Header {user} avatar={data.avatar} />{/if}
+	{#if !isDashboard}{#if data.localeSuggerito && data.localeSuggerito !== data.locale && (data.anteprimaLingue || activeLocales().includes(data.localeSuggerito))}<AvvisoLingua attuale={data.locale} suggerita={data.localeSuggerito} />{/if}<Header {user} avatar={data.avatar} />{/if}
 	<main>
 		{@render children()}
 	</main>

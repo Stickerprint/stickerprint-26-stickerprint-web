@@ -44,7 +44,8 @@ describe('percorsi', () => {
 describe('valute', () => {
 	prova('il dollaro usa cambio e arrotondamento del listino', () => {
 		expect(toCurrency(10, 'EUR')).toBe(10);
-		expect(toCurrency(10, 'USD')).toBe(10.8);
-		expect(toCurrency(10.37, 'USD')).toBe(11.2);
+		// 12,20 € IVA inclusa → 10 € netti → × 1,08 × 1,10 = 11,88 → 11,90 $
+		expect(toCurrency(12.2, 'USD')).toBe(11.9);
+		expect(toCurrency(10, 'USD', false)).toBe(11.9);
 	});
 });

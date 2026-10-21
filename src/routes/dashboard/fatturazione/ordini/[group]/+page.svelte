@@ -172,6 +172,12 @@
 				</details>
 			{/if}
 			<div class="sumrow"><span>Stato pagamento</span><b>{first.payment_status === 'paid' ? 'Pagato' : first.payment_status === 'test' ? 'Test (nessun addebito)' : 'In attesa'}</b></div>
+			{#if first.currency && first.currency !== 'EUR'}
+				<!-- ordine dall'estero (sito in lingua): quanto ha pagato il cliente nella sua valuta; i totali in euro restano la base contabile -->
+				<div class="sumrow"><span>Valuta cliente</span><b>{first.currency} · pagato {new Intl.NumberFormat('en-US', { style: 'currency', currency: first.currency }).format(data.group.items.reduce((s, i) => s + Number(i.total_paid_currency ?? 0), 0))} (sito {first.locale ?? '?'}, cambio {first.fx_rate ?? '?'}, IVA {Math.round(Number(first.vat_rate ?? 0.22) * 100)}%)</b></div>
+			{:else if first.locale && first.locale !== 'it'}
+				<div class="sumrow"><span>Sito</span><b>{first.locale} · IVA {Math.round(Number(first.vat_rate ?? 0.22) * 100)}%</b></div>
+			{/if}
 			{#if first.internal_notes}<h4 class="h4">Note interne</h4><p class="small">{first.internal_notes}</p>{/if}
 			{#if first.notes}<h4 class="h4">Note del cliente</h4><p class="small">{first.notes}</p>{/if}
 		</div>

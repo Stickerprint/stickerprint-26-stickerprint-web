@@ -20,13 +20,13 @@ async function call(path: string, body?: Record<string, string | number | undefi
 }
 
 /** Sessione Checkout per una scadenza: importo in centesimi, ritorno alla pagina della conferma */
-export async function createCheckoutSession(o: { amountCents: number; description: string; email: string | null; orderNumber: string; group: string; seq: number; successUrl: string; cancelUrl: string; invoice?: string | null; checkout?: boolean; methods?: string[] }): Promise<{ id: string; url: string }> {
+export async function createCheckoutSession(o: { amountCents: number; currency?: 'eur' | 'usd'; locale?: string; description: string; email: string | null; orderNumber: string; group: string; seq: number; successUrl: string; cancelUrl: string; invoice?: string | null; checkout?: boolean; methods?: string[] }): Promise<{ id: string; url: string }> {
 	const only = Object.fromEntries((o.methods ?? []).map((m, i) => [`payment_method_types[${i}]`, m]));
 	const s = await call('/checkout/sessions', {
 		...only,
 		mode: 'payment',
 		'line_items[0][quantity]': 1,
-		'line_items[0][price_data][currency]': 'eur',
+		'line_items[0][price_data][currency]': o.currency ?? 'eur',
 		'line_items[0][price_data][unit_amount]': o.amountCents,
 		'line_items[0][price_data][product_data][name]': o.description,
 		customer_email: o.email ?? undefined,
@@ -34,7 +34,7 @@ export async function createCheckoutSession(o: { amountCents: number; descriptio
 		'metadata[group]': o.group, 'metadata[seq]': o.seq, 'metadata[order]': o.orderNumber, 'metadata[invoice]': o.invoice ?? undefined, 'metadata[checkout]': o.checkout ? '1' : undefined,
 		'payment_intent_data[description]': o.checkout ? `Ordine ${o.orderNumber} (sito)` : `Ordine ${o.orderNumber} · scadenza ${o.seq}`,
 		'payment_intent_data[metadata][order]': o.orderNumber,
-		success_url: o.successUrl, cancel_url: o.cancelUrl, locale: 'it'
+		success_url: o.successUrl, cancel_url: o.cancelUrl, locale: o.locale ?? 'it'
 	});
 	return { id: String(s.id), url: String(s.url) };
 }
@@ -65,14 +65,14 @@ export async function expireCheckoutSession(id: string): Promise<void> {
 }
 
 /** PaymentIntent per la carta inserita sul sito (Card Element) o per i wallet (Express Checkout): niente cassa esterna */
-export async function createPaymentIntent(o: { amountCents: number; description: string; email: string | null; orderNumber: string; group: string; seq: number; customer?: string | null; saveCard?: boolean; paymentMethod?: string | null }): Promise<{ id: string; clientSecret: string }> {
+export async function createPaymentIntent(o: { amountCents: number; currency?: 'eur' | 'usd'; description: string; email: string | null; orderNumber: string; group: string; seq: number; customer?: string | null; saveCard?: boolean; paymentMethod?: string | null }): Promise<{ id: string; clientSecret: string }> {
 	const s = await call('/payment_intents', {
 		/* carta salvata: il pagamento e' legato al cliente Stripe; con saveCard la carta nuova resta agganciata al cliente
 		   dopo il pagamento riuscito (uso futuro con il cliente presente: 3D Secure quando la banca lo chiede) */
 		customer: o.customer ?? undefined,
 		setup_future_usage: o.customer && o.saveCard && !o.paymentMethod ? 'on_session' : undefined,
 		payment_method: o.customer && o.paymentMethod ? o.paymentMethod : undefined,
-		amount: o.amountCents, currency: 'eur', description: o.description, receipt_email: undefined,
+		amount: o.amountCents, currency: o.currency ?? 'eur', description: o.description, receipt_email: undefined,
 		'automatic_payment_methods[enabled]': 'true', 'automatic_payment_methods[allow_redirects]': 'never',
 		'metadata[group]': o.group, 'metadata[seq]': o.seq, 'metadata[order]': o.orderNumber, 'metadata[checkout]': '1', 'metadata[email]': o.email ?? undefined
 	});

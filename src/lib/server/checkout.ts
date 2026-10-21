@@ -10,9 +10,12 @@ import { buildInvoicePdf, type InvoiceLine } from './invoice';
 import { sendEmail } from './email';
 import { pushStaff } from './push';
 import { orderConfirmationEmail, ownerNotifyEmail, OWNER_EMAIL } from './email-templates';
-import { estimatedShipDate, formatItDate } from '$lib/utils/shipping';
+import { estimatedShipDate } from '$lib/utils/shipping';
 import { ensurePlan } from './produzione';
 import type { OrderRow } from '$lib/dashboard/orders';
+import { LOCALES, formatAmount, localizePath, type Currency, type LocaleCode } from '$lib/i18n';
+import { dataIn } from '$lib/traduzioni';
+import type { Zona } from '$lib/mercati';
 import { cancelPaymentIntent, expireCheckoutSession } from './stripe';
 import { eur } from './docs';
 
@@ -24,6 +27,8 @@ export interface CheckoutPayload {
 	numbers: string[]; invoiceLines: InvoiceLine[]; emailLines: InvoiceLine[]; items: CheckoutItem[];
 	productsNet: number; expressNet: number; discount: number; discountCode: string | null; creditUsed: number;
 	vatAmount: number; totalGross: number; toPay: number; express: boolean; autoProof: boolean[];
+	/** lingua e valuta del cliente (dal 21/10/2026): toPayCurrency e' quanto ha pagato nella sua valuta, vatRate l'IVA applicata (0 fuori UE) */
+	locale?: LocaleCode; currency?: Currency; fxRate?: number; vatRate?: number; zona?: Zona; toPayCurrency?: number;
 }
 /** Etichetta del metodo nei documenti */
 export const PAYMENT_NAME: Record<string, string> = { paypal: 'PayPal', stripe: 'Carta di credito (Stripe)', wallet: 'Apple Pay / Google Pay (Stripe)', credito: 'Credito Stickerprint', test: 'Test' };
@@ -35,8 +40,10 @@ function toBase64(bytes: Uint8Array): string {
 }
 const r2 = (v: number) => Math.round(v * 100) / 100;
 
-export async function savePendingCheckout(db: DB, group: string, payload: CheckoutPayload, provider: string): Promise<string | null> {
-	const { error } = await db.from('checkout_sessions').insert({ checkout_group: group, provider, payload, status: 'pending' });
+export async function savePendingCheckout(db: DB, group: string, payload: CheckoutPayload, provider: string, extra: { locale?: string; currency?: string } = {}): Promise<string | null> {
+	let { error } = await db.from('checkout_sessions').insert({ checkout_group: group, provider, payload, status: 'pending', ...extra });
+	/* colonne locale/currency non ancora create (migrazione 0059): si salva senza */
+	if (error && /locale|currency/.test(error.message)) ({ error } = await db.from('checkout_sessions').insert({ checkout_group: group, provider, payload, status: 'pending' }));
 	return error?.message ?? null;
 }
 export async function setCheckoutSession(db: DB, group: string, sessionId: string) { await db.from('checkout_sessions').update({ session_id: sessionId }).eq('checkout_group', group); }
@@ -106,18 +113,23 @@ export async function finalizeCheckout(db: DB, group: string, o: { provider: str
 		console.error('[invoice] pdf', e);
 	}
 	const firstOrder = (orders ?? [])[0] as { id: string } | undefined;
-	await db.from('invoices').insert({ user_id: p.userId, order_id: firstOrder?.id ?? null, number: invoice.number, issued_at: invoice.issued_at, amount_gross: p.toPay, pdf_path: pdfPath, email: p.email, billing: p.bill, lines: p.invoiceLines, payment_terms: payTerms, order_numbers: p.numbers, subtotal_net: p.productsNet, discount_net: p.discount, express_net: p.expressNet, credit_used: p.creditUsed, vat_amount: p.vatAmount, payment_method: p.payment, paid_at: paidAt, checkout_group: group, sent_at: null });
+	/* lingua/valuta della fattura (migrazione 0059): fuori UE niente IVA, natura N3.1 (esportazione). Senza le colonne si registra come prima. */
+	const fiscale = { vat_rate: p.vatRate ?? 0.22, natura: p.zona === 'us' ? 'N3.1' : null, currency: p.currency ?? 'EUR' };
+	const invRow = { user_id: p.userId, order_id: firstOrder?.id ?? null, number: invoice.number, issued_at: invoice.issued_at, amount_gross: p.toPay, pdf_path: pdfPath, email: p.email, billing: p.bill, lines: p.invoiceLines, payment_terms: payTerms, order_numbers: p.numbers, subtotal_net: p.productsNet, discount_net: p.discount, express_net: p.expressNet, credit_used: p.creditUsed, vat_amount: p.vatAmount, payment_method: p.payment, paid_at: paidAt, checkout_group: group, sent_at: null };
+	{ let { error } = await db.from('invoices').insert({ ...invRow, ...fiscale }); if (error && /vat_rate|natura|currency/.test(error.message)) ({ error } = await db.from('invoices').insert(invRow)); if (error) console.error('[invoice] insert', error.message); }
 
 	// pianificazione della produzione: lavorazioni con scadenze a ritroso dalla data promessa
 	try { const { data: prows } = await db.from('orders').select('*').eq('checkout_group', group); await ensurePlan(db, (prows ?? []) as OrderRow[]); } catch (e) { console.error('pianificazione produzione', e); }
 
 	const origin = PUBLIC_SITE_URL || 'https://stickerprint.it';
-	const mail = orderConfirmationEmail({ name: p.firstName, numbers: p.numbers, invoiceNumber: invoice.number, total: eur(p.toPay), lines: p.emailLines.map((l, i) => ({ name: l.description, qty: l.qty, preview: p.items[i]?.previewUrl ?? null })), shipDate: formatItDate(estimatedShipDate(p.express ? 3 : 5)), accountUrl: p.userId ? `${origin}/account/ordini` : null });
+	/* totale come lo ha visto il cliente: in dollari per gli USA, altrimenti in euro */
+	const totaleCliente = p.currency === 'USD' && p.toPayCurrency != null ? formatAmount(p.toPayCurrency, LOCALES[p.locale ?? 'us']) : eur(p.toPay);
+	const mail = orderConfirmationEmail({ name: p.firstName, numbers: p.numbers, invoiceNumber: invoice.number, total: totaleCliente, lines: p.emailLines.map((l, i) => ({ name: l.description, qty: l.qty, preview: p.items[i]?.previewUrl ?? null })), shipDate: dataIn(LOCALES[p.locale ?? 'it'], estimatedShipDate(p.express ? 3 : 5), true), accountUrl: p.userId ? `${origin}${localizePath('/account/ordini', p.locale ?? 'it')}` : null }, LOCALES[p.locale ?? 'it'].lang);
 	sendEmail({ to: p.email, ...mail, attachments: pdfB64 ? [{ name: `${invoice.number}.pdf`, content: pdfB64, contentType: 'application/pdf' }] : undefined })
 		.then((r) => { if (r.ok && !r.skipped) db.from('invoices').update({ sent_at: new Date().toISOString() }).eq('number', invoice.number).then(() => {}); })
 		.catch((e) => console.error('[checkout] email', e));
 	/* avviso interno via email (oltre alla notifica push): chi ha ordinato, cosa, quanto, e il link alla scheda in dashboard */
-	sendEmail({ to: OWNER_EMAIL, ...ownerNotifyEmail({ title: `Nuovo ordine ${p.numbers[0]} · ${eur(p.toPay)}`, lines: [`Cliente: ${p.firstName} ${p.lastName} (${p.email})`, ...p.emailLines.map((l) => `${l.qty} × ${l.description}`), `Pagamento: ${p.payment}${p.express ? ' · express' : ''}`, `Totale incassato: ${eur(p.toPay)} · fattura ${invoice.number}`], href: `${origin}/dashboard/fatturazione/ordini/${encodeURIComponent(group)}` }) }).catch((e) => console.error('[checkout] avviso interno', e));
+	sendEmail({ to: OWNER_EMAIL, ...ownerNotifyEmail({ title: `Nuovo ordine ${p.numbers[0]} · ${eur(p.toPay)}`, lines: [`Cliente: ${p.firstName} ${p.lastName} (${p.email})`, ...p.emailLines.map((l) => `${l.qty} × ${l.description}`), `Pagamento: ${p.payment}${p.express ? ' · express' : ''}`, `Totale incassato: ${eur(p.toPay)}${p.currency === 'USD' && p.toPayCurrency != null ? ` (${totaleCliente} USD, ${p.locale})` : ''} · fattura ${invoice.number}`], href: `${origin}/dashboard/fatturazione/ordini/${encodeURIComponent(group)}` }) }).catch((e) => console.error('[checkout] avviso interno', e));
 	pushStaff({ title: `Nuovo ordine ${p.numbers[0]}`, body: `${p.firstName} ${p.lastName} · ${p.emailLines.length} ${p.emailLines.length === 1 ? 'articolo' : 'articoli'} · ${eur(p.toPay)}${o.provider === 'stripe' ? ' · pagato con carta' : o.provider === 'paypal' ? ' · pagato con PayPal' : ''}`, url: `/dashboard/fatturazione/ordini/${group}`, tag: p.numbers[0] }).catch((e) => console.error('[push]', e));
 	return { done: true, payload: p, invoice: invoice.number };
 }

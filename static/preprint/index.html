@@ -642,6 +642,1492 @@ html,body{height:100%;overflow:hidden}
    In più: l'abbondanza non si vede più in anteprima, e la resina satura
    invece di opacizzare — toglie il velo diffuso della stampa opaca.
    ========================================================================== */
+/* ==========================================================================
+   LINGUA — il sito apre il motore con ?lang=en|es|fr|de|nl. Senza parametro
+   resta tutto in italiano, byte per byte: tr() restituisce la stringa com'e'.
+   Il dizionario TR e' indicizzato dalla frase italiana esatta (spazi
+   normalizzati); le frasi con parti variabili usano segnaposto {n}, {c}...
+   All'avvio si traducono i nodi di testo, placeholder, title, aria-label e
+   value dei bottoni; un MutationObserver traduce quello che il motore scrive
+   dopo (textContent/innerHTML), quando il testo intero e' nel dizionario.
+   ========================================================================== */
+const LANG=(()=>{const l=String((new URLSearchParams(location.search)).get('lang')||'it').toLowerCase();return /^(en|es|fr|de|nl)$/.test(l)?l:'it';})();
+const TR={
+  en:{
+    "Configura il tuo adesivo | Stickerprint":"Set up your sticker | Stickerprint",
+    "Linea di taglio":"Cut line",
+    "Visualizza effetto resina":"Show doming effect",
+    "Larghezza del bordo":"Border width",
+    "Sfondo":"Background",
+    "Rimuovi sfondo":"Remove background",
+    "Lo sfondo non viene stampato: resta il solo disegno.":"The background won't be printed: only your artwork stays.",
+    "Il tuo file dentro la sagoma":"Your file inside the shape",
+    "◎ Centra nella sagoma":"◎ Center in the shape",
+    "Angoli arrotondati":"Rounded corners",
+    "Poco":"Slight",
+    "Medio":"Medium",
+    "Tanto":"Strong",
+    "Materiale":"Material",
+    "Finitura":"Finish",
+    "Lucida":"Glossy",
+    "brillante, riflette la luce":"shiny, reflects light",
+    "Opaca":"Matte",
+    "vellutata, senza riflessi":"velvety, no reflections",
+    "✓ Ci siamo, stampa così":"✓ Looks good, print it like this",
+    "✕ No, ho bisogno di modifiche":"✕ No, I need changes",
+    "COS'È":"WHAT IS",
+    "Preprint è il nostro nuovo sistema di revisione automatizzato.":"Preprint is our new automated proofing system.",
+    "È ancora in fase beta, e può ancora interpretare erroneamente un file o tralasciare dettagli importanti. Se il file è molto complesso, in bassa risoluzione, o l'anteprima non corrisponde alla tua idea, tocca":"It's still in beta, so it may misread a file or miss important details. If your file is very complex, low resolution, or the preview doesn't match what you had in mind, tap",
+    "«No, ho bisogno di modifiche»":"\"No, I need changes\"",
+    "e descrivi cosa desideri modificare.":"and tell us what you'd like changed.",
+    "Un operatore umano continuerà sempre e comunque a esaminare ogni bozza di Preprint prima di inviare il tuo ordine in produzione, mentre completiamo la messa a punto di questo sistema.":"A human operator will still review every Preprint proof before your order goes into production, while we finish fine-tuning the system.",
+    "Con questo nuovo sistema abbiamo ridotto di circa":"With this new system we've cut about",
+    "24 ore":"24 hours",
+    "i tempi di consegna dall'ordine alla spedizione, e stiamo lavorando per diminuire ulteriormente questo intervallo. Grazie per la pazienza.":"off our delivery times, from order to shipping, and we're working to shorten them further. Thanks for your patience.",
+    "Cosa vuoi modificare?":"What would you like to change?",
+    "Questo è il file che hai caricato, senza nessuna modifica. Scrivici come vorresti realizzare i tuoi stickers.":"This is the file you uploaded, untouched. Tell us how you'd like your stickers made.",
+    "Una volta completato il checkout, un nostro operatore ti invierà la prova di stampa con le modifiche richieste.":"Once you've checked out, one of our operators will send you a proof with the changes you asked for.",
+    "Richiedi prova di stampa manuale":"Request a manual proof",
+    "← Torna all'anteprima":"← Back to the preview",
+    "Per esempio: vorrei il bordo più largo, il fondo nero invece che bianco, togliere la scritta in basso…":"For example: I'd like a wider border, a black background instead of white, remove the text at the bottom…",
+    "Elaborazione…":"Processing…",
+    "Carica il tuo file":"Upload your file",
+    "Trascina qui il tuo file":"Drag your file here",
+    "oppure clicca per sfogliare":"or click to browse",
+    "Anteprima gratuita · Stampiamo solo dopo il tuo ok":"Free preview · We only print after your OK",
+    "Configura il tuo adesivo":"Set up your sticker",
+    "Carica il file, guarda l'anteprima, e se ti piace vai avanti. Al resto pensiamo noi.":"Upload your file, check the preview, and if you like it, go ahead. We'll handle the rest.",
+    "Adesivi personalizzati":"Custom stickers",
+    "Adesivi resinati":"Domed stickers",
+    "Che forma vuoi":"Pick a shape",
+    "Sagomato":"Die-cut",
+    "Rotondo":"Round",
+    "Ovale":"Oval",
+    "Quadrato":"Square",
+    "Rettangolo":"Rectangle",
+    "Quanto grande":"How big",
+    "Su misura":"Custom size",
+    "Larghezza (mm)":"Width (mm)",
+    "Altezza (mm)":"Height (mm)",
+    "Piccolo":"Small",
+    "Grande":"Large",
+    "Dimensione e posizione":"Size and position",
+    "piccolo":"small",
+    "grande":"large",
+    "✥ Trascina il disegno nell'anteprima per centrarlo":"✥ Drag the artwork in the preview to center it",
+    "Centra":"Center",
+    "Ritocchi (di solito non servono)":"Fine-tuning (usually not needed)",
+    "Angoli":"Corners",
+    "Vivi":"Sharp",
+    "Dettaglio del taglio":"Cut detail",
+    "Morbido":"Soft",
+    "Segue tutto":"Follows everything",
+    "Su che materiale":"Which material",
+    "Bianco":"White",
+    "Olografico":"Holographic",
+    "Glitterato":"Glitter",
+    "Trasparente":"Clear",
+    "Argento":"Silver",
+    "Oro":"Gold",
+    "Colore dello sfondo":"Background color",
+    "Oro cromo":"Chrome gold",
+    "Argento cromo":"Chrome silver",
+    "Glitter":"Glitter",
+    "Il materiale si vede":"The material shows",
+    "solo nell'anteprima e nel mockup":"only in the preview and the mockup",
+    "per il cliente. Il file singolo con tracciato e la plancia di stampa restano puliti.":"for the customer. The single file with cut path and the print sheet stay clean.",
+    "Resinati:":"Domed:",
+    "nessun angolo vivo — ogni sporgenza viene arrotondata con raggio minimo":"no sharp corners — every protrusion is rounded with a minimum radius of",
+    ". Bordo minimo 2,5 mm e collo minimo 5 mm sono imposti dal sistema, altrimenti l'arrotondamento mangerebbe il disegno. La bombatura è solo nel mockup.":". A 2.5 mm minimum border and a 5 mm minimum neck are enforced by the system, otherwise the rounding would eat into the artwork. The dome is only in the mockup.",
+    "Forma del taglio":"Cut shape",
+    "Die-cut — segue il disegno":"Die-cut — follows the artwork",
+    "Tondo":"Round",
+    "Rettangolo arrotondato":"Rounded rectangle",
+    "Scala del disegno":"Artwork scale",
+    "Sposta X (mm)":"Move X (mm)",
+    "Sposta Y (mm)":"Move Y (mm)",
+    "⌖ Centra e adatta":"⌖ Center and fit",
+    "Raggio angoli (mm)":"Corner radius (mm)",
+    "Tracciato di taglio":"Cut path",
+    "Levigatura angoli":"Corner smoothing",
+    "spigoli vivi":"sharp corners",
+    "tutto arrotondato":"all rounded",
+    "Semplicità sagoma":"Shape simplicity",
+    "dettagliata":"detailed",
+    "morbida":"soft",
+    "Larghezza bordo":"Border width",
+    "bordo stretto":"narrow border",
+    "bordo largo":"wide border",
+    "Rientranza":"Indentation",
+    "sagoma piena":"solid shape",
+    "segue i rientri":"follows the recesses",
+    "Tutto il design finisce sempre dentro":"The whole design always ends up inside",
+    "un unico contorno":"a single outline",
+    ". Il sistema non ti lascia scendere sotto il limite in cui lo sticker si spezzerebbe o diventerebbe troppo sottile.":". The system won't let you go below the point where the sticker would break or get too thin.",
+    "Colore di bordo e contorno":"Border and outline color",
+    "Automatico — come lo sfondo del design":"Automatic — same as the design background",
+    "Nero":"Black",
+    "Scelgo io…":"I'll choose…",
+    "Dimensione finita":"Finished size",
+    "Mantieni proporzioni":"Keep proportions",
+    "Avanzate — solo se serve":"Advanced — only if needed",
+    "Se lo scontorno automatico non ti convince, scegli un'altra proposta:":"If the automatic cutout doesn't convince you, pick another proposal:",
+    "🪄 Togli sfondo":"🪄 Remove background",
+    "⭕ Segui una linea":"⭕ Follow a line",
+    "↺ Torna all'automatico":"↺ Back to automatic",
+    "✓ Clicca lo sfondo":"✓ Click the background",
+    "✓ Clicca la linea":"✓ Click the line",
+    "Tolleranza manuale":"Manual tolerance",
+    "Abbondanza fuori taglio (mm)":"Bleed outside the cut (mm)",
+    "Collo minimo (mm)":"Minimum neck (mm)",
+    "Taglia anche i fori interni":"Also cut inner holes",
+    "Qui vedrai il tuo adesivo":"Your sticker will show up here",
+    "Carica il file e ci pensiamo noi: togliamo lo sfondo, troviamo la sagoma e disegniamo il taglio. Tu guarda se ti piace.":"Upload your file and we'll take it from there: we remove the background, find the shape and draw the cut. You just check that you like it.",
+    "Forma":"Shape",
+    "Misura del taglio":"Cut size",
+    "Zone bianche":"White areas",
+    "⬇ Scarica l'anteprima":"⬇ Download the preview",
+    "PNG a fondo trasparente":"PNG with transparent background",
+    "Quello che vedi è il tuo adesivo come uscirà. Il tracciato di taglio e l'abbondanza di stampa li prepariamo noi: a te non servono.":"What you see is your sticker as it will come out. We prepare the cut path and the bleed: you don't need them.",
+    "Esporta":"Export",
+    "⬇ File singolo (.svg)":"⬇ Single file (.svg)",
+    "Design + contorno + tracciato":"Design + outline + cut path",
+    "⬇ Foglio di stampa":"⬇ Print sheet",
+    "Cartella di destinazione":"Destination folder",
+    "📁 Collega una cartella":"📁 Link a folder",
+    "📁 Cambia cartella":"📁 Change folder",
+    "Sottocartella per ogni lavoro":"Subfolder for each job",
+    "Foglio di stampa":"Print sheet",
+    "Larghezza":"Width",
+    "Altezza":"Height",
+    "Distanza pezzi":"Piece spacing",
+    "Copie":"Copies",
+    "Centra il blocco":"Center the block",
+    "Anteprima imposizione":"Imposition preview",
+    "Pezzi per foglio":"Pieces per sheet",
+    "Griglia":"Grid",
+    "Spazio tra i contorni":"Space between outlines",
+    "Resa materiale":"Material yield",
+    "File di produzione":"Production files",
+    "Margine del foglio (mm)":"Sheet margin (mm)",
+    "Crocini di registro e codice a barre sono":"Registration marks and barcode are",
+    "disattivati":"disabled",
+    "finché non li tariamo sul Graphtec. Il foglio esce pulito.":"until we calibrate them on the Graphtec. The sheet comes out clean.",
+    "Genera anche il .plt (HP-GL)":"Also generate the .plt (HP-GL)",
+    "Incorpora l'immagine in ogni copia":"Embed the image in every copy",
+    "Risoluzione export (DPI)":"Export resolution (DPI)",
+    "Nome lavoro":"Job name",
+    "es. RossiSrl_Logo":"e.g. SmithLtd_Logo",
+    "👤 Modalità cliente":"👤 Customer mode",
+    "⚙ Modalità studio":"⚙ Studio mode",
+    "Resina colata su foglio · bombatura 3D":"Resin poured on sheet · 3D dome",
+    "Formato non supportato. PDF, JPG, PNG, SVG.":"Unsupported format. PDF, JPG, PNG, SVG.",
+    "Rasterizzo il PDF…":"Rasterizing the PDF…",
+    "Apro il file…":"Opening the file…",
+    "motore PDF non raggiungibile: serve internet la prima volta che apri un PDF":"PDF engine unreachable: you need an internet connection the first time you open a PDF",
+    "file illeggibile":"unreadable file",
+    "Nessun file caricato":"No file uploaded",
+    "sagoma non ricavabile":"shape could not be derived",
+    "contorno non ricavabile":"outline could not be derived",
+    "maschera vuota":"empty mask",
+    "Nessuna zona in rilievo da vettorializzare":"No raised area to vectorize",
+    "Nessuna zona in rilievo":"No raised area",
+    "Punto trasparente: clicca sulla linea colorata.":"Transparent point: click on the colored line.",
+    "Linea troppo sottile: alza la tolleranza.":"Line too thin: raise the tolerance.",
+    "Scontorno automatico e unione delle parti…":"Automatic cutout and merging of parts…",
+    "Ricalcolo…":"Recalculating…",
+    "Non resta niente del design.":"Nothing of the design is left.",
+    "Non resta niente.":"Nothing left.",
+    "Errore":"Error",
+    "Errore mockup":"Mockup error",
+    "Errore SVG":"SVG error",
+    "Errore foglio":"Sheet error",
+    "Genero il mockup…":"Generating the mockup…",
+    "Genero il file vettoriale…":"Generating the vector file…",
+    "Genero il foglio ({n} pezzi)…":"Generating the sheet ({n} pieces)…",
+    "Lo sticker non entra nel foglio scelto.":"The sticker doesn't fit on the selected sheet.",
+    "✓ {n} file scritti in {d}":"✓ {n} files written to {d}",
+    "Scrittura fallita, passo ai download.":"Write failed, switching to downloads.",
+    "{n} file scaricati":"{n} files downloaded",
+    "File scaricato":"File downloaded",
+    "Serve Chrome o Edge.":"Chrome or Edge required.",
+    "Cartella collegata: {d}":"Folder linked: {d}",
+    "Non riesco ad aprire la cartella.":"Can't open the folder.",
+    "Disegno centrato e adattato alla forma":"Artwork centered and fitted to the shape",
+    "Disegno centrato nella sagoma":"Artwork centered in the shape",
+    "Materiale bianco":"White material",
+    "Vetrofania: grafica piena con base bianca, contorno trasparente":"Window decal: full artwork on a white base, clear outline",
+    "Trasparente: nel mockup lo sticker esce al 82% di opacità":"Clear: in the mockup the sticker shows at 82% opacity",
+    "Materiale applicato solo ad anteprima e mockup":"Material applied to preview and mockup only",
+    "Perfetto. La tua prova di stampa è approvata.":"Perfect. Your proof is approved.",
+    "Scrivi cosa vuoi modificare.":"Tell us what you'd like to change.",
+    "Richiesta inviata. Ti ricontattiamo con la nuova bozza.":"Request sent. We'll get back to you with the new proof.",
+    "Stampata con base bianca: colori pieni, solo il contorno resta trasparente.":"Printed on a white base: solid colors, only the outline stays clear.",
+    "I colori saranno semitrasparenti":"Colors will be semi-transparent",
+    "il tuo file":"your file",
+    "cambia file":"change file",
+    "colore del materiale":"material color",
+    "scegli un colore tuo":"pick your own color",
+    "Tolto il colore <b>{c}</b> da tutto il file &mdash; anche dentro le lettere e dentro le figure. Occupava il {q}% del disegno.":"Removed the color <b>{c}</b> from the whole file &mdash; inside letters and shapes too. It covered {q}% of the artwork.",
+    "Attenzione: questo file non ha uno sfondo netto. Controlla che non manchi nulla del disegno.":"Heads up: this file has no clean background. Check that nothing is missing from the artwork.",
+    "<b>Le zone bianche del tuo disegno non vengono stampate:</b> lì si vedrà il {m}. È così che si ottiene l'effetto.":"<b>The white areas of your artwork won't be printed:</b> the {m} will show through there. That's how the effect is made.",
+    "Sfondo rilevato dal tuo file: <b>{c}</b>. Viene stampato così com'è.":"Background detected in your file: <b>{c}</b>. It's printed as is.",
+    "Il tuo adesivo:":"Your sticker:",
+    "Se vuoi cambiare, torna al passo precedente.":"To change it, go back to the previous step.",
+    "{n} pezzi":"{n} pieces",
+    "{n} etichette":"{n} labels",
+    "non stampate → {m}":"not printed → {m}",
+    "stampate in bianco":"printed in white",
+    "taglio {w} × {h} mm":"cut {w} × {h} mm",
+    "scegli la misura del lato più lungo":"choose the size of the longest side",
+    "materiale":"material",
+    "bianco":"white",
+    "Etichetta":"Label",
+    "Foglio":"Sheet",
+    "Contorno":"Outline",
+    "Taglio":"Cut",
+    "Stampato":"Printed",
+    "sagoma unica":"single shape",
+    "scarto":"deviation",
+    "collo minimo":"minimum neck",
+    "oltre":"over",
+    "nodi":"nodes",
+    "spigoli":"corners",
+    "cappi":"loops",
+    "Tutto il design è dentro <b>un unico contorno</b>. Punto più stretto <b>{n} mm</b>. Sotto il {p}% circa di rientranza lo sticker si spezzerebbe: il cursore è già limitato lì.":"The whole design is inside <b>a single outline</b>. Narrowest point <b>{n} mm</b>. Below about {p}% indentation the sticker would break: the slider is already capped there.",
+    "Attenzione: la sagoma è in {n} pezzi. Sposta la rientranza verso \"sagoma piena\".":"Warning: the shape is in {n} pieces. Move the indentation toward \"solid shape\".",
+    "Vista maschera —":"Mask view —",
+    "rosso = eliminato":"red = removed",
+    "Tenuto":"Kept",
+    "Partenza {w} × {h} mm · bordo {b} mm (disegno pieno al {d}%)":"Starting point {w} × {h} mm · border {b} mm (artwork {d}% solid)",
+    "contorno {b} mm su uno sticker da {w} mm":"{b} mm outline on a {w} mm sticker",
+    "non entra":"doesn't fit",
+    "I contorni si sovrappongono di {n} mm.":"The outlines overlap by {n} mm.",
+    "Clicca sull'anteprima <b>ogni zona che è sfondo</b>. In <b style=\"color:#ff5a8a\">rosso</b> vedi cosa sparisce.":"Click on the preview <b>every area that is background</b>. In <b style=\"color:#ff5a8a\">red</b> you see what disappears.",
+    "Clicca <b>sopra la linea colorata</b> che il taglio deve seguire.":"Click <b>on the colored line</b> the cut should follow.",
+    "<div class=\"fixbar\">Dentro la forma vedi il file <b>com'è</b>, con il suo fondo.<button id=\"bgSwap\">Voglio solo il disegno, senza fondo</button></div>":"<div class=\"fixbar\">Inside the shape you see the file <b>as is</b>, with its background.<button id=\"bgSwap\">I only want the artwork, no background</button></div>",
+    "<div class=\"fixbar\">Dentro la forma ho messo <b>solo il disegno</b>, senza il suo fondo.<button id=\"bgSwap\">Rimetti il file com'era</button></div>":"<div class=\"fixbar\">Inside the shape I've placed <b>only the artwork</b>, without its background.<button id=\"bgSwap\">Put the file back as it was</button></div>",
+    "tieni tutto":"keep everything",
+    "file già scontornato":"file already cut out",
+    "sfondo rimosso: {c} ({n}% dell'immagine)":"background removed: {c} ({n}% of the image)",
+    "taglio lungo la linea scelta":"cut along the chosen line",
+    "sfondo scelto a mano ({n} punti)":"background picked by hand ({n} points)",
+    "scontorno automatico":"automatic cutout",
+    "<b style=\"color:#ffb020\">{n} parti staccate</b> → unite in una sola sagoma":"<b style=\"color:#ffb020\">{n} separate parts</b> → merged into a single shape",
+    "Sto tenendo il {n}% dell'immagine: prova un'altra proposta.":"I'm keeping {n}% of the image: try another proposal.",
+    "colore dello sfondo eliminato":"color of the removed background",
+    "placca dell'adesivo ({n}% del perimetro)":"sticker plate ({n}% of the perimeter)",
+    "placca del design ({a}% pieno, {b}% del colore)":"design plate ({a}% solid, {b}% of the color)",
+    "tratto su trasparente ({n}% pieno) → corpo bianco":"strokes on transparent ({n}% solid) → white body",
+    "colore dominante rimosso":"dominant color removed",
+    "non rilevabile, uso il bianco":"not detectable, using white",
+    "sfondo non stampato · si vede il materiale":"background not printed · the material shows",
+    "sfondo {c}":"background {c}",
+    "colori presi dal tuo logo":"colors taken from your logo",
+    "file senza sfondo, parto dal bianco":"file without background, starting from white",
+    "scelto manualmente":"chosen manually",
+    "forzato dal menu":"forced from the menu",
+    "In colore: zone che riceveranno il rilievo (spot <b>RDG_GLOSS</b>) · tratteggio: linea di taglio":"In color: areas that will get the raised effect (spot <b>RDG_GLOSS</b>) · dashed: cut line",
+    "Torna alla grafica":"Back to the artwork",
+    "Effetto rilievo":"Raised effect",
+    "Torna al tuo file":"Back to your file",
+    "Guarda dove andra' l'effetto rilievo":"See where the raised effect will go",
+    "🔎 Sto studiando il disegno per decidere dove mettere il rilievo…":"🔎 Studying the artwork to decide where the raised effect goes…",
+    "Torna al foglio":"Back to the sheet",
+    "Etichetta da vicino":"Label close-up",
+    "Mostra il foglio intero":"Show the whole sheet",
+    "Ingrandisci una sola etichetta per lavorarci da vicino":"Zoom in on a single label to work on it up close",
+    "Pezzo intero":"Whole piece",
+    "Rilievo da vicino":"Raised effect close-up",
+    "Torna al pezzo intero":"Back to the whole piece",
+    "Ingrandisci per vedere il rilievo da vicino (trascina per spostarti)":"Zoom in to see the raised effect up close (drag to move around)"
+  },
+  es:{
+    "Configura il tuo adesivo | Stickerprint":"Configura tu pegatina | Stickerprint",
+    "Linea di taglio":"Línea de corte",
+    "Visualizza effetto resina":"Ver efecto resina",
+    "Larghezza del bordo":"Ancho del borde",
+    "Sfondo":"Fondo",
+    "Rimuovi sfondo":"Quitar fondo",
+    "Lo sfondo non viene stampato: resta il solo disegno.":"El fondo no se imprime: solo queda el diseño.",
+    "Il tuo file dentro la sagoma":"Tu archivo dentro de la forma",
+    "◎ Centra nella sagoma":"◎ Centrar en la forma",
+    "Angoli arrotondati":"Esquinas redondeadas",
+    "Poco":"Poco",
+    "Medio":"Medio",
+    "Tanto":"Mucho",
+    "Materiale":"Material",
+    "Finitura":"Acabado",
+    "Lucida":"Brillo",
+    "brillante, riflette la luce":"brillante, refleja la luz",
+    "Opaca":"Mate",
+    "vellutata, senza riflessi":"aterciopelado, sin reflejos",
+    "✓ Ci siamo, stampa così":"✓ Perfecto, imprímelo así",
+    "✕ No, ho bisogno di modifiche":"✕ No, necesito cambios",
+    "COS'È":"¿QUÉ ES",
+    "Preprint è il nostro nuovo sistema di revisione automatizzato.":"Preprint es nuestro nuevo sistema de revisión automatizada.",
+    "È ancora in fase beta, e può ancora interpretare erroneamente un file o tralasciare dettagli importanti. Se il file è molto complesso, in bassa risoluzione, o l'anteprima non corrisponde alla tua idea, tocca":"Todavía está en fase beta y puede interpretar mal un archivo o pasar por alto detalles importantes. Si el archivo es muy complejo, tiene baja resolución o la vista previa no coincide con tu idea, pulsa",
+    "«No, ho bisogno di modifiche»":"«No, necesito cambios»",
+    "e descrivi cosa desideri modificare.":"y describe qué quieres cambiar.",
+    "Un operatore umano continuerà sempre e comunque a esaminare ogni bozza di Preprint prima di inviare il tuo ordine in produzione, mentre completiamo la messa a punto di questo sistema.":"Mientras terminamos de ajustar el sistema, una persona de nuestro equipo seguirá revisando cada prueba de Preprint antes de enviar tu pedido a producción.",
+    "Con questo nuovo sistema abbiamo ridotto di circa":"Con este nuevo sistema hemos reducido en unas",
+    "24 ore":"24 horas",
+    "i tempi di consegna dall'ordine alla spedizione, e stiamo lavorando per diminuire ulteriormente questo intervallo. Grazie per la pazienza.":"el tiempo de entrega desde el pedido hasta el envío, y seguimos trabajando para acortarlo aún más. Gracias por tu paciencia.",
+    "Cosa vuoi modificare?":"¿Qué quieres cambiar?",
+    "Questo è il file che hai caricato, senza nessuna modifica. Scrivici come vorresti realizzare i tuoi stickers.":"Este es el archivo que has subido, sin ningún cambio. Cuéntanos cómo quieres tus pegatinas.",
+    "Una volta completato il checkout, un nostro operatore ti invierà la prova di stampa con le modifiche richieste.":"Cuando completes el pago, una persona de nuestro equipo te enviará la prueba de impresión con los cambios solicitados.",
+    "Richiedi prova di stampa manuale":"Solicitar prueba de impresión manual",
+    "← Torna all'anteprima":"← Volver a la vista previa",
+    "Per esempio: vorrei il bordo più largo, il fondo nero invece che bianco, togliere la scritta in basso…":"Por ejemplo: quiero el borde más ancho, el fondo negro en vez de blanco, quitar el texto de abajo…",
+    "Elaborazione…":"Procesando…",
+    "Carica il tuo file":"Sube tu archivo",
+    "Trascina qui il tuo file":"Arrastra aquí tu archivo",
+    "oppure clicca per sfogliare":"o haz clic para buscarlo",
+    "Anteprima gratuita · Stampiamo solo dopo il tuo ok":"Vista previa gratis · Solo imprimimos con tu visto bueno",
+    "Configura il tuo adesivo":"Configura tu pegatina",
+    "Carica il file, guarda l'anteprima, e se ti piace vai avanti. Al resto pensiamo noi.":"Sube el archivo, mira la vista previa y, si te gusta, sigue adelante. Del resto nos ocupamos nosotros.",
+    "Adesivi personalizzati":"Pegatinas personalizadas",
+    "Adesivi resinati":"Pegatinas resinadas",
+    "Che forma vuoi":"Qué forma quieres",
+    "Sagomato":"Troquelado",
+    "Rotondo":"Redondo",
+    "Ovale":"Ovalado",
+    "Quadrato":"Cuadrado",
+    "Rettangolo":"Rectángulo",
+    "Quanto grande":"Qué tamaño",
+    "Su misura":"A medida",
+    "Larghezza (mm)":"Ancho (mm)",
+    "Altezza (mm)":"Alto (mm)",
+    "Piccolo":"Pequeño",
+    "Grande":"Grande",
+    "Dimensione e posizione":"Tamaño y posición",
+    "piccolo":"pequeño",
+    "grande":"grande",
+    "✥ Trascina il disegno nell'anteprima per centrarlo":"✥ Arrastra el diseño en la vista previa para centrarlo",
+    "Centra":"Centrar",
+    "Ritocchi (di solito non servono)":"Retoques (normalmente no hacen falta)",
+    "Angoli":"Esquinas",
+    "Vivi":"Vivas",
+    "Dettaglio del taglio":"Detalle del corte",
+    "Morbido":"Suave",
+    "Segue tutto":"Sigue todo",
+    "Su che materiale":"En qué material",
+    "Bianco":"Blanco",
+    "Olografico":"Holográfico",
+    "Glitterato":"Purpurina",
+    "Trasparente":"Transparente",
+    "Argento":"Plata",
+    "Oro":"Oro",
+    "Colore dello sfondo":"Color del fondo",
+    "Oro cromo":"Oro cromo",
+    "Argento cromo":"Plata cromo",
+    "Glitter":"Purpurina",
+    "Il materiale si vede":"El material se ve",
+    "solo nell'anteprima e nel mockup":"solo en la vista previa y en el mockup",
+    "per il cliente. Il file singolo con tracciato e la plancia di stampa restano puliti.":"para el cliente. El archivo individual con trazado y la plancha de impresión quedan limpios.",
+    "Resinati:":"Resinadas:",
+    "nessun angolo vivo — ogni sporgenza viene arrotondata con raggio minimo":"sin esquinas vivas: cada saliente se redondea con un radio mínimo de",
+    ". Bordo minimo 2,5 mm e collo minimo 5 mm sono imposti dal sistema, altrimenti l'arrotondamento mangerebbe il disegno. La bombatura è solo nel mockup.":". El sistema impone un borde mínimo de 2,5 mm y un cuello mínimo de 5 mm; si no, el redondeo se comería el diseño. El abombado solo está en el mockup.",
+    "Forma del taglio":"Forma del corte",
+    "Die-cut — segue il disegno":"Troquelado: sigue el diseño",
+    "Tondo":"Redondo",
+    "Rettangolo arrotondato":"Rectángulo redondeado",
+    "Scala del disegno":"Escala del diseño",
+    "Sposta X (mm)":"Mover X (mm)",
+    "Sposta Y (mm)":"Mover Y (mm)",
+    "⌖ Centra e adatta":"⌖ Centrar y ajustar",
+    "Raggio angoli (mm)":"Radio de esquinas (mm)",
+    "Tracciato di taglio":"Trazado de corte",
+    "Levigatura angoli":"Suavizado de esquinas",
+    "spigoli vivi":"esquinas vivas",
+    "tutto arrotondato":"todo redondeado",
+    "Semplicità sagoma":"Simplicidad de la forma",
+    "dettagliata":"detallada",
+    "morbida":"suave",
+    "Larghezza bordo":"Ancho del borde",
+    "bordo stretto":"borde estrecho",
+    "bordo largo":"borde ancho",
+    "Rientranza":"Entrante",
+    "sagoma piena":"forma llena",
+    "segue i rientri":"sigue los entrantes",
+    "Tutto il design finisce sempre dentro":"Todo el diseño queda siempre dentro de",
+    "un unico contorno":"un único contorno",
+    ". Il sistema non ti lascia scendere sotto il limite in cui lo sticker si spezzerebbe o diventerebbe troppo sottile.":". El sistema no te deja bajar del límite en el que la pegatina se rompería o quedaría demasiado fina.",
+    "Colore di bordo e contorno":"Color de borde y contorno",
+    "Automatico — come lo sfondo del design":"Automático: como el fondo del diseño",
+    "Nero":"Negro",
+    "Scelgo io…":"Elijo yo…",
+    "Dimensione finita":"Tamaño final",
+    "Mantieni proporzioni":"Mantener proporciones",
+    "Avanzate — solo se serve":"Avanzado: solo si hace falta",
+    "Se lo scontorno automatico non ti convince, scegli un'altra proposta:":"Si el recorte automático no te convence, elige otra propuesta:",
+    "🪄 Togli sfondo":"🪄 Quitar fondo",
+    "⭕ Segui una linea":"⭕ Seguir una línea",
+    "↺ Torna all'automatico":"↺ Volver al automático",
+    "✓ Clicca lo sfondo":"✓ Haz clic en el fondo",
+    "✓ Clicca la linea":"✓ Haz clic en la línea",
+    "Tolleranza manuale":"Tolerancia manual",
+    "Abbondanza fuori taglio (mm)":"Sangrado fuera del corte (mm)",
+    "Collo minimo (mm)":"Cuello mínimo (mm)",
+    "Taglia anche i fori interni":"Cortar también los huecos interiores",
+    "Qui vedrai il tuo adesivo":"Aquí verás tu pegatina",
+    "Carica il file e ci pensiamo noi: togliamo lo sfondo, troviamo la sagoma e disegniamo il taglio. Tu guarda se ti piace.":"Sube el archivo y nosotros nos encargamos: quitamos el fondo, encontramos la forma y dibujamos el corte. Tú solo mira si te gusta.",
+    "Forma":"Forma",
+    "Misura del taglio":"Medida del corte",
+    "Zone bianche":"Zonas blancas",
+    "⬇ Scarica l'anteprima":"⬇ Descargar la vista previa",
+    "PNG a fondo trasparente":"PNG con fondo transparente",
+    "Quello che vedi è il tuo adesivo come uscirà. Il tracciato di taglio e l'abbondanza di stampa li prepariamo noi: a te non servono.":"Lo que ves es tu pegatina tal y como saldrá. El trazado de corte y el sangrado los preparamos nosotros: tú no los necesitas.",
+    "Esporta":"Exportar",
+    "⬇ File singolo (.svg)":"⬇ Archivo individual (.svg)",
+    "Design + contorno + tracciato":"Diseño + contorno + trazado",
+    "⬇ Foglio di stampa":"⬇ Plancha de impresión",
+    "Cartella di destinazione":"Carpeta de destino",
+    "📁 Collega una cartella":"📁 Vincular una carpeta",
+    "📁 Cambia cartella":"📁 Cambiar carpeta",
+    "Sottocartella per ogni lavoro":"Subcarpeta para cada trabajo",
+    "Foglio di stampa":"Plancha de impresión",
+    "Larghezza":"Ancho",
+    "Altezza":"Alto",
+    "Distanza pezzi":"Distancia entre piezas",
+    "Copie":"Copias",
+    "Centra il blocco":"Centrar el bloque",
+    "Anteprima imposizione":"Vista previa de imposición",
+    "Pezzi per foglio":"Piezas por plancha",
+    "Griglia":"Rejilla",
+    "Spazio tra i contorni":"Espacio entre contornos",
+    "Resa materiale":"Aprovechamiento del material",
+    "File di produzione":"Archivos de producción",
+    "Margine del foglio (mm)":"Margen de la plancha (mm)",
+    "Crocini di registro e codice a barre sono":"Las marcas de registro y el código de barras están",
+    "disattivati":"desactivados",
+    "finché non li tariamo sul Graphtec. Il foglio esce pulito.":"hasta que los calibremos en la Graphtec. La plancha sale limpia.",
+    "Genera anche il .plt (HP-GL)":"Generar también el .plt (HP-GL)",
+    "Incorpora l'immagine in ogni copia":"Incrustar la imagen en cada copia",
+    "Risoluzione export (DPI)":"Resolución de exportación (DPI)",
+    "Nome lavoro":"Nombre del trabajo",
+    "es. RossiSrl_Logo":"p. ej. GarciaSL_Logo",
+    "👤 Modalità cliente":"👤 Modo cliente",
+    "⚙ Modalità studio":"⚙ Modo estudio",
+    "Resina colata su foglio · bombatura 3D":"Resina colada sobre lámina · abombado 3D",
+    "Formato non supportato. PDF, JPG, PNG, SVG.":"Formato no compatible. PDF, JPG, PNG, SVG.",
+    "Rasterizzo il PDF…":"Rasterizando el PDF…",
+    "Apro il file…":"Abriendo el archivo…",
+    "motore PDF non raggiungibile: serve internet la prima volta che apri un PDF":"motor PDF no disponible: hace falta internet la primera vez que abres un PDF",
+    "file illeggibile":"archivo ilegible",
+    "Nessun file caricato":"Ningún archivo subido",
+    "sagoma non ricavabile":"no se puede obtener la forma",
+    "contorno non ricavabile":"no se puede obtener el contorno",
+    "maschera vuota":"máscara vacía",
+    "Nessuna zona in rilievo da vettorializzare":"Ninguna zona en relieve que vectorizar",
+    "Nessuna zona in rilievo":"Ninguna zona en relieve",
+    "Punto trasparente: clicca sulla linea colorata.":"Punto transparente: haz clic en la línea de color.",
+    "Linea troppo sottile: alza la tolleranza.":"Línea demasiado fina: sube la tolerancia.",
+    "Scontorno automatico e unione delle parti…":"Recorte automático y unión de las partes…",
+    "Ricalcolo…":"Recalculando…",
+    "Non resta niente del design.":"No queda nada del diseño.",
+    "Non resta niente.":"No queda nada.",
+    "Errore":"Error",
+    "Errore mockup":"Error de mockup",
+    "Errore SVG":"Error SVG",
+    "Errore foglio":"Error de plancha",
+    "Genero il mockup…":"Generando el mockup…",
+    "Genero il file vettoriale…":"Generando el archivo vectorial…",
+    "Genero il foglio ({n} pezzi)…":"Generando la plancha ({n} piezas)…",
+    "Lo sticker non entra nel foglio scelto.":"La pegatina no cabe en la plancha elegida.",
+    "✓ {n} file scritti in {d}":"✓ {n} archivos guardados en {d}",
+    "Scrittura fallita, passo ai download.":"Error al guardar, paso a las descargas.",
+    "{n} file scaricati":"{n} archivos descargados",
+    "File scaricato":"Archivo descargado",
+    "Serve Chrome o Edge.":"Hace falta Chrome o Edge.",
+    "Cartella collegata: {d}":"Carpeta vinculada: {d}",
+    "Non riesco ad aprire la cartella.":"No puedo abrir la carpeta.",
+    "Disegno centrato e adattato alla forma":"Diseño centrado y ajustado a la forma",
+    "Disegno centrato nella sagoma":"Diseño centrado en la forma",
+    "Materiale bianco":"Material blanco",
+    "Vetrofania: grafica piena con base bianca, contorno trasparente":"Vinilo para escaparate: gráfica completa con base blanca, contorno transparente",
+    "Trasparente: nel mockup lo sticker esce al 82% di opacità":"Transparente: en el mockup la pegatina sale al 82 % de opacidad",
+    "Materiale applicato solo ad anteprima e mockup":"Material aplicado solo a la vista previa y al mockup",
+    "Perfetto. La tua prova di stampa è approvata.":"Perfecto. Tu prueba de impresión está aprobada.",
+    "Scrivi cosa vuoi modificare.":"Escribe qué quieres cambiar.",
+    "Richiesta inviata. Ti ricontattiamo con la nuova bozza.":"Solicitud enviada. Te contactaremos con la nueva prueba.",
+    "Stampata con base bianca: colori pieni, solo il contorno resta trasparente.":"Impresa con base blanca: colores sólidos, solo el contorno queda transparente.",
+    "I colori saranno semitrasparenti":"Los colores serán semitransparentes",
+    "il tuo file":"tu archivo",
+    "cambia file":"cambiar archivo",
+    "colore del materiale":"color del material",
+    "scegli un colore tuo":"elige tu propio color",
+    "Tolto il colore <b>{c}</b> da tutto il file &mdash; anche dentro le lettere e dentro le figure. Occupava il {q}% del disegno.":"Se ha quitado el color <b>{c}</b> de todo el archivo &mdash; también dentro de las letras y las figuras. Ocupaba el {q}% del diseño.",
+    "Attenzione: questo file non ha uno sfondo netto. Controlla che non manchi nulla del disegno.":"Atención: este archivo no tiene un fondo definido. Comprueba que no falte nada del diseño.",
+    "<b>Le zone bianche del tuo disegno non vengono stampate:</b> lì si vedrà il {m}. È così che si ottiene l'effetto.":"<b>Las zonas blancas de tu diseño no se imprimen:</b> ahí se verá el {m}. Así es como se consigue el efecto.",
+    "Sfondo rilevato dal tuo file: <b>{c}</b>. Viene stampato così com'è.":"Fondo detectado en tu archivo: <b>{c}</b>. Se imprime tal cual.",
+    "Il tuo adesivo:":"Tu pegatina:",
+    "Se vuoi cambiare, torna al passo precedente.":"Si quieres cambiarlo, vuelve al paso anterior.",
+    "{n} pezzi":"{n} piezas",
+    "{n} etichette":"{n} etiquetas",
+    "non stampate → {m}":"no impresas → {m}",
+    "stampate in bianco":"impresas en blanco",
+    "taglio {w} × {h} mm":"corte {w} × {h} mm",
+    "scegli la misura del lato più lungo":"elige la medida del lado más largo",
+    "materiale":"material",
+    "bianco":"blanco",
+    "Etichetta":"Etiqueta",
+    "Foglio":"Plancha",
+    "Contorno":"Contorno",
+    "Taglio":"Corte",
+    "Stampato":"Impreso",
+    "sagoma unica":"forma única",
+    "scarto":"desviación",
+    "collo minimo":"cuello mínimo",
+    "oltre":"más de",
+    "nodi":"nodos",
+    "spigoli":"esquinas",
+    "cappi":"bucles",
+    "Tutto il design è dentro <b>un unico contorno</b>. Punto più stretto <b>{n} mm</b>. Sotto il {p}% circa di rientranza lo sticker si spezzerebbe: il cursore è già limitato lì.":"Todo el diseño está dentro de <b>un único contorno</b>. Punto más estrecho: <b>{n} mm</b>. Por debajo de un {p}% aprox. de entrante la pegatina se rompería: el control ya está limitado ahí.",
+    "Attenzione: la sagoma è in {n} pezzi. Sposta la rientranza verso \"sagoma piena\".":"Atención: la forma está en {n} piezas. Mueve el entrante hacia \"forma llena\".",
+    "Vista maschera —":"Vista de máscara —",
+    "rosso = eliminato":"rojo = eliminado",
+    "Tenuto":"Conservado",
+    "Partenza {w} × {h} mm · bordo {b} mm (disegno pieno al {d}%)":"Inicio {w} × {h} mm · borde {b} mm (diseño lleno al {d}%)",
+    "contorno {b} mm su uno sticker da {w} mm":"contorno de {b} mm en una pegatina de {w} mm",
+    "non entra":"no cabe",
+    "I contorni si sovrappongono di {n} mm.":"Los contornos se solapan {n} mm.",
+    "Clicca sull'anteprima <b>ogni zona che è sfondo</b>. In <b style=\"color:#ff5a8a\">rosso</b> vedi cosa sparisce.":"Haz clic en la vista previa en <b>cada zona que sea fondo</b>. En <b style=\"color:#ff5a8a\">rojo</b> ves lo que desaparece.",
+    "Clicca <b>sopra la linea colorata</b> che il taglio deve seguire.":"Haz clic <b>sobre la línea de color</b> que debe seguir el corte.",
+    "<div class=\"fixbar\">Dentro la forma vedi il file <b>com'è</b>, con il suo fondo.<button id=\"bgSwap\">Voglio solo il disegno, senza fondo</button></div>":"<div class=\"fixbar\">Dentro de la forma ves el archivo <b>tal cual</b>, con su fondo.<button id=\"bgSwap\">Solo quiero el diseño, sin fondo</button></div>",
+    "<div class=\"fixbar\">Dentro la forma ho messo <b>solo il disegno</b>, senza il suo fondo.<button id=\"bgSwap\">Rimetti il file com'era</button></div>":"<div class=\"fixbar\">Dentro de la forma he puesto <b>solo el diseño</b>, sin su fondo.<button id=\"bgSwap\">Volver a poner el archivo como estaba</button></div>",
+    "tieni tutto":"mantener todo",
+    "file già scontornato":"archivo ya recortado",
+    "sfondo rimosso: {c} ({n}% dell'immagine)":"fondo quitado: {c} ({n}% de la imagen)",
+    "taglio lungo la linea scelta":"corte a lo largo de la línea elegida",
+    "sfondo scelto a mano ({n} punti)":"fondo elegido a mano ({n} puntos)",
+    "scontorno automatico":"recorte automático",
+    "<b style=\"color:#ffb020\">{n} parti staccate</b> → unite in una sola sagoma":"<b style=\"color:#ffb020\">{n} partes separadas</b> → unidas en una sola forma",
+    "Sto tenendo il {n}% dell'immagine: prova un'altra proposta.":"Estoy conservando el {n}% de la imagen: prueba otra propuesta.",
+    "colore dello sfondo eliminato":"color del fondo eliminado",
+    "placca dell'adesivo ({n}% del perimetro)":"placa de la pegatina ({n}% del perímetro)",
+    "placca del design ({a}% pieno, {b}% del colore)":"placa del diseño ({a}% lleno, {b}% del color)",
+    "tratto su trasparente ({n}% pieno) → corpo bianco":"trazo sobre transparente ({n}% lleno) → cuerpo blanco",
+    "colore dominante rimosso":"color dominante eliminado",
+    "non rilevabile, uso il bianco":"no detectable, uso el blanco",
+    "sfondo non stampato · si vede il materiale":"fondo no impreso · se ve el material",
+    "sfondo {c}":"fondo {c}",
+    "colori presi dal tuo logo":"colores tomados de tu logo",
+    "file senza sfondo, parto dal bianco":"archivo sin fondo, parto del blanco",
+    "scelto manualmente":"elegido manualmente",
+    "forzato dal menu":"forzado desde el menú",
+    "In colore: zone che riceveranno il rilievo (spot <b>RDG_GLOSS</b>) · tratteggio: linea di taglio":"En color: zonas que llevarán el relieve (tinta <b>RDG_GLOSS</b>) · discontinua: línea de corte",
+    "Torna alla grafica":"Volver al diseño",
+    "Effetto rilievo":"Efecto relieve",
+    "Torna al tuo file":"Volver a tu archivo",
+    "Guarda dove andra' l'effetto rilievo":"Mira dónde irá el efecto relieve",
+    "🔎 Sto studiando il disegno per decidere dove mettere il rilievo…":"🔎 Estoy estudiando el diseño para decidir dónde poner el relieve…",
+    "Torna al foglio":"Volver a la hoja",
+    "Etichetta da vicino":"Etiqueta de cerca",
+    "Mostra il foglio intero":"Mostrar la hoja entera",
+    "Ingrandisci una sola etichetta per lavorarci da vicino":"Amplía una sola etiqueta para trabajarla de cerca",
+    "Pezzo intero":"Pieza entera",
+    "Rilievo da vicino":"Relieve de cerca",
+    "Torna al pezzo intero":"Volver a la pieza entera",
+    "Ingrandisci per vedere il rilievo da vicino (trascina per spostarti)":"Amplía para ver el relieve de cerca (arrastra para moverte)"
+  },
+  fr:{
+    "Configura il tuo adesivo | Stickerprint":"Configurez votre sticker | Stickerprint",
+    "Linea di taglio":"Ligne de coupe",
+    "Visualizza effetto resina":"Afficher l'effet résine",
+    "Larghezza del bordo":"Largeur du bord",
+    "Sfondo":"Fond",
+    "Rimuovi sfondo":"Supprimer le fond",
+    "Lo sfondo non viene stampato: resta il solo disegno.":"Le fond n'est pas imprimé : seul votre dessin reste.",
+    "Il tuo file dentro la sagoma":"Votre fichier dans la forme",
+    "◎ Centra nella sagoma":"◎ Centrer dans la forme",
+    "Angoli arrotondati":"Angles arrondis",
+    "Poco":"Léger",
+    "Medio":"Moyen",
+    "Tanto":"Fort",
+    "Materiale":"Matière",
+    "Finitura":"Finition",
+    "Lucida":"Brillant",
+    "brillante, riflette la luce":"brillant, reflète la lumière",
+    "Opaca":"Mat",
+    "vellutata, senza riflessi":"velouté, sans reflets",
+    "✓ Ci siamo, stampa così":"✓ C'est bon, imprimez comme ça",
+    "✕ No, ho bisogno di modifiche":"✕ Non, j'ai besoin de modifications",
+    "COS'È":"QU'EST-CE QUE",
+    "Preprint è il nostro nuovo sistema di revisione automatizzato.":"Preprint est notre nouveau système de vérification automatisée.",
+    "È ancora in fase beta, e può ancora interpretare erroneamente un file o tralasciare dettagli importanti. Se il file è molto complesso, in bassa risoluzione, o l'anteprima non corrisponde alla tua idea, tocca":"Il est encore en version bêta et peut mal interpréter un fichier ou oublier des détails importants. Si votre fichier est très complexe, en basse résolution, ou si l'aperçu ne correspond pas à votre idée, touchez",
+    "«No, ho bisogno di modifiche»":"« Non, j'ai besoin de modifications »",
+    "e descrivi cosa desideri modificare.":"et décrivez ce que vous souhaitez modifier.",
+    "Un operatore umano continuerà sempre e comunque a esaminare ogni bozza di Preprint prima di inviare il tuo ordine in produzione, mentre completiamo la messa a punto di questo sistema.":"Pendant que nous finalisons la mise au point du système, un opérateur continuera de vérifier chaque épreuve Preprint avant d'envoyer votre commande en production.",
+    "Con questo nuovo sistema abbiamo ridotto di circa":"Avec ce nouveau système, nous avons réduit d'environ",
+    "24 ore":"24 heures",
+    "i tempi di consegna dall'ordine alla spedizione, e stiamo lavorando per diminuire ulteriormente questo intervallo. Grazie per la pazienza.":"le délai entre la commande et l'expédition, et nous travaillons à le réduire encore. Merci de votre patience.",
+    "Cosa vuoi modificare?":"Que souhaitez-vous modifier ?",
+    "Questo è il file che hai caricato, senza nessuna modifica. Scrivici come vorresti realizzare i tuoi stickers.":"Voici le fichier que vous avez envoyé, sans aucune modification. Dites-nous comment vous souhaitez vos stickers.",
+    "Una volta completato il checkout, un nostro operatore ti invierà la prova di stampa con le modifiche richieste.":"Une fois la commande validée, un opérateur vous enverra le BAT avec les modifications demandées.",
+    "Richiedi prova di stampa manuale":"Demander un BAT manuel",
+    "← Torna all'anteprima":"← Retour à l'aperçu",
+    "Per esempio: vorrei il bordo più largo, il fondo nero invece che bianco, togliere la scritta in basso…":"Par exemple : je voudrais un bord plus large, un fond noir au lieu de blanc, retirer le texte en bas…",
+    "Elaborazione…":"Traitement…",
+    "Carica il tuo file":"Envoyez votre fichier",
+    "Trascina qui il tuo file":"Glissez votre fichier ici",
+    "oppure clicca per sfogliare":"ou cliquez pour parcourir",
+    "Anteprima gratuita · Stampiamo solo dopo il tuo ok":"Aperçu gratuit · Nous n'imprimons qu'après votre accord",
+    "Configura il tuo adesivo":"Configurez votre sticker",
+    "Carica il file, guarda l'anteprima, e se ti piace vai avanti. Al resto pensiamo noi.":"Envoyez votre fichier, regardez l'aperçu et, s'il vous plaît, continuez. On s'occupe du reste.",
+    "Adesivi personalizzati":"Stickers personnalisés",
+    "Adesivi resinati":"Stickers résinés",
+    "Che forma vuoi":"Quelle forme voulez-vous",
+    "Sagomato":"Découpe à la forme",
+    "Rotondo":"Rond",
+    "Ovale":"Ovale",
+    "Quadrato":"Carré",
+    "Rettangolo":"Rectangle",
+    "Quanto grande":"Quelle taille",
+    "Su misura":"Sur mesure",
+    "Larghezza (mm)":"Largeur (mm)",
+    "Altezza (mm)":"Hauteur (mm)",
+    "Piccolo":"Petit",
+    "Grande":"Large",
+    "Dimensione e posizione":"Taille et position",
+    "piccolo":"petit",
+    "grande":"grand",
+    "✥ Trascina il disegno nell'anteprima per centrarlo":"✥ Faites glisser le dessin dans l'aperçu pour le centrer",
+    "Centra":"Centrer",
+    "Ritocchi (di solito non servono)":"Retouches (en général inutiles)",
+    "Angoli":"Angles",
+    "Vivi":"Vifs",
+    "Dettaglio del taglio":"Détail de la coupe",
+    "Morbido":"Doux",
+    "Segue tutto":"Suit tout",
+    "Su che materiale":"Sur quelle matière",
+    "Bianco":"Blanc",
+    "Olografico":"Holographique",
+    "Glitterato":"Pailleté",
+    "Trasparente":"Transparent",
+    "Argento":"Argent",
+    "Oro":"Or",
+    "Colore dello sfondo":"Couleur du fond",
+    "Oro cromo":"Or chromé",
+    "Argento cromo":"Argent chromé",
+    "Glitter":"Paillettes",
+    "Il materiale si vede":"La matière apparaît",
+    "solo nell'anteprima e nel mockup":"uniquement dans l'aperçu et la maquette",
+    "per il cliente. Il file singolo con tracciato e la plancia di stampa restano puliti.":"pour le client. Le fichier unique avec tracé et la planche d'impression restent propres.",
+    "Resinati:":"Résinés :",
+    "nessun angolo vivo — ogni sporgenza viene arrotondata con raggio minimo":"aucun angle vif — chaque saillie est arrondie avec un rayon minimum de",
+    ". Bordo minimo 2,5 mm e collo minimo 5 mm sono imposti dal sistema, altrimenti l'arrotondamento mangerebbe il disegno. La bombatura è solo nel mockup.":". Le système impose un bord minimum de 2,5 mm et un col minimum de 5 mm, sinon l'arrondi mangerait le dessin. Le bombé n'apparaît que dans la maquette.",
+    "Forma del taglio":"Forme de la coupe",
+    "Die-cut — segue il disegno":"Découpe à la forme — suit le dessin",
+    "Tondo":"Rond",
+    "Rettangolo arrotondato":"Rectangle arrondi",
+    "Scala del disegno":"Échelle du dessin",
+    "Sposta X (mm)":"Décaler X (mm)",
+    "Sposta Y (mm)":"Décaler Y (mm)",
+    "⌖ Centra e adatta":"⌖ Centrer et ajuster",
+    "Raggio angoli (mm)":"Rayon des angles (mm)",
+    "Tracciato di taglio":"Tracé de coupe",
+    "Levigatura angoli":"Lissage des angles",
+    "spigoli vivi":"angles vifs",
+    "tutto arrotondato":"tout arrondi",
+    "Semplicità sagoma":"Simplicité de la forme",
+    "dettagliata":"détaillée",
+    "morbida":"douce",
+    "Larghezza bordo":"Largeur du bord",
+    "bordo stretto":"bord étroit",
+    "bordo largo":"bord large",
+    "Rientranza":"Creux",
+    "sagoma piena":"forme pleine",
+    "segue i rientri":"suit les creux",
+    "Tutto il design finisce sempre dentro":"Tout le design reste toujours dans",
+    "un unico contorno":"un contour unique",
+    ". Il sistema non ti lascia scendere sotto il limite in cui lo sticker si spezzerebbe o diventerebbe troppo sottile.":". Le système ne vous laisse pas descendre sous la limite où le sticker se casserait ou deviendrait trop fin.",
+    "Colore di bordo e contorno":"Couleur du bord et du contour",
+    "Automatico — come lo sfondo del design":"Automatique — comme le fond du design",
+    "Nero":"Noir",
+    "Scelgo io…":"Je choisis…",
+    "Dimensione finita":"Dimension finie",
+    "Mantieni proporzioni":"Conserver les proportions",
+    "Avanzate — solo se serve":"Avancé — seulement si besoin",
+    "Se lo scontorno automatico non ti convince, scegli un'altra proposta:":"Si le détourage automatique ne vous convainc pas, choisissez une autre proposition :",
+    "🪄 Togli sfondo":"🪄 Supprimer le fond",
+    "⭕ Segui una linea":"⭕ Suivre une ligne",
+    "↺ Torna all'automatico":"↺ Retour à l'automatique",
+    "✓ Clicca lo sfondo":"✓ Cliquez sur le fond",
+    "✓ Clicca la linea":"✓ Cliquez sur la ligne",
+    "Tolleranza manuale":"Tolérance manuelle",
+    "Abbondanza fuori taglio (mm)":"Fond perdu hors coupe (mm)",
+    "Collo minimo (mm)":"Col minimum (mm)",
+    "Taglia anche i fori interni":"Couper aussi les trous intérieurs",
+    "Qui vedrai il tuo adesivo":"Votre sticker apparaîtra ici",
+    "Carica il file e ci pensiamo noi: togliamo lo sfondo, troviamo la sagoma e disegniamo il taglio. Tu guarda se ti piace.":"Envoyez le fichier et on s'occupe du reste : on retire le fond, on trouve la forme et on dessine la coupe. Vous vérifiez juste que ça vous plaît.",
+    "Forma":"Forme",
+    "Misura del taglio":"Taille de la coupe",
+    "Zone bianche":"Zones blanches",
+    "⬇ Scarica l'anteprima":"⬇ Télécharger l'aperçu",
+    "PNG a fondo trasparente":"PNG à fond transparent",
+    "Quello che vedi è il tuo adesivo come uscirà. Il tracciato di taglio e l'abbondanza di stampa li prepariamo noi: a te non servono.":"Ce que vous voyez est votre sticker tel qu'il sortira. Le tracé de coupe et le fond perdu, on s'en occupe : vous n'en avez pas besoin.",
+    "Esporta":"Exporter",
+    "⬇ File singolo (.svg)":"⬇ Fichier unique (.svg)",
+    "Design + contorno + tracciato":"Design + contour + tracé",
+    "⬇ Foglio di stampa":"⬇ Planche d'impression",
+    "Cartella di destinazione":"Dossier de destination",
+    "📁 Collega una cartella":"📁 Lier un dossier",
+    "📁 Cambia cartella":"📁 Changer de dossier",
+    "Sottocartella per ogni lavoro":"Sous-dossier pour chaque travail",
+    "Foglio di stampa":"Planche d'impression",
+    "Larghezza":"Largeur",
+    "Altezza":"Hauteur",
+    "Distanza pezzi":"Espacement des pièces",
+    "Copie":"Copies",
+    "Centra il blocco":"Centrer le bloc",
+    "Anteprima imposizione":"Aperçu de l'imposition",
+    "Pezzi per foglio":"Pièces par planche",
+    "Griglia":"Grille",
+    "Spazio tra i contorni":"Espace entre les contours",
+    "Resa materiale":"Rendement matière",
+    "File di produzione":"Fichiers de production",
+    "Margine del foglio (mm)":"Marge de la planche (mm)",
+    "Crocini di registro e codice a barre sono":"Les repères de registre et le code-barres sont",
+    "disattivati":"désactivés",
+    "finché non li tariamo sul Graphtec. Il foglio esce pulito.":"tant qu'on ne les a pas calibrés sur la Graphtec. La planche sort propre.",
+    "Genera anche il .plt (HP-GL)":"Générer aussi le .plt (HP-GL)",
+    "Incorpora l'immagine in ogni copia":"Incorporer l'image dans chaque copie",
+    "Risoluzione export (DPI)":"Résolution d'export (DPI)",
+    "Nome lavoro":"Nom du travail",
+    "es. RossiSrl_Logo":"ex. DupontSarl_Logo",
+    "👤 Modalità cliente":"👤 Mode client",
+    "⚙ Modalità studio":"⚙ Mode studio",
+    "Resina colata su foglio · bombatura 3D":"Résine coulée sur feuille · bombé 3D",
+    "Formato non supportato. PDF, JPG, PNG, SVG.":"Format non pris en charge. PDF, JPG, PNG, SVG.",
+    "Rasterizzo il PDF…":"Pixellisation du PDF…",
+    "Apro il file…":"Ouverture du fichier…",
+    "motore PDF non raggiungibile: serve internet la prima volta che apri un PDF":"moteur PDF inaccessible : une connexion internet est nécessaire la première fois que vous ouvrez un PDF",
+    "file illeggibile":"fichier illisible",
+    "Nessun file caricato":"Aucun fichier envoyé",
+    "sagoma non ricavabile":"forme impossible à déterminer",
+    "contorno non ricavabile":"contour impossible à déterminer",
+    "maschera vuota":"masque vide",
+    "Nessuna zona in rilievo da vettorializzare":"Aucune zone en relief à vectoriser",
+    "Nessuna zona in rilievo":"Aucune zone en relief",
+    "Punto trasparente: clicca sulla linea colorata.":"Point transparent : cliquez sur la ligne colorée.",
+    "Linea troppo sottile: alza la tolleranza.":"Ligne trop fine : augmentez la tolérance.",
+    "Scontorno automatico e unione delle parti…":"Détourage automatique et fusion des parties…",
+    "Ricalcolo…":"Recalcul…",
+    "Non resta niente del design.":"Il ne reste rien du design.",
+    "Non resta niente.":"Il ne reste rien.",
+    "Errore":"Erreur",
+    "Errore mockup":"Erreur maquette",
+    "Errore SVG":"Erreur SVG",
+    "Errore foglio":"Erreur planche",
+    "Genero il mockup…":"Génération de la maquette…",
+    "Genero il file vettoriale…":"Génération du fichier vectoriel…",
+    "Genero il foglio ({n} pezzi)…":"Génération de la planche ({n} pièces)…",
+    "Lo sticker non entra nel foglio scelto.":"Le sticker ne tient pas sur la planche choisie.",
+    "✓ {n} file scritti in {d}":"✓ {n} fichiers écrits dans {d}",
+    "Scrittura fallita, passo ai download.":"Écriture impossible, passage aux téléchargements.",
+    "{n} file scaricati":"{n} fichiers téléchargés",
+    "File scaricato":"Fichier téléchargé",
+    "Serve Chrome o Edge.":"Chrome ou Edge requis.",
+    "Cartella collegata: {d}":"Dossier lié : {d}",
+    "Non riesco ad aprire la cartella.":"Impossible d'ouvrir le dossier.",
+    "Disegno centrato e adattato alla forma":"Dessin centré et ajusté à la forme",
+    "Disegno centrato nella sagoma":"Dessin centré dans la forme",
+    "Materiale bianco":"Matière blanche",
+    "Vetrofania: grafica piena con base bianca, contorno trasparente":"Sticker vitrine : graphisme plein sur base blanche, contour transparent",
+    "Trasparente: nel mockup lo sticker esce al 82% di opacità":"Transparent : dans la maquette, le sticker apparaît à 82 % d'opacité",
+    "Materiale applicato solo ad anteprima e mockup":"Matière appliquée uniquement à l'aperçu et à la maquette",
+    "Perfetto. La tua prova di stampa è approvata.":"Parfait. Votre BAT est approuvé.",
+    "Scrivi cosa vuoi modificare.":"Écrivez ce que vous souhaitez modifier.",
+    "Richiesta inviata. Ti ricontattiamo con la nuova bozza.":"Demande envoyée. Nous revenons vers vous avec la nouvelle épreuve.",
+    "Stampata con base bianca: colori pieni, solo il contorno resta trasparente.":"Imprimé sur base blanche : couleurs pleines, seul le contour reste transparent.",
+    "I colori saranno semitrasparenti":"Les couleurs seront semi-transparentes",
+    "il tuo file":"votre fichier",
+    "cambia file":"changer de fichier",
+    "colore del materiale":"couleur de la matière",
+    "scegli un colore tuo":"choisissez votre couleur",
+    "Tolto il colore <b>{c}</b> da tutto il file &mdash; anche dentro le lettere e dentro le figure. Occupava il {q}% del disegno.":"Couleur <b>{c}</b> retirée de tout le fichier &mdash; y compris dans les lettres et les formes. Elle occupait {q}% du dessin.",
+    "Attenzione: questo file non ha uno sfondo netto. Controlla che non manchi nulla del disegno.":"Attention : ce fichier n'a pas de fond net. Vérifiez qu'il ne manque rien au dessin.",
+    "<b>Le zone bianche del tuo disegno non vengono stampate:</b> lì si vedrà il {m}. È così che si ottiene l'effetto.":"<b>Les zones blanches de votre dessin ne sont pas imprimées :</b> on y verra le {m}. C'est ainsi qu'on obtient l'effet.",
+    "Sfondo rilevato dal tuo file: <b>{c}</b>. Viene stampato così com'è.":"Fond détecté dans votre fichier : <b>{c}</b>. Il est imprimé tel quel.",
+    "Il tuo adesivo:":"Votre sticker :",
+    "Se vuoi cambiare, torna al passo precedente.":"Pour changer, revenez à l'étape précédente.",
+    "{n} pezzi":"{n} pièces",
+    "{n} etichette":"{n} étiquettes",
+    "non stampate → {m}":"non imprimées → {m}",
+    "stampate in bianco":"imprimées en blanc",
+    "taglio {w} × {h} mm":"coupe {w} × {h} mm",
+    "scegli la misura del lato più lungo":"choisissez la taille du côté le plus long",
+    "materiale":"matière",
+    "bianco":"blanc",
+    "Etichetta":"Étiquette",
+    "Foglio":"Planche",
+    "Contorno":"Contour",
+    "Taglio":"Coupe",
+    "Stampato":"Imprimé",
+    "sagoma unica":"forme unique",
+    "scarto":"écart",
+    "collo minimo":"col minimum",
+    "oltre":"plus de",
+    "nodi":"nœuds",
+    "spigoli":"angles",
+    "cappi":"boucles",
+    "Tutto il design è dentro <b>un unico contorno</b>. Punto più stretto <b>{n} mm</b>. Sotto il {p}% circa di rientranza lo sticker si spezzerebbe: il cursore è già limitato lì.":"Tout le design est dans <b>un contour unique</b>. Point le plus étroit : <b>{n} mm</b>. En dessous d'environ {p}% de creux, le sticker se casserait : le curseur est déjà limité là.",
+    "Attenzione: la sagoma è in {n} pezzi. Sposta la rientranza verso \"sagoma piena\".":"Attention : la forme est en {n} morceaux. Déplacez le creux vers « forme pleine ».",
+    "Vista maschera —":"Vue du masque —",
+    "rosso = eliminato":"rouge = supprimé",
+    "Tenuto":"Conservé",
+    "Partenza {w} × {h} mm · bordo {b} mm (disegno pieno al {d}%)":"Départ {w} × {h} mm · bord {b} mm (dessin plein à {d}%)",
+    "contorno {b} mm su uno sticker da {w} mm":"contour de {b} mm sur un sticker de {w} mm",
+    "non entra":"ne tient pas",
+    "I contorni si sovrappongono di {n} mm.":"Les contours se chevauchent de {n} mm.",
+    "Clicca sull'anteprima <b>ogni zona che è sfondo</b>. In <b style=\"color:#ff5a8a\">rosso</b> vedi cosa sparisce.":"Cliquez dans l'aperçu sur <b>chaque zone qui est du fond</b>. En <b style=\"color:#ff5a8a\">rouge</b>, vous voyez ce qui disparaît.",
+    "Clicca <b>sopra la linea colorata</b> che il taglio deve seguire.":"Cliquez <b>sur la ligne colorée</b> que la coupe doit suivre.",
+    "<div class=\"fixbar\">Dentro la forma vedi il file <b>com'è</b>, con il suo fondo.<button id=\"bgSwap\">Voglio solo il disegno, senza fondo</button></div>":"<div class=\"fixbar\">Dans la forme, vous voyez le fichier <b>tel quel</b>, avec son fond.<button id=\"bgSwap\">Je veux seulement le dessin, sans fond</button></div>",
+    "<div class=\"fixbar\">Dentro la forma ho messo <b>solo il disegno</b>, senza il suo fondo.<button id=\"bgSwap\">Rimetti il file com'era</button></div>":"<div class=\"fixbar\">Dans la forme, j'ai mis <b>seulement le dessin</b>, sans son fond.<button id=\"bgSwap\">Remettre le fichier tel qu'il était</button></div>",
+    "tieni tutto":"tout garder",
+    "file già scontornato":"fichier déjà détouré",
+    "sfondo rimosso: {c} ({n}% dell'immagine)":"fond supprimé : {c} ({n}% de l'image)",
+    "taglio lungo la linea scelta":"coupe le long de la ligne choisie",
+    "sfondo scelto a mano ({n} punti)":"fond choisi à la main ({n} points)",
+    "scontorno automatico":"détourage automatique",
+    "<b style=\"color:#ffb020\">{n} parti staccate</b> → unite in una sola sagoma":"<b style=\"color:#ffb020\">{n} parties séparées</b> → réunies en une seule forme",
+    "Sto tenendo il {n}% dell'immagine: prova un'altra proposta.":"Je conserve {n}% de l'image : essayez une autre proposition.",
+    "colore dello sfondo eliminato":"couleur du fond supprimé",
+    "placca dell'adesivo ({n}% del perimetro)":"plaque du sticker ({n}% du périmètre)",
+    "placca del design ({a}% pieno, {b}% del colore)":"plaque du design ({a}% plein, {b}% de la couleur)",
+    "tratto su trasparente ({n}% pieno) → corpo bianco":"trait sur transparent ({n}% plein) → corps blanc",
+    "colore dominante rimosso":"couleur dominante supprimée",
+    "non rilevabile, uso il bianco":"non détectable, j'utilise le blanc",
+    "sfondo non stampato · si vede il materiale":"fond non imprimé · la matière apparaît",
+    "sfondo {c}":"fond {c}",
+    "colori presi dal tuo logo":"couleurs tirées de votre logo",
+    "file senza sfondo, parto dal bianco":"fichier sans fond, je pars du blanc",
+    "scelto manualmente":"choisi manuellement",
+    "forzato dal menu":"forcé depuis le menu",
+    "In colore: zone che riceveranno il rilievo (spot <b>RDG_GLOSS</b>) · tratteggio: linea di taglio":"En couleur : zones qui recevront le relief (ton direct <b>RDG_GLOSS</b>) · pointillés : ligne de coupe",
+    "Torna alla grafica":"Retour au graphisme",
+    "Effetto rilievo":"Effet relief",
+    "Torna al tuo file":"Retour à votre fichier",
+    "Guarda dove andra' l'effetto rilievo":"Voyez où ira l'effet relief",
+    "🔎 Sto studiando il disegno per decidere dove mettere il rilievo…":"🔎 J'étudie le dessin pour décider où placer le relief…",
+    "Torna al foglio":"Retour à la planche",
+    "Etichetta da vicino":"Étiquette de près",
+    "Mostra il foglio intero":"Afficher toute la planche",
+    "Ingrandisci una sola etichetta per lavorarci da vicino":"Agrandissez une seule étiquette pour y travailler de près",
+    "Pezzo intero":"Pièce entière",
+    "Rilievo da vicino":"Relief de près",
+    "Torna al pezzo intero":"Retour à la pièce entière",
+    "Ingrandisci per vedere il rilievo da vicino (trascina per spostarti)":"Agrandissez pour voir le relief de près (glissez pour vous déplacer)"
+  },
+  de:{
+    "Configura il tuo adesivo | Stickerprint":"Deinen Sticker einrichten | Stickerprint",
+    "Linea di taglio":"Schnittlinie",
+    "Visualizza effetto resina":"Doming-Effekt anzeigen",
+    "Larghezza del bordo":"Randbreite",
+    "Sfondo":"Hintergrund",
+    "Rimuovi sfondo":"Hintergrund entfernen",
+    "Lo sfondo non viene stampato: resta il solo disegno.":"Der Hintergrund wird nicht gedruckt: Nur dein Motiv bleibt.",
+    "Il tuo file dentro la sagoma":"Deine Datei in der Form",
+    "◎ Centra nella sagoma":"◎ In der Form zentrieren",
+    "Angoli arrotondati":"Abgerundete Ecken",
+    "Poco":"Leicht",
+    "Medio":"Mittel",
+    "Tanto":"Stark",
+    "Materiale":"Material",
+    "Finitura":"Oberfläche",
+    "Lucida":"Glänzend",
+    "brillante, riflette la luce":"glänzend, reflektiert das Licht",
+    "Opaca":"Matt",
+    "vellutata, senza riflessi":"samtig, ohne Spiegelungen",
+    "✓ Ci siamo, stampa così":"✓ Passt, so drucken",
+    "✕ No, ho bisogno di modifiche":"✕ Nein, ich brauche Änderungen",
+    "COS'È":"WAS IST",
+    "Preprint è il nostro nuovo sistema di revisione automatizzato.":"Preprint ist unser neues automatisches Prüfsystem.",
+    "È ancora in fase beta, e può ancora interpretare erroneamente un file o tralasciare dettagli importanti. Se il file è molto complesso, in bassa risoluzione, o l'anteprima non corrisponde alla tua idea, tocca":"Es ist noch in der Beta-Phase und kann eine Datei falsch deuten oder wichtige Details übersehen. Wenn deine Datei sehr komplex ist, eine niedrige Auflösung hat oder die Vorschau nicht deiner Vorstellung entspricht, tippe auf",
+    "«No, ho bisogno di modifiche»":"„Nein, ich brauche Änderungen“",
+    "e descrivi cosa desideri modificare.":"und beschreib, was du ändern möchtest.",
+    "Un operatore umano continuerà sempre e comunque a esaminare ogni bozza di Preprint prima di inviare il tuo ordine in produzione, mentre completiamo la messa a punto di questo sistema.":"Solange wir das System noch feinjustieren, prüft weiterhin ein Mensch jede Preprint-Vorschau, bevor deine Bestellung in die Produktion geht.",
+    "Con questo nuovo sistema abbiamo ridotto di circa":"Mit diesem neuen System haben wir die Lieferzeit von der Bestellung bis zum Versand um etwa",
+    "24 ore":"24 Stunden",
+    "i tempi di consegna dall'ordine alla spedizione, e stiamo lavorando per diminuire ulteriormente questo intervallo. Grazie per la pazienza.":"verkürzt und arbeiten daran, sie weiter zu verkürzen. Danke für deine Geduld.",
+    "Cosa vuoi modificare?":"Was möchtest du ändern?",
+    "Questo è il file che hai caricato, senza nessuna modifica. Scrivici come vorresti realizzare i tuoi stickers.":"Das ist deine hochgeladene Datei, ohne Änderungen. Schreib uns, wie du deine Sticker haben möchtest.",
+    "Una volta completato il checkout, un nostro operatore ti invierà la prova di stampa con le modifiche richieste.":"Nach dem Checkout schickt dir ein Mitarbeiter die Druckfreigabe mit den gewünschten Änderungen.",
+    "Richiedi prova di stampa manuale":"Manuelle Druckfreigabe anfordern",
+    "← Torna all'anteprima":"← Zurück zur Vorschau",
+    "Per esempio: vorrei il bordo più largo, il fondo nero invece che bianco, togliere la scritta in basso…":"Zum Beispiel: breiterer Rand, schwarzer statt weißer Hintergrund, den Text unten entfernen…",
+    "Elaborazione…":"Wird verarbeitet…",
+    "Carica il tuo file":"Datei hochladen",
+    "Trascina qui il tuo file":"Datei hierher ziehen",
+    "oppure clicca per sfogliare":"oder klicken zum Auswählen",
+    "Anteprima gratuita · Stampiamo solo dopo il tuo ok":"Kostenlose Vorschau · Gedruckt wird erst nach deinem OK",
+    "Configura il tuo adesivo":"Deinen Sticker einrichten",
+    "Carica il file, guarda l'anteprima, e se ti piace vai avanti. Al resto pensiamo noi.":"Datei hochladen, Vorschau anschauen und, wenn sie dir gefällt, weiter. Um den Rest kümmern wir uns.",
+    "Adesivi personalizzati":"Individuelle Aufkleber",
+    "Adesivi resinati":"Doming-Aufkleber",
+    "Che forma vuoi":"Welche Form möchtest du",
+    "Sagomato":"Konturschnitt",
+    "Rotondo":"Rund",
+    "Ovale":"Oval",
+    "Quadrato":"Quadratisch",
+    "Rettangolo":"Rechteck",
+    "Quanto grande":"Wie groß",
+    "Su misura":"Wunschmaß",
+    "Larghezza (mm)":"Breite (mm)",
+    "Altezza (mm)":"Höhe (mm)",
+    "Piccolo":"Schmal",
+    "Grande":"Breit",
+    "Dimensione e posizione":"Größe und Position",
+    "piccolo":"klein",
+    "grande":"groß",
+    "✥ Trascina il disegno nell'anteprima per centrarlo":"✥ Zieh das Motiv in der Vorschau, um es zu zentrieren",
+    "Centra":"Zentrieren",
+    "Ritocchi (di solito non servono)":"Feinschliff (meist nicht nötig)",
+    "Angoli":"Ecken",
+    "Vivi":"Scharf",
+    "Dettaglio del taglio":"Schnittdetail",
+    "Morbido":"Weich",
+    "Segue tutto":"Folgt allem",
+    "Su che materiale":"Auf welchem Material",
+    "Bianco":"Weiß",
+    "Olografico":"Holografisch",
+    "Glitterato":"Glitzer",
+    "Trasparente":"Transparent",
+    "Argento":"Silber",
+    "Oro":"Gold",
+    "Colore dello sfondo":"Hintergrundfarbe",
+    "Oro cromo":"Chromgold",
+    "Argento cromo":"Chromsilber",
+    "Glitter":"Glitzer",
+    "Il materiale si vede":"Das Material ist",
+    "solo nell'anteprima e nel mockup":"nur in der Vorschau und im Mockup",
+    "per il cliente. Il file singolo con tracciato e la plancia di stampa restano puliti.":"zu sehen. Die Einzeldatei mit Schnittpfad und der Druckbogen bleiben sauber.",
+    "Resinati:":"Doming:",
+    "nessun angolo vivo — ogni sporgenza viene arrotondata con raggio minimo":"keine scharfen Ecken — jeder Vorsprung wird mit einem Mindestradius von",
+    ". Bordo minimo 2,5 mm e collo minimo 5 mm sono imposti dal sistema, altrimenti l'arrotondamento mangerebbe il disegno. La bombatura è solo nel mockup.":" abgerundet. Mindestrand 2,5 mm und Mindeststeg 5 mm gibt das System vor, sonst würde die Rundung das Motiv anschneiden. Die Wölbung ist nur im Mockup.",
+    "Forma del taglio":"Schnittform",
+    "Die-cut — segue il disegno":"Konturschnitt — folgt dem Motiv",
+    "Tondo":"Rund",
+    "Rettangolo arrotondato":"Abgerundetes Rechteck",
+    "Scala del disegno":"Motivgröße",
+    "Sposta X (mm)":"Verschieben X (mm)",
+    "Sposta Y (mm)":"Verschieben Y (mm)",
+    "⌖ Centra e adatta":"⌖ Zentrieren und einpassen",
+    "Raggio angoli (mm)":"Eckenradius (mm)",
+    "Tracciato di taglio":"Schnittpfad",
+    "Levigatura angoli":"Eckenglättung",
+    "spigoli vivi":"scharfe Ecken",
+    "tutto arrotondato":"alles abgerundet",
+    "Semplicità sagoma":"Einfachheit der Form",
+    "dettagliata":"detailliert",
+    "morbida":"weich",
+    "Larghezza bordo":"Randbreite",
+    "bordo stretto":"schmaler Rand",
+    "bordo largo":"breiter Rand",
+    "Rientranza":"Einbuchtung",
+    "sagoma piena":"volle Form",
+    "segue i rientri":"folgt den Einbuchtungen",
+    "Tutto il design finisce sempre dentro":"Das ganze Design liegt immer in",
+    "un unico contorno":"einer einzigen Kontur",
+    ". Il sistema non ti lascia scendere sotto il limite in cui lo sticker si spezzerebbe o diventerebbe troppo sottile.":". Das System lässt dich nicht unter die Grenze, an der der Sticker brechen oder zu dünn werden würde.",
+    "Colore di bordo e contorno":"Rand- und Konturfarbe",
+    "Automatico — come lo sfondo del design":"Automatisch — wie der Hintergrund des Designs",
+    "Nero":"Schwarz",
+    "Scelgo io…":"Ich wähle selbst…",
+    "Dimensione finita":"Endmaß",
+    "Mantieni proporzioni":"Proportionen beibehalten",
+    "Avanzate — solo se serve":"Erweitert — nur bei Bedarf",
+    "Se lo scontorno automatico non ti convince, scegli un'altra proposta:":"Wenn dich das automatische Freistellen nicht überzeugt, wähl einen anderen Vorschlag:",
+    "🪄 Togli sfondo":"🪄 Hintergrund entfernen",
+    "⭕ Segui una linea":"⭕ Einer Linie folgen",
+    "↺ Torna all'automatico":"↺ Zurück zu automatisch",
+    "✓ Clicca lo sfondo":"✓ Klick auf den Hintergrund",
+    "✓ Clicca la linea":"✓ Klick auf die Linie",
+    "Tolleranza manuale":"Manuelle Toleranz",
+    "Abbondanza fuori taglio (mm)":"Beschnittzugabe (mm)",
+    "Collo minimo (mm)":"Mindeststeg (mm)",
+    "Taglia anche i fori interni":"Auch Innenlöcher schneiden",
+    "Qui vedrai il tuo adesivo":"Hier siehst du deinen Sticker",
+    "Carica il file e ci pensiamo noi: togliamo lo sfondo, troviamo la sagoma e disegniamo il taglio. Tu guarda se ti piace.":"Lad die Datei hoch, den Rest machen wir: Hintergrund entfernen, Form finden, Schnitt zeichnen. Du schaust nur, ob es dir gefällt.",
+    "Forma":"Form",
+    "Misura del taglio":"Schnittmaß",
+    "Zone bianche":"Weiße Flächen",
+    "⬇ Scarica l'anteprima":"⬇ Vorschau herunterladen",
+    "PNG a fondo trasparente":"PNG mit transparentem Hintergrund",
+    "Quello che vedi è il tuo adesivo come uscirà. Il tracciato di taglio e l'abbondanza di stampa li prepariamo noi: a te non servono.":"Was du siehst, ist dein Sticker, wie er herauskommt. Schnittpfad und Beschnitt bereiten wir vor: Du brauchst sie nicht.",
+    "Esporta":"Exportieren",
+    "⬇ File singolo (.svg)":"⬇ Einzeldatei (.svg)",
+    "Design + contorno + tracciato":"Design + Kontur + Schnittpfad",
+    "⬇ Foglio di stampa":"⬇ Druckbogen",
+    "Cartella di destinazione":"Zielordner",
+    "📁 Collega una cartella":"📁 Ordner verknüpfen",
+    "📁 Cambia cartella":"📁 Ordner wechseln",
+    "Sottocartella per ogni lavoro":"Unterordner für jeden Auftrag",
+    "Foglio di stampa":"Druckbogen",
+    "Larghezza":"Breite",
+    "Altezza":"Höhe",
+    "Distanza pezzi":"Abstand der Teile",
+    "Copie":"Kopien",
+    "Centra il blocco":"Block zentrieren",
+    "Anteprima imposizione":"Vorschau der Anordnung",
+    "Pezzi per foglio":"Teile pro Bogen",
+    "Griglia":"Raster",
+    "Spazio tra i contorni":"Abstand zwischen den Konturen",
+    "Resa materiale":"Materialausnutzung",
+    "File di produzione":"Produktionsdateien",
+    "Margine del foglio (mm)":"Bogenrand (mm)",
+    "Crocini di registro e codice a barre sono":"Passmarken und Barcode sind",
+    "disattivati":"deaktiviert",
+    "finché non li tariamo sul Graphtec. Il foglio esce pulito.":"bis wir sie auf dem Graphtec kalibriert haben. Der Bogen kommt sauber heraus.",
+    "Genera anche il .plt (HP-GL)":"Auch die .plt (HP-GL) erzeugen",
+    "Incorpora l'immagine in ogni copia":"Bild in jede Kopie einbetten",
+    "Risoluzione export (DPI)":"Exportauflösung (DPI)",
+    "Nome lavoro":"Auftragsname",
+    "es. RossiSrl_Logo":"z. B. MuellerGmbH_Logo",
+    "👤 Modalità cliente":"👤 Kundenmodus",
+    "⚙ Modalità studio":"⚙ Studio-Modus",
+    "Resina colata su foglio · bombatura 3D":"Gegossenes Harz auf Folie · 3D-Wölbung",
+    "Formato non supportato. PDF, JPG, PNG, SVG.":"Format nicht unterstützt. PDF, JPG, PNG, SVG.",
+    "Rasterizzo il PDF…":"PDF wird gerastert…",
+    "Apro il file…":"Datei wird geöffnet…",
+    "motore PDF non raggiungibile: serve internet la prima volta che apri un PDF":"PDF-Engine nicht erreichbar: Beim ersten Öffnen eines PDFs brauchst du Internet",
+    "file illeggibile":"Datei nicht lesbar",
+    "Nessun file caricato":"Keine Datei hochgeladen",
+    "sagoma non ricavabile":"Form nicht ermittelbar",
+    "contorno non ricavabile":"Kontur nicht ermittelbar",
+    "maschera vuota":"leere Maske",
+    "Nessuna zona in rilievo da vettorializzare":"Keine Relieffläche zum Vektorisieren",
+    "Nessuna zona in rilievo":"Keine Relieffläche",
+    "Punto trasparente: clicca sulla linea colorata.":"Transparenter Punkt: Klick auf die farbige Linie.",
+    "Linea troppo sottile: alza la tolleranza.":"Linie zu dünn: Toleranz erhöhen.",
+    "Scontorno automatico e unione delle parti…":"Automatisches Freistellen und Zusammenführen der Teile…",
+    "Ricalcolo…":"Neuberechnung…",
+    "Non resta niente del design.":"Vom Design bleibt nichts übrig.",
+    "Non resta niente.":"Nichts übrig.",
+    "Errore":"Fehler",
+    "Errore mockup":"Mockup-Fehler",
+    "Errore SVG":"SVG-Fehler",
+    "Errore foglio":"Bogen-Fehler",
+    "Genero il mockup…":"Mockup wird erstellt…",
+    "Genero il file vettoriale…":"Vektordatei wird erstellt…",
+    "Genero il foglio ({n} pezzi)…":"Bogen wird erstellt ({n} Teile)…",
+    "Lo sticker non entra nel foglio scelto.":"Der Sticker passt nicht auf den gewählten Bogen.",
+    "✓ {n} file scritti in {d}":"✓ {n} Dateien in {d} geschrieben",
+    "Scrittura fallita, passo ai download.":"Schreiben fehlgeschlagen, wechsle zu Downloads.",
+    "{n} file scaricati":"{n} Dateien heruntergeladen",
+    "File scaricato":"Datei heruntergeladen",
+    "Serve Chrome o Edge.":"Dafür brauchst du Chrome oder Edge.",
+    "Cartella collegata: {d}":"Ordner verknüpft: {d}",
+    "Non riesco ad aprire la cartella.":"Ordner lässt sich nicht öffnen.",
+    "Disegno centrato e adattato alla forma":"Motiv zentriert und an die Form angepasst",
+    "Disegno centrato nella sagoma":"Motiv in der Form zentriert",
+    "Materiale bianco":"Weißes Material",
+    "Vetrofania: grafica piena con base bianca, contorno trasparente":"Fensteraufkleber: volle Grafik auf weißer Basis, transparente Kontur",
+    "Trasparente: nel mockup lo sticker esce al 82% di opacità":"Transparent: Im Mockup erscheint der Sticker mit 82 % Deckkraft",
+    "Materiale applicato solo ad anteprima e mockup":"Material nur in Vorschau und Mockup angewendet",
+    "Perfetto. La tua prova di stampa è approvata.":"Perfekt. Deine Druckfreigabe ist erteilt.",
+    "Scrivi cosa vuoi modificare.":"Schreib, was du ändern möchtest.",
+    "Richiesta inviata. Ti ricontattiamo con la nuova bozza.":"Anfrage gesendet. Wir melden uns mit dem neuen Entwurf.",
+    "Stampata con base bianca: colori pieni, solo il contorno resta trasparente.":"Mit weißer Basis gedruckt: volle Farben, nur die Kontur bleibt transparent.",
+    "I colori saranno semitrasparenti":"Die Farben werden halbtransparent",
+    "il tuo file":"deine Datei",
+    "cambia file":"Datei wechseln",
+    "colore del materiale":"Materialfarbe",
+    "scegli un colore tuo":"eigene Farbe wählen",
+    "Tolto il colore <b>{c}</b> da tutto il file &mdash; anche dentro le lettere e dentro le figure. Occupava il {q}% del disegno.":"Farbe <b>{c}</b> aus der ganzen Datei entfernt &mdash; auch in Buchstaben und Figuren. Sie nahm {q}% des Motivs ein.",
+    "Attenzione: questo file non ha uno sfondo netto. Controlla che non manchi nulla del disegno.":"Achtung: Diese Datei hat keinen klaren Hintergrund. Prüf, ob vom Motiv nichts fehlt.",
+    "<b>Le zone bianche del tuo disegno non vengono stampate:</b> lì si vedrà il {m}. È così che si ottiene l'effetto.":"<b>Die weißen Flächen deines Motivs werden nicht gedruckt:</b> Dort scheint das Material ({m}) durch. So entsteht der Effekt.",
+    "Sfondo rilevato dal tuo file: <b>{c}</b>. Viene stampato così com'è.":"In deiner Datei erkannter Hintergrund: <b>{c}</b>. Er wird so gedruckt, wie er ist.",
+    "Il tuo adesivo:":"Dein Sticker:",
+    "Se vuoi cambiare, torna al passo precedente.":"Zum Ändern geh zum vorherigen Schritt zurück.",
+    "{n} pezzi":"{n} Stück",
+    "{n} etichette":"{n} Etiketten",
+    "non stampate → {m}":"nicht gedruckt → {m}",
+    "stampate in bianco":"in Weiß gedruckt",
+    "taglio {w} × {h} mm":"Schnitt {w} × {h} mm",
+    "scegli la misura del lato più lungo":"wähl das Maß der längsten Seite",
+    "materiale":"Material",
+    "bianco":"Weiß",
+    "Etichetta":"Etikett",
+    "Foglio":"Bogen",
+    "Contorno":"Kontur",
+    "Taglio":"Schnitt",
+    "Stampato":"Gedruckt",
+    "sagoma unica":"eine Form",
+    "scarto":"Abweichung",
+    "collo minimo":"Mindeststeg",
+    "oltre":"über",
+    "nodi":"Knoten",
+    "spigoli":"Ecken",
+    "cappi":"Schleifen",
+    "Tutto il design è dentro <b>un unico contorno</b>. Punto più stretto <b>{n} mm</b>. Sotto il {p}% circa di rientranza lo sticker si spezzerebbe: il cursore è già limitato lì.":"Das ganze Design liegt in <b>einer einzigen Kontur</b>. Engste Stelle <b>{n} mm</b>. Unter etwa {p}% Einbuchtung würde der Sticker brechen: Der Regler ist dort schon begrenzt.",
+    "Attenzione: la sagoma è in {n} pezzi. Sposta la rientranza verso \"sagoma piena\".":"Achtung: Die Form besteht aus {n} Teilen. Schieb die Einbuchtung Richtung „volle Form“.",
+    "Vista maschera —":"Maskenansicht —",
+    "rosso = eliminato":"rot = entfernt",
+    "Tenuto":"Behalten",
+    "Partenza {w} × {h} mm · bordo {b} mm (disegno pieno al {d}%)":"Ausgangsmaß {w} × {h} mm · Rand {b} mm (Motiv zu {d}% gefüllt)",
+    "contorno {b} mm su uno sticker da {w} mm":"{b} mm Kontur auf einem {w}-mm-Sticker",
+    "non entra":"passt nicht",
+    "I contorni si sovrappongono di {n} mm.":"Die Konturen überlappen sich um {n} mm.",
+    "Clicca sull'anteprima <b>ogni zona che è sfondo</b>. In <b style=\"color:#ff5a8a\">rosso</b> vedi cosa sparisce.":"Klick in der Vorschau auf <b>jede Fläche, die Hintergrund ist</b>. In <b style=\"color:#ff5a8a\">Rot</b> siehst du, was verschwindet.",
+    "Clicca <b>sopra la linea colorata</b> che il taglio deve seguire.":"Klick <b>auf die farbige Linie</b>, der der Schnitt folgen soll.",
+    "<div class=\"fixbar\">Dentro la forma vedi il file <b>com'è</b>, con il suo fondo.<button id=\"bgSwap\">Voglio solo il disegno, senza fondo</button></div>":"<div class=\"fixbar\">In der Form siehst du die Datei <b>wie sie ist</b>, mit ihrem Hintergrund.<button id=\"bgSwap\">Ich will nur das Motiv, ohne Hintergrund</button></div>",
+    "<div class=\"fixbar\">Dentro la forma ho messo <b>solo il disegno</b>, senza il suo fondo.<button id=\"bgSwap\">Rimetti il file com'era</button></div>":"<div class=\"fixbar\">In der Form habe ich <b>nur das Motiv</b> platziert, ohne seinen Hintergrund.<button id=\"bgSwap\">Datei wieder wie vorher</button></div>",
+    "tieni tutto":"alles behalten",
+    "file già scontornato":"Datei bereits freigestellt",
+    "sfondo rimosso: {c} ({n}% dell'immagine)":"Hintergrund entfernt: {c} ({n}% des Bildes)",
+    "taglio lungo la linea scelta":"Schnitt entlang der gewählten Linie",
+    "sfondo scelto a mano ({n} punti)":"Hintergrund von Hand gewählt ({n} Punkte)",
+    "scontorno automatico":"automatisches Freistellen",
+    "<b style=\"color:#ffb020\">{n} parti staccate</b> → unite in una sola sagoma":"<b style=\"color:#ffb020\">{n} getrennte Teile</b> → zu einer Form vereint",
+    "Sto tenendo il {n}% dell'immagine: prova un'altra proposta.":"Ich behalte {n}% des Bildes: Probier einen anderen Vorschlag.",
+    "colore dello sfondo eliminato":"Farbe des entfernten Hintergrunds",
+    "placca dell'adesivo ({n}% del perimetro)":"Sticker-Fläche ({n}% des Umfangs)",
+    "placca del design ({a}% pieno, {b}% del colore)":"Design-Fläche ({a}% gefüllt, {b}% der Farbe)",
+    "tratto su trasparente ({n}% pieno) → corpo bianco":"Strich auf Transparent ({n}% gefüllt) → weißer Körper",
+    "colore dominante rimosso":"dominante Farbe entfernt",
+    "non rilevabile, uso il bianco":"nicht erkennbar, nehme Weiß",
+    "sfondo non stampato · si vede il materiale":"Hintergrund nicht gedruckt · das Material ist sichtbar",
+    "sfondo {c}":"Hintergrund {c}",
+    "colori presi dal tuo logo":"Farben aus deinem Logo",
+    "file senza sfondo, parto dal bianco":"Datei ohne Hintergrund, starte mit Weiß",
+    "scelto manualmente":"manuell gewählt",
+    "forzato dal menu":"über das Menü erzwungen",
+    "In colore: zone che riceveranno il rilievo (spot <b>RDG_GLOSS</b>) · tratteggio: linea di taglio":"Farbig: Flächen mit Relief (Sonderfarbe <b>RDG_GLOSS</b>) · gestrichelt: Schnittlinie",
+    "Torna alla grafica":"Zurück zur Grafik",
+    "Effetto rilievo":"Relief-Effekt",
+    "Torna al tuo file":"Zurück zu deiner Datei",
+    "Guarda dove andra' l'effetto rilievo":"Sieh, wo der Relief-Effekt hinkommt",
+    "🔎 Sto studiando il disegno per decidere dove mettere il rilievo…":"🔎 Ich schaue mir das Motiv an, um zu entscheiden, wo das Relief hinkommt…",
+    "Torna al foglio":"Zurück zum Bogen",
+    "Etichetta da vicino":"Etikett aus der Nähe",
+    "Mostra il foglio intero":"Ganzen Bogen anzeigen",
+    "Ingrandisci una sola etichetta per lavorarci da vicino":"Ein einzelnes Etikett vergrößern, um es aus der Nähe zu bearbeiten",
+    "Pezzo intero":"Ganzes Teil",
+    "Rilievo da vicino":"Relief aus der Nähe",
+    "Torna al pezzo intero":"Zurück zum ganzen Teil",
+    "Ingrandisci per vedere il rilievo da vicino (trascina per spostarti)":"Vergrößern, um das Relief aus der Nähe zu sehen (zum Verschieben ziehen)"
+  },
+  nl:{
+    "Configura il tuo adesivo | Stickerprint":"Stel je sticker in | Stickerprint",
+    "Linea di taglio":"Snijlijn",
+    "Visualizza effetto resina":"Doming-effect tonen",
+    "Larghezza del bordo":"Randbreedte",
+    "Sfondo":"Achtergrond",
+    "Rimuovi sfondo":"Achtergrond verwijderen",
+    "Lo sfondo non viene stampato: resta il solo disegno.":"De achtergrond wordt niet gedrukt: alleen je ontwerp blijft over.",
+    "Il tuo file dentro la sagoma":"Je bestand binnen de vorm",
+    "◎ Centra nella sagoma":"◎ Centreren in de vorm",
+    "Angoli arrotondati":"Afgeronde hoeken",
+    "Poco":"Licht",
+    "Medio":"Gemiddeld",
+    "Tanto":"Sterk",
+    "Materiale":"Materiaal",
+    "Finitura":"Afwerking",
+    "Lucida":"Glans",
+    "brillante, riflette la luce":"glanzend, weerkaatst licht",
+    "Opaca":"Mat",
+    "vellutata, senza riflessi":"fluweelzacht, zonder reflecties",
+    "✓ Ci siamo, stampa così":"✓ Prima, zo drukken",
+    "✕ No, ho bisogno di modifiche":"✕ Nee, ik wil aanpassingen",
+    "COS'È":"WAT IS",
+    "Preprint è il nostro nuovo sistema di revisione automatizzato.":"Preprint is ons nieuwe geautomatiseerde controlesysteem.",
+    "È ancora in fase beta, e può ancora interpretare erroneamente un file o tralasciare dettagli importanti. Se il file è molto complesso, in bassa risoluzione, o l'anteprima non corrisponde alla tua idea, tocca":"Het is nog in bèta en kan een bestand verkeerd lezen of belangrijke details missen. Is je bestand erg complex, heeft het een lage resolutie of klopt het voorbeeld niet met je idee, tik dan op",
+    "«No, ho bisogno di modifiche»":"\"Nee, ik wil aanpassingen\"",
+    "e descrivi cosa desideri modificare.":"en beschrijf wat je wilt veranderen.",
+    "Un operatore umano continuerà sempre e comunque a esaminare ogni bozza di Preprint prima di inviare il tuo ordine in produzione, mentre completiamo la messa a punto di questo sistema.":"Zolang we het systeem nog bijschaven, blijft een medewerker elke Preprint-proef controleren voordat je bestelling naar productie gaat.",
+    "Con questo nuovo sistema abbiamo ridotto di circa":"Met dit nieuwe systeem hebben we de levertijd van bestelling tot verzending met zo'n",
+    "24 ore":"24 uur",
+    "i tempi di consegna dall'ordine alla spedizione, e stiamo lavorando per diminuire ulteriormente questo intervallo. Grazie per la pazienza.":"verkort, en we werken eraan om dat nog verder terug te brengen. Bedankt voor je geduld.",
+    "Cosa vuoi modificare?":"Wat wil je veranderen?",
+    "Questo è il file che hai caricato, senza nessuna modifica. Scrivici come vorresti realizzare i tuoi stickers.":"Dit is het bestand dat je hebt geüpload, zonder aanpassingen. Vertel ons hoe je je stickers wilt hebben.",
+    "Una volta completato il checkout, un nostro operatore ti invierà la prova di stampa con le modifiche richieste.":"Na het afrekenen stuurt een medewerker je de drukproef met de gevraagde aanpassingen.",
+    "Richiedi prova di stampa manuale":"Handmatige drukproef aanvragen",
+    "← Torna all'anteprima":"← Terug naar het voorbeeld",
+    "Per esempio: vorrei il bordo più largo, il fondo nero invece che bianco, togliere la scritta in basso…":"Bijvoorbeeld: een bredere rand, een zwarte achtergrond in plaats van wit, de tekst onderaan weghalen…",
+    "Elaborazione…":"Bezig…",
+    "Carica il tuo file":"Upload je bestand",
+    "Trascina qui il tuo file":"Sleep je bestand hierheen",
+    "oppure clicca per sfogliare":"of klik om te bladeren",
+    "Anteprima gratuita · Stampiamo solo dopo il tuo ok":"Gratis voorbeeld · We drukken pas na jouw akkoord",
+    "Configura il tuo adesivo":"Stel je sticker in",
+    "Carica il file, guarda l'anteprima, e se ti piace vai avanti. Al resto pensiamo noi.":"Upload je bestand, bekijk het voorbeeld en ga door als het je bevalt. De rest regelen wij.",
+    "Adesivi personalizzati":"Stickers op maat",
+    "Adesivi resinati":"Doming stickers",
+    "Che forma vuoi":"Welke vorm wil je",
+    "Sagomato":"Contoursnede",
+    "Rotondo":"Rond",
+    "Ovale":"Ovaal",
+    "Quadrato":"Vierkant",
+    "Rettangolo":"Rechthoek",
+    "Quanto grande":"Hoe groot",
+    "Su misura":"Eigen maat",
+    "Larghezza (mm)":"Breedte (mm)",
+    "Altezza (mm)":"Hoogte (mm)",
+    "Piccolo":"Smal",
+    "Grande":"Breed",
+    "Dimensione e posizione":"Grootte en positie",
+    "piccolo":"klein",
+    "grande":"groot",
+    "✥ Trascina il disegno nell'anteprima per centrarlo":"✥ Sleep het ontwerp in het voorbeeld om het te centreren",
+    "Centra":"Centreren",
+    "Ritocchi (di solito non servono)":"Verfijning (meestal niet nodig)",
+    "Angoli":"Hoeken",
+    "Vivi":"Scherp",
+    "Dettaglio del taglio":"Snijdetail",
+    "Morbido":"Zacht",
+    "Segue tutto":"Volgt alles",
+    "Su che materiale":"Op welk materiaal",
+    "Bianco":"Wit",
+    "Olografico":"Holografisch",
+    "Glitterato":"Glitter",
+    "Trasparente":"Transparant",
+    "Argento":"Zilver",
+    "Oro":"Goud",
+    "Colore dello sfondo":"Achtergrondkleur",
+    "Oro cromo":"Chroomgoud",
+    "Argento cromo":"Chroomzilver",
+    "Glitter":"Glitter",
+    "Il materiale si vede":"Het materiaal is",
+    "solo nell'anteprima e nel mockup":"alleen in het voorbeeld en de mockup",
+    "per il cliente. Il file singolo con tracciato e la plancia di stampa restano puliti.":"te zien. Het losse bestand met snijpad en het drukvel blijven schoon.",
+    "Resinati:":"Doming:",
+    "nessun angolo vivo — ogni sporgenza viene arrotondata con raggio minimo":"geen scherpe hoeken — elk uitsteeksel wordt afgerond met een minimale radius van",
+    ". Bordo minimo 2,5 mm e collo minimo 5 mm sono imposti dal sistema, altrimenti l'arrotondamento mangerebbe il disegno. La bombatura è solo nel mockup.":" afgerond. Een minimale rand van 2,5 mm en een minimale hals van 5 mm legt het systeem op, anders zou de afronding het ontwerp aanvreten. De bolling zit alleen in de mockup.",
+    "Forma del taglio":"Snijvorm",
+    "Die-cut — segue il disegno":"Contoursnede — volgt het ontwerp",
+    "Tondo":"Rond",
+    "Rettangolo arrotondato":"Afgeronde rechthoek",
+    "Scala del disegno":"Schaal van het ontwerp",
+    "Sposta X (mm)":"Verschuif X (mm)",
+    "Sposta Y (mm)":"Verschuif Y (mm)",
+    "⌖ Centra e adatta":"⌖ Centreren en passend maken",
+    "Raggio angoli (mm)":"Hoekradius (mm)",
+    "Tracciato di taglio":"Snijpad",
+    "Levigatura angoli":"Hoeken verzachten",
+    "spigoli vivi":"scherpe hoeken",
+    "tutto arrotondato":"alles afgerond",
+    "Semplicità sagoma":"Eenvoud van de vorm",
+    "dettagliata":"gedetailleerd",
+    "morbida":"zacht",
+    "Larghezza bordo":"Randbreedte",
+    "bordo stretto":"smalle rand",
+    "bordo largo":"brede rand",
+    "Rientranza":"Inkeping",
+    "sagoma piena":"volle vorm",
+    "segue i rientri":"volgt de inkepingen",
+    "Tutto il design finisce sempre dentro":"Het hele ontwerp valt altijd binnen",
+    "un unico contorno":"één enkele contour",
+    ". Il sistema non ti lascia scendere sotto il limite in cui lo sticker si spezzerebbe o diventerebbe troppo sottile.":". Het systeem laat je niet onder de grens waar de sticker zou breken of te dun zou worden.",
+    "Colore di bordo e contorno":"Rand- en contourkleur",
+    "Automatico — come lo sfondo del design":"Automatisch — zoals de achtergrond van het ontwerp",
+    "Nero":"Zwart",
+    "Scelgo io…":"Ik kies zelf…",
+    "Dimensione finita":"Eindformaat",
+    "Mantieni proporzioni":"Verhoudingen behouden",
+    "Avanzate — solo se serve":"Geavanceerd — alleen indien nodig",
+    "Se lo scontorno automatico non ti convince, scegli un'altra proposta:":"Overtuigt het automatische vrijstaand maken je niet, kies dan een ander voorstel:",
+    "🪄 Togli sfondo":"🪄 Achtergrond verwijderen",
+    "⭕ Segui una linea":"⭕ Een lijn volgen",
+    "↺ Torna all'automatico":"↺ Terug naar automatisch",
+    "✓ Clicca lo sfondo":"✓ Klik op de achtergrond",
+    "✓ Clicca la linea":"✓ Klik op de lijn",
+    "Tolleranza manuale":"Handmatige tolerantie",
+    "Abbondanza fuori taglio (mm)":"Afloop buiten de snede (mm)",
+    "Collo minimo (mm)":"Minimale hals (mm)",
+    "Taglia anche i fori interni":"Ook binnenste gaten snijden",
+    "Qui vedrai il tuo adesivo":"Hier zie je je sticker",
+    "Carica il file e ci pensiamo noi: togliamo lo sfondo, troviamo la sagoma e disegniamo il taglio. Tu guarda se ti piace.":"Upload je bestand en wij doen de rest: achtergrond weg, vorm bepalen en de snede tekenen. Jij kijkt alleen of het je bevalt.",
+    "Forma":"Vorm",
+    "Misura del taglio":"Snijmaat",
+    "Zone bianche":"Witte delen",
+    "⬇ Scarica l'anteprima":"⬇ Voorbeeld downloaden",
+    "PNG a fondo trasparente":"PNG met transparante achtergrond",
+    "Quello che vedi è il tuo adesivo come uscirà. Il tracciato di taglio e l'abbondanza di stampa li prepariamo noi: a te non servono.":"Wat je ziet is je sticker zoals hij eruit komt. Het snijpad en de afloop maken wij: die heb jij niet nodig.",
+    "Esporta":"Exporteren",
+    "⬇ File singolo (.svg)":"⬇ Los bestand (.svg)",
+    "Design + contorno + tracciato":"Ontwerp + contour + snijpad",
+    "⬇ Foglio di stampa":"⬇ Drukvel",
+    "Cartella di destinazione":"Doelmap",
+    "📁 Collega una cartella":"📁 Map koppelen",
+    "📁 Cambia cartella":"📁 Andere map",
+    "Sottocartella per ogni lavoro":"Submap per opdracht",
+    "Foglio di stampa":"Drukvel",
+    "Larghezza":"Breedte",
+    "Altezza":"Hoogte",
+    "Distanza pezzi":"Afstand tussen stuks",
+    "Copie":"Kopieën",
+    "Centra il blocco":"Blok centreren",
+    "Anteprima imposizione":"Voorbeeld van de impositie",
+    "Pezzi per foglio":"Stuks per vel",
+    "Griglia":"Raster",
+    "Spazio tra i contorni":"Ruimte tussen contouren",
+    "Resa materiale":"Materiaalrendement",
+    "File di produzione":"Productiebestanden",
+    "Margine del foglio (mm)":"Velmarge (mm)",
+    "Crocini di registro e codice a barre sono":"Registratiemerken en barcode staan",
+    "disattivati":"uit",
+    "finché non li tariamo sul Graphtec. Il foglio esce pulito.":"tot we ze op de Graphtec hebben gekalibreerd. Het vel komt er schoon uit.",
+    "Genera anche il .plt (HP-GL)":"Ook het .plt-bestand (HP-GL) maken",
+    "Incorpora l'immagine in ogni copia":"Afbeelding in elke kopie insluiten",
+    "Risoluzione export (DPI)":"Exportresolutie (DPI)",
+    "Nome lavoro":"Opdrachtnaam",
+    "es. RossiSrl_Logo":"bv. JanssenBV_Logo",
+    "👤 Modalità cliente":"👤 Klantmodus",
+    "⚙ Modalità studio":"⚙ Studiomodus",
+    "Resina colata su foglio · bombatura 3D":"Gegoten hars op vel · 3D-bolling",
+    "Formato non supportato. PDF, JPG, PNG, SVG.":"Formaat niet ondersteund. PDF, JPG, PNG, SVG.",
+    "Rasterizzo il PDF…":"PDF wordt gerasterd…",
+    "Apro il file…":"Bestand wordt geopend…",
+    "motore PDF non raggiungibile: serve internet la prima volta che apri un PDF":"PDF-engine niet bereikbaar: de eerste keer dat je een PDF opent heb je internet nodig",
+    "file illeggibile":"bestand onleesbaar",
+    "Nessun file caricato":"Geen bestand geüpload",
+    "sagoma non ricavabile":"vorm niet te bepalen",
+    "contorno non ricavabile":"contour niet te bepalen",
+    "maschera vuota":"leeg masker",
+    "Nessuna zona in rilievo da vettorializzare":"Geen reliëfzone om te vectoriseren",
+    "Nessuna zona in rilievo":"Geen reliëfzone",
+    "Punto trasparente: clicca sulla linea colorata.":"Transparant punt: klik op de gekleurde lijn.",
+    "Linea troppo sottile: alza la tolleranza.":"Lijn te dun: verhoog de tolerantie.",
+    "Scontorno automatico e unione delle parti…":"Automatisch vrijstaand maken en delen samenvoegen…",
+    "Ricalcolo…":"Opnieuw berekenen…",
+    "Non resta niente del design.":"Er blijft niets van het ontwerp over.",
+    "Non resta niente.":"Er blijft niets over.",
+    "Errore":"Fout",
+    "Errore mockup":"Mockup-fout",
+    "Errore SVG":"SVG-fout",
+    "Errore foglio":"Velfout",
+    "Genero il mockup…":"Mockup wordt gemaakt…",
+    "Genero il file vettoriale…":"Vectorbestand wordt gemaakt…",
+    "Genero il foglio ({n} pezzi)…":"Vel wordt gemaakt ({n} stuks)…",
+    "Lo sticker non entra nel foglio scelto.":"De sticker past niet op het gekozen vel.",
+    "✓ {n} file scritti in {d}":"✓ {n} bestanden opgeslagen in {d}",
+    "Scrittura fallita, passo ai download.":"Opslaan mislukt, ik schakel over op downloads.",
+    "{n} file scaricati":"{n} bestanden gedownload",
+    "File scaricato":"Bestand gedownload",
+    "Serve Chrome o Edge.":"Hiervoor heb je Chrome of Edge nodig.",
+    "Cartella collegata: {d}":"Map gekoppeld: {d}",
+    "Non riesco ad aprire la cartella.":"Kan de map niet openen.",
+    "Disegno centrato e adattato alla forma":"Ontwerp gecentreerd en passend gemaakt",
+    "Disegno centrato nella sagoma":"Ontwerp gecentreerd in de vorm",
+    "Materiale bianco":"Wit materiaal",
+    "Vetrofania: grafica piena con base bianca, contorno trasparente":"Raamsticker: volledige print op witte basis, transparante contour",
+    "Trasparente: nel mockup lo sticker esce al 82% di opacità":"Transparant: in de mockup heeft de sticker 82% dekking",
+    "Materiale applicato solo ad anteprima e mockup":"Materiaal alleen toegepast op voorbeeld en mockup",
+    "Perfetto. La tua prova di stampa è approvata.":"Top. Je drukproef is goedgekeurd.",
+    "Scrivi cosa vuoi modificare.":"Schrijf op wat je wilt veranderen.",
+    "Richiesta inviata. Ti ricontattiamo con la nuova bozza.":"Verzoek verstuurd. We komen bij je terug met de nieuwe proef.",
+    "Stampata con base bianca: colori pieni, solo il contorno resta trasparente.":"Gedrukt op witte basis: volle kleuren, alleen de contour blijft transparant.",
+    "I colori saranno semitrasparenti":"De kleuren worden halftransparant",
+    "il tuo file":"je bestand",
+    "cambia file":"ander bestand",
+    "colore del materiale":"materiaalkleur",
+    "scegli un colore tuo":"kies je eigen kleur",
+    "Tolto il colore <b>{c}</b> da tutto il file &mdash; anche dentro le lettere e dentro le figure. Occupava il {q}% del disegno.":"Kleur <b>{c}</b> uit het hele bestand gehaald &mdash; ook binnen letters en figuren. Die besloeg {q}% van het ontwerp.",
+    "Attenzione: questo file non ha uno sfondo netto. Controlla che non manchi nulla del disegno.":"Let op: dit bestand heeft geen duidelijke achtergrond. Controleer of er niets van het ontwerp ontbreekt.",
+    "<b>Le zone bianche del tuo disegno non vengono stampate:</b> lì si vedrà il {m}. È così che si ottiene l'effetto.":"<b>De witte delen van je ontwerp worden niet gedrukt:</b> daar zie je het materiaal ({m}). Zo ontstaat het effect.",
+    "Sfondo rilevato dal tuo file: <b>{c}</b>. Viene stampato così com'è.":"Achtergrond gevonden in je bestand: <b>{c}</b>. Die wordt zo gedrukt.",
+    "Il tuo adesivo:":"Je sticker:",
+    "Se vuoi cambiare, torna al passo precedente.":"Wil je iets veranderen, ga dan terug naar de vorige stap.",
+    "{n} pezzi":"{n} stuks",
+    "{n} etichette":"{n} etiketten",
+    "non stampate → {m}":"niet gedrukt → {m}",
+    "stampate in bianco":"in wit gedrukt",
+    "taglio {w} × {h} mm":"snede {w} × {h} mm",
+    "scegli la misura del lato più lungo":"kies de maat van de langste zijde",
+    "materiale":"materiaal",
+    "bianco":"wit",
+    "Etichetta":"Etiket",
+    "Foglio":"Vel",
+    "Contorno":"Contour",
+    "Taglio":"Snede",
+    "Stampato":"Gedrukt",
+    "sagoma unica":"één vorm",
+    "scarto":"afwijking",
+    "collo minimo":"minimale hals",
+    "oltre":"meer dan",
+    "nodi":"knooppunten",
+    "spigoli":"hoeken",
+    "cappi":"lussen",
+    "Tutto il design è dentro <b>un unico contorno</b>. Punto più stretto <b>{n} mm</b>. Sotto il {p}% circa di rientranza lo sticker si spezzerebbe: il cursore è già limitato lì.":"Het hele ontwerp zit in <b>één enkele contour</b>. Smalste punt <b>{n} mm</b>. Onder ongeveer {p}% inkeping zou de sticker breken: de schuif is daar al begrensd.",
+    "Attenzione: la sagoma è in {n} pezzi. Sposta la rientranza verso \"sagoma piena\".":"Let op: de vorm bestaat uit {n} delen. Schuif de inkeping richting \"volle vorm\".",
+    "Vista maschera —":"Maskerweergave —",
+    "rosso = eliminato":"rood = verwijderd",
+    "Tenuto":"Behouden",
+    "Partenza {w} × {h} mm · bordo {b} mm (disegno pieno al {d}%)":"Start {w} × {h} mm · rand {b} mm (ontwerp {d}% gevuld)",
+    "contorno {b} mm su uno sticker da {w} mm":"contour van {b} mm op een sticker van {w} mm",
+    "non entra":"past niet",
+    "I contorni si sovrappongono di {n} mm.":"De contouren overlappen {n} mm.",
+    "Clicca sull'anteprima <b>ogni zona che è sfondo</b>. In <b style=\"color:#ff5a8a\">rosso</b> vedi cosa sparisce.":"Klik in het voorbeeld op <b>elk deel dat achtergrond is</b>. In <b style=\"color:#ff5a8a\">rood</b> zie je wat verdwijnt.",
+    "Clicca <b>sopra la linea colorata</b> che il taglio deve seguire.":"Klik <b>op de gekleurde lijn</b> die de snede moet volgen.",
+    "<div class=\"fixbar\">Dentro la forma vedi il file <b>com'è</b>, con il suo fondo.<button id=\"bgSwap\">Voglio solo il disegno, senza fondo</button></div>":"<div class=\"fixbar\">Binnen de vorm zie je het bestand <b>zoals het is</b>, met zijn achtergrond.<button id=\"bgSwap\">Ik wil alleen het ontwerp, zonder achtergrond</button></div>",
+    "<div class=\"fixbar\">Dentro la forma ho messo <b>solo il disegno</b>, senza il suo fondo.<button id=\"bgSwap\">Rimetti il file com'era</button></div>":"<div class=\"fixbar\">Binnen de vorm heb ik <b>alleen het ontwerp</b> gezet, zonder achtergrond.<button id=\"bgSwap\">Zet het bestand terug zoals het was</button></div>",
+    "tieni tutto":"alles houden",
+    "file già scontornato":"bestand al vrijstaand",
+    "sfondo rimosso: {c} ({n}% dell'immagine)":"achtergrond verwijderd: {c} ({n}% van de afbeelding)",
+    "taglio lungo la linea scelta":"snede langs de gekozen lijn",
+    "sfondo scelto a mano ({n} punti)":"achtergrond handmatig gekozen ({n} punten)",
+    "scontorno automatico":"automatisch vrijstaand",
+    "<b style=\"color:#ffb020\">{n} parti staccate</b> → unite in una sola sagoma":"<b style=\"color:#ffb020\">{n} losse delen</b> → samengevoegd tot één vorm",
+    "Sto tenendo il {n}% dell'immagine: prova un'altra proposta.":"Ik behoud {n}% van de afbeelding: probeer een ander voorstel.",
+    "colore dello sfondo eliminato":"kleur van de verwijderde achtergrond",
+    "placca dell'adesivo ({n}% del perimetro)":"stickervlak ({n}% van de omtrek)",
+    "placca del design ({a}% pieno, {b}% del colore)":"ontwerpvlak ({a}% gevuld, {b}% van de kleur)",
+    "tratto su trasparente ({n}% pieno) → corpo bianco":"lijn op transparant ({n}% gevuld) → wit lichaam",
+    "colore dominante rimosso":"dominante kleur verwijderd",
+    "non rilevabile, uso il bianco":"niet te bepalen, ik gebruik wit",
+    "sfondo non stampato · si vede il materiale":"achtergrond niet gedrukt · het materiaal is zichtbaar",
+    "sfondo {c}":"achtergrond {c}",
+    "colori presi dal tuo logo":"kleuren uit je logo",
+    "file senza sfondo, parto dal bianco":"bestand zonder achtergrond, ik begin met wit",
+    "scelto manualmente":"handmatig gekozen",
+    "forzato dal menu":"geforceerd via het menu",
+    "In colore: zone che riceveranno il rilievo (spot <b>RDG_GLOSS</b>) · tratteggio: linea di taglio":"In kleur: zones die reliëf krijgen (steunkleur <b>RDG_GLOSS</b>) · gestippeld: snijlijn",
+    "Torna alla grafica":"Terug naar het ontwerp",
+    "Effetto rilievo":"Reliëfeffect",
+    "Torna al tuo file":"Terug naar je bestand",
+    "Guarda dove andra' l'effetto rilievo":"Bekijk waar het reliëfeffect komt",
+    "🔎 Sto studiando il disegno per decidere dove mettere il rilievo…":"🔎 Ik bekijk het ontwerp om te bepalen waar het reliëf komt…",
+    "Torna al foglio":"Terug naar het vel",
+    "Etichetta da vicino":"Etiket van dichtbij",
+    "Mostra il foglio intero":"Hele vel tonen",
+    "Ingrandisci una sola etichetta per lavorarci da vicino":"Zoom in op één etiket om er van dichtbij aan te werken",
+    "Pezzo intero":"Hele sticker",
+    "Rilievo da vicino":"Reliëf van dichtbij",
+    "Torna al pezzo intero":"Terug naar de hele sticker",
+    "Ingrandisci per vedere il rilievo da vicino (trascina per spostarti)":"Zoom in om het reliëf van dichtbij te zien (sleep om te verschuiven)"
+  }
+};
+function tr(s,v){let t=s;
+  if(typeof s==='string'){
+    if(LANG!=='it'){const d=TR[LANG],k=s.trim().replace(/\s+/g,' ');
+      if(d&&Object.prototype.hasOwnProperty.call(d,k))t=s.match(/^\s*/)[0]+d[k]+s.match(/\s*$/)[0];}
+    if(v)for(const x in v)t=t.split('{'+x+'}').join(String(v[x]));}
+  return t;}
+(function lingua(){
+  if(LANG==='it'||!TR[LANG])return;
+  document.documentElement.lang=LANG;
+  const SKIP={SCRIPT:1,STYLE:1,CANVAS:1,SVG:1,TEXTAREA:1};
+  const ATTRS=['placeholder','title','aria-label'];
+  const txt=n=>{const s=n.nodeValue;if(!s||!/\S/.test(s))return;const t=tr(s);if(t!==s)n.nodeValue=t;};
+  const attr=(e,a)=>{const s=e.getAttribute(a);if(!s)return;const t=tr(s);if(t!==s)e.setAttribute(a,t);};
+  const walk=n=>{
+    if(n.nodeType===3){txt(n);return;}
+    if(n.nodeType!==1)return;
+    const tag=String(n.tagName).toUpperCase();
+    for(const a of ATTRS)if(n.hasAttribute(a))attr(n,a);
+    if(tag==='INPUT'&&/^(button|submit|reset)$/i.test(n.type||''))attr(n,'value');
+    if(SKIP[tag])return;
+    for(let c=n.firstChild;c;c=c.nextSibling)walk(c);
+  };
+  try{walk(document.body);}catch(e){}
+  try{document.title=tr(document.title);}catch(e){}
+  try{new MutationObserver(ms=>{for(const m of ms){
+    if(m.type==='characterData'){txt(m.target);continue;}
+    for(const n of m.addedNodes)walk(n);
+  }}).observe(document.body,{childList:true,subtree:true,characterData:true});}catch(e){}
+})();
 const $=id=>document.getElementById(id), MM=25.4;
 const fmt=n=>(Math.round(n*1000)/1000).toString();
 const hexOf=c=>'#'+[c[0],c[1],c[2]].map(v=>Math.max(0,Math.min(255,Math.round(v))).toString(16).padStart(2,'0')).join('');
@@ -649,9 +2135,9 @@ const hex2rgb=h=>{const n=parseInt(h.slice(1),16);return [(n>>16)&255,(n>>8)&255
 /* [sito] con fallback a tempo: dentro un iframe fuori schermo Chrome sospende requestAnimationFrame */
 const nextFrame=()=>new Promise(r=>{let done=false;const go=()=>{if(!done){done=true;r();}};requestAnimationFrame(()=>requestAnimationFrame(go));setTimeout(go,120);});
 let toastT;
-function toast(m,e){const t=$('toast');t.textContent=m;t.className='toast on'+(e?' err':'');
+function toast(m,e){const t=$('toast');t.textContent=tr(m);t.className='toast on'+(e?' err':'');
   clearTimeout(toastT);toastT=setTimeout(()=>t.className='toast',e?6000:2600);}
-function busy(on,txt){$('busy').className='busy'+(on?' on':'');if(txt)$('busyT').textContent=txt;}
+function busy(on,txt){$('busy').className='busy'+(on?' on':'');if(txt)$('busyT').textContent=tr(txt);}
 const RESIN_R=2.0;          // raggio minimo obbligatorio sugli angoli, in mm
 const RESIN_NECK=5.0;       // collo minimo per il resinato, in mm
 const RESIN_BORDER=2.5;     // bordo minimo, così l'arrotondamento non mangia il disegno
@@ -1064,7 +2550,7 @@ function applyStrategy(d,w,h,st,ctx){
   if(st.kind==='modello-glob')return maskModel(d,w,h,ctx.km[st.k],T(st.tol),false);
   return maskFlood(d,w,h,ctx.ref,T(12));}
 function labelOf(st){
-  if(st.kind==='intero')return 'tieni tutto';
+  if(st.kind==='intero')return tr('tieni tutto');
   if(st.kind==='alpha')return 'trasparenza '+st.at;
   if(st.kind==='locale')return 'sfumato '+st.lt+'/'+st.gt;
   if(st.kind==='modello')return 'modello '+st.k+' col '+st.tol+'%';
@@ -1465,7 +2951,7 @@ function autoSegment(){
     let k=0;for(let i=0;i<w*h;i++)k+=mm[i];
     S.giaScont=false;
     S.cands=[{mask:mm,st:{kind:'dominante',tol:14},w,h,
-      label:'sfondo rimosso: '+hexOf(dom.col)+' ('+Math.round(dom.frac*100)+'% dell\'immagine)',
+      label:tr('sfondo rimosso: {c} ({n}% dell\'immagine)',{c:hexOf(dom.col),n:Math.round(dom.frac*100)}),
       score:1,keptPct:k/(w*h),edge:1,contrast:1,bgFit:1,borderTouch:0,bgStd:0,
       compact:1,comps:1,holeFrac:0,edgeIsBg:0,eaten:0}];
     S.ctx0={ref:dom.col,km:{},bgm:{C:[],dRef:10}};
@@ -1480,7 +2966,7 @@ function autoSegment(){
     const d=S.work.data,w=S.work.w,h=S.work.h;
     const m=despeckle(applyStrategy(d,w,h,st,{ref:[255,255,255],km:{},bgm:{C:[],dRef:10}}),w,h,SPECK_GEO);
     let k=0;for(let i=0;i<w*h;i++)k+=m[i];
-    S.cands=[{mask:m,st,w,h,label:'file già scontornato',score:1,keptPct:k/(w*h),
+    S.cands=[{mask:m,st,w,h,label:tr('file già scontornato'),score:1,keptPct:k/(w*h),
       edge:1,contrast:1,bgFit:1,borderTouch:0,bgStd:0,compact:1,comps:1,holeFrac:0,edgeIsBg:0,eaten:0}];
     S.ctx0={ref:[255,255,255],km:{},bgm:{C:[],dRef:10}};
     S.chosen=0;paintAlts();return;
@@ -1797,9 +3283,9 @@ function soggettiFoglio(o){
 function computeMask(){
   const w=S.work.w,h=S.work.h,d=S.work.data;
   let m=null,src='';
-  if(S.lineSeed){m=lineMask();src='taglio lungo la linea scelta';}
-  if(!m&&S.seeds.length){m=manualMask();src='sfondo scelto a mano ('+S.seeds.length+' punti)';}
-  if(!m){m=applyChosen();src='scontorno automatico'+(S.chosen>=0?' · '+S.cands[S.chosen].label:'');
+  if(S.lineSeed){m=lineMask();src=tr('taglio lungo la linea scelta');}
+  if(!m&&S.seeds.length){m=manualMask();src=tr('sfondo scelto a mano ({n} punti)',{n:S.seeds.length});}
+  if(!m){m=applyChosen();src=tr('scontorno automatico')+(S.chosen>=0?' · '+S.cands[S.chosen].label:'');
     /* etichetta scontornata in automatico dentro una forma geometrica (geoIdx): la grana della carta
        lascia qualche macchiolina isolata lontano dal disegno, e il riquadro del disegno si allarga
        fino a li' (BOURBON: l'etichetta usciva piccola nel rettangolo). Via i pezzetti sotto lo 0,03%
@@ -1851,7 +3337,7 @@ function computeMask(){
   for(let i=0;i<w*h;i+=step){const p=i*4;if(!m[i]&&d[p+3]>=128)rem.push([d[p],d[p+1],d[p+2]]);}
   let mc=borderOpaque>=0.4?modeColor(rem):null;
   S.bgUnif=mc?mc[3]:0;
-  if(mc&&mc[3]>0.25){S.bgCol=[mc[0],mc[1],mc[2]];S.bgSrc='colore dello sfondo eliminato';}
+  if(mc&&mc[3]>0.25){S.bgCol=[mc[0],mc[1],mc[2]];S.bgSrc=tr('colore dello sfondo eliminato');}
   /* SPESSORE della sagoma tenuta, in frazione della diagonale del suo
      ingombro. È la misura che distingue una PLACCA — una campitura piena che
      fa da fondo al disegno — da un LETTERING, che riempie il riquadro ma è
@@ -1906,7 +3392,7 @@ function computeMask(){
       if(rc){let n=0,t=0;for(let i=0;i<w*h;i+=step){const p=i*4;if(!m[i]||d[p+3]<128)continue;t++;if(Math.abs(d[p]-rc[0])+Math.abs(d[p+1]-rc[1])+Math.abs(d[p+2]-rc[2])<60)n++;}quota=t?n/t:0;}
       if(rc&&rc[3]>=0.55&&quota>=0.35){
         S.bgCol=[rc[0],rc[1],rc[2]];
-        S.bgSrc='placca dell\'adesivo ('+Math.round(rc[3]*100)+'% del perimetro)';
+        S.bgSrc=tr('placca dell\'adesivo ({n}% del perimetro)',{n:Math.round(rc[3]*100)});
         dens=1;   // la placca c'è: non serve il test di densità
       }
     }
@@ -1917,13 +3403,13 @@ function computeMask(){
       for(let i=0;i<w*h;i+=step){const p=i*4;if(m[i]&&d[p+3]>=128)dp.push([d[p],d[p+1],d[p+2]]);}
       const dc=modeColor(dp);
       if(dc){S.bgCol=[dc[0],dc[1],dc[2]];
-        S.bgSrc='placca del design ('+Math.round(dens*100)+'% pieno, '+Math.round(dc[3]*100)+'% del colore)';}
-    }else{S.bgCol=[255,255,255];S.bgSrc='tratto su trasparente ('+Math.round(dens*100)+'% pieno) → corpo bianco';}}
+        S.bgSrc=tr('placca del design ({a}% pieno, {b}% del colore)',{a:Math.round(dens*100),b:Math.round(dc[3]*100)});}
+    }else{S.bgCol=[255,255,255];S.bgSrc=tr('tratto su trasparente ({n}% pieno) → corpo bianco',{n:Math.round(dens*100)});}}
   if(S.rimuoviSfondo&&S.bgForzato){
     S.bgCol=[Math.round(S.bgForzato[0]),Math.round(S.bgForzato[1]),Math.round(S.bgForzato[2])];
-    S.bgSrc='colore dominante rimosso';
+    S.bgSrc=tr('colore dominante rimosso');
   }
-  if(!S.bgCol){S.bgCol=[255,255,255];S.bgSrc='non rilevabile, uso il bianco';}
+  if(!S.bgCol){S.bgCol=[255,255,255];S.bgSrc=tr('non rilevabile, uso il bianco');}
   /* ------------------------------------------------------------------
      REGOLA ASSOLUTA: la grafica del cliente non si elimina, mai.
      Qualunque cosa abbia deciso lo scontorno, un pixel opaco che NON ha il
@@ -1963,9 +3449,9 @@ function computeMask(){
   buildArtCanvas();
   buildPalette();
   const pieces=nComp(m,w,h,Math.max(40,w*h*0.0004));
-  $('autoInfo').innerHTML=src+(pieces>1?' · <b style="color:#ffb020">'+pieces+' parti staccate</b> → unite in una sola sagoma':'');
+  $('autoInfo').innerHTML=src+(pieces>1?' · '+tr('<b style="color:#ffb020">{n} parti staccate</b> → unite in una sola sagoma',{n:pieces}):'');
   $('maskWarn').innerHTML=(S.keptPct>0.9&&!S.lineSeed)
-    ?'<div class="note bad">Sto tenendo il '+(S.keptPct*100).toFixed(0)+'% dell\'immagine: prova un\'altra proposta.</div>':'';
+    ?'<div class="note bad">'+tr('Sto tenendo il {n}% dell\'immagine: prova un\'altra proposta.',{n:(S.keptPct*100).toFixed(0)})+'</div>':'';
   paintSwatch();}
 /* Copia del disegno con lo SFONDO REALMENTE RIMOSSO.
    Senza questa, sotto il tracciato ricompariva il riquadro bianco del file
@@ -2309,9 +3795,9 @@ function paintPalette(){
   const c=S.palette&&S.palette[S.palIdx]?S.palette[S.palIdx]:[255,255,255];
   const isBare=S.palIdx===0&&bare;
   $('palInfo').textContent= isBare
-    ? 'sfondo non stampato · si vede il materiale'
-    : 'sfondo '+hexOf(c).toUpperCase()+
-      (S.bgOpaque?' · colori presi dal tuo logo':' · file senza sfondo, parto dal bianco');
+    ? tr('sfondo non stampato · si vede il materiale')
+    : tr('sfondo {c}',{c:hexOf(c).toUpperCase()})+
+      ' · '+(S.bgOpaque?tr('colori presi dal tuo logo'):tr('file senza sfondo, parto dal bianco'));
   const n=$('matNote'); if(n)n.style.display=bare?'block':'none';}
 
 function contourColor(){
@@ -4388,7 +5874,7 @@ function draw(){
       S._an={cv,tile,pad:padS,ppm:ppmS,b:0,dash:Math.max(0.6,Math.min(1.6,S.cutW/40)),path:S.pathD,sheet:L,tilePpm:ppm};
       ridipingi();
       $('s1').innerHTML='Etichetta <b>'+S.cutW.toFixed(1)+' × '+S.cutH.toFixed(1)+' mm</b>';
-      $('s2').innerHTML='Foglio <b>'+L.SW+' × '+L.SH+' mm</b> · <b>'+L.n+' etichette</b> ('+L.cols+' × '+L.rows+')';
+      $('s2').innerHTML='Foglio <b>'+L.SW+' × '+L.SH+' mm</b> · <b>'+tr('{n} etichette',{n:L.n})+'</b> ('+L.cols+' × '+L.rows+')';
       $('s3').innerHTML='Contorno <b>'+contourColor().toUpperCase()+'</b>';
       $('s4').innerHTML='';$('qual').style.display='none';
       return;
@@ -4408,16 +5894,16 @@ function draw(){
   $('s3').innerHTML='Contorno <b>'+contourColor().toUpperCase()+'</b>';
   if(S.quality){
     const q=S.quality;
-    $('s4').innerHTML=(q.pieces===1?'<b style="color:#3ddc97">sagoma unica</b>':'<b style="color:#ffb020">'+q.pieces+' pezzi</b>');
+    $('s4').innerHTML=(q.pieces===1?'<b style="color:#3ddc97">sagoma unica</b>':'<b style="color:#ffb020">'+tr('{n} pezzi',{n:q.pieces})+'</b>');
     $('qual').style.display='flex';
     $('qual').innerHTML='<span>scarto <b>±'+q.dev.toFixed(2)+' mm</b></span>'+
-      '<span>collo minimo <b>'+(q.neckCapped?'oltre ':'')+q.neck.toFixed(1)+' mm</b></span>'+
+      '<span>collo minimo <b>'+(q.neckCapped?tr('oltre')+' ':'')+q.neck.toFixed(1)+' mm</b></span>'+
       '<span>nodi <b>'+q.nodes+'</b></span>'+
       '<span>spigoli <b>'+q.corners+'</b></span>'+
       (q.xi?'<span style="color:#ff7b7b">cappi <b>'+q.xi+'</b></span>':'');
     $('rieNote').innerHTML= q.pieces===1
-      ? 'Tutto il design è dentro <b>un unico contorno</b>. Punto più stretto <b>'+q.neck.toFixed(1)+' mm</b>. Sotto il '+Math.round(100/(1+2.6))+'% circa di rientranza lo sticker si spezzerebbe: il cursore è già limitato lì.'
-      : 'Attenzione: la sagoma è in '+q.pieces+' pezzi. Sposta la rientranza verso "sagoma piena".';
+      ? tr('Tutto il design è dentro <b>un unico contorno</b>. Punto più stretto <b>{n} mm</b>. Sotto il {p}% circa di rientranza lo sticker si spezzerebbe: il cursore è già limitato lì.',{n:q.neck.toFixed(1),p:Math.round(100/(1+2.6))})
+      : tr('Attenzione: la sagoma è in {n} pezzi. Sposta la rientranza verso "sagoma piena".',{n:q.pieces});
   }else{$('s4').innerHTML='';$('qual').style.display='none';}}
 function drawMaskView(){
   const cv=$('preview'),w=S.mw,h=S.mh;
@@ -4453,7 +5939,7 @@ async function rebuild(fresh){
     if(fresh)proposeSize();
     buildCut();draw();computeLayout();bgFixBar();
     ['bMock','bSvg','bSheet'].forEach(i=>$(i).disabled=false);
-  }catch(e){console.error(e);toast('Errore: '+e.message,1);}
+  }catch(e){console.error(e);toast(tr('Errore')+': '+tr(e.message),1);}
   busy(false);}
 async function refresh(fresh){
   if(!S.src)return;busy(true,'Ricalcolo…');await nextFrame();
@@ -4461,7 +5947,7 @@ async function refresh(fresh){
     if(!S.bbox){if(S.wand)drawMaskView();busy(false);toast('Non resta niente.',1);return;}
     if(fresh)proposeSize();
     buildCut();draw();computeLayout();
-  }catch(e){console.error(e);toast('Errore: '+e.message,1);}
+  }catch(e){console.error(e);toast(tr('Errore')+': '+tr(e.message),1);}
   busy(false);}
 const START_MM=50;   // misura di partenza: lo standard della maggior parte degli ordini
 function proposeSize(){
@@ -4494,9 +5980,8 @@ function proposeSize(){
   $('wmm').value=w.toFixed(1);$('hmm').value=h.toFixed(1);syncRatio();
   S.Rsafe=null;
   $('suggest').style.display='block';
-  $('suggest').textContent='Partenza '+w.toFixed(1)+' × '+h.toFixed(1)+' mm · bordo '+off.toFixed(1)+
-    ' mm (disegno pieno al '+Math.round(dens*100)+'%)';
-  $('bordInfo').textContent='contorno '+off.toFixed(1)+' mm su uno sticker da '+w.toFixed(0)+' mm';}
+  $('suggest').textContent=tr('Partenza {w} × {h} mm · bordo {b} mm (disegno pieno al {d}%)',{w:w.toFixed(1),h:h.toFixed(1),b:off.toFixed(1),d:Math.round(dens*100)});
+  $('bordInfo').textContent=tr('contorno {b} mm su uno sticker da {w} mm',{b:off.toFixed(1),w:w.toFixed(0)});}
 
 /* ==========================================================================
    EXPORT (invariati dalla v2.0)
@@ -4540,7 +6025,7 @@ $('bMock').onclick=async()=>{
   try{
     const blob=await mockupBlob();
     await deliver([{name:jobName()+'_MOCKUP.png',blob}]);
-  }catch(e){console.error(e);toast('Errore mockup: '+e.message,1);}
+  }catch(e){console.error(e);toast(tr('Errore mockup')+': '+tr(e.message),1);}
   busy(false);};
 /* File di produzione: SEMPRE senza materiale */
 function tileURI(){return renderTile(+$('dpi').value/MM,false).toDataURL('image/png');}
@@ -4559,7 +6044,7 @@ $('bSvg').onclick=async()=>{
     s+='<g id="CutContour" data-spot-color="CutContour" transform="translate('+fmt(b)+','+fmt(b)+')">'+
        '<path d="'+S.pathD+'" fill="none" stroke="#FF00FF" stroke-width="0.25" fill-rule="evenodd"/></g>\n</svg>';
     await deliver([{name:jobName()+'_SINGOLO.svg',blob:new Blob([s],{type:'image/svg+xml'})}]);
-  }catch(e){console.error(e);toast('Errore SVG: '+e.message,1);}
+  }catch(e){console.error(e);toast(tr('Errore SVG')+': '+tr(e.message),1);}
   busy(false);};
 /* Crocini e barcode temporaneamente disattivati: verranno reintrodotti
    quando li tariamo davvero sul Graphtec. */
@@ -4586,7 +6071,7 @@ function computeLayout(){
   $('nBl').textContent=free.toFixed(1)+' mm';
   $('nRe').textContent=(n*S.cutW*S.cutH/(W*H)*100).toFixed(1)+' %';
   $('gapWarn').innerHTML=free<0
-    ?'<div class="note bad">I contorni si sovrappongono di '+Math.abs(free).toFixed(1)+' mm.</div>':'';
+    ?'<div class="note bad">'+tr('I contorni si sovrappongono di {n} mm.',{n:Math.abs(free).toFixed(1)})+'</div>':'';
   drawSheetPreview();}
 function positions(){const L=S.layout,out=[];
   for(let i=0;i<L.n;i++){const c=i%L.cols,r=(i/L.cols)|0;
@@ -4617,7 +6102,7 @@ function buildPLT(){
 $('bSheet').onclick=async()=>{
   computeLayout();const L=S.layout;
   if(!L||L.n<1){toast('Lo sticker non entra nel foglio scelto.',1);return;}
-  busy(true,'Genero il foglio ('+L.n+' pezzi)…');await nextFrame();
+  busy(true,tr('Genero il foglio ({n} pezzi)…',{n:L.n}));await nextFrame();
   try{
     const pos=positions(),b=S.bleed,tw=S.cutW+2*b,th=S.cutH+2*b;
     const uri=tileURI();
@@ -4642,7 +6127,7 @@ $('bSheet').onclick=async()=>{
                  {name:base+'_TAGLIO.svg',blob:new Blob([c],{type:'image/svg+xml'})}];
     if($('pltOn').checked)files.push({name:base+'_TAGLIO.plt',blob:new Blob([buildPLT()],{type:'application/octet-stream'})});
     await deliver(files,base);
-  }catch(e){console.error(e);toast('Errore foglio: '+e.message,1);}
+  }catch(e){console.error(e);toast(tr('Errore foglio')+': '+tr(e.message),1);}
   busy(false);};
 function dlBlob(blob,name){const url=URL.createObjectURL(blob),a=document.createElement('a');
   a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();
@@ -4654,10 +6139,10 @@ async function deliver(files,sub){
       if($('subfold').checked&&sub)dir=await dir.getDirectoryHandle(sub,{create:true});
       for(const f of files){const fh=await dir.getFileHandle(f.name,{create:true});
         const ws=await fh.createWritable();await ws.write(f.blob);await ws.close();}
-      toast('✓ '+files.length+' file scritti in '+S.dirHandle.name);return;}
+      toast(tr('✓ {n} file scritti in {d}',{n:files.length,d:S.dirHandle.name}));return;}
   }catch(e){console.error(e);toast('Scrittura fallita, passo ai download.',1);}}
   files.forEach((f,i)=>setTimeout(()=>dlBlob(f.blob,f.name),i*400));
-  toast(files.length>1?files.length+' file scaricati':'File scaricato');}
+  toast(files.length>1?tr('{n} file scaricati',{n:files.length}):'File scaricato');}
 async function ensurePerm(h){const o={mode:'readwrite'};
   if(await h.queryPermission(o)==='granted')return true;
   return (await h.requestPermission(o))==='granted';}
@@ -4671,7 +6156,7 @@ async function idbGet(k){const d=await idb();return new Promise((res,rej)=>{
 $('bFold').onclick=async()=>{
   if(!window.showDirectoryPicker){toast('Serve Chrome o Edge.',1);return;}
   try{const h=await window.showDirectoryPicker({mode:'readwrite'});
-    S.dirHandle=h;await idbSet('dir',h);showFolder();toast('Cartella collegata: '+h.name);
+    S.dirHandle=h;await idbSet('dir',h);showFolder();toast(tr('Cartella collegata: {d}',{d:h.name}));
   }catch(e){if(e.name!=='AbortError')toast('Non riesco ad aprire la cartella.',1);}};
 function showFolder(){if(!S.dirHandle){$('foldName').style.display='none';return;}
   $('foldName').style.display='block';$('foldName').textContent='✓ '+S.dirHandle.name;
@@ -4693,7 +6178,7 @@ function setWand(mode){
   $('bWand').style.background=bg?'linear-gradient(135deg,#2f7fe0,#2a53c9)':'#26313e';
   $('bLine').style.background=ln?'linear-gradient(135deg,#12a97a,#0f8a63)':'#26313e';
   $('wandNote').style.display=S.wand?'block':'none';
-  if(S.wand)$('wandNote').innerHTML=WT[S.wand];
+  if(S.wand)$('wandNote').innerHTML=tr(WT[S.wand]);
   $('preview').style.cursor=S.wand?'crosshair':'default';
   if(S.mask&&S.work)draw();}
 $('bWand').onclick=()=>setWand(S.wand==='bg'?false:'bg');
@@ -4711,7 +6196,7 @@ let ratio=1;
 function syncRatio(){const w=+$('wmm').value,h=+$('hmm').value;if(w>0&&h>0)ratio=h/w;}
 let t1;function deb(fn,ms){clearTimeout(t1);t1=setTimeout(fn,ms===undefined?200:ms);}
 function redo(ms){deb(()=>{if(S.src&&S.bbox){try{buildCut();draw();computeLayout();snapEmbed();}
-  catch(e){console.error(e);toast('Errore: '+e.message,1);}}},ms);}
+  catch(e){console.error(e);toast(tr('Errore')+': '+tr(e.message),1);}}},ms);}
 /* [sito] ogni ritocco a mano (zoom, spostamento, misura, angoli) manda l'istantanea al sito:
    prima la mandava solo alla fine di un lavoro, e lo zoom fatto nel popup del kit restava
    solo a schermo: alla conferma il sito teneva l'ultima istantanea, senza zoom */
@@ -4788,7 +6273,7 @@ function applyBorderLevel(){
   off=Math.max(minOff,Math.min(20,off));
   if(S.prod==='resin')off=Math.max(RESIN_BORDER,off);
   $('brd').value=Math.round(off*10);$('brdV').textContent=off.toFixed(1);
-  $('bordInfo').textContent='contorno '+off.toFixed(1)+' mm su uno sticker da '+w.toFixed(0)+' mm';}
+  $('bordInfo').textContent=tr('contorno {b} mm su uno sticker da {w} mm',{b:off.toFixed(1),w:w.toFixed(0)});}
 
 function applyPreset(recalc){
   const tab=P_TAGLIO_L;   /* [sito] resinati: stessi valori degli adesivi (P_TAGLIO_L_RES non piu' usata) */
@@ -4918,13 +6403,11 @@ function bgFixBar(){
   const cutIdx=S.cands.findIndex(c=>c.st.kind!=='intero');
   if(cur.st.kind==='intero'){
     if(cutIdx<0){box.innerHTML='';return;}
-    box.innerHTML='<div class="fixbar">Dentro la forma vedi il file <b>com\'è</b>, con il suo fondo.'+
-      '<button id="bgSwap">Voglio solo il disegno, senza fondo</button></div>';
+    box.innerHTML=tr('<div class="fixbar">Dentro la forma vedi il file <b>com\'è</b>, con il suo fondo.<button id="bgSwap">Voglio solo il disegno, senza fondo</button></div>');
     $('bgSwap').onclick=()=>{S.chosen=cutIdx;S.sceltaUtente=true;S.seeds=[];S.lineSeed=null;refresh(true);};
   }else{
     if(keepIdx<0){box.innerHTML='';return;}
-    box.innerHTML='<div class="fixbar">Dentro la forma ho messo <b>solo il disegno</b>, senza il suo fondo.'+
-      '<button id="bgSwap">Rimetti il file com\'era</button></div>';
+    box.innerHTML=tr('<div class="fixbar">Dentro la forma ho messo <b>solo il disegno</b>, senza il suo fondo.<button id="bgSwap">Rimetti il file com\'era</button></div>');
     $('bgSwap').onclick=()=>{S.chosen=keepIdx;S.sceltaUtente=true;S.seeds=[];S.lineSeed=null;refresh(true);};
   }}
 
@@ -5038,11 +6521,11 @@ function uSummary(){
   $('uMisura').textContent=(S.cutW&&S.cutH)
     ? S.cutW.toFixed(1)+' × '+S.cutH.toFixed(1)+' mm' : '—';
   const bare=(matKind()!=='white')&&S.palIdx===0;
-  $('uSfondo').textContent=bare?'non stampate → '+(U_MAT[matKind()]||'').toLowerCase()
+  $('uSfondo').textContent=bare?tr('non stampate → {m}',{m:tr(U_MAT[matKind()]||'').toLowerCase()})
     :'stampate in bianco';
   const si=$('sizeInfo');
   if(si)si.textContent=(S.cutW&&S.cutH)
-    ? 'taglio '+S.cutW.toFixed(1)+' × '+S.cutH.toFixed(1)+' mm'
+    ? tr('taglio {w} × {h} mm',{w:S.cutW.toFixed(1),h:S.cutH.toFixed(1)})
     : 'scegli la misura del lato più lungo';
 }
 /* il riepilogo si aggiorna quando si ridisegna: aggancio draw() senza toccarla */
@@ -5182,10 +6665,10 @@ function uBloccaCombinazione(){
     const box=document.getElementById('uScelto');
     if(box){
       const parti=[];
-      if(f)parti.push(U_SHP[f]);
-      if(m)parti.push(U_MAT[m]);
+      if(f)parti.push(tr(U_SHP[f]));
+      if(m)parti.push(tr(U_MAT[m]));
       if(c.w)parti.push((+c.w).toFixed(0)+(c.h?' × '+(+c.h).toFixed(0):'')+' mm');
-      if(c.qta)parti.push(c.qta+' pezzi');
+      if(c.qta)parti.push(tr('{n} pezzi',{n:c.qta}));
       box.innerHTML='<b>Il tuo adesivo:</b> '+parti.join(' · ')+
         '<span style="display:block;margin-top:3px;color:var(--tx2)">Se vuoi cambiare, torna al passo precedente.</span>';
       box.style.display='block';
@@ -5219,12 +6702,10 @@ uBloccaCombinazione();
   const mat=matKind(), bare=(mat!=='white')&&S.palIdx===0;
   if(bare){
     n.className='note ok'; n.style.display='block';
-    n.innerHTML='<b>Le zone bianche del tuo disegno non vengono stampate:</b> lì si vedrà il '+
-      (U_MAT[mat]||'materiale').toLowerCase()+'. È così che si ottiene l\'effetto.';
+    n.innerHTML=tr('<b>Le zone bianche del tuo disegno non vengono stampate:</b> lì si vedrà il {m}. È così che si ottiene l\'effetto.',{m:tr(U_MAT[mat]||'materiale').toLowerCase()});
   }else if(S.palette&&S.palette[S.palIdx]){
     n.className='note'; n.style.display='block';
-    n.innerHTML='Sfondo rilevato dal tuo file: <b>'+hexOf(S.palette[S.palIdx]).toUpperCase()+
-      '</b>. Viene stampato così com\'è.';
+    n.innerHTML=tr('Sfondo rilevato dal tuo file: <b>{c}</b>. Viene stampato così com\'è.',{c:hexOf(S.palette[S.palIdx]).toUpperCase()});
   }else{n.style.display='none';}
 };})();
 
@@ -5494,11 +6975,9 @@ document.addEventListener('visibilitychange',()=>{ if(!document.hidden)anWake(30
       if(!S.rimuoviSfondo){nt.style.display='none';return;}
       const c=S.bgForzato?hexOf(S.bgForzato).toUpperCase():'—';
       const q=Math.round((S.domFrac||0)*100);
-      let t='Tolto il colore <b>'+c+'</b> da tutto il file &mdash; anche dentro le '+
-            'lettere e dentro le figure. Occupava il '+q+'% del disegno.';
+      let t=tr('Tolto il colore <b>{c}</b> da tutto il file &mdash; anche dentro le lettere e dentro le figure. Occupava il {q}% del disegno.',{c,q});
       if((S.domCornice||0)<0.55)
-        t+='<br><span style="color:var(--warn)">Attenzione: questo file non ha uno sfondo netto. '+
-           'Controlla che non manchi nulla del disegno.</span>';
+        t+='<br><span style="color:var(--warn)">'+tr('Attenzione: questo file non ha uno sfondo netto. Controlla che non manchi nulla del disegno.')+'</span>';
       nt.innerHTML=t; nt.style.display='block';
     },700);
     /* cambia la maschera, non solo il colore: va rifatto lo scontorno */
@@ -5550,7 +7029,7 @@ function ppDots(){
       el.style.background=hexOf(c);
       el.style.color=(c[0]*.299+c[1]*.587+c[2]*.114)/255>0.6?'#111':'#fff';
     }
-    el.title=(i===0&&bare)?'colore del materiale':hexOf(c).toUpperCase();
+    el.title=(i===0&&bare)?tr('colore del materiale'):hexOf(c).toUpperCase();
     el.onclick=()=>{S.palIdx=i;paintPalette();paintSwatch();ppDots();redo(0);};
     box.appendChild(el);
   });
@@ -5567,7 +7046,7 @@ function ppDots(){
   arc.className='dot'+(S.palIdx===S.palCustom&&S.palCustom!=null?' on':'');
   arc.style.background='conic-gradient(from 0deg,#ff2d55,#ff9500,#ffe600,#34c759,#00b0ff,#7c4dff,#ff2d55)';
   arc.style.color='#fff';
-  arc.title='scegli un colore tuo';
+  arc.title=tr('scegli un colore tuo');
   arc.onclick=()=>{
     const inp=$('ppCol'); if(!inp)return;
     const c=(S.palette||[])[S.palIdx]||[255,255,255];
@@ -5591,7 +7070,7 @@ draw=function(){ _pp_draw.apply(this,arguments);
     if(nota){
       const clear=(matKind()==='clear');
       nota.style.display=(clear&&S.src)?'block':'none';
-      nota.innerHTML=S.vetro?'Stampata con base bianca: colori pieni, solo il contorno resta trasparente.':'I colori saranno semitrasparenti';
+      nota.innerHTML=S.vetro?tr('Stampata con base bianca: colori pieni, solo il contorno resta trasparente.'):tr('I colori saranno semitrasparenti');
     }
   }catch(e){console.warn(e);}
 };
@@ -5603,8 +7082,8 @@ function ppFaccia(caricato){
   $('ppStage').style.display=caricato?'block':'none';
   $('ppFoot').style.display=caricato?'flex':'none';
   if(caricato){
-    $('ppFileInfo').innerHTML='<b>'+(S.name||'il tuo file')+'</b> &middot; '+
-      '<a href="#" id="ppRe" style="color:var(--blu2)">cambia file</a>';
+    $('ppFileInfo').innerHTML='<b>'+(S.name||tr('il tuo file'))+'</b> &middot; '+
+      '<a href="#" id="ppRe" style="color:var(--blu2)">'+tr('cambia file')+'</a>';
     const r=$('ppRe'); if(r)r.onclick=e=>{e.preventDefault();ppFaccia(false);};
     const cv=$('preview'); if(cv&&cv.width)fitPreview(cv,cv.width/cv.height);
   }
@@ -5870,14 +7349,14 @@ function ppGeoUI(){
         dett.onclick=()=>{S.rilDettagli=!S.rilDettagli; aggiornaLente(); if(S.src&&S.bbox){try{draw();computeLayout();}catch(e){}} };
         dettLeg=document.createElement('div'); dettLeg.id='ppDettLeg';
         dettLeg.style.cssText='position:absolute;left:10px;right:10px;bottom:8px;z-index:6;display:none;padding:6px 10px;border-radius:10px;background:rgba(255,255,255,.92);color:#3d3f63;font:600 11.5px Montserrat,system-ui,sans-serif;line-height:1.35;text-align:center;box-shadow:0 4px 14px rgba(11,11,59,.10)';
-        dettLeg.innerHTML='In colore: zone che riceveranno il rilievo (spot <b>RDG_GLOSS</b>) · tratteggio: linea di taglio';
+        dettLeg.innerHTML=tr('In colore: zone che riceveranno il rilievo (spot <b>RDG_GLOSS</b>) · tratteggio: linea di taglio');
         st.style.position='relative'; st.appendChild(dett); st.appendChild(dettLeg);
       }
       const onD=!!(S.rilievo&&!S.foglio&&S.src&&S.bbox&&S.prod!=='resin');
       if(!onD)S.rilDettagli=false;
       dett.style.display=onD?'inline-flex':'none';
       dett.innerHTML=S.rilDettagli?(ART_SVG+'<span>Torna alla grafica</span>'):(DETT_SVG+'<span>Effetto rilievo</span><span style="margin-left:2px;font-size:15px;line-height:1">👈</span>');
-      dett.title=S.rilDettagli?'Torna al tuo file':'Guarda dove andra\' l\'effetto rilievo';
+      dett.title=S.rilDettagli?tr('Torna al tuo file'):tr('Guarda dove andra\' l\'effetto rilievo');
       if(S.rilDettagli){dett.style.background='#0b0b3b';dett.style.color='#fff';dett.style.borderColor='#0b0b3b';}else{dett.style.background='#fff';dett.style.color='#0b0b3b';dett.style.borderColor='#dfe3ea';}
       dettLeg.style.display=(onD&&S.rilAI&&S.rilAI.stato==='pending')?'block':'none'; dettLeg.innerHTML='🔎 Sto studiando il disegno per decidere dove mettere il rilievo…';
       if(!lente){
@@ -5890,10 +7369,10 @@ function ppGeoUI(){
       lente.style.display=on?'inline-flex':'none';
       if(S.foglio){
         lente.innerHTML=S.lente?(FOGLIO_SVG+'<span>Torna al foglio</span>'):(LENTE_SVG+'<span>Etichetta da vicino</span>');
-        lente.title=S.lente?'Mostra il foglio intero':'Ingrandisci una sola etichetta per lavorarci da vicino';
+        lente.title=S.lente?tr('Mostra il foglio intero'):tr('Ingrandisci una sola etichetta per lavorarci da vicino');
       } else {
         lente.innerHTML=S.lente?(FOGLIO_SVG+'<span>Pezzo intero</span>'):(LENTE_SVG+'<span>Rilievo da vicino</span>');
-        lente.title=S.lente?'Torna al pezzo intero':'Ingrandisci per vedere il rilievo da vicino (trascina per spostarti)';
+        lente.title=S.lente?tr('Torna al pezzo intero'):tr('Ingrandisci per vedere il rilievo da vicino (trascina per spostarti)');
       }
       st.style.overflow=(S.lente&&!S.foglio)?'hidden':'';
       if(!S.lente)S.lentePan={x:0,y:0};

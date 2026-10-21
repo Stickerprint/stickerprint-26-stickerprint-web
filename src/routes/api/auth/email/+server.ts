@@ -1,4 +1,5 @@
 import { json } from '@sveltejs/kit';
+import { langOf } from '$lib/i18n';
 import { env } from '$env/dynamic/private';
 import { PUBLIC_SITE_URL } from '$env/static/public';
 import { sendEmail } from '$lib/server/email';
@@ -44,7 +45,7 @@ export const POST: RequestHandler = async ({ request }) => {
 	const name = [meta.first_name, meta.last_name].filter(Boolean).join(' ') || (typeof meta.full_name === 'string' ? meta.full_name : null);
 	// cambio email: la conferma va al NUOVO indirizzo
 	const to = kind === 'email_change' && p.user?.new_email ? p.user.new_email : email;
-	const mail = authEmail(kind, { name, email, href, code: d.token ?? null, newEmail: p.user?.new_email ?? null });
+	const mail = authEmail(kind, { name, email, href, code: d.token ?? null, newEmail: p.user?.new_email ?? null }, langOf(p.user?.user_metadata?.locale));
 	const r = await sendEmail({ to, subject: mail.subject, html: mail.html, tag: mail.tag });
 	if (!r.ok) { console.error('[auth email] invio fallito', r); return json({ error: { http_code: 500, message: 'invio fallito' } }, { status: 500 }); }
 	return json({});

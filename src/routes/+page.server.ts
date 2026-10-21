@@ -1,10 +1,12 @@
 import { getInstagram } from '$lib/server/instagram';
 import { loadReviews, type HomeReview } from '$lib/server/reviews';
 export type { HomeReview };
-import { estimatedShipDate, formatItDate } from '$lib/utils/shipping';
+import { estimatedShipDate } from '$lib/utils/shipping';
 import { loadEngine } from '$lib/server/pricing';
 import { lowestPrice } from '$lib/pricing/engine';
 import type { PageServerLoad } from './$types';
+
+const localeNoon = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T12:00:00`;
 
 export const load: PageServerLoad = async ({ locals: { supabase } }) => {
 	// tutto in parallelo: recensioni, feed Instagram (con cache) e listini (con cache)
@@ -23,6 +25,8 @@ export const load: PageServerLoad = async ({ locals: { supabase } }) => {
 		stats,
 		instagram,
 		fromPrices,
-		shipDate: formatItDate(estimatedShipDate(5))
+		// data di spedizione stimata come "YYYY-MM-DDT12:00:00" (mezzogiorno locale, senza fuso): la pagina la scrive nella lingua
+		// del visitatore con data(); senza fuso il giorno resta lo stesso su server e browser
+		shipAt: localeNoon(estimatedShipDate(5))
 	};
 };

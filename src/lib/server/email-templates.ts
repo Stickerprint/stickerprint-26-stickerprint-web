@@ -1,9 +1,14 @@
 import { env } from '$env/dynamic/private';
 import { PUBLIC_SITE_URL } from '$env/static/public';
+import { LOCALES, localizePath, type Lang } from '$lib/i18n';
+import { t as tradotto, perLingua, numeroIn, dataIn, type Params } from '$lib/traduzioni';
 
 /**
  * Template email transazionali. Tutti condividono lo stesso layout brand.
  * Ogni funzione restituisce { subject, html, tag }.
+ * Le email al cliente hanno un ultimo parametro `lang` (default 'it'): i testi vengono dal catalogo
+ * src/lib/traduzioni/email.ts (chiavi "email.<template>.<voce>"). Quelle per lo staff (contactRequestEmail,
+ * ownerNotifyEmail) restano in italiano.
  */
 
 const SITE = PUBLIC_SITE_URL || 'https://stickerprint.it';
@@ -12,15 +17,32 @@ function esc(s: string): string {
 	return s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 }
 
+/* ---------- lingua: t() relativo all'area "email", locale, link interni nella lingua ---------- */
+type T = (chiave: string, params?: Params) => string;
+const tt = (lang: Lang): T => (chiave, params) => tradotto(perLingua(lang), `email.${chiave}`, params);
+const loc = (lang: Lang) => LOCALES[perLingua(lang)];
+/** link interno al sito nella lingua del cliente (/de/individuelle-aufkleber) */
+const link = (lang: Lang, p: string) => `${SITE}${localizePath(p, perLingua(lang))}`;
+/** "Ciao Mario," in apertura */
+const hi = (T: T, name?: string | null) => `<p>${T('comune.ciao', { nome: esc(name || '') })}</p>`;
+/** firma dello staff in grigio sotto il testo */
+const firma = (T: T, name: string | null | undefined, chiave: string, stile = '') => (name ? `<p style="${stile}color:#8e92b0;font-size:13px;">${T(chiave, { nome: esc(name) })}</p>` : '');
+/** paragrafo "intanto guarda le domande frequenti" con il link alla pagina di supporto */
+const faq = (T: T, lang: Lang) => T('comune.faq', { link: `<a href="${link(lang, '/support')}" style="color:#1d6bf3;font-weight:700;">${T('comune.faqLink')}</a>` });
+/** parola chiave sottolineata di verde (stesso segno del sito): regge anche in Gmail e Outlook */
+const hl = (t: string) => `<span style="display:inline-block;border-bottom:6px solid #8be33a;line-height:1.05;padding-bottom:1px;">${esc(t)}</span>`;
+const BOX = 'margin:16px 0 0;padding:12px 14px;background:#f4f5fa;border-radius:10px;';
+const BOX_GIALLO = 'margin:16px 0 0;padding:12px 14px;background:#fef6db;border-radius:10px;';
 
 /** riga prodotto nelle email: mockup generato dal sito, nome, quantita' e (opzionale) bottone a destra */
 export interface EmailItem { name: string; qty?: number | null; preview?: string | null; meta?: string | null; cta?: { label: string; href: string } | null }
-export function itemsBlock(items: (string | EmailItem)[]): string {
+export function itemsBlock(items: (string | EmailItem)[], lang: Lang = 'it'): string {
 	if (!items.length) return '';
+	const T = tt(lang);
 	const rows = items.map((raw) => {
 		const i: EmailItem = typeof raw === 'string' ? { name: raw } : raw;
 		const img = i.preview ? `<img src="${i.preview}" width="96" height="96" alt="" style="display:block;width:96px;height:96px;object-fit:contain;border-radius:12px;background:#f4f5fa;">` : `<div style="width:96px;height:96px;border-radius:12px;background:#f4f5fa;"></div>`;
-		const qty = i.qty ? `<span style="color:#8e92b0;">${Number(i.qty).toLocaleString('it-IT')} pz</span>` : '';
+		const qty = i.qty ? `<span style="color:#8e92b0;">${numeroIn(loc(lang), Number(i.qty))} ${T('layout.pz')}</span>` : '';
 		const cta = i.cta ? `<td align="right" valign="middle" style="padding-left:12px;white-space:nowrap;"><a href="${i.cta.href}" style="display:inline-block;background:#f4b400;color:#0b0b3b;text-decoration:none;font-family:Rubik,Montserrat,Helvetica,Arial,sans-serif;font-weight:800;font-size:13px;text-transform:uppercase;letter-spacing:.02em;padding:11px 16px;border-radius:8px;">${esc(i.cta.label)}</a></td>` : '';
 		return `<tr><td style="padding:10px 0;border-top:1px solid #eceef5;"><table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr><td width="96" valign="middle">${img}</td><td valign="middle" style="padding-left:14px;font-size:15px;line-height:1.4;color:#0b0b3b;"><b>${esc(i.name)}</b>${i.meta ? `<br><span style="color:#8e92b0;font-size:13px;">${esc(i.meta)}</span>` : ''}${qty ? `<br>${qty}` : ''}</td>${cta}</tr></table></td></tr>`;
 	}).join('');
@@ -28,10 +50,11 @@ export function itemsBlock(items: (string | EmailItem)[]): string {
 }
 
 /** l'emoji finale resta attaccata all'ultima parola: se il titolo va a capo, non va a capo da sola */
-const keepEmoji = (t: string) => t.replace(/((?:<span[^>]*>[^<]*<\/span>|\S+)) (\p{Extended_Pictographic}\uFE0F?)\s*$/u, '<span style="white-space:nowrap;">$1&nbsp;$2</span>');
-function layout(title: string, body: string, cta?: { label: string; href: string }): string {
+const keepEmoji = (t: string) => t.replace(/((?:<span[^>]*>[^<]*<\/span>|\S+)) (\p{Extended_Pictographic}️?)\s*$/u, '<span style="white-space:nowrap;">$1&nbsp;$2</span>');
+function layout(title: string, body: string, cta?: { label: string; href: string }, lang: Lang = 'it'): string {
+	const T = tt(lang);
 	return `<!doctype html>
-<html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${esc(title)}</title><link href="https://fonts.googleapis.com/css2?family=Rubik:wght@800&family=Montserrat:wght@400;600;800&display=swap" rel="stylesheet"></head>
+<html lang="${loc(lang).hreflang}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${esc(title)}</title><link href="https://fonts.googleapis.com/css2?family=Rubik:wght@800&family=Montserrat:wght@400;600;800&display=swap" rel="stylesheet"></head>
 <body style="margin:0;background:#f4f5fa;font-family:Montserrat,Helvetica,Arial,sans-serif;color:#0b0b3b;">
 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f4f5fa;padding:32px 12px;">
 <tr><td align="center">
@@ -45,41 +68,40 @@ function layout(title: string, body: string, cta?: { label: string; href: string
     ${cta ? `<p style="margin:28px 0 8px;text-align:center;"><a href="${cta.href}" style="display:inline-block;background:#0e8bff;color:#fff;text-decoration:none;font-family:Rubik,Montserrat,Helvetica,Arial,sans-serif;font-weight:800;text-transform:uppercase;font-size:14px;letter-spacing:.02em;padding:14px 28px;border-radius:8px;">${esc(cta.label)}</a></p>` : ''}
   </td></tr>
   <tr><td style="padding:18px 32px 30px;font-size:12px;color:#8e92b0;line-height:1.5;">
-    Stickerprint Srl · Adesivi personalizzati stampati in Italia<br>
-    Hai bisogno di aiuto? Rispondi a questa email o scrivi a <a href="mailto:info@stickerprint.it" style="color:#0e8bff;">info@stickerprint.it</a>
+    ${esc(T('layout.azienda'))}<br>
+    ${T('layout.aiuto', { link: '<a href="mailto:info@stickerprint.it" style="color:#0e8bff;">info@stickerprint.it</a>' })}
   </td></tr>
 </table>
 </td></tr></table>
 </body></html>`;
 }
 
-export function welcomeEmail(opts: { name?: string | null; email: string }) {
-	const name = opts.name?.trim() || 'benvenuto';
+/** stesso layout delle altre email, ma il titolo puo' contenere HTML (la parola sottolineata) */
+function layoutHtml(titleHtml: string, body: string, cta?: { label: string; href: string } | null, lang: Lang = 'it'): string {
+	const plain = titleHtml.replace(/<[^>]+>/g, '');
+	return layout('§TITLE§', body, cta ?? undefined, lang).replace('<h1 style="margin:0 0 14px;font-family:Rubik,Montserrat,Helvetica,Arial,sans-serif;font-weight:800;font-size:25px;line-height:1.2;letter-spacing:-0.02em;color:#0b0b3b;">§TITLE§</h1>', `<h1 style="margin:0 0 14px;font-family:Rubik,Montserrat,Helvetica,Arial,sans-serif;font-weight:800;font-size:25px;line-height:1.3;letter-spacing:-0.02em;color:#0b0b3b;">${keepEmoji(titleHtml)}</h1>`).replace('<title>§TITLE§</title>', `<title>${esc(plain)}</title>`);
+}
+
+export function welcomeEmail(opts: { name?: string | null; email: string }, lang: Lang = 'it') {
+	const T = tt(lang);
+	const name = opts.name?.trim() || T('benvenuto.nomeDefault');
 	return {
-		subject: 'Benvenuto su Stickerprint 🎉',
+		subject: T('benvenuto.oggetto'),
 		tag: 'welcome',
-		html: layout(
-			`Ciao ${esc(name)}, il tuo account è pronto.`,
-			`<p>Da oggi ogni ordine ti lascia qualcosa: <strong>fino al 6% in Credito Stickerprint</strong> finisce automaticamente nel tuo portafoglio e puoi usarlo sul prossimo ordine.</p>
-			 <p>Carica il tuo file, guarda subito l’anteprima automatica e conferma solo quando sei soddisfatto. Un umano controlla ogni file prima della stampa.</p>`,
-			{ label: 'Inizia a stampare', href: `${SITE}/adesivi-personalizzati` }
-		)
+		html: layout(T('benvenuto.titolo', { nome: name }), T('benvenuto.corpo'), { label: T('benvenuto.cta'), href: link(lang, '/adesivi-personalizzati') }, lang)
 	};
 }
 
-export function passwordChangedEmail(opts: { email: string }) {
+export function passwordChangedEmail(opts: { email: string }, lang: Lang = 'it') {
+	const T = tt(lang);
 	return {
-		subject: 'La tua password Stickerprint è stata aggiornata',
+		subject: T('password.oggetto'),
 		tag: 'security',
-		html: layout(
-			'Password aggiornata',
-			`<p>La password dell’account <strong>${esc(opts.email)}</strong> è stata modificata correttamente.</p>
-			 <p>Se non sei stato tu, reimposta subito la password e contattaci.</p>`,
-			{ label: 'Reimposta password', href: `${SITE}/reset-password` }
-		)
+		html: layout(T('password.titolo'), T('password.corpo', { email: esc(opts.email) }), { label: T('password.cta'), href: link(lang, '/reset-password') }, lang)
 	};
 }
 
+/** notifica allo staff di una richiesta dal sito: resta in italiano */
 export function contactRequestEmail(opts: { name: string; email: string; message: string; kind: 'support' | 'business' }) {
 	const title = opts.kind === 'business' ? 'Nuova richiesta aziendale' : 'Nuova richiesta di supporto';
 	return {
@@ -93,18 +115,16 @@ export function contactRequestEmail(opts: { name: string; email: string; message
 	};
 }
 
-export function contactAutoReplyEmail(opts: { name: string }) {
+export function contactAutoReplyEmail(opts: { name: string }, lang: Lang = 'it') {
+	const T = tt(lang);
 	return {
-		subject: 'Abbiamo ricevuto la tua richiesta',
+		subject: T('contatto.oggetto'),
 		tag: 'auto-reply',
-		html: layout(
-			`Grazie ${esc(opts.name)}, ci pensiamo noi.`,
-			`<p>La tua richiesta è arrivata in laboratorio. Ti rispondiamo entro 24 ore.</p><p>Nel frattempo prova a dare un’occhiata alle domande frequenti dalla <a href="${SITE}/support" style="color:#1d6bf3;font-weight:700;">pagina di supporto</a>: spesso la risposta è già lì.</p>`
-		)
+		html: layout(T('contatto.titolo', { nome: opts.name }), T('contatto.corpo') + faq(T, lang), undefined, lang)
 	};
 }
 
-/** Notifica generica interna (titolare/produzione) */
+/** Notifica generica interna (titolare/produzione): resta in italiano */
 export function ownerNotifyEmail(opts: { title: string; lines: string[]; href?: string }) {
 	return {
 		subject: `[Stickerprint] ${opts.title}`,
@@ -119,131 +139,146 @@ export function ownerNotifyEmail(opts: { title: string; lines: string[]; href?: 
 
 export const OWNER_EMAIL = env.OWNER_NOTIFY_EMAIL || 'info@stickerprint.it';
 
-export function orderConfirmationEmail(opts: { name?: string | null; numbers: string[]; invoiceNumber: string; total: string; lines: (string | EmailItem)[]; shipDate: string; accountUrl?: string | null }) {
+export function orderConfirmationEmail(opts: { name?: string | null; numbers: string[]; invoiceNumber: string; total: string; lines: (string | EmailItem)[]; shipDate: string; accountUrl?: string | null }, lang: Lang = 'it') {
 	/* stesso stile delle email di spedizione: titolo Rubik con la parola sottolineata, anteprime dei prodotti, bottone centrato */
+	const T = tt(lang);
 	const n = esc(opts.numbers.join(', '));
-	const items = itemsBlock(opts.lines);
-	const body = `<p>Ciao ${esc(opts.name || '')},</p>
-<p>grazie per il tuo ordine! Abbiamo ricevuto il pagamento e siamo già al lavoro: ecco cosa stiamo preparando per te.</p>
-${items}
-<p style="margin:16px 0 0;padding:12px 14px;background:#f4f5fa;border-radius:10px;"><b>Totale pagato:</b> ${esc(opts.total)}<br><b>Spedizione stimata:</b> ${esc(opts.shipDate)}</p>
-${opts.accountUrl ? `<p>Dalla tua area personale segui l'ordine passo passo, dalla stampa alla consegna.</p>` : `<p>Vuoi seguire l'ordine e guadagnare credito sul prossimo? <a href="${SITE}/signup" style="color:#0e8bff;">Crea il tuo account</a> con questa stessa email: ordine e fattura saranno già lì.</p>`}
-<p>Qui sotto trovi anche la <b>fattura ${esc(opts.invoiceNumber)}</b> del tuo ordine, in allegato.</p>`;
+	const body = `${hi(T, opts.name)}
+${T('ordine.corpo')}
+${itemsBlock(opts.lines, lang)}
+<p style="${BOX}"><b>${T('ordine.totalePagato')}</b> ${esc(opts.total)}<br><b>${T('comune.spedizioneStimata')}</b> ${esc(opts.shipDate)}</p>
+${opts.accountUrl ? T('ordine.segui') : T('ordine.creaAccount', { link: `<a href="${link(lang, '/signup')}" style="color:#0e8bff;">${T('ordine.creaAccountLink')}</a>` })}
+${T('ordine.fattura', { n: esc(opts.invoiceNumber) })}`;
 	return {
-		subject: `Ordine ${opts.numbers.join(', ')} confermato 🥳`,
+		subject: T('ordine.oggetto', { n: opts.numbers.join(', ') }),
 		tag: 'order-confirmation',
-		html: layoutHtml(`Ordine ${n} ${hl('confermato')} 🥳`, body, { label: opts.accountUrl ? 'Vedi il tuo ordine' : 'Crea il tuo account', href: opts.accountUrl ?? `${SITE}/signup` })
+		html: layoutHtml(T('ordine.titolo', { n, parola: hl(T('ordine.parola')) }), body, { label: opts.accountUrl ? T('comune.vediOrdine') : T('ordine.creaAccountLink'), href: opts.accountUrl ?? link(lang, '/signup') }, lang)
 	};
 }
 
 /** Conferma d'ordine per gli ordini inseriti dalla dashboard (con PDF allegato) */
-export function manualOrderEmail(opts: { name?: string | null; number: string; total: string; lines: (string | EmailItem)[]; shipDate: string; terms: string[] }) {
+export function manualOrderEmail(opts: { name?: string | null; number: string; total: string; lines: (string | EmailItem)[]; shipDate: string; terms: string[] }, lang: Lang = 'it') {
 	/* stesso template della conferma automatica: cambia solo il riquadro (totale, spedizione, scadenze) e l'allegato (conferma d'ordine in PDF) */
+	const T = tt(lang);
 	const n = esc(opts.number);
-	const body = `<p>Ciao ${esc(opts.name || '')},</p>
-<p>grazie per il tuo ordine! Lo abbiamo registrato e siamo già al lavoro: ecco cosa stiamo preparando per te.</p>
-${itemsBlock(opts.lines)}
-<p style="margin:16px 0 0;padding:12px 14px;background:#f4f5fa;border-radius:10px;"><b>Totale IVA inclusa:</b> ${esc(opts.total)}<br><b>Spedizione stimata:</b> ${esc(opts.shipDate)}${opts.terms.length ? `<br><b>Scadenze di pagamento:</b><br>${opts.terms.map(esc).join('<br>')}` : ''}</p>
-<p>Per qualsiasi modifica rispondi a questa email: ti seguiamo noi.</p>
-<p>Qui sotto trovi anche la <b>conferma d'ordine ${n}</b> in PDF, in allegato.</p>`;
-	return { subject: `Ordine ${opts.number} confermato 🥳`, tag: 'order-confirmation-manual', html: layoutHtml(`Ordine ${n} ${hl('confermato')} 🥳`, body, { label: 'Vai su Stickerprint', href: `${SITE}/` }) };
+	const body = `${hi(T, opts.name)}
+${T('ordineManuale.corpo')}
+${itemsBlock(opts.lines, lang)}
+<p style="${BOX}"><b>${T('comune.totaleIva')}</b> ${esc(opts.total)}<br><b>${T('comune.spedizioneStimata')}</b> ${esc(opts.shipDate)}${opts.terms.length ? `<br><b>${T('ordineManuale.scadenze')}</b><br>${opts.terms.map(esc).join('<br>')}` : ''}</p>
+${T('ordineManuale.modifiche')}
+${T('ordineManuale.pdf', { n })}`;
+	return { subject: T('ordine.oggetto', { n: opts.number }), tag: 'order-confirmation-manual', html: layoutHtml(T('ordine.titolo', { n, parola: hl(T('ordine.parola')) }), body, { label: T('comune.vaiSito'), href: link(lang, '/') }, lang) };
 }
-
-/** parola chiave sottolineata di verde (stesso segno del sito): regge anche in Gmail e Outlook */
-const hl = (t: string) => `<span style="display:inline-block;border-bottom:6px solid #8be33a;line-height:1.05;padding-bottom:1px;">${esc(t)}</span>`;
 
 /**
  * Email di stato spedizione: stesso impianto per tutti gli stati, cambia solo la parola sottolineata
  * ("concluso", "partito", "in consegna", "consegnato"...) e il testo sotto.
  */
 export type ShippingMailKind = 'affidato' | 'spedito' | 'in_consegna' | 'consegnato' | 'problema' | 'punto_ritiro' | 'ritardo_corriere' | 'ritardo_nostro';
-export function shippingUpdateEmail(o: { kind: ShippingMailKind; name?: string | null; number: string; trackingUrl: string; courier?: string | null; detail?: string; place?: string | null; items: (string | EmailItem)[]; accountUrl?: string | null; consegna?: 'corriere' | 'noi' | 'cliente'; newDate?: string | null; shippedAt?: string | null; reason?: string | null }) {
-	const hi = `<p>Ciao ${esc(o.name || '')},</p>`;
-	const list = itemsBlock(o.items);
-	const courier = o.courier ? ` con ${esc(o.courier.replace('-ITA', ''))}` : '';
+const SHIPPING_KEY: Record<ShippingMailKind, string> = { affidato: 'affidato', spedito: 'spedito', in_consegna: 'inConsegna', consegnato: 'consegnato', problema: 'problema', punto_ritiro: 'puntoRitiro', ritardo_corriere: 'ritardoCorriere', ritardo_nostro: 'ritardoNostro' };
+export function shippingUpdateEmail(o: { kind: ShippingMailKind; name?: string | null; number: string; trackingUrl: string; courier?: string | null; detail?: string; place?: string | null; items: (string | EmailItem)[]; accountUrl?: string | null; consegna?: 'corriere' | 'noi' | 'cliente'; newDate?: string | null; shippedAt?: string | null; reason?: string | null }, lang: Lang = 'it') {
+	const T = tt(lang);
+	const k = `spedizione.${SHIPPING_KEY[o.kind]}`;
+	const list = itemsBlock(o.items, lang);
 	const n = esc(o.number);
-	const dopo = o.consegna === 'noi' ? 'lo consegniamo noi direttamente nei prossimi giorni.' : o.consegna === 'cliente' ? 'è pronto per il ritiro da parte del tuo corriere.' : 'ora è in attesa di ritiro da parte del corriere. Appena parte ti scriviamo con il link per seguirlo.';
-	const T = {
-		affidato: { subject: `Il tuo ordine ${o.number} è concluso 🚀`, title: `Il tuo ordine ${n} è ${hl('concluso')} 🚀`, body: `${hi}<p>l'abbiamo stampato, controllato e confezionato: ${dopo}</p>${list}`, cta: o.accountUrl ? 'Vedi il tuo ordine' : 'Vai su Stickerprint', gif: false },
-		spedito: { subject: `Il tuo ordine ${o.number} è partito 🚚`, title: `Il tuo ordine ${n} è ${hl('partito')} 🚚`, body: `${hi}<p>il corriere ha ritirato il tuo ordine. Puoi seguirlo passo passo dal link qui sotto.</p>${list}`, cta: 'Segui la spedizione', gif: true },
-		in_consegna: { subject: `Il tuo ordine ${o.number} è in consegna 📦`, title: `Il tuo ordine ${n} è ${hl('in consegna')} 📦`, body: `${hi}<p>il tuo ordine è in consegna e dovrebbe arrivare oggi. Se non ci sei, il corriere lascia un avviso o riprova domani.</p>`, cta: 'Segui la spedizione', gif: false },
-		consegnato: { subject: `Il tuo ordine ${o.number} è stato consegnato ✅`, title: `Il tuo ordine ${n} è stato ${hl('consegnato')} ✅`, body: `${hi}<p>speriamo che i tuoi adesivi ti piacciano. Se qualcosa non va, rispondi a questa email e ci pensiamo noi.</p>${list}`, cta: o.accountUrl ? 'Vedi il tuo ordine' : 'Vedi la spedizione', gif: false },
-		problema: { subject: `Il tuo ordine ${o.number} ha bisogno di te ⚠️`, title: `Il tuo ordine ${n} è ${hl('fermo')} ⚠️`, body: `${hi}<p>il corriere segnala un problema${o.detail ? `: <b>${esc(o.detail)}</b>` : ''}${o.place ? ` (${esc(o.place)})` : ''}. Di solito basta un contatto con il corriere o un indirizzo più preciso: controlla il tracking e, se serve, rispondi a questa email con un recapito telefonico.</p>`, cta: 'Vedi il tracking', gif: false },
-		punto_ritiro: { subject: `Il tuo ordine ${o.number} è al punto di ritiro 📍`, title: `Il tuo ordine ${n} è ${hl('al punto di ritiro')} 📍`, body: `${hi}<p>il pacco è stato lasciato in un punto di ritiro${o.place ? ` (${esc(o.place)})` : ''}. Nel tracking trovi indirizzo e orari.</p>`, cta: 'Vedi dove ritirarlo', gif: false },
-		// ritardo del corriere (dal tracking Qapla'): il pacco e' partito da noi in tempo, il ritardo e' sulla rete del corriere
-		ritardo_corriere: { subject: `Il tuo ordine ${o.number}: il corriere è in ritardo 🕒`, title: `Il tuo ordine ${n} è ${hl('in ritardo')} 🕒`, body: `${hi}<p>il corriere ci segnala un ritardo sulla consegna del tuo pacco${o.detail ? ` (<b>${esc(o.detail)}</b>${o.place ? `, ${esc(o.place)}` : ''})` : ''}. Il pacco è partito da noi${o.shippedAt ? ` il ${esc(o.shippedAt)}` : ' nei tempi previsti'}: il ritardo dipende dalla rete del corriere, non dalla produzione. Lo stiamo seguendo e ti aggiorniamo appena si muove; dal link qui sotto vedi il tracking in tempo reale.</p><p>Se il pacco ti serve entro una data precisa, rispondi a questa email: apriamo subito una segnalazione al corriere.</p>${list}`, cta: 'Segui la spedizione', gif: false },
-		// ritardo nostro: scuse chiare, un motivo credibile e la nuova data
-		ritardo_nostro: { subject: `Il tuo ordine ${o.number} parte con qualche giorno di ritardo, scusaci 🙏`, title: `Il tuo ordine ${n} è ${hl('in ritardo')}, ed è colpa nostra 🙏`, body: `${hi}<p>ti dobbiamo delle scuse: il tuo ordine parte più tardi di quanto ti avevamo detto. ${o.reason ? esc(o.reason) : 'Durante il controllo qualità in produzione abbiamo trovato un dettaglio di stampa che non ci convinceva, e abbiamo preferito rifare il lavoro piuttosto che spedirti qualcosa di imperfetto.'}</p>${o.newDate ? `<p style="padding:12px 14px;background:#fef6db;border-radius:10px;"><b>Nuova data di spedizione: ${esc(o.newDate)}.</b> Appena parte ricevi l'email con il tracking.</p>` : `<p>Appena parte ricevi l'email con il tracking.</p>`}<p>Il ritardo è tutto nostro e ci dispiace davvero. Se ti crea un problema di date, rispondi a questa email: troviamo insieme la soluzione.</p>${list}`, cta: o.accountUrl ? 'Vedi il tuo ordine' : 'Vai su Stickerprint', gif: false }
+	const dopo = o.consegna === 'noi' ? T('spedizione.dopoNoi') : o.consegna === 'cliente' ? T('spedizione.dopoCliente') : T('spedizione.dopoCorriere');
+	const luogo = o.place ? ` (${esc(o.place)})` : '';
+	// "problema": ": <b>dettaglio</b> (luogo)"; "ritardo del corriere": " (<b>dettaglio</b>, luogo)"
+	const dettaglio = o.kind === 'ritardo_corriere'
+		? (o.detail ? ` (<b>${esc(o.detail)}</b>${o.place ? `, ${esc(o.place)}` : ''})` : '')
+		: `${o.detail ? `: <b>${esc(o.detail)}</b>` : ''}${luogo}`;
+	const quando = o.shippedAt ? T('spedizione.ritardoCorriere.partitoIl', { data: esc(o.shippedAt) }) : T('spedizione.ritardoCorriere.neiTempi');
+	const motivo = o.reason ? esc(o.reason) : T('spedizione.ritardoNostro.motivoDefault');
+	let body = hi(T, o.name) + T(`${k}.corpo`, { n, dopo, dettaglio, luogo, quando, motivo });
+	if (o.kind === 'ritardo_nostro') body += (o.newDate ? `<p style="padding:12px 14px;background:#fef6db;border-radius:10px;">${T(`${k}.nuovaData`, { data: esc(o.newDate) })}</p>` : T(`${k}.appenaParte`)) + T(`${k}.scuse`);
+	if (['affidato', 'spedito', 'consegnato', 'ritardo_corriere', 'ritardo_nostro'].includes(o.kind)) body += list;
+	const cta = {
+		affidato: o.accountUrl ? T('comune.vediOrdine') : T('comune.vaiSito'),
+		spedito: T('comune.seguiSpedizione'),
+		in_consegna: T('comune.seguiSpedizione'),
+		consegnato: o.accountUrl ? T('comune.vediOrdine') : T(`${k}.cta`),
+		problema: T(`${k}.cta`),
+		punto_ritiro: T(`${k}.cta`),
+		ritardo_corriere: T('comune.seguiSpedizione'),
+		ritardo_nostro: o.accountUrl ? T('comune.vediOrdine') : T('comune.vaiSito')
 	}[o.kind];
 	const href = (o.kind === 'consegnato' || o.kind === 'affidato' || o.kind === 'ritardo_nostro') && o.accountUrl ? o.accountUrl : o.trackingUrl;
-	const gif = T.gif ? `<p style="margin:18px 0 0;"><img src="${SITE}/images/email/partito.gif" width="496" height="200" alt="" style="width:100%;max-width:496px;height:auto;display:block;border-radius:12px;"></p>` : '';
-	return { subject: T.subject, tag: `shipping-${o.kind}`, html: layoutHtml(T.title, T.body + gif, { label: T.cta, href }) };
+	const gif = o.kind === 'spedito' ? `<p style="margin:18px 0 0;"><img src="${SITE}/images/email/partito.gif" width="496" height="200" alt="" style="width:100%;max-width:496px;height:auto;display:block;border-radius:12px;"></p>` : '';
+	return { subject: T(`${k}.oggetto`, { n: o.number }), tag: `shipping-${o.kind}`, html: layoutHtml(T(`${k}.titolo`, { n, parola: hl(T(`${k}.parola`)) }), body + gif, { label: cta, href }, lang) };
 }
 
 /** richiesta di recensione, poche ore dopo la consegna (registrati e ospiti) */
-export function reviewRequestEmail(o: { name?: string | null; number: string; items: (string | EmailItem)[]; href: string }) {
+export function reviewRequestEmail(o: { name?: string | null; number: string; items: (string | EmailItem)[]; href: string }, lang: Lang = 'it') {
+	const T = tt(lang);
 	const n = esc(o.number);
 	/* una recensione per ordine: gli articoli sono elencati, il bottone giallo e' uno solo */
-	const list = itemsBlock(o.items.map((i) => (typeof i === 'string' ? { name: i } : { ...i, cta: undefined })));
-	const html = layoutHtml(`Il tuo ordine ${n} è ${hl('arrivato')} ⭐`, `<p>Ciao ${esc(o.name || '')},</p><p>il corriere ti ha consegnato i tuoi adesivi. Ci racconti com'è andata? Bastano due righe e una stella da 1 a 5.</p><p>Una recensione sincera serve a noi per crescere e a chi deve ancora ordinare per sentirsi tranquillo prima di scegliere. Per ringraziarti, <b>appena la invii ricevi un codice sconto del 10% sul prossimo ordine</b> (valido 6 mesi, ordini da 50 €), qualunque voto tu dia.</p>${list}`, { label: '⭐ Scrivi recensione', href: o.href })
+	const list = itemsBlock(o.items.map((i) => (typeof i === 'string' ? { name: i } : { ...i, cta: undefined })), lang);
+	const html = layoutHtml(T('recensione.titolo', { n, parola: hl(T('recensione.parola')) }), hi(T, o.name) + T('recensione.corpo') + list, { label: T('recensione.cta'), href: o.href }, lang)
 		.replace('background:#0e8bff;color:#fff;', 'background:#f4b400;color:#0b0b3b;');
-	return { subject: `Com'è andata con l'ordine ${o.number}? ⭐ (c'è un 10% per te)`, tag: 'review-request', html };
-}
-
-/** stesso layout delle altre email, ma il titolo puo' contenere HTML (la parola sottolineata) */
-function layoutHtml(titleHtml: string, body: string, cta?: { label: string; href: string } | null): string {
-	const plain = titleHtml.replace(/<[^>]+>/g, '');
-	return layout('§TITLE§', body, cta ?? undefined).replace('<h1 style="margin:0 0 14px;font-family:Rubik,Montserrat,Helvetica,Arial,sans-serif;font-weight:800;font-size:25px;line-height:1.2;letter-spacing:-0.02em;color:#0b0b3b;">§TITLE§</h1>', `<h1 style="margin:0 0 14px;font-family:Rubik,Montserrat,Helvetica,Arial,sans-serif;font-weight:800;font-size:25px;line-height:1.3;letter-spacing:-0.02em;color:#0b0b3b;">${keepEmoji(titleHtml)}</h1>`).replace('<title>§TITLE§</title>', `<title>${esc(plain)}</title>`);
+	return { subject: T('recensione.oggetto', { n: o.number }), tag: 'review-request', html };
 }
 
 /** sollecito di approvazione dell'anteprima (o del file mancante), con la data entro cui rispondere per mantenere la spedizione */
-export function proofReminderEmail(o: { name?: string | null; number: string; missingFile: boolean; approveBy: Date | null; shipBy: string | null; href: string }) {
+export function proofReminderEmail(o: { name?: string | null; number: string; missingFile: boolean; approveBy: Date | null; shipBy: string | null; href: string }, lang: Lang = 'it') {
+	const T = tt(lang);
+	const L = loc(lang);
 	const n = esc(o.number);
-	const it = new Intl.DateTimeFormat('it-IT', { timeZone: 'Europe/Rome', weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
-	const day = new Intl.DateTimeFormat('it-IT', { timeZone: 'Europe/Rome', weekday: 'long', day: 'numeric', month: 'long' });
-	const shipTxt = o.shipBy ? day.format(new Date(o.shipBy + 'T12:00:00')) : null;
-	const byTxt = o.approveBy ? it.format(o.approveBy) : null;
-	const what = o.missingFile ? 'il file di stampa' : "l'anteprima";
-	const body = o.missingFile
-		? `<p>Ciao ${esc(o.name || '')},</p><p>per l'ordine <b>${n}</b> ci manca ancora il file da stampare. Caricalo dalla tua area personale: appena arriva, la commessa entra in produzione.</p>`
-		: `<p>Ciao ${esc(o.name || '')},</p><p>l'anteprima dell'ordine <b>${n}</b> aspetta il tuo ok. Basta un clic dalla tua area personale: senza approvazione non possiamo mandare in stampa.</p>`;
+	const shipTxt = o.shipBy ? dataIn(L, o.shipBy + 'T12:00:00', true) : null;
+	const byTxt = o.approveBy ? new Intl.DateTimeFormat(L.intl, { timeZone: 'Europe/Rome', weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }).format(o.approveBy) : null;
+	const what = o.missingFile ? T('sollecitoAnteprima.cosaFile') : T('sollecitoAnteprima.cosaAnteprima');
+	const body = hi(T, o.name) + (o.missingFile ? T('sollecitoAnteprima.corpoFile', { n }) : T('sollecitoAnteprima.corpoAnteprima', { n }));
 	const when = byTxt && shipTxt
-		? `<p style="margin-top:14px;padding:12px 14px;background:#fef6db;border-radius:10px;"><b>Per mantenere la spedizione di ${esc(shipTxt)}</b> ci serve ${what} entro <b>${esc(byTxt)}</b>. Dopo, la data di spedizione si sposta al primo giorno utile e te la comunichiamo noi.</p>`
+		? `<p style="margin-top:14px;padding:12px 14px;background:#fef6db;border-radius:10px;">${T('sollecitoAnteprima.entro', { spedizione: esc(shipTxt), cosa: what, entro: esc(byTxt) })}</p>`
 		: '';
-	return { subject: `Ordine ${o.number}: ${o.missingFile ? 'manca il file di stampa' : "l'anteprima aspetta il tuo ok"} ⏳`, tag: 'proof-reminder', html: layoutHtml(`Il tuo ordine ${n} è ${hl('in attesa')} ⏳`, body + when, { label: o.missingFile ? 'Carica il file' : "Approva l'anteprima", href: o.href }) };
+	return { subject: o.missingFile ? T('sollecitoAnteprima.oggettoFile', { n: o.number }) : T('sollecitoAnteprima.oggettoAnteprima', { n: o.number }), tag: 'proof-reminder', html: layoutHtml(T('sollecitoAnteprima.titolo', { n, parola: hl(T('sollecitoAnteprima.parola')) }), body + when, { label: o.missingFile ? T('sollecitoAnteprima.ctaFile') : T('sollecitoAnteprima.ctaAnteprima'), href: o.href }, lang) };
 }
 
 /* ---------- Aziende: preventivi ---------- */
 /** email di invio scritta dallo staff: solo testo e un bottone, niente allegato (il preventivo si apre sul sito) */
-export function quoteEmail(o: { subject: string; message: string; senderName: string | null; number: string; validUntil: string | null; href: string }) {
-	const body = `<div style="white-space:pre-wrap;">${esc(o.message)}</div>${o.senderName ? `<p style="margin:18px 0 0;color:#8e92b0;font-size:13px;">${esc(o.senderName)} · Stickerprint · ti seguo io: rispondi pure a questa email.</p>` : ''}`;
-	return { subject: o.subject, tag: 'quote', html: layoutHtml(`Preventivo ${esc(o.number)} ${hl('pronto')} 📄`, body + (o.validUntil ? `<p style="margin:14px 0 0;font-size:13px;color:#8e92b0;">Valido fino al ${esc(o.validUntil)}.</p>` : ''), { label: 'Apri il preventivo', href: o.href }) };
+export function quoteEmail(o: { subject: string; message: string; senderName: string | null; number: string; validUntil: string | null; href: string }, lang: Lang = 'it') {
+	const T = tt(lang);
+	const body = `<div style="white-space:pre-wrap;">${esc(o.message)}</div>${firma(T, o.senderName, 'comune.firmaSeguo', 'margin:18px 0 0;')}`;
+	return { subject: o.subject, tag: 'quote', html: layoutHtml(T('preventivo.titolo', { n: esc(o.number), parola: hl(T('preventivo.parola')) }), body + (o.validUntil ? `<p style="margin:14px 0 0;font-size:13px;color:#8e92b0;">${T('preventivo.validoFino', { data: esc(o.validUntil) })}</p>` : ''), { label: T('comune.apriPreventivo'), href: o.href }, lang) };
 }
-export function quoteReminderEmail(o: { name?: string | null; number: string; validUntil: string | null; href: string; senderName?: string | null }) {
+export function quoteReminderEmail(o: { name?: string | null; number: string; validUntil: string | null; href: string; senderName?: string | null }, lang: Lang = 'it') {
+	const T = tt(lang);
 	const n = esc(o.number);
-	return { subject: `Preventivo ${o.number}: ti serve altro?`, tag: 'quote-reminder', html: layoutHtml(`Il preventivo ${n} è ${hl('in attesa')} ⏳`, `<p>Ciao ${esc(o.name || '')},</p><p>spero tutto bene.<br>Qualche giorno fa ti ho mandato il preventivo <b>${n}</b>${o.validUntil ? `, valido fino al <b>${esc(o.validUntil)}</b>` : ''}.<br>Se hai dubbi su materiali, quantità o tempi, scrivimi dalla pagina del preventivo o rispondi a questa email: ci penso io.</p>${o.senderName ? `<p style="color:#8e92b0;font-size:13px;">${esc(o.senderName)} · Stickerprint</p>` : ''}`, { label: 'Rivedi il preventivo', href: o.href }) };
+	const body = hi(T, o.name) + T('preventivoSollecito.corpo', { n, validita: o.validUntil ? T('preventivoSollecito.validita', { data: esc(o.validUntil) }) : '' }) + firma(T, o.senderName, 'comune.firma');
+	return { subject: T('preventivoSollecito.oggetto', { n: o.number }), tag: 'quote-reminder', html: layoutHtml(T('preventivoSollecito.titolo', { n, parola: hl(T('preventivoSollecito.parola')) }), body, { label: T('preventivoSollecito.cta'), href: o.href }, lang) };
 }
-export function quoteReplyEmail(o: { name?: string | null; number: string; body: string; author?: string | null; href: string }) {
+/** risposta dello staff nel riquadro grigio, con la firma sotto */
+const replyBody = (T: T, name: string | null | undefined, text: string, author?: string | null) => `${hi(T, name)}<div style="white-space:pre-wrap;background:#f4f5fa;padding:14px 16px;border-radius:10px;">${esc(text)}</div>${firma(T, author, 'comune.firma', 'margin-top:10px;')}`;
+export function quoteReplyEmail(o: { name?: string | null; number: string; body: string; author?: string | null; href: string }, lang: Lang = 'it') {
+	const T = tt(lang);
 	const n = esc(o.number);
-	return { subject: `Re: preventivo ${o.number}`, tag: 'quote-reply', html: layoutHtml(`Novità sul preventivo ${n} 💬`, `<p>Ciao ${esc(o.name || '')},</p><div style="white-space:pre-wrap;background:#f4f5fa;padding:14px 16px;border-radius:10px;">${esc(o.body)}</div>${o.author ? `<p style="margin-top:10px;color:#8e92b0;font-size:13px;">${esc(o.author)} · Stickerprint</p>` : ''}`, { label: 'Apri il preventivo', href: o.href }) };
+	return { subject: T('preventivoRisposta.oggetto', { n: o.number }), tag: 'quote-reply', html: layoutHtml(T('preventivoRisposta.titolo', { n }), replyBody(T, o.name, o.body, o.author), { label: T('comune.apriPreventivo'), href: o.href }, lang) };
 }
-export function quoteAcceptedEmail(o: { name?: string | null; number: string; orderNumber: string | null }) {
+export function quoteAcceptedEmail(o: { name?: string | null; number: string; orderNumber: string | null }, lang: Lang = 'it') {
+	const T = tt(lang);
 	const n = esc(o.number);
-	return { subject: `Preventivo ${o.number} confermato ✅`, tag: 'quote-accepted', html: layoutHtml(`Preventivo ${n} ${hl('confermato')} ✅`, `<p>Ciao ${esc(o.name || '')},</p><p>grazie, abbiamo registrato la tua conferma.${o.orderNumber ? ` L'ordine <b>${esc(o.orderNumber)}</b> è in lavorazione: ricevi la conferma d'ordine con il riepilogo a parte.` : ' Prossimo passo: ti mandiamo la conferma d\'ordine con i dettagli, e si parte.'}</p>`) };
+	const body = hi(T, o.name) + (o.orderNumber ? T('preventivoConfermato.corpoOrdine', { ordine: esc(o.orderNumber) }) : T('preventivoConfermato.corpoSenzaOrdine'));
+	return { subject: T('preventivoConfermato.oggetto', { n: o.number }), tag: 'quote-accepted', html: layoutHtml(T('preventivoConfermato.titolo', { n, parola: hl(T('preventivoConfermato.parola')) }), body, null, lang) };
 }
 
 /* ---------- Helpdesk ---------- */
-export function aziendeReceivedEmail(o: { name?: string | null; company?: string | null }) {
-	return { subject: 'Richiesta ricevuta: ti rispondiamo entro 24 ore', tag: 'aziende-received', html: layoutHtml(`Richiesta ${hl('ricevuta')} 🙌`, `<p>Ciao ${esc(o.name || '')},</p><p>la tua richiesta${o.company ? ` per <b>${esc(o.company)}</b>` : ''} è arrivata in laboratorio. Ti rispondiamo <b>entro 24 ore</b> con una proposta su misura: prezzi, tempi e, se serve, qualche domanda sul file.</p><p>Grazie per averci contattato.</p>`, { label: 'Vai al sito', href: 'https://stickerprint.it/aziende' }) };
+export function aziendeReceivedEmail(o: { name?: string | null; company?: string | null }, lang: Lang = 'it') {
+	const T = tt(lang);
+	const body = hi(T, o.name) + T('aziende.corpo', { azienda: o.company ? T('aziende.perAzienda', { azienda: esc(o.company) }) : '' }) + T('comune.grazieContatto');
+	return { subject: T('aziende.oggetto'), tag: 'aziende-received', html: layoutHtml(T('aziende.titolo', { parola: hl(T('aziende.parola')) }), body, { label: T('aziende.cta'), href: link(lang, '/aziende') }, lang) };
 }
-export function ticketReceivedEmail(o: { name?: string | null; number: string; href: string }) {
+export function ticketReceivedEmail(o: { name?: string | null; number: string; href: string }, lang: Lang = 'it') {
+	const T = tt(lang);
 	const n = esc(o.number);
-	return { subject: `Richiesta ${o.number} ricevuta: ci pensiamo noi`, tag: 'ticket-received', html: layoutHtml(`Richiesta ${n} ${hl('ricevuta')} 🙌`, `<p>Ciao ${esc(o.name || '')},</p><p>la tua richiesta è arrivata in laboratorio con il numero <b>${n}</b>. Ti rispondiamo entro 24 ore. Puoi seguire la conversazione e aggiungere dettagli dal link qui sotto.</p><p>Nel frattempo prova a dare un’occhiata alle domande frequenti dalla <a href="${SITE}/support" style="color:#1d6bf3;font-weight:700;">pagina di supporto</a>: spesso la risposta è già lì.</p><p>Grazie per averci contattato.</p>`, { label: 'Vedi la richiesta', href: o.href }) };
+	const body = hi(T, o.name) + T('ticket.corpo', { n }) + faq(T, lang) + T('comune.grazieContatto');
+	return { subject: T('ticket.oggetto', { n: o.number }), tag: 'ticket-received', html: layoutHtml(T('ticket.titolo', { n, parola: hl(T('ticket.parola')) }), body, { label: T('ticket.cta'), href: o.href }, lang) };
 }
-export function ticketReplyEmail(o: { name?: string | null; number: string; body: string; author?: string | null; href: string; attachments?: { name: string; href: string }[] }) {
+export function ticketReplyEmail(o: { name?: string | null; number: string; body: string; author?: string | null; href: string; attachments?: { name: string; href: string }[] }, lang: Lang = 'it') {
+	const T = tt(lang);
 	const n = esc(o.number);
-	const att = o.attachments?.length ? `<p style="margin-top:12px;">📎 In allegato trovi ${o.attachments.map((a) => `<a href="${a.href}" style="color:#1d6bf3;font-weight:700;">${esc(a.name)}</a>`).join(', ')}: ${o.attachments.length === 1 ? 'lo' : 'li'} trovi anche nella pagina della richiesta.</p>` : '';
-	return { subject: `Re: richiesta ${o.number}`, tag: 'ticket-reply', html: layoutHtml(`Novità sulla richiesta ${n} 💬`, `<p>Ciao ${esc(o.name || '')},</p><div style="white-space:pre-wrap;background:#f4f5fa;padding:14px 16px;border-radius:10px;">${esc(o.body)}</div>${att}${o.author ? `<p style="margin-top:10px;color:#8e92b0;font-size:13px;">${esc(o.author)} · Stickerprint</p>` : ''}<p>Per rispondere usa il bottone: la conversazione resta tutta in un posto.</p>`, { label: 'Rispondi', href: o.href }) };
+	const lista = (o.attachments ?? []).map((a) => `<a href="${a.href}" style="color:#1d6bf3;font-weight:700;">${esc(a.name)}</a>`).join(', ');
+	const att = o.attachments?.length ? `<p style="margin-top:12px;">${T(o.attachments.length === 1 ? 'ticketRisposta.allegatoUno' : 'ticketRisposta.allegatiTanti', { lista })}</p>` : '';
+	const body = `${hi(T, o.name)}<div style="white-space:pre-wrap;background:#f4f5fa;padding:14px 16px;border-radius:10px;">${esc(o.body)}</div>${att}${firma(T, o.author, 'comune.firma', 'margin-top:10px;')}${T('ticketRisposta.rispondi')}`;
+	return { subject: T('ticketRisposta.oggetto', { n: o.number }), tag: 'ticket-reply', html: layoutHtml(T('ticketRisposta.titolo', { n }), body, { label: T('ticketRisposta.cta'), href: o.href }, lang) };
 }
 
 /* ---------- Ordine nato da un preventivo confermato dal cliente (email automatica) ---------- */
@@ -252,87 +287,104 @@ export interface OrderPayLine { label: string; amount: string; due: string | nul
  * Due varianti: senza anticipo l'ordine e' gia' in lavorazione; con anticipo da pagare l'ordine aspetta
  * il primo pagamento e il bottone porta a pagarlo (carta, PayPal o bonifico dalla pagina).
  */
-export function quoteOrderEmail(o: { name?: string | null; quoteNumber: string; number: string; items: (string | EmailItem)[]; total: string; shipDate: string | null; leadTime: string | null; payments: OrderPayLine[]; dueNow: string | null; senderName?: string | null; href: string }) {
+export function quoteOrderEmail(o: { name?: string | null; quoteNumber: string; number: string; items: (string | EmailItem)[]; total: string; shipDate: string | null; leadTime: string | null; payments: OrderPayLine[]; dueNow: string | null; senderName?: string | null; href: string }, lang: Lang = 'it') {
+	const T = tt(lang);
 	const n = esc(o.number);
-	const items = itemsBlock(o.items);
+	const items = itemsBlock(o.items, lang);
 	const dueLines = o.payments.filter((p) => p.upfront && !p.paid);
 	const laterLines = o.payments.filter((p) => !p.upfront && !p.paid);
-	const box = `<p style="margin:16px 0 0;padding:12px 14px;background:#f4f5fa;border-radius:10px;"><b>Totale IVA inclusa:</b> ${esc(o.total)}${o.shipDate ? `<br><b>Spedizione stimata:</b> ${esc(o.shipDate)}` : ''}${o.leadTime ? `<br><b>Tempi di lavorazione:</b> ${esc(o.leadTime)}` : ''}${o.payments.length ? `<br><b>Pagamento:</b><br>${o.payments.map((p) => esc(`${p.amount} · ${p.label}${p.upfront ? ' · anticipato' : p.due ? ` · scadenza ${p.due}` : ''}${p.paid ? ' · pagato' : ''}`)).join('<br>')}` : ''}</p>`;
-	const firma = o.senderName ? `<p style="margin:18px 0 0;color:#8e92b0;font-size:13px;">${esc(o.senderName)} · Stickerprint · ti seguo io: rispondi pure a questa email.</p>` : '';
+	const riga = (p: OrderPayLine) => `${p.amount} · ${p.label}${p.upfront ? ` · ${T('ordinePreventivo.anticipato')}` : p.due ? ` · ${T('ordinePreventivo.scadenza', { data: p.due })}` : ''}${p.paid ? ` · ${T('ordinePreventivo.pagato')}` : ''}`;
+	const box = `<p style="${BOX}"><b>${T('comune.totaleIva')}</b> ${esc(o.total)}${o.shipDate ? `<br><b>${T('comune.spedizioneStimata')}</b> ${esc(o.shipDate)}` : ''}${o.leadTime ? `<br><b>${T('ordinePreventivo.tempi')}</b> ${esc(o.leadTime)}` : ''}${o.payments.length ? `<br><b>${T('ordinePreventivo.pagamento')}</b><br>${o.payments.map((p) => esc(riga(p))).join('<br>')}` : ''}</p>`;
+	const sign = firma(T, o.senderName, 'comune.firmaSeguo', 'margin:18px 0 0;');
 	if (o.dueNow && dueLines.length) {
-		const body = `<p>Ciao ${esc(o.name || '')},</p>
-<p>grazie per aver confermato il preventivo <b>${esc(o.quoteNumber)}</b>! Abbiamo registrato l'ordine <b>${n}</b>: per farlo partire manca solo il primo pagamento.</p>
-<p style="margin:16px 0 0;padding:14px 16px;background:#fef6db;border-radius:12px;"><b style="font-size:16px;">Da pagare adesso: ${esc(o.dueNow)}</b><br>${dueLines.map((p) => esc(`${p.amount} · ${p.label}`)).join('<br>')}${laterLines.length ? `<br><span style="color:#8a5a00;">Poi: ${laterLines.map((p) => esc(`${p.amount} · ${p.label}${p.due ? ` · ${p.due}` : ''}`)).join(' · ')}</span>` : ''}</p>
-<p>Puoi pagare con carta o PayPal dal bottone qui sotto, oppure con bonifico: nella pagina trovi IBAN e causale. Appena riceviamo il pagamento la produzione parte e ti scriviamo.</p>
+		const poi = laterLines.length ? `<br><span style="color:#8a5a00;">${T('ordinePreventivo.poi', { lista: laterLines.map((p) => esc(`${p.amount} · ${p.label}${p.due ? ` · ${p.due}` : ''}`)).join(' · ') })}</span>` : '';
+		const body = `${hi(T, o.name)}
+${T('ordinePreventivo.corpoAcconto', { preventivo: esc(o.quoteNumber), n })}
+<p style="margin:16px 0 0;padding:14px 16px;background:#fef6db;border-radius:12px;"><b style="font-size:16px;">${T('ordinePreventivo.daPagareAdesso', { importo: esc(o.dueNow) })}</b><br>${dueLines.map((p) => esc(`${p.amount} · ${p.label}`)).join('<br>')}${poi}</p>
+${T('ordinePreventivo.comePagare')}
 ${items}${box}
-<p>Nella pagina della conferma trovi tutti i dettagli e il PDF da scaricare.</p>${firma}`;
-		return { subject: `Ordine ${o.number} registrato: manca il primo pagamento per partire 💳`, tag: 'quote-order', html: layoutHtml(`Ordine ${n} ${hl('quasi pronto')} a partire 💳`, body, { label: 'Paga ora e fai partire l’ordine', href: o.href }) };
+${T('ordinePreventivo.dettagliAcconto')}${sign}`;
+		return { subject: T('ordinePreventivo.oggettoAcconto', { n: o.number }), tag: 'quote-order', html: layoutHtml(T('ordinePreventivo.titoloAcconto', { n, parola: hl(T('ordinePreventivo.parolaAcconto')) }), body, { label: T('ordinePreventivo.ctaAcconto'), href: o.href }, lang) };
 	}
-	const body = `<p>Ciao ${esc(o.name || '')},</p>
-<p>grazie per aver confermato il preventivo <b>${esc(o.quoteNumber)}</b>! Abbiamo registrato l'ordine <b>${n}</b> ed è già in lavorazione: ecco cosa stiamo preparando per te.</p>
+	const body = `${hi(T, o.name)}
+${T('ordinePreventivo.corpo', { preventivo: esc(o.quoteNumber), n })}
 ${items}${box}
-<p>Nella pagina della conferma trovi tutti i dettagli, le scadenze e il PDF da scaricare. Se qualcosa non torna, segnalacelo da lì: lo sistemiamo prima di stampare.</p>${firma}`;
-	return { subject: `Ordine ${o.number} confermato 🥳`, tag: 'quote-order', html: layoutHtml(`Ordine ${n} ${hl('confermato')} 🥳`, body, { label: "Apri la conferma d'ordine", href: o.href }) };
+${T('ordinePreventivo.dettagli')}${sign}`;
+	return { subject: T('ordinePreventivo.oggetto', { n: o.number }), tag: 'quote-order', html: layoutHtml(T('ordinePreventivo.titolo', { n, parola: hl(T('ordinePreventivo.parola')) }), body, { label: T('comune.apriConferma'), href: o.href }, lang) };
 }
 
 /* ---------- Conferma d'ordine (pagina del cliente) ---------- */
 /** email scritta dallo staff: testo e un bottone "Apri la conferma d'ordine"; il PDF si scarica dalla pagina */
-export function orderConfirmEmail(o: { subject: string; message: string; senderName: string | null; number: string; href: string; toPay: string | null }) {
-	const body = `<div style="white-space:pre-wrap;">${esc(o.message)}</div>${o.toPay ? `<p style="margin:16px 0 0;padding:12px 14px;background:#fef6db;border-radius:10px;"><b>Da pagare adesso: ${esc(o.toPay)}</b>. Trovi le istruzioni e i bottoni di pagamento nella pagina della conferma.</p>` : ''}${o.senderName ? `<p style="margin:18px 0 0;color:#8e92b0;font-size:13px;">${esc(o.senderName)} · Stickerprint · ti seguo io: rispondi pure a questa email.</p>` : ''}`;
-	return { subject: o.subject, tag: 'order-confirm', html: layoutHtml(`Conferma d'ordine ${esc(o.number)} ${hl('pronta')} 📦`, body, { label: "Apri la conferma d'ordine", href: o.href }) };
+export function orderConfirmEmail(o: { subject: string; message: string; senderName: string | null; number: string; href: string; toPay: string | null }, lang: Lang = 'it') {
+	const T = tt(lang);
+	const body = `<div style="white-space:pre-wrap;">${esc(o.message)}</div>${o.toPay ? `<p style="${BOX_GIALLO}">${T('conferma.daPagare', { importo: esc(o.toPay) })}</p>` : ''}${firma(T, o.senderName, 'comune.firmaSeguo', 'margin:18px 0 0;')}`;
+	return { subject: o.subject, tag: 'order-confirm', html: layoutHtml(T('conferma.titolo', { n: esc(o.number), parola: hl(T('conferma.parola')) }), body, { label: T('comune.apriConferma'), href: o.href }, lang) };
 }
-export function orderReplyEmail(o: { name?: string | null; number: string; body: string; author?: string | null; href: string }) {
+export function orderReplyEmail(o: { name?: string | null; number: string; body: string; author?: string | null; href: string }, lang: Lang = 'it') {
+	const T = tt(lang);
 	const n = esc(o.number);
-	return { subject: `Re: ordine ${o.number}`, tag: 'order-reply', html: layoutHtml(`Novità sull'ordine ${n} 💬`, `<p>Ciao ${esc(o.name || '')},</p><div style="white-space:pre-wrap;background:#f4f5fa;padding:14px 16px;border-radius:10px;">${esc(o.body)}</div>${o.author ? `<p style="margin-top:10px;color:#8e92b0;font-size:13px;">${esc(o.author)} · Stickerprint</p>` : ''}`, { label: "Apri la conferma d'ordine", href: o.href }) };
+	return { subject: T('ordineRisposta.oggetto', { n: o.number }), tag: 'order-reply', html: layoutHtml(T('ordineRisposta.titolo', { n }), replyBody(T, o.name, o.body, o.author), { label: T('comune.apriConferma'), href: o.href }, lang) };
 }
-export function orderPaymentReminderEmail(o: { name?: string | null; number: string; amount: string; href: string; senderName?: string | null }) {
+export function orderPaymentReminderEmail(o: { name?: string | null; number: string; amount: string; href: string; senderName?: string | null }, lang: Lang = 'it') {
+	const T = tt(lang);
 	const n = esc(o.number);
-	return { subject: `Ordine ${o.number}: manca il pagamento per partire`, tag: 'order-payment-reminder', html: layoutHtml(`L'ordine ${n} aspetta il ${hl('pagamento')} ⏳`, `<p>Ciao ${esc(o.name || '')},</p><p>la tua conferma d'ordine <b>${n}</b> è pronta, ma per mandarla in produzione ci manca il pagamento di <b>${esc(o.amount)}</b>. Trovi tutto nella pagina della conferma: appena arriva, partiamo.</p>${o.senderName ? `<p style="color:#8e92b0;font-size:13px;">${esc(o.senderName)} · Stickerprint</p>` : ''}`, { label: 'Vai al pagamento', href: o.href }) };
+	const body = hi(T, o.name) + T('sollecitoPagamento.corpo', { n, importo: esc(o.amount) }) + firma(T, o.senderName, 'comune.firma');
+	return { subject: T('sollecitoPagamento.oggetto', { n: o.number }), tag: 'order-payment-reminder', html: layoutHtml(T('sollecitoPagamento.titolo', { n, parola: hl(T('sollecitoPagamento.parola')) }), body, { label: T('sollecitoPagamento.cta'), href: o.href }, lang) };
 }
 
 /* ---------- Fattura (pagina del cliente) ---------- */
-export function invoiceEmail(o: { subject: string; message: string; senderName: string | null; number: string; href: string; toPay: string | null }) {
-	const body = `<div style="white-space:pre-wrap;">${esc(o.message)}</div>${o.toPay ? `<p style="margin:16px 0 0;padding:12px 14px;background:#fef6db;border-radius:10px;"><b>Da pagare: ${esc(o.toPay)}</b>. Nella pagina della fattura puoi pagare subito con carta o vedere i dati per il bonifico.</p>` : ''}${o.senderName ? `<p style="margin:18px 0 0;color:#8e92b0;font-size:13px;">${esc(o.senderName)} · Stickerprint · per qualsiasi cosa rispondi pure a questa email.</p>` : ''}`;
-	return { subject: o.subject, tag: 'invoice', html: layoutHtml(`La tua fattura ${esc(o.number)} è ${hl('pronta')} 🧾`, body, { label: 'Apri la fattura', href: o.href }) };
+export function invoiceEmail(o: { subject: string; message: string; senderName: string | null; number: string; href: string; toPay: string | null }, lang: Lang = 'it') {
+	const T = tt(lang);
+	const body = `<div style="white-space:pre-wrap;">${esc(o.message)}</div>${o.toPay ? `<p style="${BOX_GIALLO}">${T('fattura.daPagare', { importo: esc(o.toPay) })}</p>` : ''}${firma(T, o.senderName, 'comune.firmaRispondi', 'margin:18px 0 0;')}`;
+	return { subject: o.subject, tag: 'invoice', html: layoutHtml(T('fattura.titolo', { n: esc(o.number), parola: hl(T('fattura.parola')) }), body, { label: T('comune.apriFattura'), href: o.href }, lang) };
 }
-export function invoiceReplyEmail(o: { name?: string | null; number: string; body: string; author?: string | null; href: string }) {
+export function invoiceReplyEmail(o: { name?: string | null; number: string; body: string; author?: string | null; href: string }, lang: Lang = 'it') {
+	const T = tt(lang);
 	const n = esc(o.number);
-	return { subject: `Re: fattura ${o.number}`, tag: 'invoice-reply', html: layoutHtml(`Novità sulla fattura ${n} 💬`, `<p>Ciao ${esc(o.name || '')},</p><div style="white-space:pre-wrap;background:#f4f5fa;padding:14px 16px;border-radius:10px;">${esc(o.body)}</div>${o.author ? `<p style="margin-top:10px;color:#8e92b0;font-size:13px;">${esc(o.author)} · Stickerprint</p>` : ''}`, { label: 'Apri la fattura', href: o.href }) };
+	return { subject: T('fatturaRisposta.oggetto', { n: o.number }), tag: 'invoice-reply', html: layoutHtml(T('fatturaRisposta.titolo', { n }), replyBody(T, o.name, o.body, o.author), { label: T('comune.apriFattura'), href: o.href }, lang) };
 }
 
 /** grazie per la recensione: codice sconto personale */
-export function reviewThanksEmail(o: { name?: string | null; number: string; code: string; validUntil: string; href: string }) {
-	return { subject: `Grazie per la recensione: ecco il tuo 10% 🎁`, tag: 'review-thanks', html: layoutHtml(`Grazie ${esc(o.name || '')}, ecco il tuo ${hl('10%')} 🎁`, `<p>La tua recensione sull'ordine <b>${esc(o.number)}</b> è arrivata e verrà pubblicata a breve. Aiuta davvero, noi e chi deve ancora scegliere. Grazie 🫶🏻</p><p style="margin:18px 0;padding:16px;background:#fef6db;border-radius:12px;text-align:center;"><span style="font-size:13px;color:#8a5a00;">IL TUO CODICE</span><br><b style="font-family:Rubik,Montserrat,Helvetica,Arial,sans-serif;font-size:28px;letter-spacing:.06em;">${esc(o.code)}</b><br><span style="font-size:13px;color:#8a5a00;">10% sul prossimo ordine · valido fino al ${esc(o.validUntil)} · ordini da 50 €</span></p><p>Lo inserisci nel carrello, nel campo "Codice sconto". È personale: vale una volta sola e con la tua email.</p>`, { label: 'Usa il codice', href: o.href }) };
+export function reviewThanksEmail(o: { name?: string | null; number: string; code: string; validUntil: string; href: string }, lang: Lang = 'it') {
+	const T = tt(lang);
+	const body = `${T('recensioneGrazie.corpo', { n: esc(o.number) })}<p style="margin:18px 0;padding:16px;background:#fef6db;border-radius:12px;text-align:center;"><span style="font-size:13px;color:#8a5a00;">${T('recensioneGrazie.ilTuoCodice')}</span><br><b style="font-family:Rubik,Montserrat,Helvetica,Arial,sans-serif;font-size:28px;letter-spacing:.06em;">${esc(o.code)}</b><br><span style="font-size:13px;color:#8a5a00;">${T('recensioneGrazie.condizioni', { data: esc(o.validUntil) })}</span></p>${T('recensioneGrazie.come')}`;
+	return { subject: T('recensioneGrazie.oggetto'), tag: 'review-thanks', html: layoutHtml(T('recensioneGrazie.titolo', { nome: esc(o.name || ''), parola: hl(T('recensioneGrazie.parola')) }), body, { label: T('recensioneGrazie.cta'), href: o.href }, lang) };
 }
 
 /* ---------- Integrazione di pagamento (modifica dopo l'ordine) ---------- */
-export function integrationRequestEmail(o: { name?: string | null; number: string; amount: string; reason: string; lines: string[]; href: string; senderName?: string | null }) {
+const ul = (lines: string[]) => `<ul style="padding-left:18px;">${lines.map((l) => `<li>${esc(l)}</li>`).join('')}</ul>`;
+export function integrationRequestEmail(o: { name?: string | null; number: string; amount: string; reason: string; lines: string[]; href: string; senderName?: string | null }, lang: Lang = 'it') {
+	const T = tt(lang);
 	const n = esc(o.number);
-	return { subject: `Ordine ${o.number}: modifica richiesta, differenza ${o.amount}`, tag: 'order-integration', html: layoutHtml(`Il tuo ordine ${n} ${hl('cambia')} ✏️`, `<p>Ciao ${esc(o.name || '')},</p><p>come richiesto abbiamo modificato l'ordine <b>${n}</b>: <b>${esc(o.reason)}</b>.</p><ul style="padding-left:18px;">${o.lines.map((l) => `<li>${esc(l)}</li>`).join('')}</ul><p>La differenza rispetto a quanto già pagato è di <b>${esc(o.amount)}</b>. Puoi saldarla con carta o PayPal dalla pagina del tuo ordine: appena arriva, l'ordine riparte con la nuova versione.</p>${o.senderName ? `<p style="color:#8e92b0;font-size:13px;">${esc(o.senderName)} · Stickerprint</p>` : ''}`, { label: 'Paga la differenza', href: o.href }) };
+	const body = hi(T, o.name) + T('integrazione.corpo', { n, motivo: esc(o.reason) }) + ul(o.lines) + T('integrazione.differenza', { importo: esc(o.amount) }) + firma(T, o.senderName, 'comune.firma');
+	return { subject: T('integrazione.oggetto', { n: o.number, importo: o.amount }), tag: 'order-integration', html: layoutHtml(T('integrazione.titolo', { n, parola: hl(T('integrazione.parola')) }), body, { label: T('integrazione.cta'), href: o.href }, lang) };
 }
-export function integrationInvoiceEmail(o: { name?: string | null; number: string; invoice: string; amount: string; lines: string[] }) {
+export function integrationInvoiceEmail(o: { name?: string | null; number: string; invoice: string; amount: string; lines: string[] }, lang: Lang = 'it') {
+	const T = tt(lang);
 	const n = esc(o.number);
-	return { subject: `Ordine ${o.number}: integrazione ricevuta, fattura ${o.invoice}`, tag: 'order-integration-paid', html: layoutHtml(`Integrazione ${hl('ricevuta')}, si riparte 🚀`, `<p>Ciao ${esc(o.name || '')},</p><p>abbiamo ricevuto <b>${esc(o.amount)}</b> per la modifica dell'ordine <b>${n}</b>. In allegato trovi la fattura <b>${esc(o.invoice)}</b> (la trovi anche nella tua area personale).</p>${o.lines.length ? `<p>L'ordine ora è:</p><ul style="padding-left:18px;">${o.lines.map((l) => `<li>${esc(l)}</li>`).join('')}</ul>` : ''}<p>La produzione riparte subito con la nuova versione.</p>`) };
+	const body = hi(T, o.name) + T('integrazioneRicevuta.corpo', { importo: esc(o.amount), n, fattura: esc(o.invoice) }) + (o.lines.length ? T('integrazioneRicevuta.oraE') + ul(o.lines) : '') + T('integrazioneRicevuta.riparte');
+	return { subject: T('integrazioneRicevuta.oggetto', { n: o.number, fattura: o.invoice }), tag: 'order-integration-paid', html: layoutHtml(T('integrazioneRicevuta.titolo', { parola: hl(T('integrazioneRicevuta.parola')) }), body, null, lang) };
 }
 
 /** Email di Supabase Auth (conferma account, reset password, magic link, cambio email, invito, codice): le manda il sito via Postmark
     tramite l'hook "Send Email" di Supabase, con il nostro mittente e la nostra grafica. */
 export type AuthMailKind = 'signup' | 'recovery' | 'magiclink' | 'email_change' | 'invite' | 'reauthentication' | 'email';
-export function authEmail(kind: AuthMailKind, o: { name?: string | null; email: string; href: string; code?: string | null; newEmail?: string | null }) {
-	const name = o.name?.trim() ? `Ciao ${esc(o.name.trim())}` : 'Ciao';
-	const note = `<p style="font-size:13px;color:#8e92b0;">Se non sei stato tu, ignora questa email: non succede nulla.</p>`;
+export function authEmail(kind: AuthMailKind, o: { name?: string | null; email: string; href: string; code?: string | null; newEmail?: string | null }, lang: Lang = 'it') {
+	const T = tt(lang);
+	const ciao = o.name?.trim() ? T('auth.ciaoNome', { nome: o.name.trim() }) : T('auth.ciao');
+	const note = `<p style="font-size:13px;color:#8e92b0;">${T('auth.nota')}</p>`;
 	switch (kind) {
 		case 'recovery':
-			return { subject: 'Reimposta la password del tuo account Stickerprint', tag: 'auth-recovery', html: layout(`${name}, vuoi cambiare password?`, `<p>Clicca il bottone qui sotto e scegli una password nuova. Il link vale per un'ora.</p>${note}`, { label: 'Reimposta la password', href: o.href }) };
+			return { subject: T('auth.recovery.oggetto'), tag: 'auth-recovery', html: layout(T('auth.recovery.titolo', { ciao }), T('auth.recovery.corpo') + note, { label: T('auth.recovery.cta'), href: o.href }, lang) };
 		case 'magiclink':
-			return { subject: 'Il tuo link per entrare su Stickerprint', tag: 'auth-magiclink', html: layout(`${name}, entra con un clic.`, `<p>Questo link ti fa accedere al tuo account senza password. Vale per un'ora e si usa una volta sola.</p>${note}`, { label: 'Entra nel mio account', href: o.href }) };
+			return { subject: T('auth.magiclink.oggetto'), tag: 'auth-magiclink', html: layout(T('auth.magiclink.titolo', { ciao }), T('auth.magiclink.corpo') + note, { label: T('auth.magiclink.cta'), href: o.href }, lang) };
 		case 'email_change':
-			return { subject: 'Conferma il nuovo indirizzo email', tag: 'auth-email-change', html: layout(`${name}, confermi il nuovo indirizzo?`, `<p>Hai chiesto di usare <strong>${esc(o.newEmail || o.email)}</strong> per il tuo account Stickerprint. Conferma con il bottone qui sotto.</p>${note}`, { label: 'Conferma il nuovo indirizzo', href: o.href }) };
+			return { subject: T('auth.emailChange.oggetto'), tag: 'auth-email-change', html: layout(T('auth.emailChange.titolo', { ciao }), T('auth.emailChange.corpo', { email: esc(o.newEmail || o.email) }) + note, { label: T('auth.emailChange.cta'), href: o.href }, lang) };
 		case 'invite':
-			return { subject: 'Sei stato invitato su Stickerprint', tag: 'auth-invite', html: layout(`${name}, ti aspettiamo.`, `<p>Qualcuno ti ha invitato ad aprire un account su Stickerprint. Accetta l'invito e scegli la tua password.</p>`, { label: 'Accetta l’invito', href: o.href }) };
+			return { subject: T('auth.invite.oggetto'), tag: 'auth-invite', html: layout(T('auth.invite.titolo', { ciao }), T('auth.invite.corpo'), { label: T('auth.invite.cta'), href: o.href }, lang) };
 		case 'reauthentication':
-			return { subject: 'Il tuo codice di verifica Stickerprint', tag: 'auth-code', html: layout(`${name}, ecco il tuo codice.`, `<p>Per confermare l'operazione inserisci questo codice:</p><p style="font-size:30px;font-weight:800;letter-spacing:.2em;text-align:center;color:#0b0b3b;">${esc(o.code || '')}</p><p>Vale per pochi minuti.</p>${note}`) };
+			return { subject: T('auth.codice.oggetto'), tag: 'auth-code', html: layout(T('auth.codice.titolo', { ciao }), `${T('auth.codice.corpo')}<p style="font-size:30px;font-weight:800;letter-spacing:.2em;text-align:center;color:#0b0b3b;">${esc(o.code || '')}</p>${T('auth.codice.dopo')}${note}`, undefined, lang) };
 		default:
-			return { subject: 'Conferma il tuo account Stickerprint 🚀', tag: 'auth-signup', html: layout(`${name}, manca solo un clic.`, `<p>Grazie per esserti registrato su Stickerprint. Conferma il tuo indirizzo email con il bottone qui sotto: poi carichi il file, vedi l'anteprima e ordini in un minuto.</p><p>Ogni ordine ti lascia <strong>credito Stickerprint</strong> da usare sul prossimo.</p>${note}`, { label: 'Conferma il mio account', href: o.href }) };
+			return { subject: T('auth.signup.oggetto'), tag: 'auth-signup', html: layout(T('auth.signup.titolo', { ciao }), T('auth.signup.corpo') + note, { label: T('auth.signup.cta'), href: o.href }, lang) };
 	}
 }
