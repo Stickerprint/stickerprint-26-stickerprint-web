@@ -4,13 +4,13 @@
  */
 import { env } from '$env/dynamic/private';
 
-export async function klaviyoPlacedOrder(o: { email: string; firstName?: string; lastName?: string; orderNumber: string; total: number; items: { productId: string; productName: string; price: number; quantity: number }[]; discountCode?: string | null; discountAmount?: number }) {
+export async function klaviyoPlacedOrder(o: { email: string; firstName?: string; lastName?: string; lingua?: string; paese?: string; orderNumber: string; total: number; items: { productId: string; productName: string; price: number; quantity: number }[]; discountCode?: string | null; discountAmount?: number }) {
 	const key = env.KLAVIYO_PRIVATE_KEY;
 	if (!key || !o.email) return;
 	const body = {
 		data: { type: 'event', attributes: {
 			metric: { data: { type: 'metric', attributes: { name: 'Placed Order' } } },
-			profile: { data: { type: 'profile', attributes: { email: o.email, first_name: o.firstName || undefined, last_name: o.lastName || undefined } } },
+			profile: { data: { type: 'profile', attributes: { email: o.email, first_name: o.firstName || undefined, last_name: o.lastName || undefined, location: o.paese ? { country: o.paese } : undefined, properties: o.lingua ? { lingua: o.lingua, paese: o.paese ?? undefined } : undefined } } },
 			value: o.total, unique_id: `order-${o.orderNumber}`, time: new Date().toISOString(),
 			properties: { OrderId: o.orderNumber, $value: o.total, Items: o.items.map((i) => ({ ProductID: i.productId, ProductName: i.productName, ItemPrice: i.price, Quantity: i.quantity })), ItemNames: o.items.map((i) => i.productName), DiscountCode: o.discountCode || undefined, DiscountValue: o.discountAmount || 0 }
 		} }
