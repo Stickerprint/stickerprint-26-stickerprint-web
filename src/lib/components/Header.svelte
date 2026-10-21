@@ -2,6 +2,8 @@
 	import type { User } from '@supabase/supabase-js';
 	import { page } from '$app/state';
 	import { logoSrc } from '$lib/logo';
+	import { usaLingua } from '$lib/traduzioni';
+	const { t, path: L } = usaLingua();
 
 	let { user, avatar = null }: { user: User | null; avatar?: string | null } = $props();
 	/* foto profilo illeggibile o rimossa: si mostrano le iniziali invece dell'icona rotta */
@@ -39,24 +41,24 @@
 	const links: { href: string; label: string; items?: { href: string; label: string; img: string }[] }[] = [
 		{
 			href: '/adesivi-personalizzati',
-			label: 'Adesivi',
+			label: t('header.adesivi'),
 			items: [
-				{ href: '/adesivi-resinati', label: 'Adesivi Resinati', img: `${I}/res/round_res.webp` },
-				{ href: '/adesivi-personalizzati', label: 'Adesivi Personalizzati', img: `${I}/square_stickers.webp` },
-				{ href: '/adesivi-rilievo', label: 'Adesivi in Rilievo', img: `${I}/oval_stickers.webp` },
-				{ href: '/kit-adesivi', label: 'Kit di Adesivi', img: `${I}/custom_stickers.webp` },
-				{ href: '/vetrofanie', label: 'Vetrofanie', img: `${I}/vetr/vetr_round.webp` },
-				{ href: '/fogli', label: 'Fogli di Adesivi', img: `${I}/sheet/Sticker_sheet_1.webp` }
+				{ href: '/adesivi-resinati', label: t('header.resinati'), img: `${I}/res/round_res.webp` },
+				{ href: '/adesivi-personalizzati', label: t('header.personalizzati'), img: `${I}/square_stickers.webp` },
+				{ href: '/adesivi-rilievo', label: t('header.rilievo'), img: `${I}/oval_stickers.webp` },
+				{ href: '/kit-adesivi', label: t('header.kit'), img: `${I}/custom_stickers.webp` },
+				{ href: '/vetrofanie', label: t('header.vetrofanie'), img: `${I}/vetr/vetr_round.webp` },
+				{ href: '/fogli', label: t('header.fogli'), img: `${I}/sheet/Sticker_sheet_1.webp` }
 			]
 		},
-		{ href: '/etichette', label: 'Etichette', items: [{ href: '/etichette', label: 'Etichette in Fogli', img: `${I}/label/round_label.webp` }] },
-		{ href: '/offerte', label: 'Promo' },
-		{ href: '/aziende', label: 'Aziende' }
+		{ href: '/etichette', label: t('header.etichette'), items: [{ href: '/etichette', label: t('header.etichetteFogli'), img: `${I}/label/round_label.webp` }] },
+		{ href: '/offerte', label: t('header.promo') },
+		{ href: '/aziende', label: t('header.aziende') }
 	];
 
 	// voce evidenziata (gialla) quando si è in una pagina della sezione
 	const sectionActive = (l: (typeof links)[number]) => {
-		const path = page.url.pathname;
+		const path = page.url.pathname.replace(/^\/(es|fr|de|nl|us)(?=\/|$)/, '');
 		return l.items ? l.items.some((it) => path.startsWith(it.href)) : path.startsWith(l.href);
 	};
 
@@ -75,14 +77,14 @@
 <header class="header">
 	<div class="container header__inner">
 		<div class="header__left">
-		<button class="icon-btn burger" aria-label={open ? 'Chiudi il menu' : 'Menu'} aria-expanded={open} onclick={() => (open = !open)}>
+		<button class="icon-btn burger" aria-label={open ? t('comune.chiudiMenu') : t('comune.menu')} aria-expanded={open} onclick={() => (open = !open)}>
 			{#if open}<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 6l12 12M18 6L6 18" /></svg>{:else}<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 7h16M4 12h16M4 17h16" /></svg>{/if}
 		</button>
-		<nav aria-label="Principale">
+		<nav aria-label={t('header.principale')}>
 			<ul class="nav nav--desktop">
 				{#each links as l (l.label)}
 					<li class="nav__item" class:has-menu={l.items}>
-						<a href={l.href} class:is-active={sectionActive(l)} aria-haspopup={l.items ? 'true' : undefined}>
+						<a href={L(l.href)} class:is-active={sectionActive(l)} aria-haspopup={l.items ? 'true' : undefined}>
 							{l.label}
 							{#if l.items}
 								<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
@@ -91,7 +93,7 @@
 						{#if l.items}
 							<div class="dropdown">
 								{#each l.items as it (it.href)}
-									<a class="dropdown__item" href={it.href}>
+									<a class="dropdown__item" href={L(it.href)}>
 										<img src={it.img} alt="" width="52" height="52" />
 										<span>{it.label}</span>
 									</a>
@@ -104,7 +106,7 @@
 		</nav>
 		</div>
 
-		<a class="header__logo" href="/" aria-label="Stickerprint, home">
+		<a class="header__logo" href={L('/')} aria-label={t('comune.home')}>
 			<img src={logo} alt="Stickerprint" width="400" height="320" />
 		</a>
 
@@ -112,32 +114,32 @@
 			{#if user}
 				<!-- passando col mouse sull'iniziale (o sulla foto) si apre il menu dell'area personale -->
 				<div class="nav__item has-menu header__user">
-					<a class="nav" href="/account" style="text-decoration:none" title="Il tuo account" aria-haspopup="true">
+					<a class="nav" href={L('/account')} style="text-decoration:none" title={t('comune.tuoAccount')} aria-haspopup="true">
 						{#if avatar && !avatarKo}<img class="avatar avatar--img" src={avatar} alt="" width="34" height="34" onerror={() => (avatarKo = true)} />{:else}<span class="avatar">{initials}</span>{/if}
 					</a>
 					<div class="dropdown dropdown--right dropdown--user">
-						<a class="dropdown__link" href="/account">Panoramica</a>
-						<a class="dropdown__link" href="/account/ordini">I miei ordini</a>
-						<a class="dropdown__link" href="/account/credito">Credito Stickerprint</a>
-						<a class="dropdown__link" href="/account/dati">Dati e indirizzi</a>
-						<a class="dropdown__link" href="/account/pagamenti">Pagamenti</a>
-						<a class="dropdown__link" href="/account/recensioni">Recensioni</a>
-						<form method="POST" action="/logout"><button class="dropdown__link dropdown__link--out" type="submit">Esci dall'account</button></form>
+						<a class="dropdown__link" href={L('/account')}>{t('header.panoramica')}</a>
+						<a class="dropdown__link" href={L('/account/ordini')}>{t('header.mieiOrdini')}</a>
+						<a class="dropdown__link" href={L('/account/credito')}>{t('header.credito')}</a>
+						<a class="dropdown__link" href={L('/account/dati')}>{t('header.dati')}</a>
+						<a class="dropdown__link" href={L('/account/pagamenti')}>{t('header.pagamenti')}</a>
+						<a class="dropdown__link" href={L('/account/recensioni')}>{t('header.recensioni')}</a>
+						<form method="POST" action="/logout"><button class="dropdown__link dropdown__link--out" type="submit">{t('comune.esci')}</button></form>
 					</div>
 				</div>
 			{:else}
 				<div class="header__auth">
-					<a class="btn btn--blue btn--sm" href="/login">Accedi</a>
-					<a class="btn btn--yellow btn--sm" href="/signup">Registrati</a>
+					<a class="btn btn--blue btn--sm" href={L('/login')}>{t('comune.accedi')}</a>
+					<a class="btn btn--yellow btn--sm" href={L('/signup')}>{t('comune.registrati')}</a>
 				</div>
-				<a class="nav header__auth-icon" href="/login" style="text-decoration:none" title="Accedi">
+				<a class="nav header__auth-icon" href={L('/login')} style="text-decoration:none" title={t('comune.accedi')}>
 					<span class="avatar" aria-hidden="true">
 						<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="12" cy="8" r="4" /><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7" /></svg>
 					</span>
-					<span class="sr-only">Accedi</span>
+					<span class="sr-only">{t('comune.accedi')}</span>
 				</a>
 			{/if}
-			<a class="icon-btn" href="/checkout" aria-label="Carrello{cart ? `, ${cart} articoli` : ''}">
+			<a class="icon-btn" href={L('/checkout')} aria-label="{t('comune.carrello')}{cart ? `, ${cart} ${t('comune.articoli')}` : ''}">
 				<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" /><path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6" /></svg>
 				{#if cart}<span class="badge">{cart}</span>{/if}
 			</a>
@@ -146,11 +148,11 @@
 </header>
 
 {#if open}
-	<div class="mobile-menu" role="dialog" aria-label="Menu">
+	<div class="mobile-menu" role="dialog" aria-label={t('comune.menu')}>
 		<!-- barra propria: logo e X, cosi' il menu copre tutto lo schermo e si chiude da qui -->
 		<div class="mobile-menu__bar container">
-			<a href="/" aria-label="Stickerprint, home"><img src={logo} alt="Stickerprint" width="400" height="320" /></a>
-			<button type="button" class="mobile-menu__close" aria-label="Chiudi il menu" onclick={() => (open = false)}>
+			<a href={L('/')} aria-label={t('comune.home')}><img src={logo} alt="Stickerprint" width="400" height="320" /></a>
+			<button type="button" class="mobile-menu__close" aria-label={t('comune.chiudiMenu')} onclick={() => (open = false)}>
 				<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 6l12 12M18 6L6 18" /></svg>
 			</button>
 		</div>
@@ -158,14 +160,14 @@
 			{#each links as l (l.label)}
 				{#if l.items}
 					<p class="mobile-menu__group">{l.label}</p>
-					{#each l.items as it (it.href)}<a class="mobile-menu__sub" href={it.href}><img src={it.img} alt="" width="36" height="36" />{it.label}</a>{/each}
+					{#each l.items as it (it.href)}<a class="mobile-menu__sub" href={L(it.href)}><img src={it.img} alt="" width="36" height="36" />{it.label}</a>{/each}
 				{:else}
-					<a href={l.href}>{l.label}</a>
+					<a href={L(l.href)}>{l.label}</a>
 				{/if}
 			{/each}
-			<a href="/campioni">Kit campioni</a>
-			<a href="/support">Supporto</a>
-			{#if user}<a href="/account">Il tuo account</a>{:else}<a href="/login">Accedi</a>{/if}
+			<a href={L('/campioni')}>{t('header.kitCampioni')}</a>
+			<a href={L('/support')}>{t('header.supporto')}</a>
+			{#if user}<a href={L('/account')}>{t('comune.tuoAccount')}</a>{:else}<a href={L('/login')}>{t('comune.accedi')}</a>{/if}
 		</div>
 	</div>
 {/if}

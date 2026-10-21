@@ -12,7 +12,7 @@ import { SITE_URL, isProductionHost } from '$lib/seo';
 export const GET: RequestHandler = ({ url }) => {
 	const prod = isProductionHost(url.host);
 	const body = prod
-		? ['User-agent: *', 'Allow: /', 'Disallow: /account', 'Disallow: /dashboard', 'Disallow: /admin', 'Disallow: /checkout', 'Disallow: /api/', 'Disallow: /login', 'Disallow: /signup', 'Disallow: /logout', 'Disallow: /reset-password', 'Disallow: /auth/', 'Disallow: /fattura/', 'Disallow: /preventivo/', 'Disallow: /conferma/', 'Disallow: /assistenza/', 'Disallow: /recensione/', 'Disallow: /proof/', 'Disallow: /en', 'Disallow: /us', '', `Sitemap: ${SITE_URL}/sitemap.xml`, ''].join('\n')
+		? ['User-agent: *', 'Allow: /', 'Disallow: /account', 'Disallow: /dashboard', 'Disallow: /admin', 'Disallow: /checkout', 'Disallow: /api/', 'Disallow: /login', 'Disallow: /signup', 'Disallow: /logout', 'Disallow: /reset-password', 'Disallow: /auth/', 'Disallow: /fattura/', 'Disallow: /preventivo/', 'Disallow: /conferma/', 'Disallow: /assistenza/', 'Disallow: /recensione/', 'Disallow: /proof/', '', `Sitemap: ${SITE_URL}/sitemap.xml`, ''].join('\n')
 		: ['# Dominio di test: le pagine sono servite con noindex, nofollow (meta e X-Robots-Tag).', 'User-agent: *', 'Allow: /', 'Disallow: /account', 'Disallow: /dashboard', 'Disallow: /checkout', 'Disallow: /api/', ''].join('\n');
 	return new Response(body, { headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'public, max-age=3600' } });
 };

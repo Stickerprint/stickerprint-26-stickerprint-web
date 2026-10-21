@@ -1,29 +1,103 @@
 /**
- * Lingue e valute del sito. Oggi i testi sono in italiano: qui c'è la struttura
- * (rilevamento automatico, cookie, selettore nel footer, percorsi /en e /us) su cui
- * arriveranno le traduzioni e i prezzi in dollari.
+ * Lingue e valute del sito pubblico (la dashboard resta in italiano).
+ *
+ * Sei "locali": it (/), es (/es), fr (/fr), de (/de), nl (/nl) in euro, us (/us) in inglese e dollari.
+ * - L'URL comanda: /de/adesivi-personalizzati e' la pagina tedesca; src/hooks.ts (reroute) toglie il prefisso
+ *   per trovare la route, l'hook server legge il prefisso e mette la lingua in locals.locale.
+ * - PUBLIC_LOCALES (es. "it,de,us") dice quali lingue sono ONLINE: le altre rispondono in italiano finche'
+ *   non sono pronte. Lo staff le vede in anteprima col cookie sp-locale-preview (da /set-locale/anteprima).
+ * - Niente redirect automatici sul paese: Google arriva dagli Stati Uniti e si ritroverebbe su /us.
+ *   Il paese serve solo a SUGGERIRE la lingua; chi sceglie dal footer (cookie) viene tenuto nella sua.
+ * - Prezzi: il motore calcola in euro; il dollaro ha un suo listino (cambio e maggiorazione, vedi PRICE_BOOKS).
  */
-export type LocaleCode = 'it' | 'en' | 'us';
-export interface Locale { code: LocaleCode; lang: 'it' | 'en'; currency: 'EUR' | 'USD'; label: string; path: string; flag: 'it' | 'eu' | 'us' }
+import { env } from '$env/dynamic/public';
+
+export type LocaleCode = 'it' | 'es' | 'fr' | 'de' | 'nl' | 'us';
+export type Lang = 'it' | 'es' | 'fr' | 'de' | 'nl' | 'en';
+export type Currency = 'EUR' | 'USD';
+export interface Locale {
+	code: LocaleCode; lang: Lang; currency: Currency;
+	/** per <html lang> e hreflang */
+	hreflang: string; intl: string;
+	/** nome nel selettore, nella sua lingua */
+	label: string; path: string; flag: LocaleCode;
+	/** paesi che suggeriscono questa lingua (header x-vercel-ip-country) */
+	countries: string[];
+	/** spedizione gratuita da (nella valuta del locale) */
+	freeShipping: number;
+}
 export const LOCALES: Record<LocaleCode, Locale> = {
-	it: { code: 'it', lang: 'it', currency: 'EUR', label: 'Italiano (IT) - € EUR', path: '/', flag: 'it' },
-	en: { code: 'en', lang: 'en', currency: 'EUR', label: 'English (EN) - € EUR', path: '/en', flag: 'eu' },
-	us: { code: 'us', lang: 'en', currency: 'USD', label: 'English (EN) - $ USD', path: '/us', flag: 'us' }
+	it: { code: 'it', lang: 'it', currency: 'EUR', hreflang: 'it', intl: 'it-IT', label: 'Italiano · € EUR', path: '', flag: 'it', countries: ['IT', 'SM', 'VA', 'CH'], freeShipping: 50 },
+	es: { code: 'es', lang: 'es', currency: 'EUR', hreflang: 'es', intl: 'es-ES', label: 'Español · € EUR', path: '/es', flag: 'es', countries: ['ES'], freeShipping: 69 },
+	fr: { code: 'fr', lang: 'fr', currency: 'EUR', hreflang: 'fr', intl: 'fr-FR', label: 'Français · € EUR', path: '/fr', flag: 'fr', countries: ['FR', 'BE', 'LU', 'MC'], freeShipping: 69 },
+	de: { code: 'de', lang: 'de', currency: 'EUR', hreflang: 'de', intl: 'de-DE', label: 'Deutsch · € EUR', path: '/de', flag: 'de', countries: ['DE', 'AT'], freeShipping: 69 },
+	nl: { code: 'nl', lang: 'nl', currency: 'EUR', hreflang: 'nl', intl: 'nl-NL', label: 'Nederlands · € EUR', path: '/nl', flag: 'nl', countries: ['NL'], freeShipping: 69 },
+	us: { code: 'us', lang: 'en', currency: 'USD', hreflang: 'en-US', intl: 'en-US', label: 'English (US) · $ USD', path: '/us', flag: 'us', countries: ['US'], freeShipping: 99 }
 };
+export const LOCALE_CODES = Object.keys(LOCALES) as LocaleCode[];
 export const LOCALE_COOKIE = 'sp-locale';
-/** Cambio EUR → USD usato per i prezzi in dollari (da aggiornare periodicamente) */
-export const USD_RATE = 1.08;
-export const isLocale = (v: unknown): v is LocaleCode => v === 'it' || v === 'en' || v === 'us';
-/** Rilevamento: paese (header Vercel) e lingua del browser */
-export function detectLocale(country: string | null, acceptLanguage: string | null): LocaleCode {
-	if (country === 'US') return 'us';
-	if (country === 'IT') return 'it';
-	const lang = (acceptLanguage ?? '').toLowerCase();
-	if (lang.startsWith('it')) return 'it';
-	if (lang) return 'en';
+export const PREVIEW_COOKIE = 'sp-locale-preview';
+export const isLocale = (v: unknown): v is LocaleCode => typeof v === 'string' && v in LOCALES;
+
+/** lingue online (PUBLIC_LOCALES su Vercel, es. "it,de,us"); l'italiano c'e' sempre */
+export function activeLocales(): LocaleCode[] {
+	const list = (env.PUBLIC_LOCALES ?? 'it').split(',').map((s) => s.trim()).filter(isLocale);
+	return ['it', ...list.filter((c) => c !== 'it')];
+}
+
+/** percorsi senza lingua: API, dashboard, studio, file tecnici */
+const NON_LOCALIZZATI = ['/api', '/dashboard', '/studio', '/set-locale', '/robots.txt', '/sitemap.xml', '/sw.js', '/manifest.webmanifest', '/auth', '/logout', '/proof'];
+export const isLocalizable = (pathname: string) => !NON_LOCALIZZATI.some((p) => pathname === p || pathname.startsWith(p + '/'));
+
+/** dal percorso: la lingua del prefisso (null = italiano / nessun prefisso) e il percorso senza prefisso */
+export function localeFromPath(pathname: string): { code: LocaleCode | null; rest: string } {
+	const m = pathname.match(/^\/(es|fr|de|nl|us)(?=\/|$)/);
+	if (!m) return { code: null, rest: pathname };
+	const rest = pathname.slice(m[0].length) || '/';
+	return { code: m[1] as LocaleCode, rest };
+}
+export const stripLocale = (pathname: string) => localeFromPath(pathname).rest;
+/** lo stesso percorso in un'altra lingua: /de/adesivi-personalizzati; l'italiano non ha prefisso */
+export function localizePath(pathname: string, code: LocaleCode): string {
+	const rest = stripLocale(pathname);
+	if (!isLocalizable(rest) || code === 'it') return rest;
+	return rest === '/' ? `${LOCALES[code].path}/` : `${LOCALES[code].path}${rest}`;
+}
+
+/** lingua suggerita da paese (header Vercel) e lingua del browser, fra quelle ammesse; mai un redirect, solo un suggerimento */
+export function detectLocale(country: string | null, acceptLanguage: string | null, allowed: LocaleCode[] = LOCALE_CODES): LocaleCode {
+	const ok = (c: LocaleCode) => allowed.includes(c);
+	const c = (country ?? '').toUpperCase();
+	for (const l of Object.values(LOCALES)) if (l.countries.includes(c) && ok(l.code)) return l.code;
+	const langs = (acceptLanguage ?? '').toLowerCase().split(',').map((s) => s.trim().split(';')[0].slice(0, 2));
+	for (const lang of langs) {
+		const hit = Object.values(LOCALES).find((l) => l.lang === lang && ok(l.code) && l.code !== 'us');
+		if (hit) return hit.code;
+		if (lang === 'en' && ok('us')) return 'us';
+	}
 	return 'it';
 }
+
+/* ------------------------------------------------------------------ valute */
+/** listino per valuta: il motore prezzi calcola in euro; in dollari si applica cambio × maggiorazione (spedizione USA dentro il prezzo)
+ *  e si arrotonda a 0,05. Da spostare in dashboard (tabella) quando si parte davvero con gli USA. */
+export const PRICE_BOOKS: Record<Currency, { rate: number; markup: number; step: number }> = {
+	EUR: { rate: 1, markup: 1, step: 0.01 },
+	USD: { rate: 1.08, markup: 1, step: 0.05 }
+};
+/** @deprecated usa PRICE_BOOKS.USD.rate */
+export const USD_RATE = PRICE_BOOKS.USD.rate;
+/** importo in euro → importo nella valuta del locale (numero), con l'arrotondamento del listino */
+export function toCurrency(amountEur: number, currency: Currency): number {
+	const b = PRICE_BOOKS[currency];
+	const v = amountEur * b.rate * b.markup;
+	return Math.round(Math.round(v / b.step) * b.step * 100) / 100;
+}
 export function formatMoney(amountEur: number, locale: Locale, decimals = 2): string {
-	const value = locale.currency === 'USD' ? amountEur * USD_RATE : amountEur;
-	return new Intl.NumberFormat(locale.lang === 'it' ? 'it-IT' : 'en-US', { style: 'currency', currency: locale.currency, useGrouping: 'always', minimumFractionDigits: decimals, maximumFractionDigits: decimals }).format(value);
+	const value = toCurrency(amountEur, locale.currency);
+	return new Intl.NumberFormat(locale.intl, { style: 'currency', currency: locale.currency, useGrouping: 'always', minimumFractionDigits: decimals, maximumFractionDigits: decimals }).format(value);
+}
+/** formatta un importo gia' nella valuta (niente conversione) */
+export function formatAmount(value: number, locale: Locale, decimals = 2): string {
+	return new Intl.NumberFormat(locale.intl, { style: 'currency', currency: locale.currency, useGrouping: 'always', minimumFractionDigits: decimals, maximumFractionDigits: decimals }).format(value);
 }

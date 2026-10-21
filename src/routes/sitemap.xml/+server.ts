@@ -1,6 +1,7 @@
 import type { RequestHandler } from './$types';
 import { PRODUCTS } from '$lib/products';
 import { SITE_URL, isProductionHost } from '$lib/seo';
+import { LOCALES, activeLocales, localizePath } from '$lib/i18n';
 
 /**
  * Sitemap XML: solo pagine pubbliche e indicizzabili, con URL assoluti del dominio definitivo.
@@ -41,13 +42,21 @@ export const GET: RequestHandler = async ({ url, locals: { supabase } }) => {
 		}
 	} catch { /* senza database la sitemap esce senza gli articoli */ }
 
+	/* una riga per lingua online, ognuna con gli alternate hreflang delle altre (x-default = italiano) */
+	const lingue = activeLocales();
+	const alt = (loc: string) => {
+		const path = loc.slice(SITE_URL.length) || '/';
+		const links = lingue.map((c) => `<xhtml:link rel="alternate" hreflang="${LOCALES[c].hreflang}" href="${esc(SITE_URL + localizePath(path, c))}"/>`);
+		return links.length > 1 ? links.join('') + `<xhtml:link rel="alternate" hreflang="x-default" href="${esc(loc)}"/>` : '';
+	};
+	const righe = rows.flatMap((r) => lingue.map((c) => ({ ...r, loc: SITE_URL + localizePath(r.loc.slice(SITE_URL.length) || '/', c), alt: alt(r.loc) })));
 	const body =
 		'<?xml version="1.0" encoding="UTF-8"?>\n' +
-		'<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">\n' +
-		rows
+		'<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n' +
+		righe
 			.map((r) => {
 				const imgs = (r.images ?? []).map((i) => `<image:image><image:loc>${esc(i)}</image:loc></image:image>`).join('');
-				return `<url><loc>${esc(r.loc)}</loc>${r.lastmod ? `<lastmod>${r.lastmod}</lastmod>` : ''}<changefreq>${r.changefreq}</changefreq><priority>${r.priority}</priority>${imgs}</url>`;
+				return `<url><loc>${esc(r.loc)}</loc>${r.lastmod ? `<lastmod>${r.lastmod}</lastmod>` : ''}<changefreq>${r.changefreq}</changefreq><priority>${r.priority}</priority>${r.alt}${imgs}</url>`;
 			})
 			.join('\n') +
 		'\n</urlset>\n';

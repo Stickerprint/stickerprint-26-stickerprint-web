@@ -5,7 +5,7 @@ import { redirect, type Handle } from '@sveltejs/kit';
 import { isPrivatePath, isProductionHost } from '$lib/seo';
 import { sequence } from '@sveltejs/kit/hooks';
 import { PUBLIC_SUPABASE_ANON_KEY, PUBLIC_SUPABASE_URL } from '$env/static/public';
-import { LOCALE_COOKIE, detectLocale, isLocale } from '$lib/i18n';
+import { LOCALES, LOCALE_COOKIE, PREVIEW_COOKIE, activeLocales, detectLocale, isLocale, isLocalizable, localeFromPath, localizePath } from '$lib/i18n';
 
 /**
  * 1) Crea un client Supabase per ogni richiesta, con sessione letta/scritta nei cookie.
@@ -54,15 +54,35 @@ const PROTECTED_PREFIXES = ['/account', '/admin'];
 const GUEST_ONLY = ['/login', '/signup'];
 const DASHBOARD_LOGIN = '/dashboard/login';
 
-/** Lingua/valuta: dal cookie, altrimenti rilevata da paese e lingua del browser (modificabile dal footer) */
+/**
+ * Lingua/valuta. Comanda il prefisso dell'URL (/de, /us...); senza prefisso vale la scelta fatta dal footer (cookie),
+ * e chi ha scelto una lingua viene riportato sul percorso con il prefisso. Le lingue non ancora online (PUBLIC_LOCALES)
+ * tornano all'italiano, salvo anteprima dello staff (cookie sp-locale-preview). Nessun redirect dal paese: il paese
+ * e la lingua del browser danno solo il suggerimento (locals.localeSuggerito) per un avviso in pagina.
+ */
 const locale: Handle = async ({ event, resolve }) => {
-	const saved = event.cookies.get(LOCALE_COOKIE);
-	if (isLocale(saved)) event.locals.locale = saved;
-	else {
-		event.locals.locale = detectLocale(event.request.headers.get('x-vercel-ip-country'), event.request.headers.get('accept-language'));
-		event.cookies.set(LOCALE_COOKIE, event.locals.locale, { path: '/', maxAge: 60 * 60 * 24 * 365, sameSite: 'lax' });
+	const path = event.url.pathname;
+	const anteprima = event.cookies.get(PREVIEW_COOKIE) === '1';
+	const online = activeLocales();
+	const ammessa = (c: string): c is App.Locals['locale'] => isLocale(c) && (c === 'it' || anteprima || online.includes(c));
+	const { code: inUrl, rest } = localeFromPath(path);
+	const salvata = event.cookies.get(LOCALE_COOKIE);
+	const metti = (c: string) => { if (salvata !== c) event.cookies.set(LOCALE_COOKIE, c, { path: '/', maxAge: 60 * 60 * 24 * 365, sameSite: 'lax' }); };
+	if (inUrl) {
+		// prefisso di una lingua non online: si torna all'italiano
+		if (!ammessa(inUrl)) { metti('it'); redirect(302, rest + event.url.search); }
+		event.locals.locale = inUrl;
+		metti(inUrl);
+	} else {
+		const scelta = salvata && ammessa(salvata) ? salvata : 'it';
+		// chi ha scelto una lingua resta nella sua lingua anche cliccando un link senza prefisso
+		if (scelta !== 'it' && isLocalizable(path) && event.request.method === 'GET') redirect(302, localizePath(path, scelta) + event.url.search);
+		event.locals.locale = scelta;
+		if (salvata && !ammessa(salvata)) metti('it');
 	}
-	return resolve(event);
+	event.locals.localeSuggerito = detectLocale(event.request.headers.get('x-vercel-ip-country'), event.request.headers.get('accept-language'), anteprima ? undefined : online);
+	const lang = LOCALES[event.locals.locale].lang;
+	return resolve(event, { transformPageChunk: ({ html }) => html.replace('<html lang="it">', `<html lang="${lang}">`) });
 };
 
 const authGuard: Handle = async ({ event, resolve }) => {

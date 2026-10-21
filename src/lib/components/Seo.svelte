@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { usaLingua } from '$lib/traduzioni';
+	const ogLocale = usaLingua().locale.intl.replace('-', '_');
 	/**
 	 * Metadata della pagina: titolo, descrizione, Open Graph, Twitter Card e dati strutturati.
 	 * Canonical e robots li mette il layout (uguali per tutte le pagine), qui solo il resto.
@@ -19,7 +21,7 @@
 	<meta property="og:url" content={url} />
 	<meta property="og:image" content={ogImage} />
 	<meta property="og:site_name" content={SITE_NAME} />
-	<meta property="og:locale" content="it_IT" />
+	<meta property="og:locale" content={ogLocale} />
 	<meta name="twitter:card" content="summary_large_image" />
 	<meta name="twitter:title" content={title} />
 	<meta name="twitter:description" content={description} />

@@ -19,9 +19,10 @@ export function isProductionHost(host: string | null | undefined): boolean {
 }
 
 /** percorsi che non vanno mai in indice (area personale, dashboard, checkout, link con token) */
-const PRIVATE_PREFIXES = ['/account', '/dashboard', '/admin', '/checkout', '/login', '/signup', '/logout', '/reset-password', '/auth', '/api', '/fattura', '/preventivo', '/conferma', '/assistenza', '/recensione', '/proof', '/en', '/us'];
+const PRIVATE_PREFIXES = ['/account', '/dashboard', '/admin', '/checkout', '/login', '/signup', '/logout', '/reset-password', '/auth', '/api', '/fattura', '/preventivo', '/conferma', '/assistenza', '/recensione', '/proof'];
 export function isPrivatePath(pathname: string): boolean {
-	return PRIVATE_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + '/'));
+	const p0 = pathname.replace(/^\/(es|fr|de|nl|us)(?=\/|$)/, '') || '/';
+	return PRIVATE_PREFIXES.some((p) => p0 === p || p0.startsWith(p + '/'));
 }
 
 /** URL canonico assoluto: dominio definitivo, percorso senza query e senza barra finale */
