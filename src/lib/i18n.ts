@@ -36,7 +36,8 @@ export const LOCALES: Record<LocaleCode, Locale> = {
 	us: { code: 'us', lang: 'en', currency: 'USD', hreflang: 'en-US', intl: 'en-US', label: 'English (US) · $ USD', path: '/us', flag: 'us', countries: ['US'], freeShipping: 99 }
 };
 export const LOCALE_CODES = Object.keys(LOCALES) as LocaleCode[];
-export const LOCALE_COOKIE = 'sp-locale';
+/* 'sp-lingua' dal 21/10/2026 sera: il vecchio 'sp-locale' era stato scritto in automatico anche a chi restava in italiano e bloccava il redirect per paese */
+export const LOCALE_COOKIE = 'sp-lingua';
 export const PREVIEW_COOKIE = 'sp-locale-preview';
 export const isLocale = (v: unknown): v is LocaleCode => typeof v === 'string' && v in LOCALES;
 /** lingua da un locale salvato (ordine, profilo, cookie): sconosciuto o assente → italiano */

@@ -84,8 +84,9 @@ const locale: Handle = async ({ event, resolve }) => {
 		   la scelta dell'utente (footer). Mai per i crawler: Google scansiona dagli USA e deve vedere l'italiano con gli hreflang. */
 		if (!salvata && isLocalizable(path) && event.request.method === 'GET' && !isBot(event.request.headers.get('user-agent'))) {
 			const suggerito = detectLocale(event.request.headers.get('x-vercel-ip-country'), event.request.headers.get('accept-language'), anteprima ? undefined : online);
-			metti(suggerito);
-			if (suggerito !== 'it' && ammessa(suggerito)) redirect(302, localizePath(path, suggerito) + event.url.search);
+			/* il cookie si scrive solo quando si cambia lingua: chi resta sull'italiano senza averlo scelto viene rivalutato
+			   alla visita dopo (es. da un altro paese); "Resta qui" e il footer scrivono la scelta esplicita via /set-locale */
+			if (suggerito !== 'it' && ammessa(suggerito)) { metti(suggerito); redirect(302, localizePath(path, suggerito) + event.url.search); }
 		}
 		const scelta = salvata && ammessa(salvata) ? salvata : 'it';
 		// chi ha scelto una lingua resta nella sua lingua anche cliccando un link senza prefisso

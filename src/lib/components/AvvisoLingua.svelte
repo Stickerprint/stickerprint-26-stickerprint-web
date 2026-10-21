@@ -1,7 +1,7 @@
 <script lang="ts">
 	/**
 	 * Striscia discreta "Questo sito è disponibile in tedesco": compare quando paese o browser suggeriscono una lingua
-	 * diversa da quella della pagina (e quella lingua e' online). Mai un redirect: e' il cliente che sceglie. Si chiude una volta per sempre.
+	 * diversa da quella della pagina (e quella lingua e' online). Dal 21/10 sera la prima visita dall'estero viene gia' rimandata alla lingua del paese (hooks.server.ts): la striscia resta per chi ha scelto esplicitamente o per i casi dubbi. "Resta qui" scrive il cookie della lingua attuale.
 	 */
 	import { onMount } from 'svelte';
 	import { localizePath, type LocaleCode } from '$lib/i18n';
@@ -21,7 +21,8 @@
 	<div class="avviso-lingua" role="status">
 		<span>{t(suggerita, 'avvisoLingua.testo', { lingua: nome })}</span>
 		<a class="btn btn--yellow btn--xs" href={href} data-sveltekit-reload onclick={chiudi}>{t(suggerita, 'avvisoLingua.vai', { lingua: nome })}</a>
-		<button type="button" class="avviso-lingua__chiudi" onclick={chiudi}>{t(suggerita, 'avvisoLingua.resta')} ✕</button>
+		<!-- "Resta qui" e' una scelta esplicita: cookie della lingua attuale via /set-locale, altrimenti dal paese estero si verrebbe rimandati di nuovo -->
+		<a class="avviso-lingua__chiudi" href={`/set-locale/${attuale}?torna=${encodeURIComponent(page.url.pathname)}`} data-sveltekit-reload onclick={chiudi}>{t(suggerita, 'avvisoLingua.resta')} ✕</a>
 	</div>
 	<!-- la scelta esplicita passa da /set-locale, cosi' resta anche sui link senza prefisso -->
 {/if}
