@@ -1,6 +1,6 @@
 import { describe, expect, it as prova } from 'vitest';
 import { t, MESSAGGI } from './index';
-import { it } from './it';
+const it = MESSAGGI.it;
 import { localeFromPath, localizePath, detectLocale, toCurrency } from '$lib/i18n';
 
 const chiavi = (o: object, pre = ''): string[] => Object.entries(o).flatMap(([k, v]) => (typeof v === 'string' ? [pre + k] : chiavi(v as object, `${pre}${k}.`)));
@@ -23,8 +23,11 @@ describe('percorsi', () => {
 		expect(localeFromPath('/de/adesivi-personalizzati')).toEqual({ code: 'de', rest: '/adesivi-personalizzati' });
 		expect(localeFromPath('/de')).toEqual({ code: 'de', rest: '/' });
 		expect(localeFromPath('/design')).toEqual({ code: null, rest: '/design' });
-		expect(localizePath('/adesivi-personalizzati', 'us')).toBe('/us/adesivi-personalizzati');
-		expect(localizePath('/de/checkout', 'fr')).toBe('/fr/checkout');
+		expect(localizePath('/adesivi-personalizzati', 'us')).toBe('/us/custom-stickers');
+		expect(localizePath('/de/warenkorb', 'fr')).toBe('/fr/panier');
+		expect(localeFromPath('/de/individuelle-aufkleber/x')).toEqual({ code: 'de', rest: '/adesivi-personalizzati/x' });
+		expect(localizePath('/blog/ciao', 'de')).toBe('/de/blog/ciao');
+		expect(localizePath('/account/ordini', 'es')).toBe('/es/cuenta/ordini');
 		expect(localizePath('/fr/', 'it')).toBe('/');
 		expect(localizePath('/api/carrello', 'de')).toBe('/api/carrello');
 		expect(localizePath('/dashboard', 'de')).toBe('/dashboard');

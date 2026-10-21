@@ -11,6 +11,7 @@
  * - Prezzi: il motore calcola in euro; il dollaro ha un suo listino (cambio e maggiorazione, vedi PRICE_BOOKS).
  */
 import { env } from '$env/dynamic/public';
+import { slugInterno, slugLocale } from './slugs';
 
 export type LocaleCode = 'it' | 'es' | 'fr' | 'de' | 'nl' | 'us';
 export type Lang = 'it' | 'es' | 'fr' | 'de' | 'nl' | 'en';
@@ -49,19 +50,21 @@ export function activeLocales(): LocaleCode[] {
 const NON_LOCALIZZATI = ['/api', '/dashboard', '/studio', '/set-locale', '/robots.txt', '/sitemap.xml', '/sw.js', '/manifest.webmanifest', '/auth', '/logout', '/proof'];
 export const isLocalizable = (pathname: string) => !NON_LOCALIZZATI.some((p) => pathname === p || pathname.startsWith(p + '/'));
 
-/** dal percorso: la lingua del prefisso (null = italiano / nessun prefisso) e il percorso senza prefisso */
+/** dal percorso: la lingua del prefisso (null = italiano / nessun prefisso) e il percorso INTERNO senza prefisso (slug italiani) */
 export function localeFromPath(pathname: string): { code: LocaleCode | null; rest: string } {
 	const m = pathname.match(/^\/(es|fr|de|nl|us)(?=\/|$)/);
 	if (!m) return { code: null, rest: pathname };
+	const code = m[1] as LocaleCode;
 	const rest = pathname.slice(m[0].length) || '/';
-	return { code: m[1] as LocaleCode, rest };
+	return { code, rest: slugInterno(rest, LOCALES[code].lang) };
 }
 export const stripLocale = (pathname: string) => localeFromPath(pathname).rest;
-/** lo stesso percorso in un'altra lingua: /de/adesivi-personalizzati; l'italiano non ha prefisso */
+/** lo stesso percorso in un'altra lingua, con lo slug tradotto: /de/individuelle-aufkleber; l'italiano non ha prefisso */
 export function localizePath(pathname: string, code: LocaleCode): string {
 	const rest = stripLocale(pathname);
 	if (!isLocalizable(rest) || code === 'it') return rest;
-	return rest === '/' ? `${LOCALES[code].path}/` : `${LOCALES[code].path}${rest}`;
+	if (rest === '/') return `${LOCALES[code].path}/`;
+	return `${LOCALES[code].path}${slugLocale(rest, LOCALES[code].lang)}`;
 }
 
 /** lingua suggerita da paese (header Vercel) e lingua del browser, fra quelle ammesse; mai un redirect, solo un suggerimento */

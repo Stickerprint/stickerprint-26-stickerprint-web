@@ -1,7 +1,0 @@
-import type { Traduzioni } from './it';
-export const en: Traduzioni = {
-	comune: { sito: 'Stickerprint', home: 'Stickerprint, home', menu: 'Menu', chiudiMenu: 'Close the menu', carrello: 'Cart', articoli: 'items', accedi: 'Sign in', registrati: 'Sign up', esci: 'Sign out', tuoAccount: 'Your account', lingua: 'Language and currency' },
-	header: { adesivi: 'Stickers', etichette: 'Labels', promo: 'Deals', aziende: 'Business', resinati: 'Domed Stickers', personalizzati: 'Custom Stickers', rilievo: 'Raised Stickers', kit: 'Sticker Packs', vetrofanie: 'Window Decals', fogli: 'Sticker Sheets', etichetteFogli: 'Labels on Sheets', kitCampioni: 'Sample kit', supporto: 'Support', panoramica: 'Overview', mieiOrdini: 'My orders', credito: 'Stickerprint credit', dati: 'Details and addresses', pagamenti: 'Payments', recensioni: 'Reviews', principale: 'Main' },
-	footer: { pagamentiSicuri: 'Secure payment methods', spedizioneGratis: 'Free shipping from {soglia}', newsletterTitolo: 'Subscribe to our newsletter', newsletterEmail: 'Your email address', newsletterPlaceholder: 'your email address', iscriviti: 'Subscribe', iscrizione: 'Subscribing…', giaIscritto: 'You are already subscribed.', benvenuto: 'Subscription confirmed, welcome!', erroreIscrizione: 'We could not subscribe you, please try again.', connessione: 'Connection failed, please try again.', chiSiamo: 'About us', blog: 'Blog', supporto: 'Support', resi: 'Returns', menuFooter: 'Footer' },
-	avvisoLingua: { testo: 'This site is available in {lingua}.', vai: 'Go to the {lingua} version', resta: 'Stay here' }
-};
