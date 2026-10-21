@@ -20,7 +20,7 @@
 	import { matKindOf, paintSheetBackground } from '$lib/material-texture';
 	import { usaLingua } from '$lib/traduzioni';
 	import { formatAmount } from '$lib/i18n';
-	const { t, lang, locale, prezzo, prezzoUnit, numero } = usaLingua();
+	const { t, lang, locale, prezzo, prezzoUnit, numero, path } = usaLingua();
 	/** etichetta di una voce del listino (materiale, lamina, sagoma, orientamento, formato) nella lingua: dal catalogo se c'e', altrimenti quella del listino */
 	const opz = (id: string, campo: 'label' | 'description' | 'tag', fallback?: string) => { const k = `fogli.opzioni.${id}.${campo}`; const v = t(k); return v === k ? (fallback ?? '') : v; };
 	/* soglia della spedizione gratuita del locale (50 € IT, 69 € UE, 99 $ USA), mai scritta a mano */
@@ -323,11 +323,13 @@
 			const quote = quoteWith(cfg, { w: sheetW, h: sheetH, forma, materiale, finitura, qty, vatIncluded: true });
 			const fmtLabel = `${sheetW}×${sheetH} mm`;
 			if (pronto && readyFile) {
-				const item = addToCart({ product: 'fogli_adesivi', productName: 'Fogli di adesivi', engineProduct: 'sticker', forma: orientamento, materiale, finitura, w: sheetW, h: sheetH, qty, net: quote.net, gross: quote.gross, fileName: readyFile.name, note: 'File già impaginato dal cliente: si stampa così com’è, senza anteprima.' });
+				const item = addToCart({ product: 'fogli_adesivi', productName: t('checkout.carrello.fogliNome'), engineProduct: 'sticker', forma: orientamento, materiale, finitura, w: sheetW, h: sheetH, qty, net: quote.net, gross: quote.gross, fileName: readyFile.name, note: t('checkout.carrello.foglioPronto') });
 				await saveCartFile(item.id, readyFile);
 				if (readyUrl) { try { const b = await fetch(readyUrl).then((r) => r.blob()); await saveCartPreview(item.id, b); } catch { /* niente anteprima */ } }
 			} else {
-				const item = addToCart({ product: 'fogli_adesivi', productName: 'Fogli di adesivi', engineProduct: 'sticker', forma, materiale, finitura, w: sheetW, h: sheetH, qty, net: quote.net, gross: quote.gross, fileName: `foglio ${fmtLabel} · ${n} design`, note: `Foglio ${orientamento} ${fmtLabel}${sagomato ? ', sagomato (adesivi oltre il bordo)' : ''} · ${n} design · sfondo ${bgFile ? 'immagine' : bgColor}` });
+				/* nome del file e nota nella lingua del cliente (le vede al checkout); l'impaginato per la produzione sta in layout.json */
+				const design = t(n === 1 ? 'checkout.carrello.designUno' : 'checkout.carrello.designTanti', { n });
+				const item = addToCart({ product: 'fogli_adesivi', productName: t('checkout.carrello.fogliNome'), engineProduct: 'sticker', forma, materiale, finitura, w: sheetW, h: sheetH, qty, net: quote.net, gross: quote.gross, fileName: t('checkout.carrello.foglioFile', { formato: fmtLabel, design }), note: t('checkout.carrello.foglioNota', { orientamento: opz(orientamento, 'label', orientamento).toLowerCase(), formato: fmtLabel, sagomato: sagomato ? t('checkout.carrello.foglioSagomato') : '', design, sfondo: bgFile ? t('checkout.carrello.sfondoImmagine') : bgColor }) });
 				const print = await sheetPng(12);
 				if (print) { const pf = new File([print], 'foglio.png', { type: 'image/png' }); await saveCartFile(item.id, pf); await saveCartFile(`${item.id}:foglio`, pf); }
 				const preview = await sheetPng(3);
@@ -339,7 +341,7 @@
 			}
 			track.addToCart({ product: 'fogli_adesivi', productName: 'Fogli di adesivi', forma, w: sheetW, h: sheetH, materiale, finitura, qty, gross: quote.gross });
 			klaviyo.addedToCart({ productId: `fogli_adesivi_${forma}`, productName: `Fogli di adesivi ${fmtLabel}`, quantity: qty, dimension: fmtLabel, material: materiale, price: quote.gross });
-			await goto('/checkout');
+			await goto(path('/checkout'));
 		} finally { adding = false; }
 	}
 </script>

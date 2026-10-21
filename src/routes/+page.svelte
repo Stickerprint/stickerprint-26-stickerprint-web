@@ -15,7 +15,7 @@
 	import FinalCta from '$lib/components/FinalCta.svelte';
 	import HowTo from '$lib/components/HowTo.svelte';
 	import Seo from '$lib/components/Seo.svelte';
-	import { HOME_LD } from '$lib/seo-home';
+	import { homeLd } from '$lib/seo-home';
 	import { usaLingua } from '$lib/traduzioni';
 	import { formatAmount } from '$lib/i18n';
 
@@ -69,7 +69,7 @@
 <svelte:head>
 	<link rel="preload" as="image" href="/images/ig-3.webp" fetchpriority="high" />
 </svelte:head>
-<Seo title={t('home.seo.titolo')} description={t('home.seo.descrizione', { soglia })} image="/images/og-stickerprint.jpg" ld={HOME_LD} />
+<Seo title={t('home.seo.titolo')} description={t('home.seo.descrizione', { soglia })} image="/images/og-stickerprint.jpg" ld={homeLd(locale.code)} />
 
 <!-- HERO: fascia blu scuro come l'header, a tutta larghezza (solo in home) -->
 <div class="hero-band">

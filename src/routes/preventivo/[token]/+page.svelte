@@ -4,7 +4,7 @@
 	import { enhance } from '$app/forms';
 	import Stars from '$lib/components/Stars.svelte';
 	import { usaLingua } from '$lib/traduzioni';
-	const { t, path, prezzo, numero, data: dataL, locale } = usaLingua();
+	const { t, path, numero, data: dataL, locale } = usaLingua();
 	/* documenti reali in euro (ordini manuali, preventivi, fatture): formato della lingua, valuta sempre EUR, niente cambio in dollari */
 	const money = (v: number) => formatAmount(v, { ...locale, currency: 'EUR' });
 	let { data, form } = $props();
@@ -56,7 +56,7 @@
 					<div class="qp__item-body">
 						<span class="qp__cat">{i.category}</span>
 						<h3>{i.description}</h3>
-						<div class="qp__meta">{t('account.doc.pezzi', { n: numero(i.qty) })}{#if i.lamination && i.lamination !== 'nessuna'} · {t('account.preventivo.lamina', { tipo: i.lamination })}{/if}{#if i.code} · {t('account.preventivo.cod', { codice: i.code })}{/if}</div>
+						<div class="qp__meta">{t('account.doc.pezzi', { n: numero(i.qty) })}{#if i.lamination && i.lamination !== 'nessuna'} · {t('account.preventivo.lamina', { tipo: i.laminationLabel })}{/if}{#if i.code} · {t('account.preventivo.cod', { codice: i.code })}{/if}</div>
 						<div class="qp__price"><span>{money(i.price)} <small>{t('account.doc.cad')}{data.lordi ? ` ${t('account.doc.ivaIncl')}` : ''}</small></span><b>{money(i.total)}</b></div>
 					</div>
 				</article>

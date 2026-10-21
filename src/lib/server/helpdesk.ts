@@ -3,6 +3,7 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Lang } from '$lib/i18n';
+import { perLingua, t as tradotto } from '$lib/traduzioni';
 import { adminClient } from './admin';
 import { sendEmail } from './email';
 import { OWNER_EMAIL, ownerNotifyEmail, ticketReceivedEmail, ticketReplyEmail } from './email-templates';
@@ -22,7 +23,7 @@ export async function createTicket(db: DB, kind: TicketKind, f: { name?: string;
 	if (error || !t) {
 		// senza chiave di servizio la RLS non lascia rileggere: si inserisce alla cieca
 		const { error: e2 } = await db.from('tickets').insert(row);
-		if (e2) return { ok: false, error: 'Richiesta non salvata, riprova tra poco.' };
+		if (e2) return { ok: false, error: tradotto(perLingua(lang), 'account.errori.richiestaNonSalvata') };
 		return { ok: true, number: '' };
 	}
 	const ticket = t as Ticket;
@@ -125,12 +126,13 @@ export async function updateTicket(db: DB, id: string, patch: Partial<Pick<Ticke
 	const { error } = await db.from('tickets').update(p).eq('id', id);
 	return error?.message ?? null;
 }
-/** Risposta del cliente dalla pagina pubblica (client di servizio): il ticket torna a noi */
-export async function customerReply(db: DB, token: string, body: string, filePath: string | null, origin: string): Promise<string | null> {
-	if (!body.trim() && !filePath) return 'Scrivi un messaggio.';
+/** Risposta del cliente dalla pagina pubblica (client di servizio): il ticket torna a noi. `lang`: lingua della pagina per i messaggi al cliente */
+export async function customerReply(db: DB, token: string, body: string, filePath: string | null, origin: string, lang: Lang = 'it'): Promise<string | null> {
+	const T = (k: string) => tradotto(perLingua(lang), `account.${k}`);
+	if (!body.trim() && !filePath) return T('errori.scriviMessaggio');
 	const c = await getTicketByToken(db, token);
-	if (!c) return 'Richiesta non trovata.';
-	await db.from('ticket_messages').insert({ ticket_id: c.ticket.id, direction: 'in', author: c.ticket.name ?? c.ticket.email, body: body.trim() || '(allegato)', file_path: filePath });
+	if (!c) return T('errori.richiestaNonTrovata');
+	await db.from('ticket_messages').insert({ ticket_id: c.ticket.id, direction: 'in', author: c.ticket.name ?? c.ticket.email, body: body.trim() || T('messaggi.allegato'), file_path: filePath });
 	const status: TicketStatus = c.ticket.status === 'chiuso' || c.ticket.status === 'risolto' || c.ticket.status === 'attesa_cliente' ? 'in_carico' : c.ticket.status;
 	await db.from('tickets').update({ status, unread: true, last_message_at: new Date().toISOString(), updated_at: new Date().toISOString(), closed_at: null }).eq('id', c.ticket.id);
 	await Promise.all([

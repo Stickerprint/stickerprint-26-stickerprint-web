@@ -20,7 +20,7 @@ export const load: PageServerLoad = async ({ url, locals: { user, locale } }) =>
 	// ritorno da PayPal (?pp=1&token=ID): cattura dell'incasso e chiusura dell'ordine
 	const pp = url.searchParams.get('pp') === '1' ? url.searchParams.get('token') : null;
 	if (pp && paypalConfigured()) {
-		const r = await settlePayPalReturn(db, pp, 'checkout:');
+		const r = await settlePayPalReturn(db, pp, 'checkout:', locale);
 		const group = r.customId?.split(':')[1] ?? null;
 		if (!group) return { ...base, ppError: r.error ?? t(locale, 'checkout.errori.pagamentoNonRiconosciuto') };
 		if (!r.ok) return { ...base, pending: true, ppError: r.error ?? null };

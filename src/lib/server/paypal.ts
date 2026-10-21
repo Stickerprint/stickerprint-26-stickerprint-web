@@ -9,6 +9,11 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { checkoutPending, finalizeCheckout } from './checkout';
 import { setPaymentStatus } from './conferme';
 import { setInvoicePaymentStatus } from './fatture';
+import { t } from '$lib/traduzioni';
+import type { LocaleCode } from '$lib/i18n';
+
+/** messaggi al cliente nella sua lingua (catalogo checkout.paypal); chi non ha un locale (webhook, log) li ha in italiano */
+const msg = (locale: LocaleCode, k: string) => t(locale, `checkout.paypal.${k}`);
 
 export const paypalConfigured = () => !!(env.PAYPAL_CLIENT_ID && env.PAYPAL_SECRET);
 const base = () => (env.PAYPAL_ENV === 'live' ? 'https://api-m.paypal.com' : 'https://api-m.sandbox.paypal.com');
@@ -34,7 +39,7 @@ async function call(path: string, body?: unknown, method = body ? 'POST' : 'GET'
 }
 
 /** custom_id: "checkout:<gruppo>" (ordine del sito), "order:<gruppo>:<seq>" (conferma), "invoice:<id>:<seq>" (fattura) */
-export async function createPayPalOrder(o: { amount: number; currency?: 'EUR' | 'USD'; locale?: string; description: string; reference: string; customId: string; returnUrl: string; cancelUrl: string }): Promise<{ id: string; approveUrl: string }> {
+export async function createPayPalOrder(o: { amount: number; currency?: 'EUR' | 'USD'; locale?: string; description: string; reference: string; customId: string; returnUrl: string; cancelUrl: string }, lingua: LocaleCode = 'it'): Promise<{ id: string; approveUrl: string }> {
 	const j = await call('/v2/checkout/orders', {
 		intent: 'CAPTURE',
 		purchase_units: [{ reference_id: o.reference, custom_id: o.customId, invoice_id: undefined, description: o.description.slice(0, 127), amount: { currency_code: o.currency ?? 'EUR', value: o.amount.toFixed(2) } }],
@@ -42,7 +47,7 @@ export async function createPayPalOrder(o: { amount: number; currency?: 'EUR' | 
 	});
 	const links = (j.links ?? []) as { rel: string; href: string }[];
 	const approve = links.find((l) => l.rel === 'payer-action' || l.rel === 'approve')?.href;
-	if (!approve) throw new Error('PayPal non ha restituito il link di pagamento.');
+	if (!approve) throw new Error(msg(lingua, 'nessunLink'));
 	return { id: String(j.id), approveUrl: approve };
 }
 interface OrderInfo { id: string; status: string; customId: string | null; captureId: string | null; captureStatus: string | null }
@@ -64,14 +69,14 @@ export async function capturePayPalOrder(id: string): Promise<OrderInfo> {
 }
 
 /** Applica un incasso PayPal completato alla cosa giusta (ordine del sito, scadenza di conferma o di fattura) */
-export async function applyPayPalCapture(db: SupabaseClient, o: OrderInfo): Promise<string | null> {
-	if (o.status !== 'COMPLETED' || (o.captureStatus && o.captureStatus !== 'COMPLETED' && o.captureStatus !== 'PENDING')) return 'Pagamento non completato.';
+export async function applyPayPalCapture(db: SupabaseClient, o: OrderInfo, lingua: LocaleCode = 'it'): Promise<string | null> {
+	if (o.status !== 'COMPLETED' || (o.captureStatus && o.captureStatus !== 'COMPLETED' && o.captureStatus !== 'PENDING')) return msg(lingua, 'nonCompletato');
 	const ref = o.captureId ?? o.id;
 	const [kind, a, b] = (o.customId ?? '').split(':');
 	if (kind === 'checkout' && a) { await finalizeCheckout(db, a, { provider: 'paypal', ref }); return null; }
 	if (kind === 'order' && a && b) return setPaymentStatus(db, a, Number(b), 'pagato', null, ref, 'paypal');
 	if (kind === 'invoice' && a && b) return setInvoicePaymentStatus(db, a, Number(b), 'pagato', null, ref, 'paypal');
-	return 'Riferimento PayPal non riconosciuto.';
+	return msg(lingua, 'riferimento');
 }
 /** Si puo' ancora incassare? Un checkout annullato o scaduto e una scadenza gia' pagata non si catturano */
 export async function canCapture(db: SupabaseClient, customId: string | null): Promise<boolean> {
@@ -82,15 +87,15 @@ export async function canCapture(db: SupabaseClient, customId: string | null): P
 	return false;
 }
 /** Ritorno dal sito PayPal (?token=ID): cattura e applica. Restituisce l'esito per la pagina. */
-export async function settlePayPalReturn(db: SupabaseClient, orderId: string, expectPrefix: string): Promise<{ ok: boolean; error?: string; customId: string | null }> {
+export async function settlePayPalReturn(db: SupabaseClient, orderId: string, expectPrefix: string, lingua: LocaleCode = 'it'): Promise<{ ok: boolean; error?: string; customId: string | null }> {
 	try {
 		const cur = await getPayPalOrder(orderId);
-		if (!cur.customId?.startsWith(expectPrefix)) return { ok: false, error: 'Pagamento non riconosciuto.', customId: cur.customId };
-		if (cur.status !== 'COMPLETED' && !(await canCapture(db, cur.customId))) return { ok: false, error: 'Questo ordine è stato annullato o è scaduto: torna al carrello e rifai l’ordine.', customId: cur.customId };
+		if (!cur.customId?.startsWith(expectPrefix)) return { ok: false, error: msg(lingua, 'nonRiconosciuto'), customId: cur.customId };
+		if (cur.status !== 'COMPLETED' && !(await canCapture(db, cur.customId))) return { ok: false, error: msg(lingua, 'scaduto'), customId: cur.customId };
 		const done = cur.status === 'COMPLETED' ? cur : await capturePayPalOrder(orderId);
-		const e = await applyPayPalCapture(db, done);
+		const e = await applyPayPalCapture(db, done, lingua);
 		return e ? { ok: false, error: e, customId: done.customId } : { ok: true, customId: done.customId };
 	} catch (e) {
-		return { ok: false, error: e instanceof Error ? e.message : 'Errore PayPal', customId: null };
+		return { ok: false, error: e instanceof Error ? e.message : msg(lingua, 'errore'), customId: null };
 	}
 }

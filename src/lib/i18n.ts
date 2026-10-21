@@ -65,7 +65,8 @@ export const stripLocale = (pathname: string) => localeFromPath(pathname).rest;
 export function localizePath(pathname: string, code: LocaleCode): string {
 	const rest = stripLocale(pathname);
 	if (!isLocalizable(rest) || code === 'it') return rest;
-	if (rest === '/') return `${LOCALES[code].path}/`;
+	/* home in lingua: /de senza barra finale (SvelteKit toglie le barre finali: con /de/ si rimbalzava fra /de e /de/) */
+	if (rest === '/') return LOCALES[code].path;
 	return `${LOCALES[code].path}${slugLocale(rest, LOCALES[code].lang)}`;
 }
 

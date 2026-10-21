@@ -1,6 +1,7 @@
 import { PRODUCT_ENGINES } from '$lib/pricing/engine';
 import type { Lang } from '$lib/i18n';
-import { t, perLingua } from '$lib/traduzioni';
+import { LOCALES } from '$lib/i18n';
+import { t, perLingua, numeroIn } from '$lib/traduzioni';
 
 export interface Order {
 	id: string;
@@ -79,7 +80,8 @@ export const materialLabel = (m: string | null | undefined, lang: Lang = 'it'): 
 export const productHref = (slug: string) => PRODUCT_ENGINES.find((p) => p.slug === slug)?.href ?? '/prodotti';
 export const eur = (v: number) => new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR', useGrouping: 'always' }).format(v);
 export const dateIt = (d: string, long = false) => new Intl.DateTimeFormat('it-IT', long ? { day: 'numeric', month: 'long', year: 'numeric' } : { day: 'numeric', month: 'short' }).format(new Date(d));
-export const fmtMm = (v: number | null) => (v == null ? '' : Number.isInteger(+v) ? String(+v) : (+v).toFixed(1).replace('.', ','));
+/** millimetri con al massimo un decimale, nel formato della lingua (12,5 / 12.5); senza lingua resta l'italiano */
+export const fmtMm = (v: number | null, lang: Lang = 'it') => (v == null ? '' : numeroIn(LOCALES[perLingua(lang)], +v, 1));
 
 export interface LoyaltyLevel { level: string; name: string; rank: number; credit_rate: number; img: string; next_points: number | null; keep_points: number }
 export interface Loyalty {

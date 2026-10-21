@@ -1,13 +1,14 @@
 import { json } from '@sveltejs/kit';
+import { t } from '$lib/traduzioni';
 import type { RequestHandler } from './$types';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 /** POST /api/newsletter { email } → salva in newsletter_subscribers */
-export const POST: RequestHandler = async ({ request, locals: { supabase }, getClientAddress }) => {
+export const POST: RequestHandler = async ({ request, locals: { supabase, locale }, getClientAddress }) => {
 	const body = (await request.json().catch(() => ({}))) as { email?: string };
 	const email = String(body.email ?? '').trim().toLowerCase();
-	if (!EMAIL_RE.test(email)) return json({ ok: false, error: 'Inserisci un indirizzo email valido.' }, { status: 400 });
+	if (!EMAIL_RE.test(email)) return json({ ok: false, error: t(locale, 'api.emailNonValida') }, { status: 400 });
 
 	const { error } = await supabase.from('newsletter_subscribers').insert({
 		email,
@@ -18,7 +19,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase }, getC
 	if (error) {
 		if (error.code === '23505') return json({ ok: true, already: true });
 		console.error('[newsletter]', error);
-		return json({ ok: false, error: 'Non siamo riusciti a salvare l’iscrizione.' }, { status: 500 });
+		return json({ ok: false, error: t(locale, 'api.iscrizioneNonSalvata') }, { status: 500 });
 	}
 	return json({ ok: true });
 };

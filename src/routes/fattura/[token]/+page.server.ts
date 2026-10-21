@@ -5,6 +5,7 @@ import { COMPANY } from '$lib/server/company';
 import { onlinePaymentsOn, retrieveSession, stripeConfigured } from '$lib/server/stripe';
 import { paypalConfigured, settlePayPalReturn } from '$lib/server/paypal';
 import { t } from '$lib/traduzioni';
+import { langOf, localizePath } from '$lib/i18n';
 import type { Actions, PageServerLoad } from './$types';
 
 /** Pagina pubblica della fattura: righe, totali, scadenze (pagabili o informative), PDF, domande. Ogni apertura viene registrata. */
@@ -20,13 +21,13 @@ export const load: PageServerLoad = async ({ params, url, request, locals: { loc
 	}
 	const ppToken = url.searchParams.get('pp') === '1' ? url.searchParams.get('token') : null;
 	let ppError: string | null = null;
-	if (ppToken && paypalConfigured()) { const r = await settlePayPalReturn(db, ppToken, `invoice:${c.inv.id}:`); if (r.ok) redirect(303, `/fattura/${params.token}?pagato=1`); ppError = r.error ?? null; }
+	if (ppToken && paypalConfigured()) { const r = await settlePayPalReturn(db, ppToken, `invoice:${c.inv.id}:`); if (r.ok) redirect(303, `${localizePath(`/fattura/${params.token}`, locale)}?pagato=1`); ppError = r.error ?? null; }
 	const paid = url.searchParams.get('pagato') === '1';
 	if (paid) c = (await getInvoiceByToken(db, params.token)) ?? c;
 	const b = c.inv.billing ?? {};
-	const addr = [b.company, [b.first_name, b.last_name].filter(Boolean).join(' '), [b.street, b.street2].filter(Boolean).join(', '), [b.zip, b.city, b.province ? `(${b.province})` : ''].filter(Boolean).join(' '), b.vat ? `P.IVA ${b.vat}` : '', b.fiscal_code ? `C.F. ${b.fiscal_code}` : '', b.sdi ? `SDI ${b.sdi}` : ''].filter(Boolean);
+	const addr = [b.company, [b.first_name, b.last_name].filter(Boolean).join(' '), [b.street, b.street2].filter(Boolean).join(', '), [b.zip, b.city, b.province ? `(${b.province})` : ''].filter(Boolean).join(' '), b.vat ? t(locale, 'account.doc.piva', { n: b.vat }) : '', b.fiscal_code ? t(locale, 'account.doc.cf', { n: b.fiscal_code }) : '', b.sdi ? t(locale, 'account.doc.sdi', { n: b.sdi }) : ''].filter(Boolean);
 	const lines = [...(c.inv.lines ?? [])];
-	if (Number(c.inv.express_net) > 0) lines.push({ description: 'Produzione express (+30%)', qty: 1, unit_net: Number(c.inv.express_net), total_net: Number(c.inv.express_net) });
+	if (Number(c.inv.express_net) > 0) lines.push({ description: t(locale, 'account.doc.express'), qty: 1, unit_net: Number(c.inv.express_net), total_net: Number(c.inv.express_net) });
 	return {
 		inv: { number: c.inv.number, issued_at: c.inv.issued_at, orders: c.inv.order_numbers ?? [], net: Number(c.inv.subtotal_net) - Number(c.inv.discount_net) + Number(c.inv.express_net), vat: Number(c.inv.vat_amount), gross: Number(c.inv.amount_gross), first_name: b.first_name || b.company || '', sender: c.inv.sender_name, notes: c.inv.notes },
 		addr, lines,
@@ -40,7 +41,7 @@ export const actions: Actions = {
 	domanda: async ({ params, request, url, locals: { locale } }) => {
 		const db = adminClient();
 		if (!db) return fail(503, { error: t(locale, 'account.errori.servizio') });
-		const e = await invoiceQuestion(db, params.token, String((await request.formData()).get('testo') ?? ''), url.origin);
+		const e = await invoiceQuestion(db, params.token, String((await request.formData()).get('testo') ?? ''), url.origin, langOf(locale));
 		return e ? fail(400, { error: e }) : { ok: true, message: t(locale, 'account.messaggi.messaggioInviato') };
 	}
 };

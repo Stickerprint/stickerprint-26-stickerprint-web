@@ -4,7 +4,8 @@ import { customerMessage, getByToken, trackOpen } from '$lib/server/conferme';
 import { loadReviews } from '$lib/server/reviews';
 import { COMPANY } from '$lib/server/company';
 import { PRODUCTS } from '$lib/products';
-import { CATS, itemMeta, thumbOf } from '$lib/dashboard/orders';
+import { catLabel, itemMetaFor, thumbOf } from '$lib/dashboard/orders';
+import { langOf, localizePath } from '$lib/i18n';
 import { onlinePaymentsOn, retrieveSession, stripeConfigured } from '$lib/server/stripe';
 import { setPaymentStatus } from '$lib/server/conferme';
 import { paypalConfigured, settlePayPalReturn } from '$lib/server/paypal';
@@ -26,18 +27,19 @@ export const load: PageServerLoad = async ({ params, url, request, locals: { loc
 	// ritorno da PayPal (?pp=1&token=ID): l'incasso viene catturato qui e la scadenza segnata pagata
 	const ppToken = url.searchParams.get('pp') === '1' ? url.searchParams.get('token') : null;
 	let ppError: string | null = null;
-	if (ppToken && paypalConfigured()) { const r = await settlePayPalReturn(db, ppToken, `order:${c.group.key}:`); if (r.ok) redirect(303, `/conferma/${params.token}?pagato=1`); ppError = r.error ?? null; }
+	if (ppToken && paypalConfigured()) { const r = await settlePayPalReturn(db, ppToken, `order:${c.group.key}:`); if (r.ok) redirect(303, `${localizePath(`/conferma/${params.token}`, locale)}?pagato=1`); ppError = r.error ?? null; }
 	const paid = url.searchParams.get('pagato') === '1';
 	const cancelled = url.searchParams.get('annullato') === '1';
 	const fresh = paid ? await getByToken(db, params.token) : null;
 	if (fresh) { c.payments = fresh.payments; c.group = fresh.group; }
 	const { stats } = await loadReviews(db);
+	const lang = langOf(locale);
 	const g = c.group;
 	const f = g.items[0];
 	const addr = (a: Record<string, string> | null) => (a ? [a.company, [a.first_name, a.last_name].filter(Boolean).join(' '), [a.street, a.street2].filter(Boolean).join(', '), [a.zip, a.city, a.province ? `(${a.province})` : ''].filter(Boolean).join(' ')].filter(Boolean) : []);
 	return {
 		order: { number: g.number, status: g.status, created_at: g.created_at, delivery_date: g.delivery_date, ship_by: f.ship_by ?? null, lead_time: f.lead_time ?? null, shipping_method: g.shipping_method, net: g.net, gross: g.gross, customer: g.customer, first_name: f.billing?.first_name || f.shipping?.first_name || '' },
-		items: g.items.map((i) => ({ id: i.id, name: i.product_name, description: i.description || itemMeta(i), qty: i.qty, unit: Number(i.unit_net ?? Number(i.total_net) / i.qty), total: Number(i.total_net), image: thumbOf(i) ?? PRODUCTS[i.product_slug]?.gallery?.[0] ?? null, isMockup: !!thumbOf(i), category: CATS[i.product_slug]?.name ?? i.product_name })),
+		items: g.items.map((i) => ({ id: i.id, name: i.product_name, description: i.description || itemMetaFor(i, lang), qty: i.qty, unit: Number(i.unit_net ?? Number(i.total_net) / i.qty), total: Number(i.total_net), image: thumbOf(i) ?? PRODUCTS[i.product_slug]?.gallery?.[0] ?? null, isMockup: !!thumbOf(i), category: catLabel(i.product_slug, lang) ?? i.product_name })),
 		billing: addr(f.billing), shipping: addr(f.shipping), vat: f.billing?.vat ?? null,
 		payments: c.payments.map((p) => ({ seq: p.seq, method: p.method, due: p.due, amount: Number(p.amount), upfront: p.upfront, status: p.status, paid_at: p.paid_at, kind: p.kind ?? 'scadenza', reason: p.reason ?? null })),
 		sender: c.conf.sender_name, messages: c.messages.map((m) => ({ id: m.id, direction: m.direction, kind: m.kind, author: m.author, body: m.body, created_at: m.created_at })),
@@ -48,11 +50,11 @@ export const load: PageServerLoad = async ({ params, url, request, locals: { loc
 const withDb = <T>(locale: App.Locals['locale'], fn: (db: NonNullable<ReturnType<typeof adminClient>>) => Promise<T>) => { const db = adminClient(); return db ? fn(db) : Promise.resolve(fail(503, { error: t(locale, 'account.errori.servizio') })); };
 export const actions: Actions = {
 	domanda: async ({ params, request, url, locals: { locale } }) => withDb(locale, async (db) => {
-		const e = await customerMessage(db, params.token, String((await request.formData()).get('testo') ?? ''), 'domanda', url.origin);
+		const e = await customerMessage(db, params.token, String((await request.formData()).get('testo') ?? ''), 'domanda', url.origin, langOf(locale));
 		return e ? fail(400, { error: e }) : { ok: true, message: t(locale, 'account.messaggi.domandaInviata') };
 	}),
 	errore: async ({ params, request, url, locals: { locale } }) => withDb(locale, async (db) => {
-		const e = await customerMessage(db, params.token, String((await request.formData()).get('testo') ?? ''), 'errore', url.origin);
+		const e = await customerMessage(db, params.token, String((await request.formData()).get('testo') ?? ''), 'errore', url.origin, langOf(locale));
 		return e ? fail(400, { error: e }) : { ok: true, message: t(locale, 'account.messaggi.segnalazioneRicevuta') };
 	})
 };

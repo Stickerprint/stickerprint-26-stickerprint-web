@@ -2,6 +2,7 @@ import { error, fail } from '@sveltejs/kit';
 import { adminClient } from '$lib/server/admin';
 import { customerReply, getTicketByToken, signedFiles } from '$lib/server/helpdesk';
 import { t } from '$lib/traduzioni';
+import { langOf } from '$lib/i18n';
 import type { Actions, PageServerLoad } from './$types';
 
 /** Pagina pubblica della richiesta: il cliente vede la conversazione e risponde (anche con un allegato) */
@@ -28,7 +29,7 @@ export const actions: Actions = {
 			const { error: e } = await db.storage.from('requests').upload(filePath, file, { contentType: file.type || undefined });
 			if (e) return fail(400, { error: t(locale, 'account.errori.allegatoNonCaricato', { errore: e.message }) });
 		}
-		const e = await customerReply(db, params.token, String(f.get('body') ?? ''), filePath, url.origin);
+		const e = await customerReply(db, params.token, String(f.get('body') ?? ''), filePath, url.origin, langOf(locale));
 		return e ? fail(400, { error: e }) : { ok: true };
 	}
 };

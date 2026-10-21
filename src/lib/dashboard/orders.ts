@@ -1,4 +1,6 @@
 /** Costanti e tipi della gestione ordini in dashboard (condivisi tra server e browser). */
+import type { Lang } from '$lib/i18n';
+import { perLingua, t as tradotto } from '$lib/traduzioni';
 /*
  * STATI DELL'ORDINE (regola del 18/09/2026, niente piu' prove da inviare o approvare):
  *   pagamento acquisito (o preventivo confermato) → in_produzione → in_spedizione → spedito → in_consegna → consegnato
@@ -47,6 +49,14 @@ export const CATS: Record<string, { name: string; color: string; soft: string; c
 	vetrofanie: { name: 'Vetrofanie', color: '#06b6d4', soft: '#e0f8fc', code: 'VET' },
 	campioni: { name: 'Campioni', color: '#64748b', soft: '#eef0f3', code: 'CMP' }
 };
+/** nome della categoria nella lingua del cliente (pagine pubbliche e PDF); in italiano quello di CATS */
+export function catLabel(slug: string | null | undefined, lang: Lang = 'it'): string | null {
+	if (!slug) return null;
+	if (lang === 'it') return CATS[slug]?.name ?? null;
+	const k = `account.doc.categorie.${slug}`;
+	const s = tradotto(perLingua(lang), k);
+	return s === k ? (CATS[slug]?.name ?? null) : s;
+}
 /** Il codice prodotto determina la categoria: i prefissi più lunghi si controllano per primi */
 export function categoryFromCode(code: string): string | null {
 	const c = (code ?? '').trim().toUpperCase();
@@ -139,6 +149,22 @@ export function itemMeta(i: OrderRow): string {
 	if (i.description) return i.description;
 	if (i.channel === 'manuale') return '';
 	const parts = [i.forma, i.materiale, i.finitura && i.finitura !== 'nessuna' ? `lamina ${i.finitura}` : '', i.width_mm && i.height_mm ? `${i.width_mm}×${i.height_mm} mm` : ''].filter(Boolean);
+	return parts.join(' · ');
+}
+
+/** etichetta di un'opzione del configuratore (sagoma, materiale, finitura) nella lingua: se non c'e' nel catalogo resta l'id */
+function opzione(gruppi: string[], id: string, lang: Lang): string {
+	for (const g of gruppi) { const k = `configuratore.opzioni.${g}.${id}.label`; const s = tradotto(perLingua(lang), k); if (s !== k) return s; }
+	return id;
+}
+/** finitura/lamina nella lingua ('lucida' → 'Glossy'); 'nessuna' e l'italiano restano l'id */
+export const laminaLabel = (id: string | null | undefined, lang: Lang = 'it'): string => (!id || lang === 'it' ? (id ?? '') : opzione(['finiture'], id, lang));
+/** itemMeta nella lingua del cliente: sagoma, materiale e lamina dal catalogo del configuratore; in italiano identico a itemMeta */
+export function itemMetaFor(i: OrderRow, lang: Lang = 'it'): string {
+	if (lang === 'it' || i.description || i.channel === 'manuale') return itemMeta(i);
+	const code = perLingua(lang);
+	const lam = i.finitura && i.finitura !== 'nessuna' ? tradotto(code, 'account.preventivo.lamina', { tipo: opzione(['finiture'], i.finitura, lang).toLowerCase() }) : '';
+	const parts = [i.forma ? opzione(['sagome', 'fogli'], i.forma, lang) : '', i.materiale ? opzione(['materiali'], i.materiale, lang) : '', lam, i.width_mm && i.height_mm ? `${i.width_mm}×${i.height_mm} mm` : ''].filter(Boolean);
 	return parts.join(' · ');
 }
 

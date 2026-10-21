@@ -4,7 +4,8 @@ import { acceptQuoteByToken, getQuoteByToken, loadQuoteMessages, quoteQuestionBy
 import { loadReviews } from '$lib/server/reviews';
 import { categoryOf, type ProductCode } from '$lib/dashboard/orderDraft';
 import { PRODUCTS } from '$lib/products';
-import { CATS } from '$lib/dashboard/orders';
+import { catLabel, laminaLabel } from '$lib/dashboard/orders';
+import { langOf } from '$lib/i18n';
 import { t } from '$lib/traduzioni';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -27,10 +28,11 @@ export const load: PageServerLoad = async ({ params, url, request, locals }) => 
 		loadReviews(db),
 		loadQuoteMessages(db, q.id)
 	]);
+	const lang = langOf(locals.locale);
 	const items = q.draft.items.filter((i) => Number(i.qty) > 0).map((i) => {
 		const slug = categoryOf(i.code, (codes ?? []) as ProductCode[]) ?? 'adesivi_personalizzati';
 		const product = PRODUCTS[slug];
-		return { code: i.code, description: i.description, qty: Number(i.qty), price: Number(i.price), total: Math.round(Number(i.qty) * Number(i.price) * 100) / 100, lamination: i.lamination, image: i.mockup_url ?? i.preview_url ?? product?.gallery?.[0] ?? null, isMockup: !!(i.mockup_url ?? i.preview_url), category: CATS[slug]?.name ?? product?.name ?? slug };
+		return { code: i.code, description: i.description, qty: Number(i.qty), price: Number(i.price), total: Math.round(Number(i.qty) * Number(i.price) * 100) / 100, lamination: i.lamination, laminationLabel: laminaLabel(i.lamination, lang).toLowerCase(), image: i.mockup_url ?? i.preview_url ?? product?.gallery?.[0] ?? null, isMockup: !!(i.mockup_url ?? i.preview_url), category: catLabel(slug, lang) ?? product?.name ?? slug };
 	});
 	const d = q.draft;
 	return {
@@ -46,22 +48,22 @@ const withDb = <T>(locale: App.Locals['locale'], fn: (db: NonNullable<ReturnType
 export const actions: Actions = {
 	accetta: async ({ params, request, url, locals: { locale } }) => withDb(locale, async (db) => {
 		const f = await request.formData();
-		const r = await acceptQuoteByToken(db, params.token, String(f.get('nome') ?? '').trim(), url.origin);
+		const r = await acceptQuoteByToken(db, params.token, String(f.get('nome') ?? '').trim(), url.origin, langOf(locale));
 		return r.ok ? { ok: true, accepted: true, message: r.message, orderNumber: r.orderNumber ?? null, due: r.due ?? 0 } : fail(400, { error: r.message });
 	}),
 	rifiuta: async ({ params, request, locals: { locale } }) => withDb(locale, async (db) => {
 		const f = await request.formData();
-		const r = await rejectQuoteByToken(db, params.token, String(f.get('motivo') ?? ''));
+		const r = await rejectQuoteByToken(db, params.token, String(f.get('motivo') ?? ''), langOf(locale));
 		return r.ok ? { ok: true, rejected: true, message: r.message } : fail(400, { error: r.message });
 	}),
 	domanda: async ({ params, request, url, locals: { locale } }) => withDb(locale, async (db) => {
 		const f = await request.formData();
-		const e = await quoteQuestionByToken(db, params.token, String(f.get('testo') ?? ''), url.origin);
+		const e = await quoteQuestionByToken(db, params.token, String(f.get('testo') ?? ''), url.origin, 'domanda', langOf(locale));
 		return e ? fail(400, { error: e }) : { ok: true, asked: true, message: t(locale, 'account.messaggi.domandaInviata') };
 	}),
 	aggiorna: async ({ params, request, url, locals: { locale } }) => withDb(locale, async (db) => {
 		const f = await request.formData();
-		const e = await quoteQuestionByToken(db, params.token, String(f.get('testo') ?? ''), url.origin, 'aggiornamento');
+		const e = await quoteQuestionByToken(db, params.token, String(f.get('testo') ?? ''), url.origin, 'aggiornamento', langOf(locale));
 		return e ? fail(400, { error: e }) : { ok: true, asked: true, message: t(locale, 'account.messaggi.aggiornamentoInviato') };
 	})
 };

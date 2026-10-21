@@ -4,6 +4,8 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { money } from '$lib/dashboard/orders';
+import type { Lang } from '$lib/i18n';
+import { perLingua, t as tradotto } from '$lib/traduzioni';
 import { dueNow, isRiba, type InvoiceMessage, type InvoicePayment } from '$lib/dashboard/fatture';
 import { sendEmail } from './email';
 import { invoiceEmail, invoiceReplyEmail, OWNER_EMAIL, ownerNotifyEmail } from './email-templates';
@@ -86,10 +88,12 @@ export async function getInvoiceByToken(db: DB, token: string): Promise<{ inv: I
 }
 export async function trackInvoiceOpen(db: DB, inv: InvoiceRow) { await db.from('invoices').update({ opened_count: (inv.opened_count ?? 0) + 1, opened_at: new Date().toISOString() }).eq('id', inv.id); }
 export async function trackInvoicePdf(db: DB, id: string) { await db.from('invoices').update({ pdf_downloaded_at: new Date().toISOString() }).eq('id', id); }
-export async function invoiceQuestion(db: DB, token: string, body: string, origin: string): Promise<string | null> {
+/** Domanda del cliente dalla pagina pubblica: i messaggi di errore nella sua lingua (`lang`) */
+export async function invoiceQuestion(db: DB, token: string, body: string, origin: string, lang: Lang = 'it'): Promise<string | null> {
+	const T = (k: string) => tradotto(perLingua(lang), `account.${k}`);
 	const c = await getInvoiceByToken(db, token);
-	if (!c) return 'Fattura non trovata.';
-	if (!body.trim()) return 'Scrivi la domanda.';
+	if (!c) return T('errori.fatturaNonTrovata');
+	if (!body.trim()) return T('errori.scriviDomanda');
 	const who = c.inv.billing?.company || `${c.inv.billing?.first_name ?? ''} ${c.inv.billing?.last_name ?? ''}`.trim() || c.inv.email || 'Cliente';
 	await db.from('invoice_messages').insert({ invoice_id: c.inv.id, direction: 'in', author: who, body: body.trim() });
 	await db.from('invoices').update({ unread: true }).eq('id', c.inv.id);

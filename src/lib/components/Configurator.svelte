@@ -26,7 +26,7 @@
 		shipDate,
 		cfg,
 		product = 'adesivi_personalizzati',
-		productName = 'i tuoi adesivi',
+		productName: productNameProp = '',
 		engineProduct = 'sticker',
 		test = false,
 		start = null,
@@ -40,6 +40,8 @@
 	} = $props();
 
 	const { t, path, prezzo, prezzoUnit, numero, locale } = usaLingua();
+	/* nome del prodotto nei titoli ("Crea i tuoi adesivi"): quello della pagina, altrimenti quello generico nella lingua */
+	const productName = $derived(productNameProp || t('comune.prodottoGenerico'));
 	/* etichette delle scelte del listino: il listino e' in italiano (dal database), il catalogo le traduce per id;
 	   se la voce non c'e' nel catalogo resta quella del listino */
 	const opz = (tipo: 'materiali' | 'sagome' | 'fogli' | 'finiture', id: string, campo: 'label' | 'description' | 'tag', fallback?: string) => {

@@ -65,4 +65,7 @@ Soglie di spedizione gratuita: `locale.freeShipping` (50 € IT, 69 € UE, 99 $
 
 - Nome Stickerprint, nomi dei materiali tecnici (Cromo oro, UV), i codici prodotto, gli URL delle immagini.
 - La dashboard, lo Studio, le API.
-- Gli articoli del blog (per ora solo in italiano: nelle altre lingue il blog resta raggiungibile ma non in menu).
+- Niente: anche i contenuti del database (FAQ, categorie, articoli del blog, offerte) sono tradotti. Si scrivono in italiano in dashboard;
+  il traduttore automatico (Claude API, `src/lib/server/traduttore-contenuti.ts`) li traduce ogni notte o col bottone in
+  Setup > Traduzioni dei contenuti e li salva nella colonna `tr` (migrazione 0060) con l'impronta dell'italiano: se il testo
+  cambia, si ritraduce. Le traduzioni fatte a mano il 21/10/2026 stanno in `src/lib/contenuti-tradotti/contenuti.json` come riserva.

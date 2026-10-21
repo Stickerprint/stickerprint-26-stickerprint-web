@@ -1,5 +1,9 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { shortName } from '$lib/utils/names';
+import { productFor } from '$lib/prodotti-testi';
+import type { Lang } from '$lib/i18n';
+import { perLingua, t } from '$lib/traduzioni';
+import { LOCALES } from '$lib/i18n';
 
 export interface HomeReview {
 	author: string;
@@ -42,16 +46,18 @@ export interface ReviewsResult {
 const REV_MS = 60 * 1000;
 const revCache = new Map<string, { at: number; value: ReviewsResult }>();
 export function invalidateReviews() { revCache.clear(); }
-export async function loadReviews(supabase: SupabaseClient, productType?: string): Promise<ReviewsResult> {
-	const key = productType ?? '*';
+/** `lang`: lingua dei testi di contorno (nome del prodotto, "Cliente verificato", titolo mancante); senza, italiano */
+export async function loadReviews(supabase: SupabaseClient, productType?: string, lang: Lang = 'it'): Promise<ReviewsResult> {
+	const key = `${productType ?? '*'}|${lang}`;
 	const hit = revCache.get(key);
 	if (hit && Date.now() - hit.at < REV_MS) return hit.value;
-	const p = loadReviewsFresh(supabase, productType).then((v) => { revCache.set(key, { at: Date.now(), value: v }); return v; });
+	const p = loadReviewsFresh(supabase, productType, lang).then((v) => { revCache.set(key, { at: Date.now(), value: v }); return v; });
 	if (hit) { p.catch(() => {}); return hit.value; }
 	return p;
 }
 
-async function loadReviewsFresh(supabase: SupabaseClient, productType?: string): Promise<ReviewsResult> {
+async function loadReviewsFresh(supabase: SupabaseClient, productType?: string, lang: Lang = 'it'): Promise<ReviewsResult> {
+	const loc = perLingua(lang);
 	/* solo recensioni vere dal database: in home tutte, nella pagina prodotto solo quelle di quel prodotto (niente riempitivi) */
 	let reviews: HomeReview[] = [];
 	let stats: ReviewsResult['stats'] = { total: 0, average: 0 };
@@ -86,17 +92,18 @@ async function loadReviewsFresh(supabase: SupabaseClient, productType?: string):
 					const profile = (Array.isArray(r.profile) ? r.profile[0] : r.profile) as { full_name?: string } | null;
 					const type = r.product_slug ?? order?.product_slug ?? productType ?? 'adesivi_personalizzati';
 					const p = PRODUCTS[type] ?? PRODUCTS.adesivi_personalizzati;
-					const name = r.author || profile?.full_name || [order?.shipping?.first_name, order?.shipping?.last_name].filter(Boolean).join(' ') || 'Cliente';
+					const name = r.author || profile?.full_name || [order?.shipping?.first_name, order?.shipping?.last_name].filter(Boolean).join(' ') || t(loc, 'recensioni.cliente');
 					return {
-						author: shortName(name),
-						title: r.title ?? 'Recensione',
+						author: shortName(name, lang),
+						title: r.title ?? t(loc, 'recensioni.titolo'),
 						comment: r.comment ?? '',
 						rating: r.rating ?? 5,
-						product: p.label,
+						/* nome del prodotto nella lingua (il kit campioni non e' in PRODUCTS: dal catalogo) */
+						product: type === 'campioni' ? t(loc, 'header.kitCampioni') : (productFor(type, lang)?.name ?? p.label),
 						href: p.href,
 						productType: type,
 						source: r.source === 'staff' ? (r.source_note ? `Ricevuta ${r.source_note}` : 'Ricevuta su altro canale') : 'ordine',
-						date: r.created_at ? new Intl.DateTimeFormat('it-IT', { month: 'long', year: 'numeric' }).format(new Date(r.created_at)) : undefined,
+						date: r.created_at ? new Intl.DateTimeFormat(LOCALES[loc].intl, { month: 'long', year: 'numeric' }).format(new Date(r.created_at)) : undefined,
 						dateIso: r.created_at ? String(r.created_at).slice(0, 10) : undefined,
 						real: true
 					};

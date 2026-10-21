@@ -14,7 +14,11 @@
 	import { track, cartItems, trackingOn } from '$lib/tracking';
 	import { klaviyo } from '$lib/klaviyo';
 	import { usaLingua } from '$lib/traduzioni';
-	const { t, path, prezzo, numero, lang } = usaLingua();
+	import { productFor } from '$lib/prodotti-testi';
+	const { t, path, prezzo, numero, lang, code: localeCode } = usaLingua();
+	/* nome del prodotto e della sagoma nella lingua del sito, dagli id: il carrello (localStorage) puo' avere ancora i nomi italiani di prima */
+	const nomeProdotto = (it: CartItem) => productFor(it.product, lang)?.name ?? it.productName;
+	const nomeSagoma = (it: CartItem) => { const k = it.product === 'fogli_adesivi' ? `fogli.opzioni.${it.forma}.label` : `configuratore.opzioni.sagome.${it.forma}.label`; const v = t(k); return v === k ? it.forma : v; };
 	/* link a login/registrazione che riportano al carrello, nella lingua del sito */
 	const loginHref = `${path('/login')}?next=${encodeURIComponent(path('/checkout'))}`;
 	const signupHref = `${path('/signup')}?next=${encodeURIComponent(path('/checkout'))}`;
@@ -120,7 +124,7 @@
 	$effect(() => { const p = payment; if (loaded && items.length && p && !paymentSent) { paymentSent = true; track.addPaymentInfo(cartItems(items), PAY_LABEL[p] ?? p, discount?.code ?? null); } });
 	async function applyCode() {
 		codeMsg = '';
-		const r = await fetch('/api/discount', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code, subtotalNet, email: data.user?.email ?? guestEmail }) }).then((r) => r.json());
+		const r = await fetch('/api/discount', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code, subtotalNet, email: data.user?.email ?? guestEmail, locale: localeCode }) }).then((r) => r.json());
 		if (r.ok) { discount = r; codeMsg = t('checkout.riepilogo.codiceApplicato', { codice: r.code, importo: prezzo(r.amount) }) + (r.description ? ' · ' + r.description : ''); }
 		else { discount = null; codeMsg = r.error; }
 	}
@@ -510,8 +514,8 @@
 						<div class="co-item">
 							<div class="co-item__thumb">{#if thumbs[it.id]}<img src={thumbs[it.id]} alt="" />{:else}<img src="/images/estimator/round_stickers.webp" alt="" />{/if}</div>
 							<div class="co-item__body">
-								<div class="co-item__top"><b>{#if it.product === 'campioni'}{t('checkout.riepilogo.kitCampioni')}{:else if it.product === 'kit_adesivi'}{t('checkout.riepilogo.kitAdesivi', { n: numero(it.qty), adesivi: it.forma.replace(/\D/g, '') })}{:else}{numero(it.qty)} {it.productName} {it.forma}{/if}</b><span class="co-item__price">{prezzo(it.gross)}</span><button type="button" class="co-item__x" aria-label={t('checkout.riepilogo.rimuovi')} onclick={() => remove(it.id)}>✕</button></div>
-								{#if it.product === 'campioni'}<small>{t('checkout.riepilogo.campioniSub')}</small>{:else if it.product === 'kit_adesivi'}<small>{t('checkout.riepilogo.kitSub', { mm: fmtMm(it.w), materiale: materialLabel(it.materiale, lang) })}{#if it.finitura && it.finitura !== 'nessuna'}{' · '}{t('checkout.riepilogo.lamina', { finitura: finituraNome(it.finitura) })}{/if}</small>{:else}<small>{t('checkout.riepilogo.misura', { w: fmtMm(it.w), h: fmtMm(it.h), materiale: materialLabel(it.materiale, lang) })}{#if it.finitura && it.finitura !== 'nessuna'}{' · '}{t('checkout.riepilogo.lamina', { finitura: finituraNome(it.finitura) })}{/if}</small>{/if}
+								<div class="co-item__top"><b>{#if it.product === 'campioni'}{t('checkout.riepilogo.kitCampioni')}{:else if it.product === 'kit_adesivi'}{t('checkout.riepilogo.kitAdesivi', { n: numero(it.qty), adesivi: it.forma.replace(/\D/g, '') })}{:else}{numero(it.qty)} {nomeProdotto(it)} {nomeSagoma(it)}{/if}</b><span class="co-item__price">{prezzo(it.gross)}</span><button type="button" class="co-item__x" aria-label={t('checkout.riepilogo.rimuovi')} onclick={() => remove(it.id)}>✕</button></div>
+								{#if it.product === 'campioni'}<small>{t('checkout.riepilogo.campioniSub')}</small>{:else if it.product === 'kit_adesivi'}<small>{t('checkout.riepilogo.kitSub', { mm: fmtMm(it.w, lang), materiale: materialLabel(it.materiale, lang) })}{#if it.finitura && it.finitura !== 'nessuna'}{' · '}{t('checkout.riepilogo.lamina', { finitura: finituraNome(it.finitura) })}{/if}</small>{:else}<small>{t('checkout.riepilogo.misura', { w: fmtMm(it.w, lang), h: fmtMm(it.h, lang), materiale: materialLabel(it.materiale, lang) })}{#if it.finitura && it.finitura !== 'nessuna'}{' · '}{t('checkout.riepilogo.lamina', { finitura: finituraNome(it.finitura) })}{/if}</small>{/if}
 								{#if it.product !== 'campioni'}<small>{t('checkout.riepilogo.file')} {#if hasFile[it.id] || it.filePath}{it.fileName ?? t('checkout.riepilogo.fileCaricato')}{:else}<span class="err">{t('checkout.riepilogo.mancante')}</span> <label class="link" style="cursor:pointer">{t('checkout.riepilogo.carica')}<input type="file" hidden accept="image/*,.pdf,.svg,.ai,.eps" onchange={(e) => reupload(it.id, e)} /></label>{/if}</small>{/if}
 								{#if noteOpen === it.id}
 									<textarea rows="2" placeholder={t('checkout.riepilogo.notePlaceholder')} value={it.note ?? ''} onchange={(e) => (items = updateCartItem(it.id, { note: (e.currentTarget as HTMLTextAreaElement).value }))}></textarea>

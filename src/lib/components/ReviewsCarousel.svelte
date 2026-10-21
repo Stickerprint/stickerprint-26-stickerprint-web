@@ -1,10 +1,13 @@
 <script lang="ts">
 	import type { HomeReview } from '$lib/server/reviews';
 	import { usaLingua } from '$lib/traduzioni';
+	import { productFor } from '$lib/prodotti-testi';
 
 	let { reviews }: { reviews: HomeReview[] } = $props();
 	let open: HomeReview | null = $state(null);
-	const { t, path, locale } = usaLingua();
+	const { t, path, locale, lang } = usaLingua();
+	/* nome del prodotto nella lingua della pagina dallo slug (r.product arriva dal server, di solito in italiano) */
+	const nomeProdotto = (r: HomeReview) => (r.productType === 'campioni' ? t('header.kitCampioni') : productFor(r.productType ?? '', lang)?.name ?? r.product);
 	/* data della recensione "mese anno" nella lingua della pagina (r.date arriva gia' formattato in italiano dal server) */
 	const dataRecensione = (r: HomeReview) => (r.dateIso ? new Date(r.dateIso).toLocaleDateString(locale.intl, { month: 'long', year: 'numeric' }) : r.date);
 
@@ -45,7 +48,7 @@
 	<div class="review__meta">
 		<span class="review__author">{r.author}</span>
 		<span><span class="verified" aria-hidden="true">✓</span> {t('prodotti.recensioni.verificata')}</span>
-		<span><a class="review__product" href={path(r.href)} onclick={(e) => e.stopPropagation()}>{r.product}</a></span>
+		<span><a class="review__product" href={path(r.href)} onclick={(e) => e.stopPropagation()}>{nomeProdotto(r)}</a></span>
 	</div>
 {/snippet}
 

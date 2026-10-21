@@ -2,9 +2,9 @@
 	import { formatAmount } from '$lib/i18n';
 	import '$lib/styles/quote.css';
 	import { enhance } from '$app/forms';
-	import { paymentLabel } from '$lib/dashboard/payments';
+	import { paymentLabelFor } from '$lib/dashboard/payments';
 	import { usaLingua } from '$lib/traduzioni';
-	const { t, path, prezzo, numero, data: dataL, locale } = usaLingua();
+	const { t, path, numero, data: dataL, locale, lang } = usaLingua();
 	/* documenti reali in euro (ordini manuali, preventivi, fatture): formato della lingua, valuta sempre EUR, niente cambio in dollari */
 	const money = (v: number) => formatAmount(v, { ...locale, currency: 'EUR' });
 	let { data, form } = $props();
@@ -47,7 +47,7 @@
 				{#each data.payments as p (p.seq)}
 					<div class="qp__pay-row" class:is-paid={p.status === 'pagato'} class:is-due={p.payable && p.status === 'da_pagare'}>
 						<div class="qp__pay-head">
-							<div><b>{money(p.amount)}</b><span>{paymentLabel(p.method)} · {t('account.doc.scadenzaIl', { data: it(p.due) })}</span></div>
+							<div><b>{money(p.amount)}</b><span>{paymentLabelFor(p.method, lang)} · {t('account.doc.scadenzaIl', { data: it(p.due) })}</span></div>
 							{#if p.status === 'pagato'}<span class="qp__paid">{t('account.doc.pagato', { data: p.paid_at ? it(p.paid_at) : '' })}</span>{/if}
 						</div>
 						{#if p.status !== 'pagato' && p.payable}

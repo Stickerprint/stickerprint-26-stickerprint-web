@@ -2,10 +2,10 @@
 	import '$lib/styles/quote.css';
 	import { enhance } from '$app/forms';
 	import Stars from '$lib/components/Stars.svelte';
-	import { paymentLabel } from '$lib/dashboard/payments';
+	import { paymentLabelFor } from '$lib/dashboard/payments';
 	import { usaLingua } from '$lib/traduzioni';
 	import { formatAmount } from '$lib/i18n';
-	const { t, path, prezzo, numero, data: dataL, locale } = usaLingua();
+	const { t, path, numero, data: dataL, locale, lang } = usaLingua();
 	/* documenti reali in euro (ordini manuali, preventivi, fatture): formato della lingua, valuta sempre EUR, niente cambio in dollari */
 	const money = (v: number) => formatAmount(v, { ...locale, currency: 'EUR' });
 	let { data, form } = $props();
@@ -21,7 +21,7 @@
 	let sending = $state(false);
 	const submit = () => { sending = true; return async ({ update }: { update: (o?: { reset?: boolean }) => Promise<void> }) => { await update({ reset: false }); sending = false; asking = false; reporting = false; }; };
 	const token = () => (typeof location !== 'undefined' ? location.pathname.split('/')[2] : '');
-	const STATI = ['attesa_pagamento', 'modifiche_richieste', 'in_produzione', 'pronto', 'in_spedizione', 'spedito', 'in_consegna', 'consegnato', 'annullato'];
+	const STATI = ['attesa_pagamento', 'attesa_integrazione', 'modifiche_richieste', 'in_produzione', 'pronto', 'in_spedizione', 'spedito', 'in_consegna', 'consegnato', 'annullato', 'in_attesa', 'attesa_file', 'attesa_prova', 'approvazione'];
 	const stato = $derived(STATI.includes(o.status) ? t(`account.conferma.stati.${o.status}`) : o.status);
 	const soglia = formatAmount(locale.freeShipping, locale, 0);
 </script>
@@ -57,7 +57,7 @@
 								{#if p.kind === 'integrazione'}
 									<div><b>{money(p.amount)}</b><span>{t('account.conferma.integrazione')}{p.reason ? `: ${p.reason}` : ''}{#if p.status !== 'pagato'}{t('account.conferma.integrazioneRiparte')}{/if}</span></div>
 								{:else}
-									<div><b>{money(p.amount)}</b><span>{paymentLabel(p.method)} · {p.upfront ? t('account.doc.anticipato') : t('account.doc.scadenzaIl', { data: it(p.due) })}{#if payable && !p.upfront} · {t('account.doc.saldaSubito')}{/if}</span></div>
+									<div><b>{money(p.amount)}</b><span>{paymentLabelFor(p.method, lang)} · {p.upfront ? t('account.doc.anticipato') : t('account.doc.scadenzaIl', { data: it(p.due) })}{#if payable && !p.upfront} · {t('account.doc.saldaSubito')}{/if}</span></div>
 								{/if}
 								{#if p.status === 'pagato'}<span class="qp__paid">{t('account.doc.pagato', { data: p.paid_at ? it(p.paid_at) : '' })}</span>{/if}
 							</div>

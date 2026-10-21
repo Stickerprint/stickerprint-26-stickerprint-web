@@ -19,7 +19,7 @@
 	import EnginePreview from './EnginePreview.svelte';
 	import { usaLingua } from '$lib/traduzioni';
 	import { formatAmount } from '$lib/i18n';
-	const { t, lang, locale, prezzo, prezzoUnit, numero } = usaLingua();
+	const { t, lang, locale, prezzo, prezzoUnit, numero, path } = usaLingua();
 	/** etichetta di una voce del listino (materiale, lamina, sagoma) nella lingua: dal catalogo se c'e', altrimenti quella del listino */
 	const opz = (id: string, campo: 'label' | 'description' | 'tag', fallback?: string) => { const k = `kit.opzioni.${id}.${campo}`; const v = t(k); return v === k ? (fallback ?? '') : v; };
 	/* soglia della spedizione gratuita del locale (50 € IT, 69 € UE, 99 $ USA), mai scritta a mano */
@@ -278,13 +278,13 @@
 		try {
 			const photo = await kitPhoto();
 			const quote = kitQuote(cfg, { materiale, finitura, misura: misuraMedia, n, qty });
-			const item = addToCart({ product: 'kit_adesivi', productName: 'Kit di adesivi', engineProduct: 'sticker', forma: `kit${n}`, materiale, finitura, w: misuraMedia, h: misuraMedia, qty, net: quote.net, gross: quote.gross, fileName: `cavallotto + ${n} adesivi` });
+			const item = addToCart({ product: 'kit_adesivi', productName: t('checkout.carrello.kitNome'), engineProduct: 'sticker', forma: `kit${n}`, materiale, finitura, w: misuraMedia, h: misuraMedia, qty, net: quote.net, gross: quote.gross, fileName: t('checkout.carrello.kitFile', { n }) });
 			if (cav.file) { await saveCartFile(item.id, cav.file); await saveCartFile(item.id + ':cav', cav.file); }
 			let k = 0; for (const s of slots) if (s.file) { k++; await saveCartFile(`${item.id}:s${k}`, s.file); }
 			if (photo) await saveCartPreview(item.id, photo);
 			track.addToCart({ product: 'kit_adesivi', productName: 'Kit di adesivi', forma: `kit${n}`, w: misuraMedia, h: misuraMedia, materiale, finitura, qty, gross: quote.gross });
 			klaviyo.addedToCart({ productId: `kit_adesivi_kit${n}`, productName: `Kit di adesivi (${n} adesivi)`, quantity: qty, dimension: `${misuraMedia} x ${misuraMedia} mm`, material: materiale, price: quote.gross });
-			await goto('/checkout');
+			await goto(path('/checkout'));
 		} finally { adding = false; }
 	}
 </script>

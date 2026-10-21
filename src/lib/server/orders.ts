@@ -1,6 +1,7 @@
 /** Salvataggio ordini dalla dashboard (nuovo o modifica), anagrafica e conferma d'ordine. */
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { CATS, SHIPPING_METHODS, groupOrders, money, type OrderRow } from '$lib/dashboard/orders';
+import { CATS, SHIPPING_METHODS, catLabel, groupOrders, money, type OrderRow } from '$lib/dashboard/orders';
+import type { Lang } from '$lib/i18n';
 import { VAT, r2, categoryOf, type OrderDraft, type ProductCode } from '$lib/dashboard/orderDraft';
 import type { PaymentMethod } from '$lib/dashboard/payments';
 import { buildOrderPdf } from './docs';
@@ -90,13 +91,13 @@ export async function saveOrderDraft(supabase: SupabaseClient, d: OrderDraft, gr
 	return { group: key, numbers };
 }
 
-/** PDF di conferma d'ordine (riepilogo articoli, totali e scadenze) */
-export async function orderPdfForGroup(supabase: SupabaseClient, group: string): Promise<{ pdf: Uint8Array; number: string; email: string; customer: string } | null> {
+/** PDF di conferma d'ordine (riepilogo articoli, totali e scadenze). `lang`: lingua del cliente per etichette e nomi delle categorie (dalla pagina pubblica); la dashboard resta in italiano */
+export async function orderPdfForGroup(supabase: SupabaseClient, group: string, lang: Lang = 'it'): Promise<{ pdf: Uint8Array; number: string; email: string; customer: string } | null> {
 	const { data } = await supabase.from('orders').select('*').eq('checkout_group', group);
 	if (!data?.length) return null;
 	const g = groupOrders(data as OrderRow[])[0];
 	const f = g.items[0];
-	const pdf = await buildOrderPdf({ number: g.number, numbers: g.numbers, issued_at: g.created_at, customer: f.billing ?? {}, shipping: f.shipping ?? {}, email: g.email, lines: g.items.map((i) => ({ code: i.product_code ?? CATS[i.product_slug]?.code ?? null, description: `${i.product_name}${i.description ? ' · ' + i.description : ''}`, qty: i.qty, unit_net: Number(i.unit_net ?? Number(i.total_net) / i.qty), total_net: Number(i.total_net) })), subtotal_net: g.net, vat_amount: r2(g.gross - g.net), total_gross: g.gross, payment_method: g.payment_method ?? '', payment_terms: f.payment_terms ?? [], shipping_method: g.shipping_method ?? '', delivery_date: g.delivery_date, lead_time: f.lead_time ?? null, notes: f.notes });
+	const pdf = await buildOrderPdf({ number: g.number, numbers: g.numbers, issued_at: g.created_at, customer: f.billing ?? {}, shipping: f.shipping ?? {}, email: g.email, lines: g.items.map((i) => ({ code: i.product_code ?? CATS[i.product_slug]?.code ?? null, description: `${catLabel(i.product_slug, lang) ?? i.product_name}${i.description ? ' · ' + i.description : ''}`, qty: i.qty, unit_net: Number(i.unit_net ?? Number(i.total_net) / i.qty), total_net: Number(i.total_net) })), subtotal_net: g.net, vat_amount: r2(g.gross - g.net), total_gross: g.gross, payment_method: g.payment_method ?? '', payment_terms: f.payment_terms ?? [], shipping_method: g.shipping_method ?? '', delivery_date: g.delivery_date, lead_time: f.lead_time ?? null, notes: f.notes }, lang);
 	return { pdf, number: g.number, email: g.email, customer: g.customer };
 }
 

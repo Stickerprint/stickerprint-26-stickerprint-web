@@ -4,6 +4,8 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { money } from '$lib/dashboard/orders';
+import type { Lang } from '$lib/i18n';
+import { perLingua, t as tradotto } from '$lib/traduzioni';
 import { draftTotals, emptyDraft, type OrderDraft } from '$lib/dashboard/orderDraft';
 import { buildOrderPdf } from './docs';
 import { sendEmail } from './email';
@@ -121,7 +123,8 @@ export async function setQuoteValidity(db: DB, id: string, day: string) {
 	const { error } = await db.from('quotes').update({ valid_until: day, updated_at: new Date().toISOString() }).eq('id', id);
 	return error?.message ?? null;
 }
-export async function quotePdf(q: Quote): Promise<Uint8Array> {
+/** PDF del preventivo; `lang`: lingua del cliente per le etichette (dalla pagina pubblica), in dashboard italiano */
+export async function quotePdf(q: Quote, lang: Lang = 'it'): Promise<Uint8Array> {
 	const d = q.draft; const c = d.customer; const t = draftTotals(d);
 	const lordi = d.price_type === 'lordi';
 	const billing = { company: c.name, first_name: c.first_name, last_name: c.last_name, street: c.address, city: c.city, zip: c.cap, province: c.province, country: c.country, vat: c.piva };
@@ -131,7 +134,7 @@ export async function quotePdf(q: Quote): Promise<Uint8Array> {
 		lines: d.items.filter((i) => Number(i.qty) > 0).map((i) => { const unit = lordi ? Number(i.price) / 1.22 : Number(i.price); return { code: i.code ? String(i.code).toUpperCase() : null, description: String(i.description ?? '').trim(), qty: Number(i.qty), unit_net: unit, total_net: Math.round(unit * Number(i.qty) * 100) / 100 }; }),
 		subtotal_net: t.net, vat_amount: t.iva, total_gross: t.tot, payment_method: [...new Set((d.terms ?? []).map((x) => x.method))].join(' + ') || '', payment_terms: (d.terms ?? []).map((x) => ({ due: x.due, amount: x.amount, method: x.method })),
 		shipping_method: d.ship_method, delivery_date: d.ship_date || null, notes: d.notes?.replace(/^Richiesta dal sito:.*$/s, '') || null
-	});
+	}, lang);
 }
 /** Invia il preventivo: email scritta dallo staff con il solo bottone "Apri il preventivo" (niente allegato) */
 export async function sendQuote(db: DB, id: string, origin: string, o: { to?: string | null; cc?: string | null; subject: string; message: string; sender: string | null; autoRemind: boolean }): Promise<{ ok: boolean; message: string }> {
@@ -185,12 +188,13 @@ export async function loadQuoteMessages(db: DB, id: string): Promise<QuoteMessag
 	const { data } = await db.from('quote_messages').select('*').eq('quote_id', id).order('created_at');
 	return (data ?? []) as QuoteMessage[];
 }
-/** Domanda del cliente dalla pagina (client di servizio): entra nel preventivo, avvisa lo staff */
-export async function quoteQuestionByToken(db: DB, token: string, body: string, origin: string, kind: 'domanda' | 'aggiornamento' = 'domanda'): Promise<string | null> {
+/** Domanda del cliente dalla pagina (client di servizio): entra nel preventivo, avvisa lo staff. `lang`: lingua della pagina (messaggi al cliente e testo della richiesta di aggiornamento, che resta nel thread) */
+export async function quoteQuestionByToken(db: DB, token: string, body: string, origin: string, kind: 'domanda' | 'aggiornamento' = 'domanda', lang: Lang = 'it'): Promise<string | null> {
+	const T = (k: string) => tradotto(perLingua(lang), `account.${k}`);
 	const q = await getQuoteByToken(db, token);
-	if (!q) return 'Preventivo non trovato.';
-	const text = kind === 'aggiornamento' ? `Chiede un preventivo aggiornato${body.trim() ? `: ${body.trim()}` : '.'}` : body.trim();
-	if (!text) return 'Scrivi la domanda.';
+	if (!q) return T('errori.preventivoNonTrovato');
+	const text = kind === 'aggiornamento' ? `${T('messaggi.chiedeAggiornamento')}${body.trim() ? `: ${body.trim()}` : '.'}` : body.trim();
+	if (!text) return T('errori.scriviDomanda');
 	await db.from('quote_messages').insert({ quote_id: q.id, direction: 'in', author: q.draft.customer.name, body: text });
 	await db.from('quotes').update({ unread: true, updated_at: new Date().toISOString() }).eq('id', q.id);
 	await Promise.all([
@@ -234,37 +238,39 @@ export async function setQuoteStatus(db: DB, id: string, status: QuoteStatus, re
 	}
 	return error?.message ?? null;
 }
-/** Accettazione dal link pubblico (client di servizio): stato, avviso allo staff, conferma al cliente */
-export async function acceptQuoteByToken(db: DB, token: string, who: string, origin: string): Promise<{ ok: boolean; message: string; orderNumber?: string | null; due?: number }> {
+/** Accettazione dal link pubblico (client di servizio): stato, avviso allo staff, conferma al cliente. `lang`: lingua della pagina del preventivo (messaggi, email di conferma automatica, lingua salvata sull'ordine) */
+export async function acceptQuoteByToken(db: DB, token: string, who: string, origin: string, lang: Lang = 'it'): Promise<{ ok: boolean; message: string; orderNumber?: string | null; due?: number }> {
+	const T = (k: string) => tradotto(perLingua(lang), `account.${k}`);
 	const q = await getQuoteByToken(db, token);
-	if (!q) return { ok: false, message: 'Preventivo non trovato.' };
-	if (q.status === 'accettato' || q.status === 'ordinato') return { ok: true, message: 'Preventivo già confermato.' };
-	if (q.status !== 'inviato') return { ok: false, message: 'Questo preventivo non è più valido: scrivici e te ne mandiamo uno aggiornato.' };
+	if (!q) return { ok: false, message: T('errori.preventivoNonTrovato') };
+	if (q.status === 'accettato' || q.status === 'ordinato') return { ok: true, message: T('messaggi.preventivoGiaConfermato') };
+	if (q.status !== 'inviato') return { ok: false, message: T('errori.preventivoNonValido') };
 	await db.from('quotes').update({ status: 'accettato', accepted_at: new Date().toISOString(), accepted_by: who || q.draft.customer.email, updated_at: new Date().toISOString() }).eq('id', q.id);
 	const owner = ownerNotifyEmail({ title: `Preventivo ${q.number} accettato da ${q.draft.customer.name}`, lines: [`Totale ${money(Number(q.total_gross))} IVA inclusa`, `Cliente: ${q.draft.customer.name} · ${q.draft.customer.email}`, 'L’ordine è stato creato in automatico e il cliente ha ricevuto la conferma d’ordine.'], href: `${origin}/dashboard/aziende/preventivi/${q.id}` });
 	/* l'ordine nasce subito e il cliente riceve la conferma d'ordine automatica (con l'anticipo da pagare, se c'e') */
 	let orderNumber: string | null = null, due = 0;
 	try {
-		const made = await orderFromQuote(db, q.id, false, origin);
-		if (made.group) { const r = await sendAutoConfirmation(db, made.group, origin, { quoteNumber: q.number, senderName: q.sender_name ?? null }); orderNumber = r.number ?? made.number; due = r.due; }
+		const made = await orderFromQuote(db, q.id, false, origin, lang);
+		if (made.group) { const r = await sendAutoConfirmation(db, made.group, origin, { quoteNumber: q.number, senderName: q.sender_name ?? null }, lang); orderNumber = r.number ?? made.number; due = r.due; }
 	} catch (e) { console.error('[preventivo] ordine automatico', e); }
 	await Promise.all([
 		sendEmail({ to: OWNER_EMAIL, ...owner }),
 		pushStaff({ title: `Preventivo ${q.number} accettato`, body: `${q.draft.customer.name} · ${money(Number(q.total_gross))}${orderNumber ? ` · ordine ${orderNumber}` : ''}`, url: orderNumber ? `/dashboard/fatturazione/ordini` : `/dashboard/aziende/preventivi/${q.id}`, tag: `quote-${q.id}` })
 	]);
-	return { ok: true, message: 'Preventivo confermato.', orderNumber, due };
+	return { ok: true, message: T('messaggi.preventivoConfermato'), orderNumber, due };
 }
-export async function rejectQuoteByToken(db: DB, token: string, reason: string): Promise<{ ok: boolean; message: string }> {
+export async function rejectQuoteByToken(db: DB, token: string, reason: string, lang: Lang = 'it'): Promise<{ ok: boolean; message: string }> {
+	const T = (k: string) => tradotto(perLingua(lang), `account.${k}`);
 	const q = await getQuoteByToken(db, token);
-	if (!q) return { ok: false, message: 'Preventivo non trovato.' };
-	if (q.status !== 'inviato') return { ok: false, message: 'Il preventivo non è più modificabile.' };
+	if (!q) return { ok: false, message: T('errori.preventivoNonTrovato') };
+	if (q.status !== 'inviato') return { ok: false, message: T('errori.preventivoNonModificabile') };
 	await db.from('quotes').update({ status: 'rifiutato', rejected_reason: reason.trim() || 'Rifiutato dal cliente', updated_at: new Date().toISOString() }).eq('id', q.id);
 	if (q.request_id) await db.from('contact_requests').update({ status: 'lost' }).eq('id', q.request_id);
 	await sendEmail({ to: OWNER_EMAIL, ...ownerNotifyEmail({ title: `Preventivo ${q.number} rifiutato`, lines: [`Cliente: ${q.draft.customer.name}`, `Motivo: ${reason.trim() || '—'}`] }) });
-	return { ok: true, message: 'Grazie, abbiamo registrato la tua risposta.' };
+	return { ok: true, message: T('messaggi.rispostaRegistrata') };
 }
-/** Da preventivo accettato a ordine manuale (entra in produzione a lavorazioni) */
-export async function orderFromQuote(db: DB, id: string, sendMail: boolean, origin: string): Promise<{ group: string | null; number: string | null; message: string }> {
+/** Da preventivo accettato a ordine manuale (entra in produzione a lavorazioni). `lang`: lingua del cliente (accettazione dalla pagina pubblica) salvata sull'ordine */
+export async function orderFromQuote(db: DB, id: string, sendMail: boolean, origin: string, lang: Lang = 'it'): Promise<{ group: string | null; number: string | null; message: string }> {
 	const q = await getQuote(db, id);
 	if (!q) return { group: null, number: null, message: 'Preventivo non trovato.' };
 	if (q.order_group) return { group: q.order_group, number: null, message: 'Ordine già creato.' };
@@ -273,6 +279,7 @@ export async function orderFromQuote(db: DB, id: string, sendMail: boolean, orig
 	const r = await saveOrderDraft(db, d, null, ed);
 	if (r.error) return { group: null, number: null, message: r.error };
 	await db.from('quotes').update({ status: 'ordinato', order_group: r.group, updated_at: new Date().toISOString() }).eq('id', id);
+	if (lang !== 'it') await db.from('orders').update({ locale: perLingua(lang) }).eq('checkout_group', r.group);
 	if (q.request_id) await db.from('contact_requests').update({ status: 'won' }).eq('id', q.request_id);
 	const { data: rows } = await db.from('orders').select('*').eq('checkout_group', r.group);
 	await ensurePlan(db, (rows ?? []) as OrderRow[]);

@@ -1,4 +1,6 @@
 /** Metodi di pagamento e calcolo delle scadenze (condivisi tra dashboard e server). */
+import type { Lang } from '$lib/i18n';
+import { perLingua, t as tradotto } from '$lib/traduzioni';
 export interface PaymentMethod { id: string; name: string; xml_code: string; days: number; end_of_month: boolean; installments: number; paid_upfront: boolean; custom: boolean; active: boolean; sort: number }
 export interface PaymentTerm { due: string; amount: number; method: string; xml_code: string }
 
@@ -10,6 +12,14 @@ export const ECOMMERCE_METHODS: Record<string, { label: string; xml_code: string
 	test: { label: 'Test (nessun addebito)', xml_code: 'MP08', icon: '' }
 };
 export const paymentLabel = (m: string | null | undefined) => (m ? (ECOMMERCE_METHODS[m]?.label ?? m) : '—');
+/** etichetta nella lingua del cliente (pagine pubbliche): i metodi e-commerce dal catalogo, i nomi dei metodi manuali (dati del DB) restano come sono */
+export function paymentLabelFor(m: string | null | undefined, lang: Lang): string {
+	if (!m) return '—';
+	if (lang === 'it') return paymentLabel(m);
+	const k = `account.doc.metodi.${m}`;
+	const s = tradotto(perLingua(lang), k);
+	return s === k ? paymentLabel(m) : s;
+}
 export const paymentIcon = (m: string | null | undefined) => (m ? (ECOMMERCE_METHODS[m]?.icon ?? '') : '');
 
 const iso = (d: Date) => d.toISOString().slice(0, 10);

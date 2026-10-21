@@ -95,10 +95,10 @@
 	export function studio(what: 'mockup' | 'print' | 'geom' | 'stato' | 'applica' | 'soggetti' | 'rilievo', opts: Record<string, unknown> = {}): Promise<StudioExport> {
 		const id = Math.random().toString(36).slice(2);
 		return new Promise((ok, ko) => {
-			if (!frame?.contentWindow) return ko(new Error('Anteprima non pronta'));
+			if (!frame?.contentWindow) return ko(new Error(lingua.t('anteprima.nonPronta')));
 			pending.set(id, { ok, ko });
 			frame.contentWindow.postMessage({ source: 'sito', type: 'studio', what, id, ...opts }, location.origin);
-			setTimeout(() => { if (pending.delete(id)) ko(new Error('Il motore non ha risposto in tempo')); }, 120000);
+			setTimeout(() => { if (pending.delete(id)) ko(new Error(lingua.t('anteprima.tempo'))); }, 120000);
 		});
 	}
 	// un file nuovo (Cambia file) si manda al motore gia' caricato, senza ricaricarlo
@@ -190,7 +190,7 @@
 		if (d.type === 'ricevuto') { acked = true; clearTimeout(retry); }
 		if (d.type === 'studio' && d.detail?.id) {
 			const p = pending.get(d.detail.id);
-			if (p) { pending.delete(d.detail.id); if (d.detail.ok) p.ok(d.detail); else p.ko(new Error(d.detail.error || 'Errore del motore')); }
+			if (p) { pending.delete(d.detail.id); if (d.detail.ok) p.ok(d.detail); else p.ko(new Error(d.detail.error || lingua.t('anteprima.errore'))); }
 		}
 		if (d.type === 'size' && panel && d.detail?.h) contentH = d.detail.h;
 		if (d.type === 'render' && d.detail?.png) {
@@ -224,11 +224,11 @@
 {#if (file || warm) && src}
 	{#if panel}
 		<div class="engine-panel" style="height:{height}px">
-			<iframe bind:this={frame} class="engine engine--panel" class:is-ready={ready} {src} title="Anteprima e regolazioni del tuo adesivo" onload={() => send()}></iframe>
-			{#if busy}<div class="stage__busy" class:stage__busy--soft={ready} style="top:{ready ? 12 : stage / 2}px"><span class="spinner spinner--dark"></span> {ready ? 'Aggiorno…' : 'Genero l’anteprima…'}</div>{/if}
+			<iframe bind:this={frame} class="engine engine--panel" class:is-ready={ready} {src} title={lingua.t('anteprima.titoloRegolazioni')} onload={() => send()}></iframe>
+			{#if busy}<div class="stage__busy" class:stage__busy--soft={ready} style="top:{ready ? 12 : stage / 2}px"><span class="spinner spinner--dark"></span> {ready ? lingua.t('anteprima.aggiorno') : lingua.t('anteprima.genero')}</div>{/if}
 		</div>
 	{:else}
-		<iframe bind:this={frame} class="engine engine--live" class:is-ready={ready} {src} title="Anteprima del tuo adesivo" tabindex="-1" onload={() => send()}></iframe>
-		{#if busy}<div class="stage__busy" class:stage__busy--soft={ready}><span class="spinner spinner--dark"></span> {ready ? 'Aggiorno…' : 'Genero l’anteprima…'}</div>{/if}
+		<iframe bind:this={frame} class="engine engine--live" class:is-ready={ready} {src} title={lingua.t('anteprima.titolo')} tabindex="-1" onload={() => send()}></iframe>
+		{#if busy}<div class="stage__busy" class:stage__busy--soft={ready}><span class="spinner spinner--dark"></span> {ready ? lingua.t('anteprima.aggiorno') : lingua.t('anteprima.genero')}</div>{/if}
 	{/if}
 {/if}

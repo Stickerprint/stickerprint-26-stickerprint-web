@@ -3,7 +3,8 @@
 	/* Cassa simulata: stessa struttura di Stripe Checkout, nessun addebito. Quando arrivano le chiavi Stripe questa pagina non si vede più. */
 	import { enhance } from '$app/forms';
 	import { usaLingua } from '$lib/traduzioni';
-	const { t, path, prezzo, locale } = usaLingua();
+	import { paymentLabelFor } from '$lib/dashboard/payments';
+	const { t, path, locale, lang } = usaLingua();
 	/* documenti reali in euro (ordini manuali, preventivi, fatture): formato della lingua, valuta sempre EUR, niente cambio in dollari */
 	const money = (v: number) => formatAmount(v, { ...locale, currency: 'EUR' });
 	let { data, form } = $props();
@@ -23,7 +24,7 @@
 			<div class="sim__brand">Stickerprint</div>
 			<p class="sim__label">{t('account.paga.ordine', { n: data.order.number })}{#if data.payment.of > 1}{t('account.paga.scadenzaDi', { seq: data.payment.seq, tot: data.payment.of })}{/if}</p>
 			<p class="sim__amount">{money(data.payment.amount)}</p>
-			<p class="sim__meta">{data.payment.method} · {t('account.paga.ivaInclusa')}</p>
+			<p class="sim__meta">{paymentLabelFor(data.payment.method, lang)} · {t('account.paga.ivaInclusa')}</p>
 			<div class="sim__test">{t('account.paga.simulazione')}</div>
 		</div>
 		<form method="POST" class="sim__form" use:enhance={() => { paying = true; return async ({ update }) => { await update(); paying = false; }; }}>

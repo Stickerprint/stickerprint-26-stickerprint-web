@@ -14,9 +14,10 @@ import { checkDiscount } from '$lib/server/discount';
 import { normalizeLines, type InvoiceLine } from '$lib/server/invoice';
 import { CATS } from '$lib/dashboard/orders';
 import { estimatedShipDate } from '$lib/utils/shipping';
-import { LOCALES, PRICE_BOOKS, toCurrency } from '$lib/i18n';
+import { LOCALES, PRICE_BOOKS, localizePath, toCurrency } from '$lib/i18n';
 import { dataIn, t } from '$lib/traduzioni';
-import { MATERIAL_LABEL } from '$lib/account';
+import { MATERIAL_LABEL, materialLabel } from '$lib/account';
+import { productFor } from '$lib/prodotti-testi';
 import { createCheckoutSession, createPaymentIntent, stripeConfigured } from '$lib/server/stripe';
 import { env as pub } from '$env/dynamic/public';
 import { createPayPalOrder, paypalConfigured } from '$lib/server/paypal';
@@ -171,7 +172,7 @@ export const actions: Actions = {
 		let discount = 0;
 		let discountCode: string | null = null;
 		if (s('discount_code')) {
-			const d = await checkDiscount(supabase, s('discount_code'), productsNet, email);
+			const d = await checkDiscount(supabase, s('discount_code'), productsNet, email, locale);
 			if (!d.ok) return fail(400, { error: d.error });
 			discount = d.amount;
 			discountCode = d.code;
@@ -202,6 +203,11 @@ export const actions: Actions = {
 		const group = crypto.randomUUID();
 		const numbers: string[] = [];
 		const invLines: InvoiceLine[] = [];
+		/* righe per l'email di conferma del cliente, nella sua lingua (invLines resta in italiano: fattura, dashboard, avviso allo staff) */
+		const customerLines: InvoiceLine[] = [];
+		const lingua = LOCALES[locale].lang;
+		const nomeSagoma = (slug: string, forma: string) => { const k = slug === 'fogli_adesivi' ? `fogli.opzioni.${forma}.label` : `configuratore.opzioni.sagome.${forma}.label`; const v = t(locale, k); return v === k ? forma : v; };
+		const nomeLamina = (f: string | undefined) => (!f || f === 'nessuna' ? '' : t(locale, 'checkout.carrello.lamina', { finitura: f === 'lucida' || f === 'opaca' ? t(locale, `checkout.finiture.${f}`) : f }));
 		const items: CheckoutItem[] = [];
 		const autoProof: boolean[] = [];
 		const { data: num0, error: ne0 } = await db.rpc('next_order_number');
@@ -255,12 +261,17 @@ export const actions: Actions = {
 			if (error) return fail(400, { error: msg('ordineNonRegistrato', { errore: error.message }) });
 			if (!numbers.includes(row.number)) numbers.push(row.number);
 			invLines.push({ code: CATS[l.product]?.code ?? null, description: l.product === 'campioni' ? `Kit campioni` : l.product === 'kit_adesivi' ? `Kit di adesivi (${kitN(l.forma)} adesivi da ${l.w} mm, ${MATERIAL_LABEL[l.materiale] ?? l.materiale}${l.finitura && l.finitura !== 'nessuna' ? ', lamina ' + l.finitura : ''})` : `${name} ${l.forma} ${MATERIAL_LABEL[l.materiale] ?? l.materiale}${l.finitura && l.finitura !== 'nessuna' ? ' lamina ' + l.finitura : ''} ${l.w}×${l.h} mm`, qty: l.qty, unit_net: r2(l.baseNet / l.qty), total_net: l.baseNet });
+			{
+				const lam = nomeLamina(l.finitura);
+				const descr = l.product === 'campioni' ? t(locale, 'checkout.riepilogo.kitCampioni') : l.product === 'kit_adesivi' ? t(locale, 'checkout.carrello.kitRiga', { n: kitN(l.forma), mm: l.w, materiale: materialLabel(l.materiale, lingua), lamina: lam ? `, ${lam}` : '' }) : t(locale, 'checkout.carrello.riga', { prodotto: productFor(l.product, lingua)?.name ?? name, sagoma: nomeSagoma(l.product, l.forma), materiale: materialLabel(l.materiale, lingua), lamina: lam ? ` ${lam}` : '', w: l.w, h: l.h });
+				customerLines.push({ code: CATS[l.product]?.code ?? null, description: descr, qty: l.qty, unit_net: r2(l.baseNet / l.qty), total_net: l.baseNet });
+			}
 			items.push({ product: l.product, productName: name, forma: l.forma, materiale: l.materiale, finitura: l.finitura ?? null, w: l.w, h: l.h, qty: Number(l.qty), gross: l.gross, previewUrl: l.previewUrl ?? null });
 			autoProof.push(auto);
 		}
 		const invoiceLines = normalizeLines(invLines, discount, creditUsed);
 		if (shippingNet > 0) invoiceLines.push({ description: isRemote(ship.province) ? 'Spedizione (isole e zone remote)' : 'Spedizione', qty: 1, unit_net: shippingNet, total_net: shippingNet });
-		const payload: CheckoutPayload = { userId: user?.id ?? null, email, firstName: ship.first_name, lastName: ship.last_name, payment: payment === 'card' ? 'stripe' : payment, ship, bill, numbers, invoiceLines, emailLines: invLines, items, productsNet, expressNet, discount, discountCode, creditUsed, vatAmount, totalGross, toPay, express, autoProof , locale, currency, fxRate: fx, vatRate, zona, toPayCurrency, vies: vies ? { valido: vies.valido, verificato: vies.verificato, nome: vies.nome ?? null } : null };
+		const payload: CheckoutPayload = { userId: user?.id ?? null, email, firstName: ship.first_name, lastName: ship.last_name, payment: payment === 'card' ? 'stripe' : payment, ship, bill, numbers, invoiceLines, emailLines: invLines, customerLines, items, productsNet, expressNet, discount, discountCode, creditUsed, vatAmount, totalGross, toPay, express, autoProof , locale, currency, fxRate: fx, vatRate, zona, toPayCurrency, vies: vies ? { valido: vies.valido, verificato: vies.verificato, nome: vies.nome ?? null } : null };
 		const fdb = admin ?? db;
 		const se = await savePendingCheckout(fdb, group, payload, viaPayPal ? 'paypal' : online ? 'stripe' : payment === 'credito' ? 'credit' : 'test', { locale, currency });
 		if (se) return fail(400, { error: msg('ordineNonRegistrato', { errore: se }) });
@@ -276,6 +287,10 @@ export const actions: Actions = {
 			}
 		}
 
+		/* testi e ritorni della cassa nella lingua del cliente: descrizione su Stripe/PayPal, pagina Grazie e carrello con il prefisso */
+		const descrizionePagamento = t(locale, 'checkout.ordine.descrizionePagamento', { numeri: numbers.join(', ') });
+		const urlGrazie = localizePath('/checkout/grazie', locale);
+		const urlAnnullato = `${localizePath('/checkout', locale)}?annullato=1&g=${group}`;
 		if (inline) {
 			// carta o wallet direttamente nella pagina: il browser conferma il PaymentIntent, la pagina Grazie (o il webhook) chiude l'ordine
 			try {
@@ -291,7 +306,7 @@ export const actions: Actions = {
 						customer = await ensureCustomer({ id: user.id, email, name: `${ship.first_name} ${ship.last_name}`.trim() });
 					}
 				}
-				const pi = await createPaymentIntent({ amountCents: Math.round(toPayCurrency * 100), currency: currency === 'USD' ? 'usd' : 'eur', description: `Ordine ${numbers.join(', ')} · Stickerprint`, email, orderNumber: numbers[0], group, seq: 1, customer, saveCard: saveCard && !paymentMethod, paymentMethod });
+				const pi = await createPaymentIntent({ amountCents: Math.round(toPayCurrency * 100), currency: currency === 'USD' ? 'usd' : 'eur', description: descrizionePagamento, email, orderNumber: numbers[0], group, seq: 1, customer, saveCard: saveCard && !paymentMethod, paymentMethod });
 				await setCheckoutSession(fdb, group, pi.id);
 				return { ok: true, clientSecret: pi.clientSecret, group, numbers, toPay, toPayCurrency, currency };
 			} catch (e) {
@@ -303,7 +318,7 @@ export const actions: Actions = {
 			// PayPal diretto: il cliente paga sul sito PayPal e torna sulla pagina Grazie, che cattura l'incasso e chiude l'ordine
 			const origin = PUBLIC_SITE_URL || url.origin;
 			try {
-				const o = await createPayPalOrder({ amount: toPayCurrency, currency, locale: LOCALES[locale].intl.replace('-', '_'), description: `Ordine ${numbers.join(', ')} · Stickerprint`, reference: numbers[0], customId: `checkout:${group}`, returnUrl: `${origin}/checkout/grazie?pp=1${express ? '&e=1' : ''}`, cancelUrl: `${origin}/checkout?annullato=1&g=${group}` });
+				const o = await createPayPalOrder({ amount: toPayCurrency, currency, locale: LOCALES[locale].intl.replace('-', '_'), description: descrizionePagamento, reference: numbers[0], customId: `checkout:${group}`, returnUrl: `${origin}${urlGrazie}?pp=1${express ? '&e=1' : ''}`, cancelUrl: `${origin}${urlAnnullato}` }, locale);
 				await setCheckoutSession(fdb, group, o.id);
 				return { ok: true, redirect: o.approveUrl, numbers, toPay };
 			} catch (e) {
@@ -315,7 +330,7 @@ export const actions: Actions = {
 			// cassa Stripe: carta, Apple Pay, Google Pay, Link (e PayPal se scelto); al ritorno la pagina Grazie chiude l'ordine
 			const origin = PUBLIC_SITE_URL || url.origin;
 			try {
-				const sess = await createCheckoutSession({ amountCents: Math.round(toPayCurrency * 100), currency: currency === 'USD' ? 'usd' : 'eur', locale: LOCALES[locale].lang, description: `Ordine ${numbers.join(', ')} · Stickerprint`, email, orderNumber: numbers[0], group, seq: 1, checkout: true, methods: payment === 'paypal' ? ['paypal'] : undefined, successUrl: `${origin}/checkout/grazie?session_id={CHECKOUT_SESSION_ID}${express ? '&e=1' : ''}`, cancelUrl: `${origin}/checkout?annullato=1&g=${group}` });
+				const sess = await createCheckoutSession({ amountCents: Math.round(toPayCurrency * 100), currency: currency === 'USD' ? 'usd' : 'eur', locale: LOCALES[locale].lang, description: descrizionePagamento, email, orderNumber: numbers[0], group, seq: 1, checkout: true, methods: payment === 'paypal' ? ['paypal'] : undefined, successUrl: `${origin}${urlGrazie}?session_id={CHECKOUT_SESSION_ID}${express ? '&e=1' : ''}`, cancelUrl: `${origin}${urlAnnullato}` });
 				await setCheckoutSession(fdb, group, sess.id);
 				return { ok: true, redirect: sess.url, numbers, toPay };
 			} catch (e) {

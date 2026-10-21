@@ -3,7 +3,9 @@
  * domande e segnalazioni dalla pagina, aperture. Le scadenze anticipate si incassano prima di produrre.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { groupOrders, itemMeta, money, thumbOf, type OrderGroup, type OrderRow } from '$lib/dashboard/orders';
+import { groupOrders, itemMetaFor, money, thumbOf, type OrderGroup, type OrderRow } from '$lib/dashboard/orders';
+import { LOCALES, formatAmount, localizePath, type Lang } from '$lib/i18n';
+import { perLingua, t as tradotto } from '$lib/traduzioni';
 import type { PaymentMethod } from '$lib/dashboard/payments';
 import { upfrontDue, type OrderConfirmation, type OrderMessage, type OrderPayment } from '$lib/dashboard/conferme';
 import { sendEmail } from './email';
@@ -72,22 +74,25 @@ export async function applyPaymentGate(db: DB, group: string, operator: string |
 	return null;
 }
 
-/** Conferma d'ordine automatica quando il cliente conferma un preventivo dalla sua pagina: parte subito, senza passare dallo staff */
-export async function sendAutoConfirmation(db: DB, group: string, origin: string, o: { quoteNumber: string; senderName: string | null }): Promise<{ ok: boolean; due: number; number: string | null }> {
+/** Conferma d'ordine automatica quando il cliente conferma un preventivo dalla sua pagina: parte subito, senza passare dallo staff.
+ *  `lang`: lingua del cliente (pagina del preventivo) per email, date e importi; gli importi restano in euro */
+export async function sendAutoConfirmation(db: DB, group: string, origin: string, o: { quoteNumber: string; senderName: string | null }, lang: Lang = 'it'): Promise<{ ok: boolean; due: number; number: string | null }> {
 	const g = await loadGroup(db, group);
 	if (!g?.email) return { ok: false, due: 0, number: g?.number ?? null };
 	const payments = await syncPayments(db, group);
 	const conf = await getConfirmation(db, group);
 	const due = upfrontDue(payments);
 	const f = g.items[0];
-	const it = (d: string | null) => (d ? new Date(d + 'T12:00:00').toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' }) : null);
+	const L = LOCALES[perLingua(lang)];
+	const it = (d: string | null) => (d ? new Date(d + 'T12:00:00').toLocaleDateString(L.intl, { day: 'numeric', month: 'long', year: 'numeric' }) : null);
+	const eur = (v: number) => formatAmount(v, { ...L, currency: 'EUR' });
 	const mail = quoteOrderEmail({
 		name: f.billing?.first_name || f.shipping?.first_name || g.customer, quoteNumber: o.quoteNumber, number: g.number,
-		items: g.items.map((i) => ({ name: i.description || i.product_name, meta: i.description ? null : itemMeta(i), qty: i.qty, preview: thumbOf(i) })),
-		total: money(g.gross), shipDate: it(g.delivery_date), leadTime: f.lead_time ?? null,
-		payments: payments.map((p) => ({ label: p.method, amount: money(Number(p.amount)), due: it(p.due), upfront: p.upfront, paid: p.status === 'pagato' })),
-		dueNow: due > 0 ? money(due) : null, senderName: o.senderName, href: `${origin}/conferma/${conf.token}`
-	});
+		items: g.items.map((i) => ({ name: i.description || i.product_name, meta: i.description ? null : itemMetaFor(i, lang), qty: i.qty, preview: thumbOf(i) })),
+		total: eur(g.gross), shipDate: it(g.delivery_date), leadTime: f.lead_time ?? null,
+		payments: payments.map((p) => ({ label: p.method, amount: eur(Number(p.amount)), due: it(p.due), upfront: p.upfront, paid: p.status === 'pagato' })),
+		dueNow: due > 0 ? eur(due) : null, senderName: o.senderName, href: `${origin}${localizePath(`/conferma/${conf.token}`, perLingua(lang))}`
+	}, lang);
 	const r = await sendEmail({ to: g.email, ...mail, metadata: { order: g.number } });
 	if (r.ok) await db.from('order_confirmations').update({ sent_at: new Date().toISOString(), sent_subject: mail.subject, sent_message: `(automatica) Ordine nato dal preventivo ${o.quoteNumber} confermato dal cliente.`, sender_name: o.senderName }).eq('checkout_group', group);
 	await applyPaymentGate(db, group, null);
@@ -142,11 +147,12 @@ export async function getByToken(db: DB, token: string): Promise<{ group: OrderG
 export async function trackOpen(db: DB, conf: OrderConfirmation) { await db.from('order_confirmations').update({ opened_count: conf.opened_count + 1, opened_at: new Date().toISOString() }).eq('checkout_group', conf.checkout_group); }
 export async function trackPdf(db: DB, group: string) { await db.from('order_confirmations').update({ pdf_downloaded_at: new Date().toISOString() }).eq('checkout_group', group); }
 
-/** Domanda o segnalazione di errore dalla pagina: entra nell'ordine, avvisa lo staff; un errore ferma la produzione */
-export async function customerMessage(db: DB, token: string, body: string, kind: 'domanda' | 'errore', origin: string): Promise<string | null> {
+/** Domanda o segnalazione di errore dalla pagina: entra nell'ordine, avvisa lo staff; un errore ferma la produzione. `lang`: lingua della pagina per i messaggi al cliente */
+export async function customerMessage(db: DB, token: string, body: string, kind: 'domanda' | 'errore', origin: string, lang: Lang = 'it'): Promise<string | null> {
+	const T = (k: string) => tradotto(perLingua(lang), `account.${k}`);
 	const c = await getByToken(db, token);
-	if (!c) return 'Ordine non trovato.';
-	if (!body.trim()) return kind === 'errore' ? 'Scrivi cosa non torna.' : 'Scrivi la domanda.';
+	if (!c) return T('errori.ordineNonTrovato');
+	if (!body.trim()) return T(kind === 'errore' ? 'errori.scriviCosaNonTorna' : 'errori.scriviDomanda');
 	await db.from('order_messages').insert({ checkout_group: c.group.key, direction: 'in', kind, author: c.group.customer, body: body.trim() });
 	await db.from('order_confirmations').update({ unread: true }).eq('checkout_group', c.group.key);
 	if (kind === 'errore') {

@@ -3,7 +3,8 @@
  * Il codice e' 10% sul prossimo ordine, minimo 50 € IVA inclusa, valido 6 mesi, monouso, legato all'email di chi recensisce.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { langOf } from '$lib/i18n';
+import { LOCALES, isLocale, langOf, localizePath, type LocaleCode } from '$lib/i18n';
+import { dataIn, t } from '$lib/traduzioni';
 import { sendEmail } from './email';
 import { reviewRequestEmail, reviewThanksEmail } from './email-templates';
 import { invalidateReviews } from './reviews';
@@ -29,17 +30,24 @@ export async function issueReviewCoupon(db: DB, reviewId: string, email: string 
 	return null;
 }
 /** Salva la recensione (in attesa di approvazione), genera il codice e manda l'email di ringraziamento */
-export async function submitReview(db: DB, o: { orderId: string; userId: string | null; email: string | null; author: string | null; productSlug: string | null; rating: number; title: string | null; comment: string | null; number: string; origin: string; groupOrderIds?: string[]; checkoutGroup?: string | null; requestId?: string | null }): Promise<{ ok: true; code: string | null } | { ok: false; error: string }> {
+export async function submitReview(db: DB, o: { orderId: string; userId: string | null; email: string | null; author: string | null; productSlug: string | null; rating: number; title: string | null; comment: string | null; number: string; origin: string; groupOrderIds?: string[]; checkoutGroup?: string | null; requestId?: string | null;
+	/** lingua della pagina che invia (messaggi di errore); l'email di ringraziamento segue la lingua dell'ordine, se c'e' */
+	locale?: LocaleCode | null }): Promise<{ ok: true; code: string | null } | { ok: false; error: string }> {
 	const rating = Math.max(1, Math.min(5, Math.round(o.rating)));
+	/* lingua dell'ordine (colonna locale, migrazione 0059): email e, se la pagina non la indica, i messaggi */
+	const { data: ord } = await db.from('orders').select('locale').eq('id', o.orderId).maybeSingle();
+	const localeOrdine: LocaleCode = isLocale(ord?.locale) ? ord.locale : 'it';
+	const localePagina: LocaleCode = isLocale(o.locale) ? o.locale : localeOrdine;
+	const doppia = t(localePagina, 'api.recensioneDoppia');
 	/* una recensione per ordine (numero), anche se l'ordine ha piu' articoli */
-	if (o.groupOrderIds?.length) { const { data: prev } = await db.from('reviews').select('id').in('order_id', o.groupOrderIds).limit(1); if (prev?.length) return { ok: false, error: 'Hai già lasciato una recensione per questo ordine, grazie!' }; }
+	if (o.groupOrderIds?.length) { const { data: prev } = await db.from('reviews').select('id').in('order_id', o.groupOrderIds).limit(1); if (prev?.length) return { ok: false, error: doppia }; }
 	const { data, error } = await db.from('reviews').insert({ user_id: o.userId, order_id: o.orderId, rating, title: o.title?.slice(0, 120) || null, comment: o.comment?.slice(0, 2000) || null, author: o.author, email: o.email?.toLowerCase() || null, product_slug: o.productSlug, status: 'pending', source: 'cliente' }).select('id').single();
-	if (error || !data) return { ok: false, error: /duplicate|unique/i.test(error?.message ?? '') ? 'Hai già lasciato una recensione per questo ordine, grazie!' : (error?.message ?? 'Errore') };
+	if (error || !data) return { ok: false, error: /duplicate|unique/i.test(error?.message ?? '') ? doppia : (error?.message ?? t(localePagina, 'api.errore')) };
 	const code = await issueReviewCoupon(db, data.id, o.email);
 	await linkReviewToRequest(db, { orderId: o.orderId, groupOrderIds: o.groupOrderIds ?? null, checkoutGroup: o.checkoutGroup ?? null, requestId: o.requestId ?? null }, data.id).catch(() => {});
 	if (o.email && code) {
 		const validTo = new Date(); validTo.setMonth(validTo.getMonth() + REVIEW_COUPON.months);
-		await sendEmail({ to: o.email, ...reviewThanksEmail({ name: o.author?.split(' ')[0] ?? null, number: o.number, code, validUntil: validTo.toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' }), href: `${o.origin}/` }), metadata: { order: o.number } });
+		await sendEmail({ to: o.email, ...reviewThanksEmail({ name: o.author?.split(' ')[0] ?? null, number: o.number, code, validUntil: dataIn(LOCALES[localeOrdine], validTo), href: `${o.origin}${localizePath('/', localeOrdine)}` }, langOf(localeOrdine)), metadata: { order: o.number } });
 	}
 	return { ok: true, code };
 }

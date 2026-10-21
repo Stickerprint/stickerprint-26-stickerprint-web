@@ -14,7 +14,7 @@ import { estimatedShipDate } from '$lib/utils/shipping';
 import { ensurePlan } from './produzione';
 import type { OrderRow } from '$lib/dashboard/orders';
 import { LOCALES, formatAmount, localizePath, type Currency, type LocaleCode } from '$lib/i18n';
-import { dataIn } from '$lib/traduzioni';
+import { dataIn, t } from '$lib/traduzioni';
 import type { Zona } from '$lib/mercati';
 import { cancelPaymentIntent, expireCheckoutSession } from './stripe';
 import { eur } from './docs';
@@ -25,6 +25,8 @@ export interface CheckoutPayload {
 	userId: string | null; email: string; firstName: string; lastName: string; payment: string;
 	ship: Record<string, string>; bill: Record<string, string>;
 	numbers: string[]; invoiceLines: InvoiceLine[]; emailLines: InvoiceLine[]; items: CheckoutItem[];
+	/** righe nella lingua del cliente per la SUA email di conferma (emailLines resta in italiano: avviso allo staff e push) */
+	customerLines?: InvoiceLine[];
 	productsNet: number; expressNet: number; discount: number; discountCode: string | null; creditUsed: number;
 	vatAmount: number; totalGross: number; toPay: number; express: boolean; autoProof: boolean[];
 	/** lingua e valuta del cliente (dal 21/10/2026): toPayCurrency e' quanto ha pagato nella sua valuta, vatRate l'IVA applicata (0 fuori UE) */
@@ -94,7 +96,7 @@ export async function finalizeCheckout(db: DB, group: string, o: { provider: str
 	}
 	await db.from('orders').update({ payment_status: 'paid' }).eq('checkout_group', group);
 	if (o.provider === 'stripe' || o.provider === 'paypal' || o.provider === 'test' || o.provider === 'credit') await db.from('order_payments').update({ status: 'pagato', paid_at: paidAt, provider: o.provider, provider_ref: o.ref, note: o.provider === 'test' ? 'ordine di prova' : o.provider === 'credit' ? 'coperto dal Credito Stickerprint' : 'incassato online' }).eq('checkout_group', group).eq('seq', 1);
-	if (p.creditUsed > 0 && p.userId) await db.from('credit_transactions').insert({ user_id: p.userId, amount: -p.creditUsed, kind: 'spend', order_ref: p.numbers[0], note: `Credito usato sull'ordine ${p.numbers.join(', ')}` });
+	if (p.creditUsed > 0 && p.userId) await db.from('credit_transactions').insert({ user_id: p.userId, amount: -p.creditUsed, kind: 'spend', order_ref: p.numbers[0], note: t(p.locale ?? 'it', 'checkout.ordine.creditoUsato', { numeri: p.numbers.join(', ') }) });
 	if (p.discountCode) await db.rpc('discount_code_used', { p_code: p.discountCode });
 
 	klaviyoPlacedOrder({ email: p.email, firstName: p.firstName, lastName: p.lastName, orderNumber: p.numbers[0], total: p.toPay, items: p.items.map((l) => ({ productId: `${l.product}_${l.forma}`, productName: `${l.productName} ${l.forma}`, price: l.gross, quantity: Number(l.qty) })), discountCode: p.discountCode, discountAmount: r2(p.discount * 1.22) }).catch(() => {});
@@ -125,9 +127,9 @@ export async function finalizeCheckout(db: DB, group: string, o: { provider: str
 	try { const { data: prows } = await db.from('orders').select('*').eq('checkout_group', group); await ensurePlan(db, (prows ?? []) as OrderRow[]); } catch (e) { console.error('pianificazione produzione', e); }
 
 	const origin = PUBLIC_SITE_URL || 'https://stickerprint.it';
-	/* totale come lo ha visto il cliente: in dollari per gli USA, altrimenti in euro */
-	const totaleCliente = p.currency === 'USD' && p.toPayCurrency != null ? formatAmount(p.toPayCurrency, LOCALES[p.locale ?? 'us']) : eur(p.toPay);
-	const mail = orderConfirmationEmail({ name: p.firstName, numbers: p.numbers, invoiceNumber: invoice.number, total: totaleCliente, lines: p.emailLines.map((l, i) => ({ name: l.description, qty: l.qty, preview: p.items[i]?.previewUrl ?? null })), shipDate: dataIn(LOCALES[p.locale ?? 'it'], estimatedShipDate(p.express ? 3 : 5), true), accountUrl: p.userId ? `${origin}${localizePath('/account/ordini', p.locale ?? 'it')}` : null }, LOCALES[p.locale ?? 'it'].lang);
+	/* totale come lo ha visto il cliente: nella sua valuta e nel formato della sua lingua (in dollari per gli USA) */
+	const totaleCliente = formatAmount(p.currency === 'USD' && p.toPayCurrency != null ? p.toPayCurrency : p.toPay, LOCALES[p.locale ?? (p.currency === 'USD' ? 'us' : 'it')]);
+	const mail = orderConfirmationEmail({ name: p.firstName, numbers: p.numbers, invoiceNumber: invoice.number, total: totaleCliente, lines: (p.customerLines ?? p.emailLines).map((l, i) => ({ name: l.description, qty: l.qty, preview: p.items[i]?.previewUrl ?? null })), shipDate: dataIn(LOCALES[p.locale ?? 'it'], estimatedShipDate(p.express ? 3 : 5), true), accountUrl: p.userId ? `${origin}${localizePath('/account/ordini', p.locale ?? 'it')}` : null }, LOCALES[p.locale ?? 'it'].lang);
 	sendEmail({ to: p.email, ...mail, attachments: pdfB64 ? [{ name: `${invoice.number}.pdf`, content: pdfB64, contentType: 'application/pdf' }] : undefined })
 		.then((r) => { if (r.ok && !r.skipped) db.from('invoices').update({ sent_at: new Date().toISOString() }).eq('number', invoice.number).then(() => {}); })
 		.catch((e) => console.error('[checkout] email', e));
