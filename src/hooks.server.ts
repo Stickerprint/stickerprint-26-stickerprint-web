@@ -58,8 +58,11 @@ const DASHBOARD_LOGIN = '/dashboard/login';
  * Lingua/valuta. Comanda il prefisso dell'URL (/de, /us...); senza prefisso vale la scelta fatta dal footer (cookie),
  * e chi ha scelto una lingua viene riportato sul percorso con il prefisso. Le lingue non ancora online (PUBLIC_LOCALES)
  * tornano all'italiano, salvo anteprima dello staff (cookie sp-locale-preview). Nessun redirect dal paese: il paese
- * e la lingua del browser danno solo il suggerimento (locals.localeSuggerito) per un avviso in pagina.
+ * e la lingua del browser decidono la lingua alla PRIMA visita (redirect, cookie) e danno il suggerimento (locals.localeSuggerito) per l'avviso in pagina.
  */
+/** crawler e anteprime dei link: niente redirect per paese (Googlebot arriva dagli USA) */
+const isBot = (ua: string | null) => /bot|crawl|spider|slurp|facebookexternalhit|whatsapp|telegram|preview|lighthouse|headless|curl\/|wget/i.test(ua ?? '');
+
 const locale: Handle = async ({ event, resolve }) => {
 	const path = event.url.pathname;
 	const anteprima = event.cookies.get(PREVIEW_COOKIE) === '1';
@@ -76,6 +79,14 @@ const locale: Handle = async ({ event, resolve }) => {
 		event.locals.locale = inUrl;
 		metti(inUrl);
 	} else {
+		/* PRIMA VISITA senza prefisso (Mattia, 21/10/2026): chi arriva dalla Francia vede /fr, dagli USA /us, ecc. Si decide
+		   una volta sola (paese dell'IP dato da Vercel, poi lingua del browser) e si scrive il cookie: da li' in poi comanda
+		   la scelta dell'utente (footer). Mai per i crawler: Google scansiona dagli USA e deve vedere l'italiano con gli hreflang. */
+		if (!salvata && isLocalizable(path) && event.request.method === 'GET' && !isBot(event.request.headers.get('user-agent'))) {
+			const suggerito = detectLocale(event.request.headers.get('x-vercel-ip-country'), event.request.headers.get('accept-language'), anteprima ? undefined : online);
+			metti(suggerito);
+			if (suggerito !== 'it' && ammessa(suggerito)) redirect(302, localizePath(path, suggerito) + event.url.search);
+		}
 		const scelta = salvata && ammessa(salvata) ? salvata : 'it';
 		// chi ha scelto una lingua resta nella sua lingua anche cliccando un link senza prefisso
 		if (scelta !== 'it' && isLocalizable(path) && event.request.method === 'GET') redirect(302, localizePath(path, scelta) + event.url.search);
