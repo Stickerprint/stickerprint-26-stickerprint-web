@@ -10,6 +10,8 @@ export interface InvoiceData {
 	email: string;
 	billing: Record<string, string>;
 	lines: InvoiceLine[];
+	/** aliquota applicata (default 22%) e natura quando e' 0 (N3.1 export, N3.2 cessione UE) */
+	vat_rate?: number | null; natura?: string | null;
 	subtotal_net: number;
 	discount_net: number; // codice sconto (imponibile)
 	discount_code?: string | null;
@@ -90,7 +92,9 @@ export async function buildInvoicePdf(inv: InvoiceData): Promise<Uint8Array> {
 	// in fondo alla pagina: pagamento e scadenze a sinistra, totali a destra
 	const taxable = Math.round((inv.lines.reduce((s, l) => s + l.total_net, 0) + inv.express_net) * 100) / 100;
 	/* IVA: quella registrata sulla fattura (scorporo dal prezzo IVA inclusa: totale = incassato al centesimo); se manca, il 22% dell'imponibile */
-	const vat = Number.isFinite(inv.vat_amount) && Math.abs(inv.vat_amount - taxable * COMPANY.vatRate) < 0.05 ? Math.round(inv.vat_amount * 100) / 100 : Math.round(taxable * COMPANY.vatRate * 100) / 100;
+	const rate = inv.vat_rate != null && Number.isFinite(Number(inv.vat_rate)) ? Number(inv.vat_rate) : COMPANY.vatRate;
+	const vat = rate === 0 ? 0 : Number.isFinite(inv.vat_amount) && Math.abs(inv.vat_amount - taxable * rate) < 0.05 ? Math.round(inv.vat_amount * 100) / 100 : Math.round(taxable * rate * 100) / 100;
+	const NATURA_TESTO: Record<string, string> = { 'N3.1': 'Non imponibile art. 8 DPR 633/72', 'N3.2': 'Non imponibile art. 41 DL 331/93' };
 	const base = Math.min(y - 10, 200);
 	const pm = PAYMENT_TEXT[inv.payment_method] ?? inv.payment_method;
 	let yl = base;
@@ -106,7 +110,8 @@ export async function buildInvoicePdf(inv: InvoiceData): Promise<Uint8Array> {
 		if (COMPANY.iban) { text(`IBAN ${COMPANY.iban} · ${COMPANY.name}`, M, yl, 9, font, gray); yl -= 12; }
 	}
 	if (['paypal', 'stripe', 'test'].includes(inv.payment_method)) text('Prova automatica immediata inviata via email. Spedizione con corriere espresso tracciato.', M, 56, 8.5, font, gray);
-	drawTotals(page, font, bold, base - 4, [['Imponibile', eur(taxable)], [`IVA ${Math.round(COMPANY.vatRate * 100)}%`, eur(vat)], ['Totale', eur(Math.round((taxable + vat) * 100) / 100), true]]);
+	drawTotals(page, font, bold, base - 4, [['Imponibile', eur(taxable)], [rate === 0 ? `IVA 0% (${inv.natura ?? 'N3.1'})` : `IVA ${Math.round(rate * 100)}%`, eur(vat)], ['Totale', eur(Math.round((taxable + vat) * 100) / 100), true]]);
+	if (rate === 0) text(NATURA_TESTO[inv.natura ?? 'N3.1'] ?? 'Operazione non imponibile IVA', M, 68, 8.5, font, gray);
 	text('Documento generato automaticamente da stickerprint.it', M, 40, 8, font, gray);
 	return pdf.save();
 }

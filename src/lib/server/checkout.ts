@@ -29,6 +29,8 @@ export interface CheckoutPayload {
 	vatAmount: number; totalGross: number; toPay: number; express: boolean; autoProof: boolean[];
 	/** lingua e valuta del cliente (dal 21/10/2026): toPayCurrency e' quanto ha pagato nella sua valuta, vatRate l'IVA applicata (0 fuori UE) */
 	locale?: LocaleCode; currency?: Currency; fxRate?: number; vatRate?: number; zona?: Zona; toPayCurrency?: number;
+	/** esito del controllo VIES della partita IVA (aziende UE): valido = fattura senza IVA, natura N3.2 */
+	vies?: { valido: boolean; verificato: boolean; nome: string | null } | null;
 }
 /** Etichetta del metodo nei documenti */
 export const PAYMENT_NAME: Record<string, string> = { paypal: 'PayPal', stripe: 'Carta di credito (Stripe)', wallet: 'Apple Pay / Google Pay (Stripe)', credito: 'Credito Stickerprint', test: 'Test' };
@@ -100,7 +102,8 @@ export async function finalizeCheckout(db: DB, group: string, o: { provider: str
 	// fattura: registrata, PDF generato e allegato all'email di conferma
 	const { data: invNum } = await db.rpc('next_invoice_number');
 	const payTerms = [{ due: paidAt.slice(0, 10), amount: p.toPay, method: PAYMENT_NAME[p.payment] ?? 'Carta di credito (Stripe)', xml_code: 'MP08' }];
-	const invoice = { number: (invNum as string) ?? `FT-${Date.now()}`, issued_at: paidAt.slice(0, 10), email: p.email, billing: p.bill, lines: p.invoiceLines, payment_terms: payTerms, subtotal_net: p.productsNet, discount_net: p.discount, discount_code: p.discountCode, express_net: p.expressNet, credit_used: p.creditUsed, vat_amount: p.vatAmount, total_gross: p.totalGross, to_pay: p.toPay, payment_method: p.payment, orders: p.numbers };
+	const naturaInv = p.zona === 'us' ? 'N3.1' : p.zona === 'ue' && p.vatRate === 0 ? 'N3.2' : null;
+	const invoice = { vat_rate: p.vatRate ?? 0.22, natura: naturaInv, number: (invNum as string) ?? `FT-${Date.now()}`, issued_at: paidAt.slice(0, 10), email: p.email, billing: p.bill, lines: p.invoiceLines, payment_terms: payTerms, subtotal_net: p.productsNet, discount_net: p.discount, discount_code: p.discountCode, express_net: p.expressNet, credit_used: p.creditUsed, vat_amount: p.vatAmount, total_gross: p.totalGross, to_pay: p.toPay, payment_method: p.payment, orders: p.numbers };
 	let pdfPath: string | null = null;
 	let pdfB64: string | null = null;
 	try {
@@ -114,7 +117,7 @@ export async function finalizeCheckout(db: DB, group: string, o: { provider: str
 	}
 	const firstOrder = (orders ?? [])[0] as { id: string } | undefined;
 	/* lingua/valuta della fattura (migrazione 0059): fuori UE niente IVA, natura N3.1 (esportazione). Senza le colonne si registra come prima. */
-	const fiscale = { vat_rate: p.vatRate ?? 0.22, natura: p.zona === 'us' ? 'N3.1' : null, currency: p.currency ?? 'EUR' };
+	const fiscale = { vat_rate: p.vatRate ?? 0.22, natura: naturaInv, currency: p.currency ?? 'EUR' };
 	const invRow = { user_id: p.userId, order_id: firstOrder?.id ?? null, number: invoice.number, issued_at: invoice.issued_at, amount_gross: p.toPay, pdf_path: pdfPath, email: p.email, billing: p.bill, lines: p.invoiceLines, payment_terms: payTerms, order_numbers: p.numbers, subtotal_net: p.productsNet, discount_net: p.discount, express_net: p.expressNet, credit_used: p.creditUsed, vat_amount: p.vatAmount, payment_method: p.payment, paid_at: paidAt, checkout_group: group, sent_at: null };
 	{ let { error } = await db.from('invoices').insert({ ...invRow, ...fiscale }); if (error && /vat_rate|natura|currency/.test(error.message)) ({ error } = await db.from('invoices').insert(invRow)); if (error) console.error('[invoice] insert', error.message); }
 

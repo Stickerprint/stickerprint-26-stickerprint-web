@@ -3,6 +3,7 @@ import { fail } from '@sveltejs/kit';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { shippingForCountry, isRemote } from '$lib/shipping-rules';
 import { capValido, ivaDi, paesiPer, valutaDi, zonaDi, STATI_USA } from '$lib/mercati';
+import { verificaVies } from '$lib/server/vies';
 import { PROVINCES } from '$lib/provinces';
 import { env } from '$env/dynamic/private';
 import { PUBLIC_SUPABASE_URL, PUBLIC_SITE_URL } from '$env/static/public';
@@ -106,8 +107,14 @@ export const actions: Actions = {
 		const sameBilling = f.get('same_billing') !== 'off';
 		const bill = sameBilling ? { ...ship, ...fiscal } : { first_name: s('b_first_name'), last_name: s('b_last_name'), street: s('b_street'), street2: s('b_street2'), city: s('b_city'), zip: s('b_zip'), province: s('b_province').toUpperCase().slice(0, 40), country, phone: ship.phone, ...fiscal };
 		if (!sameBilling && (!bill.street || !bill.city || !bill.zip || ((country === 'IT' || country === 'US') && !bill.province))) return fail(400, { error: msg('fatturazione') });
-		/* IVA: Italia e UE 22% (i prezzi del motore la includono); USA niente IVA (esportazione): si lavora sul netto */
-		const vatRate = ivaDi(zona);
+		/* IVA: Italia e UE 22% (i prezzi del motore la includono); USA niente IVA (esportazione): si lavora sul netto.
+		   Azienda UE con partita IVA valida nel VIES: cessione intracomunitaria senza IVA (N3.2). Se il VIES non risponde, IVA. */
+		let vatRate = ivaDi(zona);
+		let vies: { valido: boolean; verificato: boolean; nome?: string | null } | null = null;
+		if (zona === 'ue' && fiscal.vat) {
+			vies = await verificaVies(fiscal.vat, country);
+			if (vies.valido) vatRate = 0;
+		}
 		const VATF = 1 + vatRate;
 		const currency = valutaDi(zona);
 		const fx = currency === 'USD' ? PRICE_BOOKS.USD.rate * PRICE_BOOKS.USD.markup : 1;
@@ -253,7 +260,7 @@ export const actions: Actions = {
 		}
 		const invoiceLines = normalizeLines(invLines, discount, creditUsed);
 		if (shippingNet > 0) invoiceLines.push({ description: isRemote(ship.province) ? 'Spedizione (isole e zone remote)' : 'Spedizione', qty: 1, unit_net: shippingNet, total_net: shippingNet });
-		const payload: CheckoutPayload = { userId: user?.id ?? null, email, firstName: ship.first_name, lastName: ship.last_name, payment: payment === 'card' ? 'stripe' : payment, ship, bill, numbers, invoiceLines, emailLines: invLines, items, productsNet, expressNet, discount, discountCode, creditUsed, vatAmount, totalGross, toPay, express, autoProof , locale, currency, fxRate: fx, vatRate, zona, toPayCurrency };
+		const payload: CheckoutPayload = { userId: user?.id ?? null, email, firstName: ship.first_name, lastName: ship.last_name, payment: payment === 'card' ? 'stripe' : payment, ship, bill, numbers, invoiceLines, emailLines: invLines, items, productsNet, expressNet, discount, discountCode, creditUsed, vatAmount, totalGross, toPay, express, autoProof , locale, currency, fxRate: fx, vatRate, zona, toPayCurrency, vies: vies ? { valido: vies.valido, verificato: vies.verificato, nome: vies.nome ?? null } : null };
 		const fdb = admin ?? db;
 		const se = await savePendingCheckout(fdb, group, payload, viaPayPal ? 'paypal' : online ? 'stripe' : payment === 'credito' ? 'credit' : 'test', { locale, currency });
 		if (se) return fail(400, { error: msg('ordineNonRegistrato', { errore: se }) });

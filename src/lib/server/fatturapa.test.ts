@@ -38,3 +38,31 @@ describe('buildFatturaPaXml / Causale', () => {
 		expect(causali(xml)).toEqual(['Vendita']);
 	});
 });
+
+describe('clienti esteri (dal 21/10/2026)', () => {
+	const base = { issued_at: '2026-10-21', email: 'x@y.com', lines: [{ description: 'Adesivi', qty: 10, unit_net: 2, total_net: 20 }], discount_net: 0, express_net: 0, credit_used: 0, vat_amount: 0, amount_gross: 20, payment_method: 'stripe' as const };
+	it('USA: esportazione N3.1, codice destinatario XXXXXXX, CAP 00000, niente provincia', () => {
+		const { xml } = buildFatturaPaXml({ ...base, number: 'SPF00900', vat_rate: 0, natura: 'N3.1', billing: { first_name: 'John', last_name: 'Doe', street: '1 Main St', city: 'Austin', zip: '73301', province: 'TX', country: 'US' } }, '900');
+		expect(xml).toContain('<CodiceDestinatario>XXXXXXX</CodiceDestinatario>');
+		expect(xml).toContain('<IdPaese>US</IdPaese><IdCodice>OO99999999999</IdCodice>');
+		expect(xml).toContain('<CAP>00000</CAP>');
+		expect(xml).not.toContain('<Provincia>TX</Provincia>');
+		expect(xml).toContain('<Natura>N3.1</Natura>');
+		expect(xml).toContain('<RiferimentoNormativo>Non imponibile art. 8 DPR 633/72</RiferimentoNormativo>');
+		expect(xml).toContain('<Imposta>0.00</Imposta>');
+		expect(xml).not.toContain('<EsigibilitaIVA>');
+	});
+	it('azienda tedesca con partita IVA VIES: N3.2 e IdPaese DE senza prefisso', () => {
+		const { xml } = buildFatturaPaXml({ ...base, number: 'SPF00901', vat_rate: 0, natura: 'N3.2', billing: { company: 'Muster GmbH', vat: 'DE123456789', street: 'Hauptstr. 1', city: 'Berlin', zip: '10115', country: 'DE' } }, '901');
+		expect(xml).toContain('<IdPaese>DE</IdPaese><IdCodice>123456789</IdCodice>');
+		expect(xml).toContain('<Denominazione>Muster GmbH</Denominazione>');
+		expect(xml).toContain('<Natura>N3.2</Natura>');
+		expect(xml.match(/<CessionarioCommittente>.*?<\/CessionarioCommittente>/)?.[0]).not.toContain('<CodiceFiscale>');
+	});
+	it('consumatore francese: IVA italiana 22% come oggi', () => {
+		const { xml } = buildFatturaPaXml({ ...base, number: 'SPF00902', vat_amount: 4.4, amount_gross: 24.4, billing: { first_name: 'Marie', last_name: 'D', street: 'Rue', city: 'Paris', zip: '75001', country: 'FR' } }, '902');
+		expect(xml).toContain('<AliquotaIVA>22.00</AliquotaIVA>');
+		expect(xml).toContain('<Imposta>4.40</Imposta>');
+		expect(xml).toContain('<IdPaese>FR</IdPaese><IdCodice>OO99999999999</IdCodice>');
+	});
+});

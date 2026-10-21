@@ -6,7 +6,13 @@ export interface FpaInvoice {
 	discount_net: number; discount_code?: string | null; express_net: number; credit_used: number; vat_amount: number; amount_gross: number;
 	payment_method: string | null; ddt_number?: string | null; ddt_date?: string | null; order_numbers?: string[] | null; ddt_numbers?: string[] | null; ddt_dates?: Record<string, string> | null;
 	payment_terms?: { due: string; amount: number; method: string; xml_code?: string }[] | null;
+	/** aliquota applicata (default 22%) e natura quando e' 0: N3.1 esportazione extra UE, N3.2 cessione intracomunitaria (VIES) */
+	vat_rate?: number | null; natura?: string | null;
 }
+/** riferimento normativo per le operazioni senza IVA */
+const RIFERIMENTO: Record<string, string> = { 'N3.1': 'Non imponibile art. 8 DPR 633/72', 'N3.2': 'Non imponibile art. 41 DL 331/93', 'N2.1': 'Non soggetta art. 7-ter DPR 633/72' };
+/** partita IVA senza il prefisso del paese (il VIES e lo SDI vogliono IdPaese + numero) */
+const senzaPrefisso = (piva: string, paese: string) => piva.replace(/[\s.-]/g, '').toUpperCase().replace(new RegExp(`^${paese === 'GR' ? '(EL|GR)' : paese}`), '');
 const PAY_LABEL: Record<string, string> = { paypal: 'PayPal', stripe: 'carta di credito (Stripe)', test: 'test' };
 const esc = (s: string) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const n2 = (v: number) => (Math.round(v * 100) / 100).toFixed(2);
@@ -34,12 +40,18 @@ export function buildFatturaPaXml(inv: FpaInvoice, progressivo: string): { xml: 
 	// Con la P.IVA il codice fiscale va messo solo se e' quello dell'azienda (11 cifre): il CF personale del titolare
 	// scritto nel campo dell'azienda fa scartare la fattura allo SDI ("P.IVA e CF non coerenti")
 	const piva = String(b.vat ?? '').toUpperCase().replace(/^IT/, '').replace(/\D/g, '');
-	const isCompany = piva.length === 11;
+	/* estero: e' azienda se ha scritto una partita IVA (il numero non ha 11 cifre come quello italiano) */
+	const isCompany = (b.country || 'IT').toUpperCase() !== 'IT' ? !!String(b.vat ?? '').trim() : piva.length === 11;
 	const cfRaw = String(b.fiscal_code ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '').replace(/^IT(?=\d{11}$)/, '');
 	const cf = isCompany ? (/^\d{11}$/.test(cfRaw) ? cfRaw : '') : (/^[A-Z0-9]{16}$|^\d{11}$/.test(cfRaw) ? cfRaw : '');
 	const sdi = (b.sdi ?? '').trim().toUpperCase();
 	const pec = (b.pec ?? '').trim();
-	const codiceDest = sdi.length === 7 ? sdi : '0000000';
+	const paese = (b.country || 'IT').toUpperCase();
+	const estero = paese !== 'IT';
+	/* clienti esteri: codice destinatario XXXXXXX (la fattura non transita per un canale SDI del cliente) */
+	const codiceDest = estero ? 'XXXXXXX' : sdi.length === 7 ? sdi : '0000000';
+	const rate = inv.vat_rate != null && Number.isFinite(Number(inv.vat_rate)) ? Number(inv.vat_rate) : VAT;
+	const natura = rate === 0 ? (inv.natura ?? (estero ? (paese === 'US' ? 'N3.1' : 'N3.2') : 'N3.1')) : null;
 	const payMode = /bonifico|ricevuta/i.test(inv.payment_method ?? '') ? 'MP05' : 'MP08';
 	// righe: prodotti, express, sconto codice (negativo), credito Stickerprint come sconto (negativo, scorporato)
 	// le righe arrivano già al netto di sconti e credito (normalizeLines): in fattura non compaiono voci di sconto
@@ -48,11 +60,14 @@ export function buildFatturaPaXml(inv: FpaInvoice, progressivo: string): { xml: 
 	const lines = inv.lines.map((l) => ({ d: l.description, q: l.qty, u: l.qty > 0 ? l.total_net / l.qty : l.unit_net, t: l.total_net, ddt: l.ddt ?? null, ddtDate: l.ddt_date ?? null }));
 	if (inv.express_net > 0) lines.push({ d: 'Produzione express (+30%)', q: 1, u: inv.express_net, t: inv.express_net, ddt: null, ddtDate: null });
 	const imponibile = lines.reduce((s, l) => s + l.t, 0);
-	const imposta = imponibile * VAT;
+	const imposta = imponibile * rate;
 	const totale = imponibile + imposta;
-	const dettaglio = lines.map((l, i) => `<DettaglioLinee><NumeroLinea>${i + 1}</NumeroLinea><Descrizione>${esc(l.d).slice(0, 1000)}</Descrizione><Quantita>${n2(l.q)}</Quantita><PrezzoUnitario>${n8(l.u)}</PrezzoUnitario><PrezzoTotale>${n2(l.t)}</PrezzoTotale><AliquotaIVA>${n2(VAT * 100)}</AliquotaIVA></DettaglioLinee>`).join('');
+	const dettaglio = lines.map((l, i) => `<DettaglioLinee><NumeroLinea>${i + 1}</NumeroLinea><Descrizione>${esc(l.d).slice(0, 1000)}</Descrizione><Quantita>${n2(l.q)}</Quantita><PrezzoUnitario>${n8(l.u)}</PrezzoUnitario><PrezzoTotale>${n2(l.t)}</PrezzoTotale><AliquotaIVA>${n2(rate * 100)}</AliquotaIVA>${natura ? `<Natura>${natura}</Natura>` : ''}</DettaglioLinee>`).join('');
 	const anagrafica = isCompany || b.company ? `<Denominazione>${esc(b.company || `${b.first_name ?? ''} ${b.last_name ?? ''}`.trim())}</Denominazione>` : `<Nome>${esc(b.first_name ?? '')}</Nome><Cognome>${esc(b.last_name ?? '')}</Cognome>`;
-	const fiscal = `${isCompany ? `<IdFiscaleIVA><IdPaese>${esc((b.country || 'IT').toUpperCase())}</IdPaese><IdCodice>${piva}</IdCodice></IdFiscaleIVA>` : ''}${cf ? `<CodiceFiscale>${cf}</CodiceFiscale>` : ''}`;
+	/* estero: IdFiscaleIVA con il paese e il numero senza prefisso; privato estero senza partita IVA: codice convenzionale OO99999999999, niente codice fiscale italiano */
+	const fiscal = estero
+		? `<IdFiscaleIVA><IdPaese>${esc(paese)}</IdPaese><IdCodice>${isCompany ? esc(senzaPrefisso(b.vat ?? '', paese)) || 'OO99999999999' : 'OO99999999999'}</IdCodice></IdFiscaleIVA>`
+		: `${isCompany ? `<IdFiscaleIVA><IdPaese>IT</IdPaese><IdCodice>${piva}</IdCodice></IdFiscaleIVA>` : ''}${cf ? `<CodiceFiscale>${cf}</CodiceFiscale>` : ''}`;
 	// DDT collegati: uno per documento, con il riferimento alle righe che ne derivano
 	const ddtList = inv.ddt_numbers?.length ? inv.ddt_numbers : inv.ddt_number ? [inv.ddt_number] : [];
 	const ddt = ddtList.map((n) => {
@@ -72,11 +87,11 @@ export function buildFatturaPaXml(inv: FpaInvoice, progressivo: string): { xml: 
 <FatturaElettronicaHeader>
 <DatiTrasmissione><IdTrasmittente><IdPaese>IT</IdPaese><IdCodice>${esc(COMPANY.fiscalCode)}</IdCodice></IdTrasmittente><ProgressivoInvio>${esc(progressivo)}</ProgressivoInvio><FormatoTrasmissione>FPR12</FormatoTrasmissione><CodiceDestinatario>${codiceDest}</CodiceDestinatario>${codiceDest === '0000000' && pec ? `<PECDestinatario>${esc(pec)}</PECDestinatario>` : ''}</DatiTrasmissione>
 <CedentePrestatore><DatiAnagrafici><IdFiscaleIVA><IdPaese>IT</IdPaese><IdCodice>${esc(COMPANY.vat)}</IdCodice></IdFiscaleIVA><CodiceFiscale>${esc(COMPANY.fiscalCode)}</CodiceFiscale><Anagrafica><Denominazione>${esc(COMPANY.name)}</Denominazione></Anagrafica><RegimeFiscale>${COMPANY.regime}</RegimeFiscale></DatiAnagrafici><Sede><Indirizzo>${esc(COMPANY.street)}</Indirizzo><CAP>${COMPANY.zip}</CAP><Comune>${esc(COMPANY.city)}</Comune><Provincia>${COMPANY.province}</Provincia><Nazione>${COMPANY.country}</Nazione></Sede>${COMPANY.email ? `<Contatti><Email>${esc(COMPANY.email)}</Email></Contatti>` : ''}</CedentePrestatore>
-<CessionarioCommittente><DatiAnagrafici>${fiscal}<Anagrafica>${anagrafica}</Anagrafica></DatiAnagrafici><Sede><Indirizzo>${esc([b.street, b.street2].filter(Boolean).join(', ') || '-')}</Indirizzo><CAP>${esc((b.zip ?? '00000').padStart(5, '0'))}</CAP><Comune>${esc(b.city || '-')}</Comune>${b.province ? `<Provincia>${esc(b.province.toUpperCase().slice(0, 2))}</Provincia>` : ''}<Nazione>${esc((b.country || 'IT').toUpperCase())}</Nazione></Sede></CessionarioCommittente>
+<CessionarioCommittente><DatiAnagrafici>${fiscal}<Anagrafica>${anagrafica}</Anagrafica></DatiAnagrafici><Sede><Indirizzo>${esc([b.street, b.street2].filter(Boolean).join(', ') || '-')}</Indirizzo><CAP>${estero ? '00000' : esc((b.zip ?? '00000').padStart(5, '0'))}</CAP><Comune>${esc(b.city || '-')}</Comune>${!estero && b.province ? `<Provincia>${esc(b.province.toUpperCase().slice(0, 2))}</Provincia>` : ''}<Nazione>${esc(paese)}</Nazione></Sede></CessionarioCommittente>
 </FatturaElettronicaHeader>
 <FatturaElettronicaBody>
 <DatiGenerali><DatiGeneraliDocumento><TipoDocumento>TD01</TipoDocumento><Divisa>EUR</Divisa><Data>${inv.issued_at}</Data><Numero>${esc(inv.number)}</Numero><ImportoTotaleDocumento>${n2(totale)}</ImportoTotaleDocumento>${causale}</DatiGeneraliDocumento>${ddt}</DatiGenerali>
-<DatiBeniServizi>${dettaglio}<DatiRiepilogo><AliquotaIVA>${n2(VAT * 100)}</AliquotaIVA><ImponibileImporto>${n2(imponibile)}</ImponibileImporto><Imposta>${n2(imposta)}</Imposta><EsigibilitaIVA>I</EsigibilitaIVA></DatiRiepilogo></DatiBeniServizi>
+<DatiBeniServizi>${dettaglio}<DatiRiepilogo><AliquotaIVA>${n2(rate * 100)}</AliquotaIVA>${natura ? `<Natura>${natura}</Natura>` : ''}<ImponibileImporto>${n2(imponibile)}</ImponibileImporto><Imposta>${n2(imposta)}</Imposta>${natura ? `<RiferimentoNormativo>${esc(RIFERIMENTO[natura] ?? natura)}</RiferimentoNormativo>` : '<EsigibilitaIVA>I</EsigibilitaIVA>'}</DatiRiepilogo></DatiBeniServizi>
 <DatiPagamento><CondizioniPagamento>${terms.length > 1 ? 'TP01' : 'TP02'}</CondizioniPagamento>${terms.map((t, i) => `<DettaglioPagamento><ModalitaPagamento>${esc(t.xml_code || payMode)}</ModalitaPagamento><DataScadenzaPagamento>${esc(t.due)}</DataScadenzaPagamento><ImportoPagamento>${n2(terms.length === 1 ? totale : i === terms.length - 1 ? totale - terms.slice(0, -1).reduce((s, x) => s + x.amount, 0) : t.amount)}</ImportoPagamento></DettaglioPagamento>`).join('')}</DatiPagamento>
 </FatturaElettronicaBody>
 </p:FatturaElettronica>`;

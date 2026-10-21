@@ -66,6 +66,7 @@
 			{ label: 'Metodi di pagamento', href: '/dashboard/setup/metodi-pagamento' },
 			{ label: 'Offerte (Promo)', href: '/dashboard/setup/promo' },
 			{ label: 'Domande frequenti', href: '/dashboard/setup/faq' },
+			{ label: 'Traduzioni dei contenuti', href: '/dashboard/setup/traduzioni' },
 			{ label: 'Codici sconto', href: '/dashboard/setup/codici-sconto' },
 			{ label: 'Codici prodotto', href: '/dashboard/setup/codici-prodotto' },
 			{ label: 'Corrieri', href: '/dashboard/setup/corrieri' },

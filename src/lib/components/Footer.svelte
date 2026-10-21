@@ -2,8 +2,7 @@
 	import { LOCALES, activeLocales, formatAmount, type LocaleCode } from '$lib/i18n';
 	import { usaLingua } from '$lib/traduzioni';
 	let { locale = 'it', anteprima = false }: { locale?: LocaleCode; anteprima?: boolean } = $props();
-	/* il blog e' solo in italiano: fuori dall'italiano il link non compare */
-	const { t, path: L, lang } = usaLingua();
+	const { t, path: L } = usaLingua();
 	const current = $derived(LOCALES[locale] ?? LOCALES.it);
 	/* lingue nel selettore: quelle online, piu' tutte in anteprima per lo staff; compare solo se c'e' una scelta */
 	const scelte = $derived(anteprima ? Object.values(LOCALES) : activeLocales().map((c) => LOCALES[c]));
@@ -91,7 +90,7 @@
 		<div class="footer__bottom">
 			<nav class="footer__nav" aria-label={t('footer.menuFooter')}>
 				<a href={L('/chi-siamo')}>{t('footer.chiSiamo')}</a>
-				{#if lang === 'it'}<a href={L('/blog')}>{t('footer.blog')}</a>{/if}
+				<a href={L('/blog')}>{t('footer.blog')}</a>
 				<a href={L('/support')}>{t('footer.supporto')}</a>
 				<a href={L('/resi')}>{t('footer.resi')}</a>
 			</nav>

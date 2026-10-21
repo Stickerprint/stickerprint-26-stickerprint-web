@@ -1,0 +1,631 @@
+{
+ "faq_items": {
+  "62cfe138-66d8-4856-a258-ecd5dac161c7": {
+   "en": {
+    "q": "What are the production and delivery times?",
+    "a": "Standard production time is 5 business days. Standard shipping takes another 1-2 business days. Express shipping is also available for faster delivery, with a 30% surcharge."
+   },
+   "es": {
+    "q": "¿Cuáles son los plazos de producción y entrega?",
+    "a": "El plazo de producción estándar es de 5 días laborables. El envío estándar tarda 1-2 días laborables más. También está disponible el envío exprés para entregas más rápidas, con un recargo del 30 %."
+   },
+   "fr": {
+    "q": "Quels sont les délais de production et de livraison ?",
+    "a": "Le délai de production standard est de 5 jours ouvrés. La livraison standard prend 1 à 2 jours ouvrés supplémentaires. Une livraison express est également disponible pour les commandes urgentes, avec un supplément de 30 %."
+   },
+   "de": {
+    "q": "Wie lange dauern Produktion und Lieferung?",
+    "a": "Die Standard-Produktionszeit beträgt 5 Werktage. Der Standardversand dauert weitere 1–2 Werktage. Für schnellere Lieferungen gibt es auch den Expressversand mit einem Aufschlag von 30 %."
+   },
+   "nl": {
+    "q": "Wat zijn de productie- en levertijden?",
+    "a": "De standaard productietijd is 5 werkdagen. Standaard verzending duurt nog eens 1-2 werkdagen. Voor snellere levering is er ook expressverzending, met een toeslag van 30%."
+   },
+   "_hash": "e5c2d1b2594e2138"
+  },
+  "8d9e5b9f-8a55-4628-9e73-c983efedc373": {
+   "en": {
+    "q": "Why can't I find a phone number to call you?",
+    "a": "We've chosen to offer support exclusively through written channels, so we can give you more accurate, complete and verifiable answers. Every request stays documented and is accessible to our whole team, which avoids errors and misunderstandings. It also lets us analyze each issue more thoroughly and keep improving our service."
+   },
+   "es": {
+    "q": "¿Por qué no encuentro un número de teléfono para llamaros?",
+    "a": "Hemos decidido ofrecer asistencia exclusivamente por canales escritos, para darte respuestas más precisas, completas y verificables. Cada solicitud queda documentada y es accesible para todo nuestro equipo, lo que evita errores y malentendidos. Además, así podemos analizar mejor cada problema y mejorar constantemente nuestro servicio."
+   },
+   "fr": {
+    "q": "Pourquoi je ne trouve pas de numéro de téléphone pour vous appeler ?",
+    "a": "Nous avons choisi d'assurer l'assistance uniquement par écrit, afin de vous apporter des réponses plus précises, complètes et vérifiables. Chaque demande reste documentée et accessible à toute notre équipe, ce qui évite les erreurs et les malentendus. Cela nous permet aussi de mieux analyser chaque problème et d'améliorer constamment notre service."
+   },
+   "de": {
+    "q": "Warum finde ich keine Telefonnummer, um euch anzurufen?",
+    "a": "Wir haben uns entschieden, Support ausschließlich über schriftliche Kanäle anzubieten. So können wir dir genauere, vollständigere und nachvollziehbare Antworten geben. Jede Anfrage bleibt dokumentiert und ist für unser ganzes Team einsehbar – das vermeidet Fehler und Missverständnisse. Außerdem können wir so jedes Problem besser analysieren und unseren Service laufend verbessern."
+   },
+   "nl": {
+    "q": "Waarom vind ik geen telefoonnummer om jullie te bellen?",
+    "a": "We hebben ervoor gekozen om alleen schriftelijk support te geven, zodat we je preciezere, completere en controleerbare antwoorden kunnen geven. Elke aanvraag blijft gedocumenteerd en is voor ons hele team inzichtelijk, wat fouten en misverstanden voorkomt. Zo kunnen we bovendien elk probleem beter analyseren en onze service steeds verder verbeteren."
+   },
+   "_hash": "d20e10acc188e7b9"
+  },
+  "fd7fc98d-7254-46ab-8b91-10df7308158d": {
+   "en": {
+    "q": "Can I order custom samples before placing a large order?",
+    "a": "We don't offer custom samples because our minimum order starts at just 15 pcs, so you can place a small test order and check our quality for yourself. If you'd like to see all our materials instead, you can order a Stickerprint-branded sample kit with all our products and finishes: it costs €10 and you get it back right away on your first order thanks to a €10 discount code included in the kit."
+   },
+   "es": {
+    "q": "¿Puedo pedir muestras personalizadas antes de hacer un pedido grande?",
+    "a": "No ofrecemos muestras personalizadas porque nuestro pedido mínimo es de solo 15 unidades: puedes hacer un pedido de prueba pequeño y comprobar nuestra calidad. Si lo que quieres es conocer todos nuestros materiales, puedes pedir un kit de muestras con la marca Stickerprint, con todos nuestros productos y acabados: cuesta 10 € y los recuperas enseguida en tu primer pedido gracias a un código de descuento de 10 € que encontrarás dentro del kit."
+   },
+   "fr": {
+    "q": "Puis-je commander des échantillons personnalisés avant de passer une grosse commande ?",
+    "a": "Nous ne proposons pas d'échantillons personnalisés, car notre minimum de commande n'est que de 15 pièces : vous pouvez donc passer une petite commande d'essai et tester notre qualité. Si vous souhaitez plutôt découvrir tous nos matériaux, vous pouvez commander un kit d'échantillons aux couleurs de Stickerprint, avec tous nos produits et finitions : il coûte 10 € et vous les récupérez tout de suite sur votre première commande grâce à un code de réduction de 10 € glissé dans le kit."
+   },
+   "de": {
+    "q": "Kann ich individuelle Muster bestellen, bevor ich eine große Bestellung aufgebe?",
+    "a": "Individuelle Muster bieten wir nicht an, denn unsere Mindestbestellmenge liegt bei nur 15 Stück: Du kannst also einfach eine kleine Testbestellung aufgeben und unsere Qualität prüfen. Wenn du stattdessen alle unsere Materialien kennenlernen willst, bestell unser Muster-Set im Stickerprint-Design mit allen Produkten und Veredelungen. Es kostet 10 € und du bekommst den Betrag bei deiner ersten Bestellung sofort zurück – mit dem 10-€-Rabattcode, der im Set liegt."
+   },
+   "nl": {
+    "q": "Kan ik gepersonaliseerde proefstickers bestellen voordat ik een grote bestelling plaats?",
+    "a": "We bieden geen gepersonaliseerde proefstickers aan, omdat onze minimale bestelling al vanaf 15 stuks begint: je kunt dus gewoon een kleine proefbestelling plaatsen en onze kwaliteit zelf testen. Wil je liever al onze materialen leren kennen? Bestel dan ons proefpakket in Stickerprint-stijl, met al onze producten en afwerkingen. Het kost € 10 en je krijgt dat bedrag meteen terug bij je eerste bestelling, dankzij een kortingscode van € 10 die je in het pakket vindt."
+   },
+   "_hash": "1821379a3c4b4bd5"
+  },
+  "6d92eec5-956e-4171-b754-978868cfead6": {
+   "en": {
+    "q": "Is the estimated delivery date guaranteed?",
+    "a": "No, the date shown on the site is an estimate, although we meet it for the vast majority of orders. In some cases, however, unexpected production or shipping issues can cause delays.\n\nIf you have an event or a firm deadline, choose the Express service: your order will be handled with priority, through a separate production queue and a dedicated shipping service.\n\nAny doubts about timing? Contact us before ordering: we'll do everything we can to find the best solution and get your stickers to you on time."
+   },
+   "es": {
+    "q": "¿Está garantizada la fecha de entrega estimada?",
+    "a": "No, la fecha que aparece en la web es una estimación, aunque se cumple en la gran mayoría de los pedidos. En algunos casos, sin embargo, pueden surgir imprevistos de producción o de transporte que causen retrasos.\n\nSi tienes un evento o una fecha límite concreta, elige el servicio Exprés: tu pedido se gestionará con prioridad, en una cola de producción separada y con un servicio de envío dedicado.\n\n¿Tienes dudas sobre los plazos? Contacta con nosotros antes de pedir: haremos todo lo posible por encontrar la mejor solución y que tus pegatinas lleguen a tiempo."
+   },
+   "fr": {
+    "q": "La date de livraison estimée est-elle garantie ?",
+    "a": "Non, la date indiquée sur le site est une estimation, même si elle est respectée pour la grande majorité des commandes. Dans certains cas, des imprévus de production ou de transport peuvent toutefois entraîner des retards.\n\nSi vous avez un événement ou une échéance précise, choisissez le service Express : votre commande sera traitée en priorité, dans une file de production séparée et avec un service d'expédition dédié.\n\nUn doute sur les délais ? Contactez-nous avant de commander : nous ferons tout notre possible pour trouver la meilleure solution et que vos stickers arrivent à temps."
+   },
+   "de": {
+    "q": "Ist das voraussichtliche Lieferdatum garantiert?",
+    "a": "Nein, das Datum auf der Website ist eine Schätzung – auch wenn wir es bei der großen Mehrheit der Bestellungen einhalten. In manchen Fällen kann es durch unvorhergesehene Probleme in der Produktion oder beim Transport zu Verzögerungen kommen.\n\nWenn du ein Event oder einen festen Termin hast, wähl den Express-Service: Deine Bestellung wird mit Priorität bearbeitet, in einer separaten Produktionswarteschlange und mit einem eigenen Versandservice.\n\nDu bist dir bei den Lieferzeiten unsicher? Schreib uns vor der Bestellung: Wir tun alles, um die beste Lösung zu finden und deine Aufkleber rechtzeitig zu dir zu bringen."
+   },
+   "nl": {
+    "q": "Is de geschatte leverdatum gegarandeerd?",
+    "a": "Nee, de datum op de site is een schatting, al halen we die bij de overgrote meerderheid van de bestellingen. In sommige gevallen kunnen onverwachte problemen in de productie of het transport echter voor vertraging zorgen.\n\nHeb je een evenement of een harde deadline? Kies dan de Express-service: je bestelling wordt met voorrang behandeld, in een aparte productiewachtrij en met een speciale verzendservice.\n\nTwijfel je over de levertijd? Neem contact met ons op voordat je bestelt: we doen ons best om de beste oplossing te vinden en je stickers op tijd te bezorgen."
+   },
+   "_hash": "0c34f2ba91685f15"
+  },
+  "356c22be-9d3b-4630-aaca-ec5527798867": {
+   "en": {
+    "q": "What happens after I place an order?",
+    "a": "After you order, you'll receive a confirmation email with a summary of your order. We'll then update you when your order is ready to ship, along with the tracking link."
+   },
+   "es": {
+    "q": "¿Qué pasa después de hacer un pedido?",
+    "a": "Tras el pedido recibirás un email de confirmación con el resumen de lo que has pedido. Después te avisaremos cuando el pedido esté listo para enviarse, con el enlace de seguimiento correspondiente."
+   },
+   "fr": {
+    "q": "Que se passe-t-il une fois ma commande passée ?",
+    "a": "Après votre commande, vous recevrez un e-mail de confirmation avec le récapitulatif de votre achat. Vous serez ensuite informé dès que la commande sera prête à être expédiée, avec le lien de suivi correspondant."
+   },
+   "de": {
+    "q": "Was passiert, nachdem ich bestellt habe?",
+    "a": "Nach der Bestellung bekommst du eine Bestätigungs-E-Mail mit der Zusammenfassung deiner Bestellung. Sobald die Bestellung versandfertig ist, informieren wir dich erneut – inklusive Tracking-Link."
+   },
+   "nl": {
+    "q": "Wat gebeurt er nadat ik een bestelling heb geplaatst?",
+    "a": "Na je bestelling ontvang je een bevestigingsmail met een overzicht van wat je hebt besteld. Daarna krijg je bericht zodra je bestelling klaar is voor verzending, met de bijbehorende track & trace-link."
+   },
+   "_hash": "dac9dd5f43d9eb1c"
+  },
+  "be453ff2-aa25-499c-99dc-00e494111b77": {
+   "en": {
+    "q": "What payment methods do you accept?",
+    "a": "We accept credit/debit cards (Visa, Mastercard, American Express) via Stripe, as well as PayPal. Card payments are processed securely once you approve the proof."
+   },
+   "es": {
+    "q": "¿Qué métodos de pago aceptáis?",
+    "a": "Aceptamos pagos con tarjeta de crédito/débito (Visa, Mastercard, American Express) a través de Stripe y PayPal. El pago con tarjeta se procesa de forma segura en el momento en que apruebas la prueba de impresión."
+   },
+   "fr": {
+    "q": "Quels moyens de paiement acceptez-vous ?",
+    "a": "Nous acceptons les cartes de crédit/débit (Visa, Mastercard, American Express) via Stripe, ainsi que PayPal. Le paiement par carte est traité de manière sécurisée au moment où vous validez le BAT."
+   },
+   "de": {
+    "q": "Welche Zahlungsmethoden akzeptiert ihr?",
+    "a": "Wir akzeptieren Kredit- und Debitkarten (Visa, Mastercard, American Express) über Stripe sowie PayPal. Die Kartenzahlung wird sicher abgewickelt, sobald du die Druckfreigabe erteilst."
+   },
+   "nl": {
+    "q": "Welke betaalmethoden accepteren jullie?",
+    "a": "We accepteren creditcards en debitcards (Visa, Mastercard, American Express) via Stripe, en PayPal. De kaartbetaling wordt veilig verwerkt op het moment dat je de drukproef goedkeurt."
+   },
+   "_hash": "46ed773878534f82"
+  },
+  "60f895fe-f9ae-4ac1-b8d1-c9ad861599eb": {
+   "en": {
+    "q": "How long does it take to produce domed stickers?",
+    "a": "Domed stickers take slightly longer to produce than standard stickers, because of the doming process and the resin's curing time. On average, production takes 5-7 business days from proof approval."
+   },
+   "es": {
+    "q": "¿Cuánto tiempo tarda la producción de pegatinas resinadas?",
+    "a": "Las pegatinas resinadas (3D) necesitan un tiempo de producción algo mayor que las pegatinas estándar, debido al proceso de resinado y al tiempo de endurecimiento de la resina. De media, la producción tarda entre 5 y 7 días laborables desde la aprobación de la prueba de impresión."
+   },
+   "fr": {
+    "q": "Quel est le délai de production des stickers résinés ?",
+    "a": "Les stickers résinés (doming) demandent un délai de production légèrement plus long que les stickers standard, en raison du processus de résinage et du temps de durcissement de la résine. En moyenne, comptez 5 à 7 jours ouvrés après validation du BAT."
+   },
+   "de": {
+    "q": "Wie lange dauert die Produktion von Doming-Aufklebern?",
+    "a": "Doming-Aufkleber brauchen etwas länger in der Produktion als Standard-Aufkleber – wegen des Doming-Verfahrens und der Aushärtezeit des Harzes. Im Schnitt dauert die Produktion 5–7 Werktage ab der Druckfreigabe."
+   },
+   "nl": {
+    "q": "Hoe lang duurt de productie van doming stickers?",
+    "a": "Doming stickers hebben een iets langere productietijd dan standaard stickers, vanwege het doming-proces en de uithardingstijd van de hars. Gemiddeld duurt de productie 5-7 werkdagen vanaf goedkeuring van de drukproef."
+   },
+   "_hash": "037821f5fe831ccd"
+  }
+ },
+ "faq_categories": {
+  "f302ed98-c829-4bae-a0d3-14f3c6689aef": {
+   "en": {
+    "name": "Materials"
+   },
+   "es": {
+    "name": "Materiales"
+   },
+   "fr": {
+    "name": "Matériaux"
+   },
+   "de": {
+    "name": "Materialien"
+   },
+   "nl": {
+    "name": "Materialen"
+   },
+   "_hash": "fcc0736ff3af63d6"
+  },
+  "fed42b56-2363-4e77-9d59-5071ca888ad0": {
+   "en": {
+    "name": "Protection & finishes"
+   },
+   "es": {
+    "name": "Protecciones y acabados"
+   },
+   "fr": {
+    "name": "Protections et finitions"
+   },
+   "de": {
+    "name": "Schutz und Veredelungen"
+   },
+   "nl": {
+    "name": "Bescherming en afwerkingen"
+   },
+   "_hash": "7ca89c2c81fc130c"
+  },
+  "eb6d27ac-9509-441a-bd1a-2991e5441100": {
+   "en": {
+    "name": "Custom Stickers"
+   },
+   "es": {
+    "name": "Pegatinas personalizadas"
+   },
+   "fr": {
+    "name": "Stickers personnalisés"
+   },
+   "de": {
+    "name": "Individuelle Aufkleber"
+   },
+   "nl": {
+    "name": "Stickers op maat"
+   },
+   "_hash": "7f9a5ef995439ece"
+  },
+  "1022629c-c622-488e-b767-598bc5b1df0b": {
+   "en": {
+    "name": "Domed Stickers"
+   },
+   "es": {
+    "name": "Pegatinas resinadas"
+   },
+   "fr": {
+    "name": "Stickers résinés"
+   },
+   "de": {
+    "name": "Doming-Aufkleber"
+   },
+   "nl": {
+    "name": "Doming stickers"
+   },
+   "_hash": "8a55b87ecac5ed4c"
+  },
+  "d889396a-b4da-4e25-9843-d795cde68c0f": {
+   "en": {
+    "name": "Raised Stickers"
+   },
+   "es": {
+    "name": "Pegatinas en relieve"
+   },
+   "fr": {
+    "name": "Stickers en relief"
+   },
+   "de": {
+    "name": "Relief-Aufkleber"
+   },
+   "nl": {
+    "name": "Reliëf stickers"
+   },
+   "_hash": "fa5ecc4747270698"
+  },
+  "38cb1136-a118-4c8b-8628-5ad498fdc1a7": {
+   "en": {
+    "name": "Labels"
+   },
+   "es": {
+    "name": "Etiquetas"
+   },
+   "fr": {
+    "name": "Étiquettes"
+   },
+   "de": {
+    "name": "Etiketten"
+   },
+   "nl": {
+    "name": "Etiketten"
+   },
+   "_hash": "0e898df606198ce1"
+  },
+  "72defe1f-aa9b-44c3-bc39-7b0e53d37197": {
+   "en": {
+    "name": "Window Decals"
+   },
+   "es": {
+    "name": "Vinilos para escaparate"
+   },
+   "fr": {
+    "name": "Stickers vitrine"
+   },
+   "de": {
+    "name": "Fensteraufkleber"
+   },
+   "nl": {
+    "name": "Raamstickers"
+   },
+   "_hash": "0f0bc543043cdd76"
+  },
+  "e1264c30-a859-4b46-b6ec-7b01374ebbef": {
+   "en": {
+    "name": "Sticker Sheets"
+   },
+   "es": {
+    "name": "Hojas de pegatinas"
+   },
+   "fr": {
+    "name": "Planches de stickers"
+   },
+   "de": {
+    "name": "Stickerbögen"
+   },
+   "nl": {
+    "name": "Stickervellen"
+   },
+   "_hash": "49fd3c45ad6fde44"
+  },
+  "cf0c2767-4275-4744-a0b9-2e6946b6e8cc": {
+   "en": {
+    "name": "Orders & shipping"
+   },
+   "es": {
+    "name": "Pedidos y envíos"
+   },
+   "fr": {
+    "name": "Commandes et livraison"
+   },
+   "de": {
+    "name": "Bestellungen und Versand"
+   },
+   "nl": {
+    "name": "Bestellingen en verzending"
+   },
+   "_hash": "ff24da5c4518d69f"
+  },
+  "e36de859-7afa-4e31-926f-f3deb23bffa3": {
+   "en": {
+    "name": "Returns & refunds"
+   },
+   "es": {
+    "name": "Devoluciones y reembolsos"
+   },
+   "fr": {
+    "name": "Retours et remboursements"
+   },
+   "de": {
+    "name": "Rückgabe und Erstattungen"
+   },
+   "nl": {
+    "name": "Retouren en terugbetalingen"
+   },
+   "_hash": "4c1f785b107063b9"
+  },
+  "51f487b1-8704-4acc-abb9-d651746ddde1": {
+   "en": {
+    "name": "General questions"
+   },
+   "es": {
+    "name": "Preguntas generales"
+   },
+   "fr": {
+    "name": "Questions générales"
+   },
+   "de": {
+    "name": "Allgemeine Fragen"
+   },
+   "nl": {
+    "name": "Algemene vragen"
+   },
+   "_hash": "614219c23c75bb8d"
+  }
+ },
+ "posts": {
+  "da18dd23-cf6f-4f5a-b13c-0bfc751b3971": {
+   "en": {
+    "slug": "new-collaboration-sephora-x-stickerprint",
+    "title": "New Collaboration: Sephora X Stickerprint",
+    "excerpt": "For the 2025 holiday campaign we created exclusive domed sticker sheets for Sephora.",
+    "content": "<p>We're excited to announce a new collaboration that's all about style and innovation ✨</p>\n<p>For the 2025 holiday campaign, we created exclusive domed sticker sheets for Sephora, designed to showcase the brand with a premium, durable, high-impact finish.</p>\n<p>A project that brings together design, quality and attention to detail, where the doming adds depth, shine and a tactile feel that makes all the difference. Exactly the kind of result we love achieving when we work alongside major brands.</p>\n<p>This collaboration confirms our commitment to supporting businesses with custom stickers made to measure, built to strengthen marketing campaigns and visual communication.</p>\n<p>👉 Do you have a brand and want professional stickers for your next campaign? Discover all our dedicated solutions on the <a href=\"/aziende\">Business page</a>. 💪🏻</p>"
+   },
+   "es": {
+    "slug": "nueva-colaboracion-sephora-x-stickerprint",
+    "title": "Nueva colaboración Sephora X Stickerprint",
+    "excerpt": "Para la campaña de Navidad 2025 hemos creado para Sephora hojas exclusivas de pegatinas resinadas.",
+    "content": "<p>Estamos felices de anunciar una nueva colaboración que huele a estilo e innovación ✨</p>\n<p>Para la campaña de Navidad 2025 hemos creado para Sephora hojas exclusivas de pegatinas resinadas, pensadas para realzar la marca con un acabado premium, resistente y de alto impacto visual.</p>\n<p>Un proyecto que une diseño, calidad y cuidado por el detalle, donde el resinado aporta profundidad, brillo y una sensación táctil que marca la diferencia. Justo el tipo de resultado que nos encanta conseguir cuando trabajamos junto a grandes marcas.</p>\n<p>Esta colaboración confirma nuestro compromiso de apoyar a las empresas con pegatinas personalizadas a medida, capaces de reforzar campañas de marketing y comunicación visual.</p>\n<p>👉 ¿Tienes una marca y quieres crear pegatinas profesionales para tu próxima campaña? Descubre todas nuestras soluciones dedicadas en la <a href=\"/aziende\">página Empresas</a>. 💪🏻</p>"
+   },
+   "fr": {
+    "slug": "nouvelle-collaboration-sephora-x-stickerprint",
+    "title": "Nouvelle collaboration Sephora X Stickerprint",
+    "excerpt": "Pour la campagne de Noël 2025, nous avons réalisé pour Sephora des planches exclusives de stickers résinés.",
+    "content": "<p>Nous sommes heureux d'annoncer une nouvelle collaboration qui sent bon le style et l'innovation ✨</p>\n<p>Pour la campagne de Noël 2025, nous avons réalisé pour Sephora des planches exclusives de stickers résinés, conçues pour mettre la marque en valeur avec une finition premium, résistante et à fort impact visuel.</p>\n<p>Un projet qui allie design, qualité et souci du détail, où le doming apporte profondeur, brillance et une sensation tactile qui fait toute la différence. Exactement le type de résultat que nous aimons obtenir lorsque nous travaillons aux côtés de grandes marques.</p>\n<p>Cette collaboration confirme notre engagement à accompagner les entreprises avec des stickers personnalisés sur mesure, capables de renforcer leurs campagnes marketing et leur communication visuelle.</p>\n<p>👉 Vous avez une marque et souhaitez créer des stickers professionnels pour votre prochaine campagne ? Découvrez toutes nos solutions dédiées sur la <a href=\"/aziende\">page Entreprises</a>. 💪🏻</p>"
+   },
+   "de": {
+    "slug": "neue-zusammenarbeit-sephora-x-stickerprint",
+    "title": "Neue Zusammenarbeit: Sephora X Stickerprint",
+    "excerpt": "Für die Weihnachtskampagne 2025 haben wir für Sephora exklusive Stickerbögen mit Doming-Aufklebern produziert.",
+    "content": "<p>Wir freuen uns, eine neue Zusammenarbeit anzukündigen, die nach Stil und Innovation duftet ✨</p>\n<p>Für die Weihnachtskampagne 2025 haben wir für Sephora exklusive Stickerbögen mit Doming-Aufklebern produziert – entwickelt, um die Marke mit einem hochwertigen, widerstandsfähigen Finish mit starker visueller Wirkung in Szene zu setzen.</p>\n<p>Ein Projekt, das Design, Qualität und Liebe zum Detail vereint: Das Doming sorgt für Tiefe, Glanz und ein haptisches Erlebnis, das den Unterschied macht. Genau die Art von Ergebnis, die wir lieben, wenn wir mit großen Marken zusammenarbeiten.</p>\n<p>Diese Zusammenarbeit bestätigt unseren Anspruch, Unternehmen mit individuellen Aufklebern nach Maß zu unterstützen – Aufkleber, die Marketingkampagnen und visuelle Kommunikation stärken.</p>\n<p>👉 Du hast eine Marke und willst professionelle Aufkleber für deine nächste Kampagne? Entdecke alle Lösungen für Unternehmen auf unserer <a href=\"/aziende\">Business-Seite</a>. 💪🏻</p>"
+   },
+   "nl": {
+    "slug": "nieuwe-samenwerking-sephora-x-stickerprint",
+    "title": "Nieuwe samenwerking Sephora X Stickerprint",
+    "excerpt": "Voor de kerstcampagne 2025 hebben we voor Sephora exclusieve stickervellen met doming stickers gemaakt.",
+    "content": "<p>We zijn blij om een nieuwe samenwerking aan te kondigen die ruikt naar stijl en innovatie ✨</p>\n<p>Voor de kerstcampagne 2025 hebben we voor Sephora exclusieve stickervellen met doming stickers gemaakt, ontworpen om het merk te laten stralen met een premium, slijtvaste afwerking met veel visuele impact.</p>\n<p>Een project waarin design, kwaliteit en oog voor detail samenkomen: de doming geeft diepte, glans en een voelbare afwerking die het verschil maakt. Precies het soort resultaat dat we graag neerzetten als we met grote merken samenwerken.</p>\n<p>Deze samenwerking bevestigt onze inzet om bedrijven te ondersteunen met stickers op maat die marketingcampagnes en visuele communicatie versterken.</p>\n<p>👉 Heb je een merk en wil je professionele stickers voor je volgende campagne? Ontdek al onze oplossingen voor bedrijven op de <a href=\"/aziende\">pagina Bedrijven</a>. 💪🏻</p>"
+   },
+   "_hash": "5beb9c1af7db9c03"
+  },
+  "af91d6ce-5f28-4f8e-8851-a6e2c0dffee8": {
+   "en": {
+    "slug": "welcome-to-the-new-stickerprint",
+    "title": "✨ Welcome to the New Stickerprint",
+    "excerpt": "We've got a brand-new look 😎",
+    "content": "<p>After months of hard work, we're thrilled to announce our brand-new website — completely redesigned in its look, its features and the shopping experience.</p>\n<p>A restyling built to simplify every step and make everything clearer, faster and, above all… closer to you.</p>\n<h2>🚀 More products, more choice</h2>\n<p>We've expanded our catalog with new formats, materials and finishes, giving you even more freedom to create your custom stickers and labels. Whether you're an individual, a designer or a business, you'll always find the perfect solution for your project.</p>\n<h2>💸 Better (and more transparent) prices</h2>\n<p>We've reworked our pricing to make it clearer, more competitive and free of surprises. Quantity discounts are applied automatically, so you can see right away how much you save. And thanks to the new free instant preview, you only pay after you've approved your design. Zero risk, just perfect results.</p>\n<h2>🧩 The new account area: everything under control</h2>\n<p>One of the features we're proudest of is the new account area, completely redesigned to give you maximum control in a simple, intuitive way. From here you can:</p>\n<ul><li>track the status of your orders in real time</li><li>follow your shipments step by step</li><li>reorder any product you've already printed with one click</li><li>save your billing, shipping and payment details to make every purchase even faster</li><li>and many more features coming soon</li></ul>\n<p>All designed to save you time and simplify every process.</p>\n<h2>🎨 Free proofs, always</h2>\n<p>Before you pay, you'll always see the print-ready preview of your artwork. Only after your approval will we move to production — because transparency and quality are at the heart of how we work.</p>\n<h2>💬 The new Stickerprint: simpler, faster, more yours</h2>\n<p>This restyling isn't just about looks: it's our way of giving you a more modern, clear and personalized experience. From choosing the material to delivery, everything has been optimized so you can create, order and receive perfect stickers… in just a few clicks.</p>"
+   },
+   "es": {
+    "slug": "bienvenidos-al-nuevo-stickerprint",
+    "title": "✨ Bienvenidos al nuevo Stickerprint",
+    "excerpt": "Nos hemos cambiado de look 😎",
+    "content": "<p>Después de meses de duro trabajo, estamos felices de presentar nuestra nueva web, completamente renovada: en el diseño, en las funciones y en la experiencia de compra.</p>\n<p>Un restyling pensado para simplificar cada paso y hacerlo todo más claro, más rápido y, sobre todo… más cercano a ti.</p>\n<h2>🚀 Más productos, más opciones</h2>\n<p>Hemos ampliado nuestro catálogo con nuevos formatos, materiales y acabados, para darte aún más libertad al crear tus pegatinas y etiquetas personalizadas. Seas un particular, un diseñador o una empresa, siempre encontrarás la solución perfecta para tu proyecto.</p>\n<h2>💸 Precios más económicos (y transparentes)</h2>\n<p>Hemos revisado nuestro sistema de precios para hacerlo más claro, más competitivo y sin sorpresas. Los descuentos por cantidad se aplican automáticamente, así ves al momento cuánto ahorras. Y gracias a la nueva vista previa gratuita de impresión, solo pagarás después de aprobar tu diseño. Cero riesgos, solo resultados perfectos.</p>\n<h2>🧩 La nueva área personal: todo bajo control</h2>\n<p>Una de las novedades de las que estamos más orgullosos es la nueva área personal, completamente rediseñada para darte el máximo control de forma sencilla e intuitiva. Desde aquí puedes:</p>\n<ul><li>seguir el estado de tus pedidos en tiempo real</li><li>rastrear los envíos paso a paso</li><li>volver a pedir con un clic cualquier producto ya impreso</li><li>guardar tus datos de facturación, envío y pago para que cada compra sea aún más rápida</li><li>y muchas otras funciones que llegarán muy pronto</li></ul>\n<p>Todo pensado para ahorrarte tiempo y simplificar cada proceso.</p>\n<h2>🎨 Pruebas de impresión gratuitas, siempre</h2>\n<p>Antes de pagar, siempre verás la vista previa de tu diseño listo para imprimir. Solo después de tu confirmación pasaremos a producción, porque la transparencia y la calidad son la base de nuestra forma de trabajar.</p>\n<h2>💬 El nuevo Stickerprint: más sencillo, más rápido, más tuyo</h2>\n<p>Este restyling no es solo una cuestión estética: es nuestra manera de ofrecerte una experiencia más moderna, clara y personalizada. Desde la elección del material hasta la entrega, todo está optimizado para que puedas crear, pedir y recibir pegatinas perfectas… en pocos clics.</p>"
+   },
+   "fr": {
+    "slug": "bienvenue-sur-le-nouveau-stickerprint",
+    "title": "✨ Bienvenue sur le nouveau Stickerprint",
+    "excerpt": "On s'est refait une beauté 😎",
+    "content": "<p>Après des mois de travail, nous sommes heureux de vous présenter notre nouveau site, entièrement repensé — dans son look, ses fonctionnalités et son expérience d'achat.</p>\n<p>Une refonte pensée pour simplifier chaque étape et rendre le tout plus clair, plus rapide et surtout… plus proche de vous.</p>\n<h2>🚀 Plus de produits, plus de choix</h2>\n<p>Nous avons élargi notre catalogue avec de nouveaux formats, matériaux et finitions, pour vous offrir encore plus de liberté dans la création de vos stickers et étiquettes personnalisés. Particulier, designer ou entreprise, vous trouverez toujours la solution parfaite pour votre projet.</p>\n<h2>💸 Des prix plus avantageux (et transparents)</h2>\n<p>Nous avons revu notre système de tarification pour le rendre plus clair, plus compétitif et sans surprise. Les remises sur quantité s'appliquent automatiquement, pour voir tout de suite combien vous économisez. Et grâce au nouvel aperçu d'impression gratuit, vous ne payez qu'après avoir validé votre design. Zéro risque, rien que des résultats parfaits.</p>\n<h2>🧩 Le nouvel espace personnel : tout sous contrôle</h2>\n<p>L'une des nouveautés dont nous sommes le plus fiers, c'est le nouvel espace personnel, entièrement repensé pour vous donner un contrôle total, simplement et intuitivement. Depuis cet espace, vous pouvez :</p>\n<ul><li>suivre l'état de vos commandes en temps réel</li><li>suivre vos expéditions étape par étape</li><li>recommander en un clic n'importe quel produit déjà imprimé</li><li>enregistrer vos données de facturation, de livraison et de paiement pour des achats encore plus rapides</li><li>et bien d'autres fonctionnalités à venir très bientôt</li></ul>\n<p>Tout est pensé pour vous faire gagner du temps et simplifier chaque étape.</p>\n<h2>🎨 BAT gratuit, toujours</h2>\n<p>Avant de payer, vous verrez toujours l'aperçu de votre visuel prêt à imprimer. Ce n'est qu'après votre validation que nous lancerons la production — parce que la transparence et la qualité sont au cœur de notre façon de travailler.</p>\n<h2>💬 Le nouveau Stickerprint : plus simple, plus rapide, plus à vous</h2>\n<p>Cette refonte n'est pas qu'une question d'esthétique : c'est notre façon de vous offrir une expérience plus moderne, plus claire et plus personnalisée. Du choix du matériau à la livraison, tout a été optimisé pour vous permettre de créer, commander et recevoir des stickers parfaits… en quelques clics.</p>"
+   },
+   "de": {
+    "slug": "willkommen-beim-neuen-stickerprint",
+    "title": "✨ Willkommen beim neuen Stickerprint",
+    "excerpt": "Wir haben uns einen neuen Look verpasst 😎",
+    "content": "<p>Nach Monaten harter Arbeit freuen wir uns, unsere neue Website vorzustellen – komplett erneuert: im Look, in den Funktionen und im Einkaufserlebnis.</p>\n<p>Ein Redesign, das jeden Schritt vereinfacht und alles klarer, schneller und vor allem… näher an dir macht.</p>\n<h2>🚀 Mehr Produkte, mehr Auswahl</h2>\n<p>Wir haben unser Sortiment um neue Formate, Materialien und Veredelungen erweitert, damit du noch mehr Freiheit beim Gestalten deiner individuellen Aufkleber und Etiketten hast. Ob Privatperson, Designer oder Unternehmen: Du findest immer die perfekte Lösung für dein Projekt.</p>\n<h2>💸 Günstigere (und transparente) Preise</h2>\n<p>Wir haben unser Preissystem überarbeitet – klarer, wettbewerbsfähiger und ohne Überraschungen. Mengenrabatte werden automatisch angewendet, du siehst also sofort, wie viel du sparst. Und dank der neuen kostenlosen Druckvorschau zahlst du erst, nachdem du dein Design freigegeben hast. Null Risiko, nur perfekte Ergebnisse.</p>\n<h2>🧩 Der neue Kundenbereich: alles im Griff</h2>\n<p>Eine der Neuerungen, auf die wir besonders stolz sind, ist der neue Kundenbereich – komplett neu gestaltet, damit du einfach und intuitiv die volle Kontrolle hast. Hier kannst du:</p>\n<ul><li>den Status deiner Bestellungen in Echtzeit verfolgen</li><li>deine Sendungen Schritt für Schritt tracken</li><li>jedes bereits gedruckte Produkt mit einem Klick nachbestellen</li><li>deine Rechnungs-, Versand- und Zahlungsdaten speichern, damit jeder Einkauf noch schneller geht</li><li>und viele weitere Funktionen nutzen, die bald dazukommen</li></ul>\n<p>Alles gemacht, um dir Zeit zu sparen und jeden Ablauf zu vereinfachen.</p>\n<h2>🎨 Kostenlose Druckvorschau, immer</h2>\n<p>Bevor du bezahlst, siehst du immer die druckfertige Vorschau deiner Grafik. Erst nach deiner Freigabe starten wir die Produktion – denn Transparenz und Qualität sind die Basis unserer Arbeit.</p>\n<h2>💬 Das neue Stickerprint: einfacher, schneller, mehr deins</h2>\n<p>Dieses Redesign ist nicht nur eine Frage der Optik: Es ist unsere Art, dir ein moderneres, klareres und persönlicheres Erlebnis zu bieten. Von der Materialwahl bis zur Lieferung ist alles darauf optimiert, dass du perfekte Aufkleber erstellen, bestellen und erhalten kannst… mit wenigen Klicks.</p>"
+   },
+   "nl": {
+    "slug": "welkom-bij-het-nieuwe-stickerprint",
+    "title": "✨ Welkom bij het nieuwe Stickerprint",
+    "excerpt": "We hebben een nieuwe look 😎",
+    "content": "<p>Na maanden hard werken zijn we blij om onze nieuwe website te presenteren – helemaal vernieuwd: in look, in functies en in winkelervaring.</p>\n<p>Een restyling die elke stap eenvoudiger maakt en alles duidelijker, sneller en vooral… dichter bij jou brengt.</p>\n<h2>🚀 Meer producten, meer keuze</h2>\n<p>We hebben ons assortiment uitgebreid met nieuwe formaten, materialen en afwerkingen, zodat je nog meer vrijheid hebt bij het maken van je stickers op maat en gepersonaliseerde etiketten. Of je nu particulier, designer of bedrijf bent: je vindt altijd de perfecte oplossing voor je project.</p>\n<h2>💸 Voordeligere (en transparante) prijzen</h2>\n<p>We hebben ons prijssysteem herzien: duidelijker, scherper en zonder verrassingen. Staffelkortingen worden automatisch toegepast, zodat je meteen ziet hoeveel je bespaart. En dankzij het nieuwe gratis printvoorbeeld betaal je pas nadat je je ontwerp hebt goedgekeurd. Nul risico, alleen perfecte resultaten.</p>\n<h2>🧩 Het nieuwe account: alles onder controle</h2>\n<p>Een van de vernieuwingen waar we het meest trots op zijn, is je nieuwe persoonlijke account, volledig opnieuw ontworpen om je op een simpele en intuïtieve manier maximale controle te geven. Vanuit hier kun je:</p>\n<ul><li>de status van je bestellingen in realtime volgen</li><li>je zendingen stap voor stap volgen</li><li>elk eerder gedrukt product met één klik opnieuw bestellen</li><li>je factuur-, verzend- en betaalgegevens opslaan, zodat elke aankoop nog sneller gaat</li><li>en nog veel meer functies die binnenkort volgen</li></ul>\n<p>Allemaal bedoeld om je tijd te besparen en elk proces eenvoudiger te maken.</p>\n<h2>🎨 Gratis drukproef, altijd</h2>\n<p>Voordat je betaalt, zie je altijd het drukklare voorbeeld van je ontwerp. Pas na jouw goedkeuring gaan we in productie – want transparantie en kwaliteit vormen de basis van hoe we werken.</p>\n<h2>💬 Het nieuwe Stickerprint: simpeler, sneller, meer van jou</h2>\n<p>Deze restyling is niet alleen een kwestie van uiterlijk: het is onze manier om je een modernere, duidelijkere en persoonlijkere ervaring te bieden. Van de keuze van het materiaal tot de levering: alles is geoptimaliseerd zodat je perfecte stickers kunt maken, bestellen en ontvangen… in een paar klikken.</p>"
+   },
+   "_hash": "7d534545e9715520"
+  }
+ },
+ "promos": {
+  "0106883e-ede7-4d9c-a70e-18cb6e32214d": {
+   "en": {
+    "product_label": "custom stickers",
+    "subtitle": "This week only: 250 custom stickers for €79, instant preview included.",
+    "chips": [
+     "Waterproof",
+     "Matte laminate"
+    ],
+    "includes": [
+     {
+      "label": "250 custom stickers",
+      "normally": "€171"
+     },
+     {
+      "label": "Instant file preview",
+      "normally": "included"
+     }
+    ],
+    "perks": [
+     {
+      "label": "Instant preview",
+      "saves": "1-2 days"
+     },
+     {
+      "label": "Production in 5 days",
+      "saves": "3-4 days"
+     },
+     {
+      "label": "Tracked express courier",
+      "saves": "1-2 days"
+     }
+    ],
+    "save_text": "8-10 days and €92",
+    "cta": "Upload your file to continue"
+   },
+   "es": {
+    "product_label": "pegatinas personalizadas",
+    "subtitle": "Solo esta semana: 250 pegatinas personalizadas por 79 €, vista previa inmediata incluida.",
+    "chips": [
+     "Resistentes al agua",
+     "Laminado mate"
+    ],
+    "includes": [
+     {
+      "label": "250 pegatinas personalizadas",
+      "normally": "171 €"
+     },
+     {
+      "label": "Vista previa automática del archivo",
+      "normally": "incluida"
+     }
+    ],
+    "perks": [
+     {
+      "label": "Vista previa inmediata",
+      "saves": "1-2 días"
+     },
+     {
+      "label": "Producción en 5 días",
+      "saves": "3-4 días"
+     },
+     {
+      "label": "Mensajería exprés con seguimiento",
+      "saves": "1-2 días"
+     }
+    ],
+    "save_text": "8-10 días y 92 €",
+    "cta": "Sube tu archivo para continuar"
+   },
+   "fr": {
+    "product_label": "stickers personnalisés",
+    "subtitle": "Cette semaine seulement : 250 stickers personnalisés à 79 €, aperçu immédiat compris.",
+    "chips": [
+     "Résistants à l'eau",
+     "Lamination mate"
+    ],
+    "includes": [
+     {
+      "label": "250 stickers personnalisés",
+      "normally": "171 €"
+     },
+     {
+      "label": "Aperçu automatique du fichier",
+      "normally": "inclus"
+     }
+    ],
+    "perks": [
+     {
+      "label": "Aperçu immédiat",
+      "saves": "1-2 jours"
+     },
+     {
+      "label": "Production en 5 jours",
+      "saves": "3-4 jours"
+     },
+     {
+      "label": "Transporteur express avec suivi",
+      "saves": "1-2 jours"
+     }
+    ],
+    "save_text": "8-10 jours et 92 €",
+    "cta": "Chargez votre fichier pour continuer"
+   },
+   "de": {
+    "product_label": "individuelle Aufkleber",
+    "subtitle": "Nur diese Woche: 250 individuelle Aufkleber für 79 €, sofortige Vorschau inklusive.",
+    "chips": [
+     "Wasserfest",
+     "Matte Laminierung"
+    ],
+    "includes": [
+     {
+      "label": "250 individuelle Aufkleber",
+      "normally": "171 €"
+     },
+     {
+      "label": "Automatische Vorschau deiner Datei",
+      "normally": "inklusive"
+     }
+    ],
+    "perks": [
+     {
+      "label": "Sofortige Vorschau",
+      "saves": "1–2 Tage"
+     },
+     {
+      "label": "Produktion in 5 Tagen",
+      "saves": "3–4 Tage"
+     },
+     {
+      "label": "Expressversand mit Tracking",
+      "saves": "1–2 Tage"
+     }
+    ],
+    "save_text": "8–10 Tage und 92 €",
+    "cta": "Lade deine Datei hoch, um fortzufahren"
+   },
+   "nl": {
+    "product_label": "stickers op maat",
+    "subtitle": "Alleen deze week: 250 stickers op maat voor € 79, direct voorbeeld inbegrepen.",
+    "chips": [
+     "Waterbestendig",
+     "Mat laminaat"
+    ],
+    "includes": [
+     {
+      "label": "250 stickers op maat",
+      "normally": "€ 171"
+     },
+     {
+      "label": "Automatisch voorbeeld van je bestand",
+      "normally": "inbegrepen"
+     }
+    ],
+    "perks": [
+     {
+      "label": "Direct voorbeeld",
+      "saves": "1-2 dagen"
+     },
+     {
+      "label": "Productie in 5 dagen",
+      "saves": "3-4 dagen"
+     },
+     {
+      "label": "Expresskoerier met track & trace",
+      "saves": "1-2 dagen"
+     }
+    ],
+    "save_text": "8-10 dagen en € 92",
+    "cta": "Upload je bestand om verder te gaan"
+   },
+   "_hash": "e7b61edb6a6928bd"
+  }
+ },
+ "post_categories": {
+  "News": {
+   "en": "News",
+   "es": "Noticias",
+   "fr": "Actualités",
+   "de": "News",
+   "nl": "Nieuws"
+  },
+  "Consigli": {
+   "en": "Tips",
+   "es": "Consejos",
+   "fr": "Conseils",
+   "de": "Tipps",
+   "nl": "Tips"
+  },
+  "Idee": {
+   "en": "Ideas",
+   "es": "Ideas",
+   "fr": "Idées",
+   "de": "Ideen",
+   "nl": "Ideeën"
+  }
+ }
+}

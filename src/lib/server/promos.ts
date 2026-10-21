@@ -1,4 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import type { Lang } from '$lib/i18n';
+import { traduzioneDi } from './contenuti-tradotti';
 
 export interface PromoInclude { label: string; normally: string }
 export interface PromoPerk { label: string; saves: string }
@@ -10,6 +12,7 @@ export interface Promo {
 	cycle_days: number; // >0: alla scadenza riparte da sola di tanti giorni
 	forma: string; materiale: string; finitura: string | null;
 	chips: string[]; includes: PromoInclude[]; perks: PromoPerk[]; save_text: string | null; sizes: PromoSize[]; cta: string;
+	tr?: Record<string, unknown> | null;
 	w: number; h: number; // misura unica dell'offerta (mm)
 }
 
@@ -28,7 +31,7 @@ export function normalizePromo(r: Record<string, unknown>): Promo {
 		forma: String(r.forma ?? 'sagomato'), materiale: String(r.materiale ?? 'bianco'), finitura: (r.finitura as string) ?? null,
 		chips: arr<string>(r.chips).map(String), includes: arr<PromoInclude>(r.includes), perks: arr<PromoPerk>(r.perks), save_text: (r.save_text as string) ?? null,
 		sizes: arr<PromoSize>(r.sizes).map((s) => ({ label: String(s.label), w: Number(s.w), h: Number(s.h ?? s.w), price: Number(s.price) })),
-		cta: String(r.cta ?? 'Carica il file per continuare'),
+		cta: String(r.cta ?? 'Carica il file per continuare'), tr: (r.tr as Record<string, unknown>) ?? null,
 		w: Number(r.w_mm ?? 50) || 50, h: Number(r.h_mm ?? r.w_mm ?? 50) || 50
 	};
 }
@@ -37,13 +40,24 @@ export function normalizePromo(r: Record<string, unknown>): Promo {
 const PROMO_MS = 2 * 60 * 1000;
 let promoCache: { at: number; value: Promo[] } | null = null;
 export function invalidatePromos() { promoCache = null; }
-export async function loadPromos(supabase: SupabaseClient, all = false): Promise<Promo[]> {
+export async function loadPromos(supabase: SupabaseClient, all = false, lang: Lang = 'it'): Promise<Promo[]> {
 	/* cache in memoria per la pagina pubblica (2 minuti, rinnovo in sottofondo): la dashboard legge sempre dal database */
-	if (!all && promoCache && Date.now() - promoCache.at < PROMO_MS) return promoCache.value;
-	if (!all && promoCache) { loadPromosFresh(supabase, false).then((v) => { promoCache = { at: Date.now(), value: v }; }).catch(() => {}); return promoCache.value; }
+	if (!all && promoCache && Date.now() - promoCache.at < PROMO_MS) return promoCache.value.map((p) => promoTradotta(p, lang));
+	if (!all && promoCache) { loadPromosFresh(supabase, false).then((v) => { promoCache = { at: Date.now(), value: v }; }).catch(() => {}); return promoCache.value.map((p) => promoTradotta(p, lang)); }
 	const v = await loadPromosFresh(supabase, all);
 	if (!all) promoCache = { at: Date.now(), value: v };
-	return v;
+	return all ? v : v.map((p) => promoTradotta(p, lang));
+}
+/** campi di testo dell'offerta nella lingua (tr del database o file), il resto com'e' */
+const CAMPI_TESTO = ['product_label', 'subtitle', 'chips', 'includes', 'perks', 'save_text', 'cta'] as const;
+export function promoTradotta(p: Promo, lang: Lang): Promo {
+	if (lang === 'it') return p;
+	const it: Record<string, unknown> = {}; for (const k of CAMPI_TESTO) it[k] = p[k];
+	const t = traduzioneDi('promos', { id: p.id, tr: p.tr ?? null }, lang, it);
+	if (!t) return p;
+	const out = { ...p };
+	for (const k of CAMPI_TESTO) if (t[k] != null) (out as unknown as Record<string, unknown>)[k] = t[k];
+	return out;
 }
 async function loadPromosFresh(supabase: SupabaseClient, all: boolean): Promise<Promo[]> {
 	try {

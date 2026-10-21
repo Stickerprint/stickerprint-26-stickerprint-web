@@ -5,7 +5,7 @@ import { redirect, type Handle } from '@sveltejs/kit';
 import { isPrivatePath, isProductionHost } from '$lib/seo';
 import { sequence } from '@sveltejs/kit/hooks';
 import { PUBLIC_SUPABASE_ANON_KEY, PUBLIC_SUPABASE_URL } from '$env/static/public';
-import { LOCALES, LOCALE_COOKIE, PREVIEW_COOKIE, activeLocales, detectLocale, isLocale, isLocalizable, localeFromPath, localizePath } from '$lib/i18n';
+import { LOCALES, LOCALE_COOKIE, PREVIEW_COOKIE, activeLocales, detectLocale, isLocale, isLocalizable, localeFromPath, localizePath, stripLocale } from '$lib/i18n';
 
 /**
  * 1) Crea un client Supabase per ogni richiesta, con sessione letta/scritta nei cookie.
@@ -71,6 +71,8 @@ const locale: Handle = async ({ event, resolve }) => {
 	if (inUrl) {
 		// prefisso di una lingua non online: si torna all'italiano
 		if (!ammessa(inUrl)) { metti('it'); redirect(302, rest + event.url.search); }
+		/* slug italiano sotto un prefisso estero (/es/offerte): un solo URL per pagina, quello in lingua (/es/ofertas) */
+		if (inUrl !== 'it' && event.request.method === 'GET') { const giusto = localizePath(rest, inUrl); if (giusto !== path && isLocalizable(rest)) redirect(301, giusto + event.url.search); }
 		event.locals.locale = inUrl;
 		metti(inUrl);
 	} else {
@@ -90,7 +92,10 @@ const authGuard: Handle = async ({ event, resolve }) => {
 	event.locals.session = session;
 	event.locals.user = user;
 
-	const path = event.url.pathname;
+	/* percorso senza prefisso di lingua e con lo slug interno (/de/konto → /account): le regole valgono in tutte le lingue;
+	   i redirect tornano nella lingua della pagina */
+	const path = stripLocale(event.url.pathname);
+	const inLingua = (p: string) => localizePath(p, event.locals.locale ?? 'it');
 
 	/* Prove di stampa del vecchio sito (/proof/<token> nelle email di prima del cambio). Il vecchio sito e' ancora acceso
 	   e ci si puo' ordinare: mandarci TUTTI i link vecchi ha fatto nascere due ordini la' (1/10/2026, clienti che hanno
@@ -100,11 +105,11 @@ const authGuard: Handle = async ({ event, resolve }) => {
 		const token = path.slice(7).split('/')[0];
 		const h = token ? [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token)))].map((b) => b.toString(16).padStart(2, '0')).join('').slice(0, 24) : '';
 		if (OPEN_LEGACY_PROOFS.has(h)) redirect(302, `https://stickerprint.pages.dev${path}${event.url.search}`);
-		redirect(302, '/account/ordini');
+		redirect(302, inLingua('/account/ordini'));
 	}
 
 	if (!session && PROTECTED_PREFIXES.some((p) => path.startsWith(p))) {
-		redirect(303, `/login?next=${encodeURIComponent(path)}`);
+		redirect(303, `${inLingua('/login')}?next=${encodeURIComponent(inLingua(path))}`);
 	}
 	// area amministratore: login dedicato
 	if (!session && path.startsWith('/dashboard') && path !== DASHBOARD_LOGIN) {
@@ -115,7 +120,7 @@ const authGuard: Handle = async ({ event, resolve }) => {
 		redirect(303, `${DASHBOARD_LOGIN}?next=${encodeURIComponent(path + event.url.search)}`);
 	}
 	if (session && GUEST_ONLY.includes(path)) {
-		redirect(303, '/account');
+		redirect(303, inLingua('/account'));
 	}
 
 	return resolve(event);

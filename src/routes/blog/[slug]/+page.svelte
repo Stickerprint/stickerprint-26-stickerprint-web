@@ -15,10 +15,10 @@
 
 <article class="section container post">
 	<a class="link" href={path('/blog')}>{t('pagine.blog.torna')}</a>
-	<span class="tag tag--green" style="display:inline-block;margin:18px 0 10px">{p.category}</span>
+	<span class="tag tag--green" style="display:inline-block;margin:18px 0 10px">{p.categoria}</span>
 	<h1 style="font-size:clamp(30px,4vw,48px);line-height:1.08">{p.title}</h1>
 	<p class="meta" style="color:var(--muted);font-size:13.5px;margin-top:10px">{t('pagine.blog.pubblicato', { autore: p.author, data: dataIn(p.published_at ?? p.created_at) })}</p>
 	{#if p.cover_url}<img class="post__cover" src={p.cover_url} alt="" />{/if}
-	<!-- contenuto scritto dallo staff nella dashboard (HTML): gli articoli restano in italiano -->
+	<!-- contenuto scritto dallo staff nella dashboard (HTML), tradotto nelle altre lingue dal lavoro di traduzione -->
 	<div class="post__body">{@html p.content}</div>
 </article>
