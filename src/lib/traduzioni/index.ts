@@ -37,7 +37,7 @@ export function t(locale: LocaleCode, chiave: string, params?: Params): string {
 }
 export const traduttore = (locale: LocaleCode): T => (chiave, params) => t(locale, chiave, params);
 /** t() a partire dalla lingua (per email e PDF, dove si ha la lingua del cliente e non il locale) */
-export const perLingua = (lang: Lang): LocaleCode => (Object.values(LOCALES).find((l) => l.lang === lang)?.code ?? 'it');
+export const perLingua = (lang: Lang): LocaleCode => (lang === 'en' ? 'en' : (Object.values(LOCALES).find((l) => l.lang === lang)?.code ?? 'it'));
 
 /* ------------------------------------------------------------------ numeri, prezzi, date per lingua */
 /** prezzo a partire dagli euro: nella valuta del locale (dollari col listino), formato della lingua */
@@ -73,4 +73,4 @@ export function usaLingua(): Lingua {
 	return getContext<Lingua>(CHIAVE) ?? creaLingua('it');
 }
 /** nomi delle lingue, per l'avviso "questo sito è disponibile in …" (ogni nome nella propria lingua) */
-export const NOME_LINGUA: Record<LocaleCode, string> = { it: 'italiano', es: 'español', fr: 'français', de: 'Deutsch', nl: 'Nederlands', us: 'English' };
+export const NOME_LINGUA: Record<LocaleCode, string> = { it: 'italiano', es: 'español', fr: 'français', de: 'Deutsch', nl: 'Nederlands', en: 'English', us: 'English (US)' };

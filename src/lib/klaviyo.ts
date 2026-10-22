@@ -13,11 +13,11 @@ function kl(args: unknown[]) {
 	window.klaviyo = window.klaviyo || ([] as unknown as NonNullable<Window['klaviyo']>);
 	window.klaviyo.push(args);
 }
-/** lingua della pagina (it/es/fr/de/nl/en) e prefisso del sito: proprieta' di profilo `lingua`/`sito` su Klaviyo, per segmenti e flussi in lingua */
+/** lingua della pagina (it/es/fr/de/nl/en) e prefisso del sito (en = inglese in euro, us = dollari): proprieta' di profilo `lingua`/`sito` su Klaviyo, per segmenti e flussi in lingua */
 function linguaPagina(): Record<string, string> {
 	if (!browser) return {};
 	const lang = (document.documentElement.lang || 'it').slice(0, 2);
-	const m = location.pathname.match(/^\/(es|fr|de|nl|us)(?=\/|$)/);
+	const m = location.pathname.match(/^\/(es|fr|de|nl|en|us)(?=\/|$)/);
 	return { lingua: lang, sito: m ? m[1] : 'it' };
 }
 /** importi nella valuta del cliente: sul sito /us i dollari del listino (le email di Klaviyo mostrano "$"), altrove euro */

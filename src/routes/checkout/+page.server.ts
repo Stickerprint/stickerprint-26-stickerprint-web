@@ -38,7 +38,7 @@ function adminClient(): SupabaseClient | null {
 	return key ? createClient(PUBLIC_SUPABASE_URL, key, { auth: { persistSession: false } }) : null;
 }
 
-export const load: PageServerLoad = async ({ url, locals: { supabase, user, locale } }) => {
+export const load: PageServerLoad = async ({ url, request, locals: { supabase, user, locale } }) => {
 	const ship = estimatedShipDate(5);
 	/* date di spedizione nella lingua del sito (giorno della settimana, giorno, mese) */
 	const loc = LOCALES[locale] ?? LOCALES.it;
@@ -46,7 +46,10 @@ export const load: PageServerLoad = async ({ url, locals: { supabase, user, loca
 	const cancelledGroup = url.searchParams.get('annullato') === '1' ? url.searchParams.get('g') : null;
 	if (cancelledGroup && /^[0-9a-f-]{36}$/.test(cancelledGroup)) { const a = adminClient(); if (a) await cancelPendingCheckout(a, cancelledGroup); }
 	{ const a = adminClient(); if (a) expireStaleCheckouts(a).catch(() => {}); }
-	const base = { paesi: paesiPer(locale), paeseDefault: paesiPer(locale)[0], stati: locale === 'us' ? STATI_USA : null, shipDate: dataIn(loc, ship, true), expressDate: dataIn(loc, estimatedShipDate(3), true), expressRate: EXPRESS_RATE, guestAllowed: !!env.SUPABASE_SERVICE_ROLE_KEY, online: stripeConfigured(), stripeKey: stripeConfigured() ? (pub.PUBLIC_STRIPE_PUBLISHABLE_KEY ?? '') : '', paypal: paypalConfigured(), cancelled: !!cancelledGroup };
+	const paesi = paesiPer(locale);
+	/* paese proposto: quello dell'IP se e' fra quelli serviti (un belga su /fr vede BE, un portoghese su /en vede PT) */
+	const ipCountry = (request.headers.get('x-vercel-ip-country') ?? '').toUpperCase();
+	const base = { paesi, paeseDefault: paesi.includes(ipCountry) ? ipCountry : paesi[0], stati: locale === 'us' ? STATI_USA : null, shipDate: dataIn(loc, ship, true), expressDate: dataIn(loc, estimatedShipDate(3), true), expressRate: EXPRESS_RATE, guestAllowed: !!env.SUPABASE_SERVICE_ROLE_KEY, online: stripeConfigured(), stripeKey: stripeConfigured() ? (pub.PUBLIC_STRIPE_PUBLISHABLE_KEY ?? '') : '', paypal: paypalConfigured(), cancelled: !!cancelledGroup };
 	if (!user) return { ...base, profile: null, addresses: [], credit: 0, loyalty: null, orderCount: 0, lifetimeValue: 0, savedCards: [], canSaveCard: false };
 	const [{ data: profile }, { data: addresses }, { data: credit }, { data: loyalty }] = await Promise.all([
 		supabase.from('profiles').select('full_name, email, phone, company_name, vat_number, fiscal_code, sdi_code').eq('id', user.id).maybeSingle(),

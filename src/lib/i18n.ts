@@ -1,7 +1,8 @@
 /**
  * Lingue e valute del sito pubblico (la dashboard resta in italiano).
  *
- * Sei "locali": it (/), es (/es), fr (/fr), de (/de), nl (/nl) in euro, us (/us) in inglese e dollari.
+ * Sette "locali": it (/), es (/es), fr (/fr), de (/de), nl (/nl) in euro, en (/en: inglese in euro per tutti gli altri
+ * paesi, Portogallo, Finlandia, Regno Unito... — Mattia 22/10/2026) e us (/us) in inglese e dollari.
  * - L'URL comanda: /de/adesivi-personalizzati e' la pagina tedesca; src/hooks.ts (reroute) toglie il prefisso
  *   per trovare la route, l'hook server legge il prefisso e mette la lingua in locals.locale.
  * - PUBLIC_LOCALES (es. "it,de,us") dice quali lingue sono ONLINE: le altre rispondono in italiano finche'
@@ -13,7 +14,7 @@
 import { env } from '$env/dynamic/public';
 import { slugInterno, slugLocale } from './slugs';
 
-export type LocaleCode = 'it' | 'es' | 'fr' | 'de' | 'nl' | 'us';
+export type LocaleCode = 'it' | 'es' | 'fr' | 'de' | 'nl' | 'en' | 'us';
 export type Lang = 'it' | 'es' | 'fr' | 'de' | 'nl' | 'en';
 export type Currency = 'EUR' | 'USD';
 export interface Locale {
@@ -33,6 +34,8 @@ export const LOCALES: Record<LocaleCode, Locale> = {
 	fr: { code: 'fr', lang: 'fr', currency: 'EUR', hreflang: 'fr', intl: 'fr-FR', label: 'Français · € EUR', path: '/fr', flag: 'fr', countries: ['FR', 'BE', 'LU', 'MC'], freeShipping: 69 },
 	de: { code: 'de', lang: 'de', currency: 'EUR', hreflang: 'de', intl: 'de-DE', label: 'Deutsch · € EUR', path: '/de', flag: 'de', countries: ['DE', 'AT'], freeShipping: 69 },
 	nl: { code: 'nl', lang: 'nl', currency: 'EUR', hreflang: 'nl', intl: 'nl-NL', label: 'Nederlands · € EUR', path: '/nl', flag: 'nl', countries: ['NL'], freeShipping: 69 },
+	/* en PRIMA di us: dove si ha solo la lingua (email, PDF, perLingua) l'inglese e' quello in euro */
+	en: { code: 'en', lang: 'en', currency: 'EUR', hreflang: 'en', intl: 'en-IE', label: 'English · € EUR', path: '/en', flag: 'en', countries: [], freeShipping: 69 },
 	us: { code: 'us', lang: 'en', currency: 'USD', hreflang: 'en-US', intl: 'en-US', label: 'English (US) · $ USD', path: '/us', flag: 'us', countries: ['US'], freeShipping: 99 }
 };
 export const LOCALE_CODES = Object.keys(LOCALES) as LocaleCode[];
@@ -53,9 +56,11 @@ export function activeLocales(): LocaleCode[] {
 const NON_LOCALIZZATI = ['/api', '/dashboard', '/studio', '/set-locale', '/robots.txt', '/sitemap.xml', '/sw.js', '/manifest.webmanifest', '/auth', '/logout', '/proof'];
 export const isLocalizable = (pathname: string) => !NON_LOCALIZZATI.some((p) => pathname === p || pathname.startsWith(p + '/'));
 
+/** prefisso di lingua in testa al percorso (stessa espressione in src/params/locale.ts, che non puo' importare da qui) */
+export const PREFIX_RE = /^\/(es|fr|de|nl|en|us)(?=\/|$)/;
 /** dal percorso: la lingua del prefisso (null = italiano / nessun prefisso) e il percorso INTERNO senza prefisso (slug italiani) */
 export function localeFromPath(pathname: string): { code: LocaleCode | null; rest: string } {
-	const m = pathname.match(/^\/(es|fr|de|nl|us)(?=\/|$)/);
+	const m = pathname.match(PREFIX_RE);
 	if (!m) return { code: null, rest: pathname };
 	const code = m[1] as LocaleCode;
 	const rest = pathname.slice(m[0].length) || '/';
@@ -76,6 +81,8 @@ export function detectLocale(country: string | null, acceptLanguage: string | nu
 	const ok = (c: LocaleCode) => allowed.includes(c);
 	const c = (country ?? '').toUpperCase();
 	for (const l of Object.values(LOCALES)) if (l.countries.includes(c) && ok(l.code)) return l.code;
+	/* ogni altro paese (Portogallo, Finlandia, Regno Unito, Svizzera no: e' con l'italiano): inglese in euro */
+	if (c && c !== 'IT' && ok('en')) return 'en';
 	const langs = (acceptLanguage ?? '').toLowerCase().split(',').map((s) => s.trim().split(';')[0].slice(0, 2));
 	for (const lang of langs) {
 		const hit = Object.values(LOCALES).find((l) => l.lang === lang && ok(l.code) && l.code !== 'us');

@@ -58,7 +58,7 @@
 
 	// voce evidenziata (gialla) quando si è in una pagina della sezione
 	const sectionActive = (l: (typeof links)[number]) => {
-		const path = page.url.pathname.replace(/^\/(es|fr|de|nl|us)(?=\/|$)/, '');
+		const path = page.url.pathname.replace(/^\/(es|fr|de|nl|en|us)(?=\/|$)/, '');
 		return l.items ? l.items.some((it) => path.startsWith(it.href)) : path.startsWith(l.href);
 	};
 

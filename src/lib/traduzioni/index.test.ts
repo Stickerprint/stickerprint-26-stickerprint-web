@@ -10,7 +10,7 @@ describe('traduzioni', () => {
 		const base = chiavi(it);
 		for (const [lang, m] of Object.entries(MESSAGGI)) {
 			expect(chiavi(m), lang).toEqual(base);
-			for (const k of base) expect(t(lang === 'en' ? 'us' : (lang as 'it'), k), `${lang}.${k}`).not.toBe('');
+			for (const k of base) expect(t(lang === 'en' ? 'en' : (lang as 'it'), k), `${lang}.${k}`).not.toBe('');
 		}
 	});
 	prova('t riempie i segnaposto e torna la chiave se manca', () => {
@@ -36,8 +36,12 @@ describe('percorsi', () => {
 		expect(detectLocale('DE', 'de-DE,de;q=0.9')).toBe('de');
 		expect(detectLocale('US', 'en-US')).toBe('us');
 		expect(detectLocale('BE', 'fr-BE,fr')).toBe('fr');
-		expect(detectLocale('GB', 'en-GB')).toBe('us');
-		expect(detectLocale('PT', 'pt-PT')).toBe('it');
+		expect(detectLocale('GB', 'en-GB')).toBe('en');
+		expect(detectLocale('PT', 'pt-PT')).toBe('en');
+		expect(detectLocale('CH', 'de-CH')).toBe('it');
+		expect(detectLocale(null, 'en-GB,en')).toBe('en');
+		expect(detectLocale('PT', 'pt-PT', ['it', 'us'])).toBe('it');
+		expect(detectLocale('GB', 'en-GB', ['it', 'us'])).toBe('us');
 		expect(detectLocale('DE', 'de', ['it', 'us'])).toBe('it');
 	});
 });

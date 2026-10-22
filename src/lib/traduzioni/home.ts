@@ -152,7 +152,7 @@ const en: Home = {
 		tiTornano: 'you get back up to',
 		vaiCredito: 'Go to your credit →',
 		creaAccount: 'Create your account →',
-		nota: 'Credit is calculated on products before tax and is valid for 6 months. 1 point for every dollar spent.',
+		nota: 'Credit is calculated on products before tax and is valid for 6 months. 1 point for every euro (or dollar) spent.',
 		creator: 'Creator',
 		partner: 'Partner',
 		ambassador: 'Ambassador',

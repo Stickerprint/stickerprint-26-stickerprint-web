@@ -19,7 +19,7 @@
 	let { data, children } = $props();
 	/* lingua della pagina per tutti i componenti (t, percorsi con prefisso) */
 	impostaLingua(data.locale);
-	/* hreflang: la stessa pagina nelle lingue online (in anteprima tutte), x-default = italiano */
+	/* hreflang: la stessa pagina nelle lingue online (in anteprima tutte), x-default = /en (inglese in euro) quando e' online, altrimenti italiano */
 	const alternates = $derived.by(() => {
 		const base = stripLocale(page.url.pathname);
 		const codes = data.anteprimaLingue ? (Object.keys(LOCALES) as (keyof typeof LOCALES)[]) : activeLocales();
@@ -50,7 +50,7 @@
 </script>
 
 <svelte:head>
-	{#if noindex}<meta name="robots" content="noindex, nofollow" />{:else}<link rel="canonical" href={canonical} />{#if alternates.length > 1}{#each alternates as a (a.hreflang)}<link rel="alternate" hreflang={a.hreflang} href={a.href} />{/each}<link rel="alternate" hreflang="x-default" href={canonicalUrl(stripLocale(page.url.pathname))} />{/if}<meta name="robots" content="index, follow, max-image-preview:large" />{/if}
+	{#if noindex}<meta name="robots" content="noindex, nofollow" />{:else}<link rel="canonical" href={canonical} />{#if alternates.length > 1}{#each alternates as a (a.hreflang)}<link rel="alternate" hreflang={a.hreflang} href={a.href} />{/each}<link rel="alternate" hreflang="x-default" href={canonicalUrl(localizePath(stripLocale(page.url.pathname), activeLocales().includes('en') ? 'en' : 'it'))} />{/if}<meta name="robots" content="index, follow, max-image-preview:large" />{/if}
 	<meta property="og:site_name" content={SITE_NAME} />
 	{#if tracking && !isDashboard}{@html GTM_HEAD}{/if}
 </svelte:head>

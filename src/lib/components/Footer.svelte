@@ -39,6 +39,7 @@
 	{:else if f === 'es'}<svg viewBox="0 0 3 2" preserveAspectRatio="none" aria-hidden="true"><rect width="3" height="2" fill="#aa151b" /><rect y="0.5" width="3" height="1" fill="#f1bf00" /></svg>
 	{:else if f === 'de'}<svg viewBox="0 0 3 2" preserveAspectRatio="none" aria-hidden="true"><rect width="3" height="2" fill="#000" /><rect y="0.667" width="3" height="0.667" fill="#dd0000" /><rect y="1.333" width="3" height="0.667" fill="#ffce00" /></svg>
 	{:else if f === 'nl'}<svg viewBox="0 0 3 2" preserveAspectRatio="none" aria-hidden="true"><rect width="3" height="2" fill="#21468b" /><rect width="3" height="1.333" fill="#fff" /><rect width="3" height="0.667" fill="#ae1c28" /></svg>
+	{:else if f === 'en'}<svg viewBox="0 0 3 2" aria-hidden="true"><rect width="3" height="2" fill="#003399" />{#each Array.from({ length: 12 }, (_, i) => i) as i (i)}<circle cx={1.5 + 0.62 * Math.cos((i * Math.PI) / 6)} cy={1 + 0.62 * Math.sin((i * Math.PI) / 6)} r="0.1" fill="#ffcc00" />{/each}</svg>
 	{:else}<svg viewBox="0 0 30 20" aria-hidden="true"><rect width="30" height="20" fill="#fff" />{#each [0, 2, 4, 6, 8, 10, 12] as y (y)}<rect y={(y * 20) / 13} width="30" height={20 / 13} fill="#b22234" />{/each}<rect width="12" height="10.77" fill="#3c3b6e" /></svg>{/if}
 {/snippet}
 

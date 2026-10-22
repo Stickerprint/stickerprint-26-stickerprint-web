@@ -25,7 +25,8 @@ export function paesiPer(code: LocaleCode): string[] {
 	if (code === 'us') return ['US'];
 	if (code === 'it' && activeLocales().length === 1) return ['IT'];
 	const ue = ['IT', 'ES', 'FR', 'DE', 'NL', 'BE', 'AT', 'LU', 'PT', 'IE', ...PAESI_UE.filter((p) => !['ES', 'FR', 'DE', 'NL', 'BE', 'AT', 'LU', 'PT', 'IE'].includes(p))];
-	return [primo, ...ue.filter((p) => p !== primo)];
+	/* /en (inglese per tutta l'Europa) non ha un paese suo: la lista UE com'e', il checkout propone quello dell'IP */
+	return primo ? [primo, ...ue.filter((p) => p !== primo)] : ue;
 }
 export const valutaDi = (zona: Zona): Currency => (zona === 'us' ? 'USD' : 'EUR');
 /** IVA applicata: Italia e UE (consumatori) 22% italiana finche' non c'e' l'OSS; USA niente */

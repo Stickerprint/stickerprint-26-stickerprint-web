@@ -13,6 +13,7 @@ describe('mercati', () => {
 		expect(paesiPer('it')[0]).toBe('IT'); expect(paesiPer('it')).not.toContain('US');
 		expect(paesiPer('de')[0]).toBe('DE'); expect(paesiPer('de')).toContain('FR'); expect(paesiPer('de')).not.toContain('US');
 		expect(paesiPer('us')).toEqual(['US']);
+		expect(paesiPer('en')).toContain('PT'); expect(paesiPer('en')).toContain('IT'); expect(paesiPer('en')).not.toContain('US');
 	});
 	it('codici postali', () => {
 		expect(capValido('20121', 'IT')).toBe(true); expect(capValido('2012', 'IT')).toBe(false);

@@ -5,7 +5,7 @@ La dashboard e lo Studio restano in italiano. Questo file e' la guida per chi tr
 
 ## Come funziona nel codice
 
-- Lingua e valuta: `src/lib/i18n.ts` (locali, prefissi `/es` `/fr` `/de` `/nl` `/us`, listino dollari). URL in lingua: `src/lib/slugs.ts`.
+- Lingua e valuta: `src/lib/i18n.ts` (locali, prefissi `/es` `/fr` `/de` `/nl` `/en` `/us`; `/en` = inglese in euro per il resto d'Europa e del mondo, `/us` dollari; listino dollari). URL in lingua: `src/lib/slugs.ts`.
 - Testi: una cartella `src/lib/traduzioni/`, **un file per area del sito** (`comune`, `home`, `prodotti`, `configuratore`,
   `kit`, `fogli`, `checkout`, `account`, `pagine`). Dentro: `const it = {...}` e' la forma, `en/es/fr/de/nl` hanno le stesse
   chiavi (TypeScript le controlla; il test `index.test.ts` fallisce se manca una chiave o un testo e' vuoto).

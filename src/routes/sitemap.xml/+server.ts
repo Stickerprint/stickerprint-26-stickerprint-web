@@ -42,12 +42,14 @@ export const GET: RequestHandler = async ({ url, locals: { supabase } }) => {
 		}
 	} catch { /* senza database la sitemap esce senza gli articoli */ }
 
-	/* una riga per lingua online, ognuna con gli alternate hreflang delle altre (x-default = italiano) */
+	/* una riga per lingua online, ognuna con gli alternate hreflang delle altre (x-default = /en se online, altrimenti italiano) */
 	const lingue = activeLocales();
 	const alt = (loc: string) => {
 		const path = loc.slice(SITE_URL.length) || '/';
 		const links = lingue.map((c) => `<xhtml:link rel="alternate" hreflang="${LOCALES[c].hreflang}" href="${esc(SITE_URL + localizePath(path, c))}"/>`);
-		return links.length > 1 ? links.join('') + `<xhtml:link rel="alternate" hreflang="x-default" href="${esc(loc)}"/>` : '';
+		/* x-default: /en (inglese in euro, per chi non ha una lingua sua) quando e' online, altrimenti l'italiano */
+		const xdef = lingue.includes('en') ? SITE_URL + localizePath(path, 'en') : loc;
+		return links.length > 1 ? links.join('') + `<xhtml:link rel="alternate" hreflang="x-default" href="${esc(xdef)}"/>` : '';
 	};
 	const righe = rows.flatMap((r) => lingue.map((c) => ({ ...r, loc: SITE_URL + localizePath(r.loc.slice(SITE_URL.length) || '/', c), alt: alt(r.loc) })));
 	const body =
