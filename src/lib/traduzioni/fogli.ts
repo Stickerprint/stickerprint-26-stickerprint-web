@@ -474,7 +474,7 @@ const fr: Fogli = {
 		quadrato: { label: 'Carré', description: 'Angles arrondis' },
 		ovale: { label: 'Ovale', description: 'Ellipse' },
 		rettangolare: { label: 'Rectangle', description: 'Horizontal' },
-		verticale: { label: 'Portrait', description: '100×150, 148×210, 213×275 mm (3.9×5.9, 5.8×8.3, 8.4×10.8 in)' },
+		verticale: { label: 'Portrait', description: '100×150, 148×210, 213×275 mm' },
 		orizzontale: { label: 'Paysage', description: '150×100, 210×148, 275×213 mm' },
 		fogliSagomati: { label: 'À la forme', description: 'Planche découpée à la forme' },
 		S: { label: 'Petite', description: '6 visuels' },

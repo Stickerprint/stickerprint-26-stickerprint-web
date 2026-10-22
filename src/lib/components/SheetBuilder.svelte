@@ -409,7 +409,7 @@
 					<p class="step__hint" style="margin-top:12px">{t('fogli.builder.foglio.formato')}</p>
 					<div class="sheet__opts sheet__opts--3">
 						{#each FORMATI as f (f.id)}
-							<button type="button" class="sheet__opt" class:is-active={formato === f.id} onclick={() => (formato = f.id)}><b>{opz(f.id, 'label', f.id)}</b><span>{orientamento === 'verticale' ? `${f.a}×${f.b}` : `${f.b}×${f.a}`} mm</span><small>{t('fogli.builder.foglio.finoA', { max: f.max })}</small></button>
+							<button type="button" class="sheet__opt" class:is-active={formato === f.id} onclick={() => (formato = f.id)}><b>{opz(f.id, 'label', f.id)}</b><span>{orientamento === 'verticale' ? misure(f.a, f.b) : misure(f.b, f.a)}</span><small>{t('fogli.builder.foglio.finoA', { max: f.max })}</small></button>
 						{/each}
 					</div>
 					<button type="button" class="btn btn--blue btn--sm" style="margin-top:12px" onclick={() => (step = 'materiale')}>{t('fogli.builder.foglio.avanti')}</button>
