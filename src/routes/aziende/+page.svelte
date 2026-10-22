@@ -21,7 +21,6 @@
 	const REELS: Reel[] = [
 		{ brand: 'Golden Goose', logo: '/images/aziende/logo/1.webp', url: 'https://youtube.com/shorts/FGh1Y1d42l0' },
 		{ brand: 'Sephora', logo: '/images/aziende/logo/4.webp', url: 'https://youtube.com/shorts/fIoQs88BwfQ' },
-		{ brand: 'Moscot', logo: '/images/aziende/logo/3.webp', url: 'https://youtube.com/shorts/Sj96mdpp03k' },
 		{ brand: 'VeraLab', logo: '/images/aziende/logo/2.webp', url: 'https://youtube.com/shorts/0cP9ccRh0SY' },
 		{ brand: 'Samsung', logo: '/images/aziende/logo/7.webp', url: 'https://youtube.com/shorts/AofMPTxfWp4' },
 		{ brand: 'Guerlain', logo: '/images/aziende/logo/6.webp', url: 'https://youtube.com/shorts/Eqg70M83vX4' },
@@ -41,7 +40,7 @@
 	const tEnd = (e: TouchEvent) => { const dx = e.changedTouches[0].clientX - touchX; if (dx < -40) next(); else if (dx > 40) prev(); paused = false; };
 	/* niente scorrimento automatico: si sfoglia con le frecce (desktop) o con lo swipe (mobile) */
 	let sending = $state(false);
-	const gallery = ['1.webp', '2.webp', '3.webp', '4.webp', '5.webp', '6.webp', '7.webp', '8.webp', '9.webp'].map((g) => `/images/aziende/gallery/${g}`);
+	const gallery = ['3.webp', '4.webp', '5.webp', '6.webp', '7.webp', '8.webp', '9.webp'].map((g) => `/images/aziende/gallery/${g}`);
 </script>
 
 <Seo title={t('pagine.aziende.seoTitolo')} description={t('pagine.aziende.seoDescrizione')} />
