@@ -20,7 +20,7 @@ export const traduttoreAttivo = () => Boolean(env.ANTHROPIC_API_KEY);
 const NOME_LINGUA: Record<string, string> = { en: 'inglese americano (en)', es: 'spagnolo di Spagna (es)', fr: 'francese (fr)', de: 'tedesco (de)', nl: 'olandese (nl)' };
 const nomeLingua = (l: string) => NOME_LINGUA[l] ?? `${new Intl.DisplayNames(['it'], { type: 'language' }).of(l) ?? l} (${l})`;
 const SISTEMA = `Sei il traduttore di Stickerprint, stampa online di adesivi personalizzati (Italia). Traduci i testi dall'italiano in ${LINGUE_ESTERE.map(nomeLingua).join(', ')}.
-Tono: naturale, da negozio online, mai letterale; en "you", es tu, fr vous, de du, nl je, nelle altre lingue il tu informale da negozio online. Mantieni esattamente tag HTML, link, emoji, segnaposto fra graffe come {soglia} e {campioni}, numeri e misure (mm restano mm), nomi di marca (Stickerprint, Sephora). Non convertire gli importi in euro.
+Tono: naturale, da negozio online, mai letterale; en "you", es tu, fr vous, de du, nl je, nelle altre lingue il tu informale da negozio online. Mantieni esattamente tag HTML, link, emoji, segnaposto fra graffe come {soglia} e {campioni}, numeri e misure (mm restano mm), nomi di marca (Stickerprint, Sephora). Non convertire gli importi in euro. Le recensioni (reviews) sono parole dei clienti: traducile fedelmente, in prima persona, senza abbellire ne' correggere il tono.
 Glossario: adesivi personalizzati = custom stickers / pegatinas personalizadas / stickers personnalisés / individuelle Aufkleber / stickers op maat; adesivi resinati = domed stickers / pegatinas resinadas / stickers résinés / Doming-Aufkleber / doming stickers; adesivi in rilievo = raised stickers / pegatinas en relieve / stickers en relief / Relief-Aufkleber / reliëf stickers; etichette = labels / etiquetas / étiquettes / Etiketten / etiketten; fogli di adesivi = sticker sheets / hojas de pegatinas / planches de stickers / Stickerbögen / stickervellen; vetrofanie = window decals / vinilos para escaparate / stickers vitrine / Fensteraufkleber / raamstickers; kit campioni = sample kit / kit de muestras / kit d'échantillons / Muster-Set / proefpakket; sagomato = die-cut / troquelado / découpe à la forme / konturgeschnitten / contourgesneden; lamina = laminate / laminado / lamination / Laminierung / laminaat; anteprima automatica = instant preview / vista previa automática / aperçu automatique / automatische Vorschau / automatisch voorbeeld; spedizione gratuita da = free shipping from / envío gratis a partir de / livraison gratuite dès / kostenloser Versand ab / gratis verzending vanaf.
 Rispondi SOLO con il JSON richiesto: per ogni elemento gli stessi campi dell'italiano, tradotti, per ognuna delle lingue elencate (chiavi: ${LINGUE_ESTERE.join(', ')}).`;
 
@@ -34,7 +34,7 @@ export function traduciDopoSalvataggio(origin: string): void {
 }
 
 type Campi = Record<string, unknown>;
-export interface Lavoro { tabella: 'faq_items' | 'faq_categories' | 'posts' | 'promos' | 'post_categories'; id: string; italiano: Campi }
+export interface Lavoro { tabella: 'faq_items' | 'faq_categories' | 'posts' | 'promos' | 'post_categories' | 'reviews'; id: string; italiano: Campi }
 
 function schemaPer(elementi: Lavoro[]) {
 	const campiDi = (c: Campi) => {
@@ -67,8 +67,8 @@ export async function traduciLotto(elementi: Lavoro[]): Promise<Record<string, R
 }
 
 /* campi italiani da tradurre per tabella */
-const CAMPI: Record<Lavoro['tabella'], string[]> = { faq_items: ['q', 'a'], faq_categories: ['name'], posts: ['title', 'excerpt', 'content'], promos: ['product_label', 'subtitle', 'chips', 'includes', 'perks', 'save_text', 'cta'], post_categories: ['name'] };
-const CHIAVE: Record<Lavoro['tabella'], string> = { faq_items: 'id', faq_categories: 'id', posts: 'id', promos: 'id', post_categories: 'name' };
+const CAMPI: Record<Lavoro['tabella'], string[]> = { faq_items: ['q', 'a'], faq_categories: ['name'], posts: ['title', 'excerpt', 'content'], promos: ['product_label', 'subtitle', 'chips', 'includes', 'perks', 'save_text', 'cta'], post_categories: ['name'], reviews: ['title', 'comment'] };
+const CHIAVE: Record<Lavoro['tabella'], string> = { faq_items: 'id', faq_categories: 'id', posts: 'id', promos: 'id', post_categories: 'name', reviews: 'id' };
 
 function italianoDi(tab: Lavoro['tabella'], r: Record<string, unknown>): Campi {
 	const out: Campi = {};
@@ -84,6 +84,8 @@ export async function daTradurre(db: SupabaseClient): Promise<{ lavori: Lavoro[]
 		for (const r of data ?? []) {
 			if (tab === 'posts' && !r.published) continue;
 			if ((tab === 'faq_items' || tab === 'faq_categories' || tab === 'promos') && r.active === false) continue;
+			/* recensioni: solo quelle pubbliche e approvate con un commento (le altre non si vedono) */
+			if (tab === 'reviews' && (r.status !== 'approved' || !r.is_public || !(r.comment ?? '').trim())) continue;
 			const italiano = italianoDi(tab, r); if (!Object.keys(italiano).length) continue;
 			totale++;
 			const tr = (r.tr ?? {}) as Record<string, unknown>;
@@ -102,7 +104,7 @@ export async function traduciContenuti(db: SupabaseClient, budgetMs = 40_000): P
 	while (i < lavori.length && Date.now() - inizio < budgetMs) {
 		/* lotti: 8 FAQ/categorie insieme, articoli e offerte da soli (testi lunghi) */
 		const primo = lavori[i];
-		const lotto = primo.tabella === 'posts' || primo.tabella === 'promos' ? [primo] : lavori.slice(i).filter((l) => l.tabella === primo.tabella).slice(0, 8);
+		const lotto = primo.tabella === 'posts' || primo.tabella === 'promos' ? [primo] : lavori.slice(i).filter((l) => l.tabella === primo.tabella).slice(0, primo.tabella === 'reviews' ? 12 : 8);
 		try {
 			const out = await traduciLotto(lotto);
 			for (const l of lotto) {

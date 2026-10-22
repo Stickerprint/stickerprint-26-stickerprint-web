@@ -9,7 +9,7 @@ type Slug = Record<Exclude<Lang, 'it'>, string>;
 export const SLUGS: Record<string, Slug> = {
 	'adesivi-personalizzati': { es: 'pegatinas-personalizadas', fr: 'stickers-personnalises', de: 'individuelle-aufkleber', nl: 'stickers-op-maat', en: 'custom-stickers' },
 	'adesivi-resinati': { es: 'pegatinas-resinadas', fr: 'stickers-resines', de: 'doming-aufkleber', nl: 'doming-stickers', en: 'domed-stickers' },
-	'adesivi-rilievo': { es: 'pegatinas-en-relieve', fr: 'stickers-en-relief', de: 'relief-aufkleber', nl: 'relief-stickers', en: 'raised-stickers' },
+	'adesivi-rilievo': { es: 'pegatinas-en-relieve', fr: 'stickers-en-relief', de: 'relief-aufkleber', nl: 'relief-stickers', en: 'embossed-stickers' },
 	etichette: { es: 'etiquetas', fr: 'etiquettes', de: 'etiketten', nl: 'etiketten', en: 'labels' },
 	fogli: { es: 'hojas-de-pegatinas', fr: 'planches-de-stickers', de: 'stickerbogen', nl: 'stickervellen', en: 'sticker-sheets' },
 	vetrofanie: { es: 'vinilos-para-escaparate', fr: 'stickers-vitrine', de: 'fensteraufkleber', nl: 'raamstickers', en: 'window-decals' },
@@ -29,9 +29,12 @@ export const SLUGS: Record<string, Slug> = {
 	termini: { es: 'terminos', fr: 'conditions', de: 'agb', nl: 'voorwaarden', en: 'terms' },
 	privacy: { es: 'privacidad', fr: 'confidentialite', de: 'datenschutz', nl: 'privacy', en: 'privacy' }
 };
+/** slug vecchi che devono continuare a rispondere (l'hook server poi rimanda al nuovo con un 301) */
+const ALIAS: Partial<Record<Exclude<Lang, 'it'>, Record<string, string>>> = { en: { 'raised-stickers': 'adesivi-rilievo' } };
 /** slug in lingua → pezzo interno (per la route) */
 const INVERSO: Record<Exclude<Lang, 'it'>, Record<string, string>> = { es: {}, fr: {}, de: {}, nl: {}, en: {} };
 for (const [interno, per] of Object.entries(SLUGS)) for (const [lang, slug] of Object.entries(per)) INVERSO[lang as Exclude<Lang, 'it'>][slug] = interno;
+for (const [lang, per] of Object.entries(ALIAS)) for (const [slug, interno] of Object.entries(per)) INVERSO[lang as Exclude<Lang, 'it'>][slug] = interno;
 
 /** /individuelle-aufkleber/x → /adesivi-personalizzati/x (percorso gia' senza prefisso lingua) */
 export function slugInterno(path: string, lang: Lang): string {

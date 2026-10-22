@@ -170,7 +170,7 @@ const en: Configuratore = {
 	hint: {
 		materiale: 'Not sure which one? White works almost every time.',
 		senzaLamina: 'Perfect if you need high-quality stickers for a short-term promo. Translation: low cost, huge payoff.',
-		rilievoLucido: 'The raised effect is always glossy.',
+		rilievoLucido: 'The embossed effect is always glossy.',
 		foglio: 'At this size you get <b>{n} labels per sheet</b> ({cols} × {rows} on a {misura} sheet): {qty} pieces are <b>{fogli}</b>.',
 		foglioUno: '{n} sheet',
 		foglioTanti: '{n} sheets' },

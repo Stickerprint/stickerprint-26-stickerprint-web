@@ -4,6 +4,7 @@ import { productFor } from '$lib/prodotti-testi';
 import type { Lang } from '$lib/i18n';
 import { perLingua, t } from '$lib/traduzioni';
 import { LOCALES } from '$lib/i18n';
+import { traduzioneDi } from './contenuti-tradotti';
 
 export interface HomeReview {
 	author: string;
@@ -76,7 +77,7 @@ async function loadReviewsFresh(supabase: SupabaseClient, productType?: string, 
 		   nome di spedizione) e profiles (nome dell'utente); le recensioni degli ospiti hanno il nome nella colonna author */
 		let q = supabase
 			.from('reviews')
-			.select('title, comment, rating, created_at, author, product_slug, source, source_note, order:orders(product_slug, shipping), profile:profiles(full_name)')
+			.select('id, tr, title, comment, rating, created_at, author, product_slug, source, source_note, order:orders(product_slug, shipping), profile:profiles(full_name)')
 			.eq('is_public', true).eq('status', 'approved')
 			.gte('rating', 4)
 			.order('created_at', { ascending: false })
@@ -92,11 +93,13 @@ async function loadReviewsFresh(supabase: SupabaseClient, productType?: string, 
 					const profile = (Array.isArray(r.profile) ? r.profile[0] : r.profile) as { full_name?: string } | null;
 					const type = r.product_slug ?? order?.product_slug ?? productType ?? 'adesivi_personalizzati';
 					const p = PRODUCTS[type] ?? PRODUCTS.adesivi_personalizzati;
+					/* titolo e commento nella lingua del sito (colonna tr o file contenuti.json); senza traduzione resta l'italiano */
+					const tr = lang === 'it' ? null : traduzioneDi('reviews', { id: String(r.id), tr: r.tr }, lang, { ...(r.title ? { title: r.title } : {}), comment: r.comment ?? '' });
 					const name = r.author || profile?.full_name || [order?.shipping?.first_name, order?.shipping?.last_name].filter(Boolean).join(' ') || t(loc, 'recensioni.cliente');
 					return {
 						author: shortName(name, lang),
-						title: r.title ?? t(loc, 'recensioni.titolo'),
-						comment: r.comment ?? '',
+						title: (typeof tr?.title === 'string' && tr.title) || r.title || t(loc, 'recensioni.titolo'),
+						comment: (typeof tr?.comment === 'string' && tr.comment) || r.comment || '',
 						rating: r.rating ?? 5,
 						/* nome del prodotto nella lingua (il kit campioni non e' in PRODUCTS: dal catalogo) */
 						product: type === 'campioni' ? t(loc, 'header.kitCampioni') : (productFor(type, lang)?.name ?? p.label),

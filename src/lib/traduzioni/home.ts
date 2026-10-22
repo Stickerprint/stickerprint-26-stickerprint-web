@@ -95,7 +95,7 @@ export type Home = typeof it;
 const en: Home = {
 	seo: {
 		titolo: 'Custom stickers online, printed in Italy | Stickerprint',
-		descrizione: 'Custom stickers, domed, raised, labels and window decals: upload your file, see the instant preview right away and order. Ships in a few days, free from {soglia}.' },
+		descrizione: 'Custom stickers, domed, embossed, labels and window decals: upload your file, see the instant preview right away and order. Ships in a few days, free from {soglia}.' },
 	hero: {
 		titolo: 'Perfect stickers.',
 		evidenza: 'Zero surprises.',
@@ -118,7 +118,7 @@ const en: Home = {
 		tutti: 'See all products →',
 		resinati: { nome: 'Domed stickers', desc: '3D effect with a resin dome. Premium.' },
 		personalizzati: { nome: 'Custom stickers', desc: 'Die-cut vinyl, any shape. Matte or glossy.' },
-		rilievo: { nome: 'Raised stickers', desc: 'Raised details you can feel.' },
+		rilievo: { nome: 'Embossed stickers', desc: 'Embossed details you can feel.' },
 		etichette: { nome: 'Custom label sheets', desc: 'For products, packaging and boxes.' } },
 	anteprima: {
 		tag: 'Instant preview',

@@ -745,7 +745,7 @@ const en: Account = {
 		filePreventivo: 'Quote-{n}.pdf',
 		fileFattura: 'Invoice-{n}.pdf',
 		metodi: { paypal: 'PayPal', stripe: 'Credit card (Stripe)', wallet: 'Apple Pay / Google Pay (Stripe)', test: 'Test (no charge)', credito: 'In-store credit' },
-		categorie: { adesivi_resinati: 'Domed stickers', adesivi_personalizzati: 'Custom stickers', adesivi_rilievo: 'Raised stickers', etichette: 'Custom label sheets', fogli_adesivi: 'Sticker sheets', vetrofanie: 'Window decals', campioni: 'Samples' } },
+		categorie: { adesivi_resinati: 'Domed stickers', adesivi_personalizzati: 'Custom stickers', adesivi_rilievo: 'Embossed stickers', etichette: 'Custom label sheets', fogli_adesivi: 'Sticker sheets', vetrofanie: 'Window decals', campioni: 'Samples' } },
 	conferma: {
 		titolo: 'Order confirmation {n} | Stickerprint',
 		kicker: 'Order confirmation {n} · {data}',
