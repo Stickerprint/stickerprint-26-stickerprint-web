@@ -9,8 +9,7 @@
 	import { usaLingua } from '$lib/traduzioni';
 
 	let { order, cfg, onclose }: { order: Order; cfg: EngineConfig; onclose: () => void } = $props();
-	const { t, path, prezzo, prezzoUnit, numero } = usaLingua();
-	const fmtMm = (v: number) => numero(v, 1);
+	const { t, path, prezzo, prezzoUnit, numero, misure } = usaLingua();
 	/* sagoma, materiale e lamina dell'ordine: dal catalogo per id, altrimenti il valore salvato */
 	const opz = (tipo: 'sagome' | 'materiali' | 'finiture', id: string, fallback: string) => {
 		const k = `configuratore.opzioni.${tipo}.${id}.label`;
@@ -42,7 +41,7 @@
 		<div class="modal__head">
 			<div>
 				<p class="eyebrow">{t('configuratore.riordina.titolo', { numero: order.number })}</p>
-				<h2 style="font-size:22px">{order.product_name} <small style="font-weight:600;font-size:13px;color:var(--muted)">· {order.forma ? opz('sagome', order.forma, order.forma) : ''}{#if order.materiale} · {opz('materiali', order.materiale, MATERIAL_LABEL[order.materiale] ?? order.materiale)}{/if}{#if order.finitura && order.finitura !== 'nessuna'} · {t('configuratore.riordina.lamina', { finitura: opz('finiture', order.finitura, order.finitura) })}{/if} · {fmtMm(w)} × {fmtMm(h)} mm</small></h2>
+				<h2 style="font-size:22px">{order.product_name} <small style="font-weight:600;font-size:13px;color:var(--muted)">· {order.forma ? opz('sagome', order.forma, order.forma) : ''}{#if order.materiale} · {opz('materiali', order.materiale, MATERIAL_LABEL[order.materiale] ?? order.materiale)}{/if}{#if order.finitura && order.finitura !== 'nessuna'} · {t('configuratore.riordina.lamina', { finitura: opz('finiture', order.finitura, order.finitura) })}{/if} · {misure(w, h)}</small></h2>
 			</div>
 			<button type="button" class="modal__close" onclick={onclose} aria-label={t('configuratore.riordina.chiudi')}>✕</button>
 		</div>

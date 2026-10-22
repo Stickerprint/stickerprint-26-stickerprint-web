@@ -227,7 +227,7 @@ const en: Email = {
 		oggetto: 'Welcome to Stickerprint 🎉',
 		nomeDefault: 'welcome',
 		titolo: 'Hi {nome}, your account is ready.',
-		corpo: '<p>From now on every order gives something back: <strong>up to 6% in Stickerprint credit</strong> lands automatically in your wallet, ready for your next order.</p><p>Upload your file, check the instant preview and confirm only when you’re happy. A real person checks every file before printing.</p>',
+		corpo: '<p>From now on every order gives something back: <strong>up to 6% in-store credit</strong> lands automatically in your wallet, ready for your next order.</p><p>Upload your file, check the instant preview and confirm only when you’re happy. A real person checks every file before printing.</p>',
 		cta: 'Start printing' },
 	password: {
 		oggetto: 'Your Stickerprint password has been updated',

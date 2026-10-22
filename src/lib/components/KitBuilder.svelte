@@ -15,11 +15,15 @@
 	import { addToCart } from '$lib/cart';
 	import { saveCartFile, saveCartPreview } from '$lib/utils/draftStore';
 	import { kitQuote, KIT_QTY, KIT_SIZES, KIT_MAX } from '$lib/pricing/kit';
+	import { MM_PER_IN, mmToUnit, unitToMm, snapMm } from '$lib/i18n';
 	import type { EngineConfig } from '$lib/pricing/engine';
 	import EnginePreview from './EnginePreview.svelte';
 	import { usaLingua } from '$lib/traduzioni';
 	import { formatAmount } from '$lib/i18n';
-	const { t, lang, locale, prezzo, prezzoUnit, numero, path } = usaLingua();
+	const { t, lang, locale, prezzo, prezzoUnit, numero, path, unit, misuraU, misure } = usaLingua();
+	const inU = (mm: number) => (unit === 'in' ? Math.round(mmToUnit(mm, unit) * 100) / 100 : mm);
+	/* misure proposte: mm dal listino, pollici tondi sul sito USA */
+	const SIZES = unit === 'in' ? [1.5, 2, 2.5, 3].map((i) => i * MM_PER_IN) : KIT_SIZES;
 	/** etichetta di una voce del listino (materiale, lamina, sagoma) nella lingua: dal catalogo se c'e', altrimenti quella del listino */
 	const opz = (id: string, campo: 'label' | 'description' | 'tag', fallback?: string) => { const k = `kit.opzioni.${id}.${campo}`; const v = t(k); return v === k ? (fallback ?? '') : v; };
 	/* soglia della spedizione gratuita del locale (50 € IT, 69 € UE, 99 $ USA), mai scritta a mano */
@@ -43,7 +47,7 @@
 	let cav = $state<{ file: File | null; png: string | null }>({ file: null, png: null });
 	/* misura libera: lato lungo fra questi limiti */
 	const FREE_MIN = 15, FREE_MAX = 120;
-	const clampMM = (v: number) => Math.round(Math.max(FREE_MIN, Math.min(FREE_MAX, v || 0)) * 2) / 2;
+	const clampMM = (v: number) => snapMm(Math.max(FREE_MIN, Math.min(FREE_MAX, v || 0)), unit);
 	const MATERIALS = $derived(cfg.materials.filter((m) => m.visible));
 	const FINISHES = $derived(cfg.finishes.filter((f) => f.visible));
 	let materiale = $state('bianco');
@@ -360,7 +364,7 @@
 			</button>
 			{#if step === 'cavallotto'}
 				<div class="step__body">
-					<p class="step__hint">{t('kit.builder.cavallotto.hint', { w: CAV.w, h: CAV.h })}</p>
+					<p class="step__hint">{t('kit.builder.cavallotto.hint', { misura: misure(CAV.w, CAV.h) })}</p>
 					<label class="kit__cav" class:has={!!cav.png}>
 						<input type="file" hidden accept={ACCEPT} onchange={pickCav} />
 						{#if cav.png}<img src={cav.png} alt="" /><span>{cav.file?.name}</span><b>{t('kit.builder.cavallotto.cambia')}</b>{:else}<span class="kit__plus">+</span><span>{t('kit.builder.cavallotto.carica')}</span>{/if}
@@ -458,21 +462,21 @@
 				{#if pop.kind === 'sticker'}
 					<div class="kit__row kit__row--size">
 						<span class="step__hint">{t('kit.builder.popup.misura')}</span>
-						<div class="kit__chips">{#each KIT_SIZES as m (m)}<button type="button" class="chip" class:is-on={pop.misura === m} onclick={() => setPopSize(m)}>{m} mm</button>{/each}</div>
+						<div class="kit__chips">{#each SIZES as m (m)}<button type="button" class="chip" class:is-on={pop.misura === m} onclick={() => setPopSize(m)}>{misuraU(m)}</button>{/each}</div>
 						<label class="kit__free">
 							<span>{t('kit.builder.popup.suMisura')}</span>
 							{#if pop.forma === 'ovale' || pop.forma === 'rettangolare'}
-								<input type="number" min={FREE_MIN} max={FREE_MAX} step="0.5" value={pop.w} onchange={(e) => setPopWH(+e.currentTarget.value, pop?.h ?? 0)} aria-label={t('kit.builder.popup.larghezza')} /> ×
-								<input type="number" min={FREE_MIN} max={FREE_MAX} step="0.5" value={pop.h} onchange={(e) => setPopWH(pop?.w ?? 0, +e.currentTarget.value)} aria-label={t('kit.builder.popup.altezza')} /> mm
+								<input type="number" min={inU(FREE_MIN)} max={inU(FREE_MAX)} step={unit === 'in' ? '0.05' : '0.5'} value={inU(pop.w)} onchange={(e) => setPopWH(unitToMm(+e.currentTarget.value, unit), pop?.h ?? 0)} aria-label={t('kit.builder.popup.larghezza', { u: unit })} /> ×
+								<input type="number" min={inU(FREE_MIN)} max={inU(FREE_MAX)} step={unit === 'in' ? '0.05' : '0.5'} value={inU(pop.h)} onchange={(e) => setPopWH(pop?.w ?? 0, unitToMm(+e.currentTarget.value, unit))} aria-label={t('kit.builder.popup.altezza', { u: unit })} /> {unit}
 							{:else}
-								<input type="number" min={FREE_MIN} max={FREE_MAX} step="0.5" value={pop.misura} onchange={(e) => setPopSize(+e.currentTarget.value)} aria-label={t('kit.builder.popup.latoLungo')} /> mm
+								<input type="number" min={inU(FREE_MIN)} max={inU(FREE_MAX)} step={unit === 'in' ? '0.05' : '0.5'} value={inU(pop.misura)} onchange={(e) => setPopSize(unitToMm(+e.currentTarget.value, unit))} aria-label={t('kit.builder.popup.latoLungo', { u: unit })} /> {unit}
 								<small>{t('kit.builder.popup.proporzioni')}</small>
 							{/if}
 						</label>
-						{#if pop.last}<span class="step__hint">{t('kit.builder.popup.esce', { w: numero(pop.last.w, 1), h: numero(pop.last.h, 1) })}</span>{/if}
+						{#if pop.last}<span class="step__hint">{t('kit.builder.popup.esce', { misura: misure(pop.last.w, pop.last.h) })}</span>{/if}
 					</div>
 				{:else}
-					<div class="kit__row kit__row--cav"><span class="step__hint">{t('kit.builder.popup.cavallottoHint', { w: CAV.w, h: CAV.h })}</span><button type="button" class="btn btn--sm" onclick={() => coverCav(null)}>{t('kit.builder.popup.riempi')}</button></div>
+					<div class="kit__row kit__row--cav"><span class="step__hint">{t('kit.builder.popup.cavallottoHint', { misura: misure(CAV.w, CAV.h) })}</span><button type="button" class="btn btn--sm" onclick={() => coverCav(null)}>{t('kit.builder.popup.riempi')}</button></div>
 				{/if}
 				<div class="kit__modal-actions">
 					<button type="button" class="btn btn--sm" onclick={cancelPop}>{t('kit.builder.popup.annulla')}</button>

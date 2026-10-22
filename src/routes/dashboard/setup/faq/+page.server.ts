@@ -1,5 +1,6 @@
 import { fail } from '@sveltejs/kit';
 import { invalidateFaq, loadFaq } from '$lib/server/faq';
+import { traduciDopoSalvataggio } from '$lib/server/traduttore-contenuti';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals: { supabase } }) => {
@@ -9,7 +10,7 @@ export const load: PageServerLoad = async ({ locals: { supabase } }) => {
 const slugify = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
 export const actions: Actions = {
-	saveCategory: async ({ request, locals: { supabase } }) => {
+	saveCategory: async ({ request, url, locals: { supabase } }) => {
 		const f = await request.formData();
 		const id = String(f.get('id') ?? '');
 		const name = String(f.get('name') ?? '').trim();
@@ -18,16 +19,18 @@ export const actions: Actions = {
 		const { error } = id ? await supabase.from('faq_categories').update(row).eq('id', id) : await supabase.from('faq_categories').insert(row);
 		if (error) return fail(400, { error: error.code === '23505' ? 'Esiste già una categoria con questo slug.' : error.message });
 		invalidateFaq();
+		traduciDopoSalvataggio(url.origin);
 		return { ok: true };
 	},
-	deleteCategory: async ({ request, locals: { supabase } }) => {
+	deleteCategory: async ({ request, url, locals: { supabase } }) => {
 		const f = await request.formData();
 		const { error } = await supabase.from('faq_categories').delete().eq('id', String(f.get('id')));
 		if (error) return fail(400, { error: error.message });
 		invalidateFaq();
+		traduciDopoSalvataggio(url.origin);
 		return { ok: true };
 	},
-	saveItem: async ({ request, locals: { supabase } }) => {
+	saveItem: async ({ request, url, locals: { supabase } }) => {
 		const f = await request.formData();
 		const id = String(f.get('id') ?? '');
 		const q = String(f.get('q') ?? '').trim(), a = String(f.get('a') ?? '').trim();
@@ -39,13 +42,15 @@ export const actions: Actions = {
 		const { error } = id ? await supabase.from('faq_items').update(row).eq('id', id) : await supabase.from('faq_items').insert(row);
 		if (error) return fail(400, { error: error.message });
 		invalidateFaq();
+		traduciDopoSalvataggio(url.origin);
 		return { ok: true };
 	},
-	deleteItem: async ({ request, locals: { supabase } }) => {
+	deleteItem: async ({ request, url, locals: { supabase } }) => {
 		const f = await request.formData();
 		const { error } = await supabase.from('faq_items').delete().eq('id', String(f.get('id')));
 		if (error) return fail(400, { error: error.message });
 		invalidateFaq();
+		traduciDopoSalvataggio(url.origin);
 		return { ok: true };
 	}
 };

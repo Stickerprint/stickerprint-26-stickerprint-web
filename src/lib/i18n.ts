@@ -92,6 +92,25 @@ export function detectLocale(country: string | null, acceptLanguage: string | nu
 	return 'it';
 }
 
+/* ------------------------------------------------------------------ unita' di misura */
+/** millimetri ovunque, pollici solo sul sito USA (Mattia 22/10/2026); il motore e il database restano in mm */
+export type Unit = 'mm' | 'in';
+export const MM_PER_IN = 25.4;
+export const unitOf = (code: LocaleCode): Unit => (code === 'us' ? 'in' : 'mm');
+export const mmToUnit = (mm: number, unit: Unit) => (unit === 'in' ? mm / MM_PER_IN : mm);
+export const unitToMm = (v: number, unit: Unit) => (unit === 'in' ? v * MM_PER_IN : v);
+/** arrotonda una misura in mm al passo dell'unita': 0,5 mm oppure 1/100 di pollice */
+export const snapMm = (mm: number, unit: Unit) => (unit === 'in' ? Math.round((mm / MM_PER_IN) * 100) / 100 * MM_PER_IN : Math.round(mm * 2) / 2);
+/** numero della misura nell'unita' del locale: 50 → "50" (mm) / "1.97" (in) */
+export function formatSize(mm: number, locale: Locale): string {
+	const u = unitOf(locale.code);
+	return new Intl.NumberFormat(locale.intl, { maximumFractionDigits: u === 'in' ? 2 : 1 }).format(mmToUnit(mm, u));
+}
+/** misura con unita': "50 mm" / "2″" */
+export const formatSizeU = (mm: number, locale: Locale) => (unitOf(locale.code) === 'in' ? `${formatSize(mm, locale)}″` : `${formatSize(mm, locale)} mm`);
+/** due lati con unita': "50 × 30 mm" / "2″ × 1.18″" */
+export const formatDims = (w: number, h: number, locale: Locale) => (unitOf(locale.code) === 'in' ? `${formatSize(w, locale)}″ × ${formatSize(h, locale)}″` : `${formatSize(w, locale)} × ${formatSize(h, locale)} mm`);
+
 /* ------------------------------------------------------------------ valute */
 /** listino per valuta: il motore prezzi calcola in euro IVA inclusa; in dollari si toglie l'IVA (export) e si applica
  *  cambio × maggiorazione (spedizione USA dentro il prezzo), arrotondando a 0,05. Da spostare in dashboard (tabella)

@@ -15,7 +15,8 @@
 	import EnginePreview from './EnginePreview.svelte';
 	import { loadDraft, saveDraft, saveCartFile, saveCartPreview } from '$lib/utils/draftStore';
 	import { addToCart } from '$lib/cart';
-	import { quoteWith, minForShape, startSize, sizeProposals, roundHalf, proportionalSize, sizeRule, showFinishStep, showMaterialStep, type EngineConfig } from '$lib/pricing/engine';
+	import { quoteWith, minForShape, startSize, sizeProposals, proportionalSize, sizeRule, showFinishStep, showMaterialStep, type EngineConfig } from '$lib/pricing/engine';
+	import { MM_PER_IN, mmToUnit, unitToMm, snapMm } from '$lib/i18n';
 	import { usaLingua } from '$lib/traduzioni';
 	import { formatAmount } from '$lib/i18n';
 
@@ -39,7 +40,10 @@
 		promoOnly?: boolean;
 	} = $props();
 
-	const { t, path, prezzo, prezzoUnit, numero, locale } = usaLingua();
+	const { t, path, prezzo, prezzoUnit, numero, locale, unit, misure } = usaLingua();
+	/* misure: il motore lavora in mm; sul sito USA si scrivono e si leggono pollici (vedi unitOf in i18n) */
+	const inU = (mm: number) => (unit === 'in' ? Math.round(mmToUnit(mm, unit) * 100) / 100 : mm);
+	const quartoPollice = (mm: number) => (Math.round((mm / MM_PER_IN) * 4) / 4) * MM_PER_IN;
 	/* nome del prodotto nei titoli ("Crea i tuoi adesivi"): quello della pagina, altrimenti quello generico nella lingua */
 	const productName = $derived(productNameProp || t('comune.prodottoGenerico'));
 	/* etichette delle scelte del listino: il listino e' in italiano (dal database), il catalogo le traduce per id;
@@ -141,10 +145,18 @@
 		return { ...qListino, net, gross, perPiece: shown / qty, perPieceNet: net / qty, credit: net * cfg.creditRate };
 	});
 	const progress = $derived((stepNo(step) / steps.length) * 100);
-	const shapePresets = $derived(shape?.presets?.length ? shape.presets : [30, 50, 70, 100]);
+	/* sul sito USA le proposte sono pollici tondi (1,5″ 2″ 2,5″ 3″ 4″ 5″) convertiti in mm: il listino segue quelle misure */
+	const INCH_PRESETS = [1.5, 2, 2.5, 3, 4, 5].map((i) => i * MM_PER_IN);
+	const shapePresets = $derived(unit === 'in' ? INCH_PRESETS : (shape?.presets?.length ? shape.presets : [30, 50, 70, 100]));
 	/* la prima proposta e' sempre la misura minima della sagoma (lato corto al minimo, lato lungo in
 	   proporzione al disegno), poi tre misure piu' grandi; le misure personalizzate si scrivono sotto */
-	const presets = $derived(sizeProposals(cfg, forma, ratio, shapePresets));
+	const presets = $derived.by(() => {
+		const p = sizeProposals(cfg, forma, ratio, shapePresets, unit === 'in' ? quartoPollice : undefined);
+		if (unit !== 'in') return p;
+		/* la misura minima sale al quarto di pollice successivo, in proporzione */
+		const [w0, h0] = p[0]; const k = Math.ceil((w0 / MM_PER_IN) * 4) / 4 * MM_PER_IN / w0;
+		return [[snapMm(w0 * k, unit), snapMm(h0 * k, unit)] as [number, number], ...p.slice(1)];
+	});
 	// al cambio sagoma si riparte dalla misura minima (non nelle offerte, dove la misura e' fissa)
 	let lastForma = '';
 	$effect(() => {
@@ -229,7 +241,7 @@
 		w = w0; h = h0;
 	}
 
-	const clamp = (v: number) => Math.min(MAX_MM, Math.max(MIN_MM, roundHalf(v || MIN_MM)));
+	const clamp = (v: number) => Math.min(MAX_MM, Math.max(MIN_MM, snapMm(v || MIN_MM, unit)));
 	function onImgLoad(e: Event) {
 		const img = e.currentTarget as HTMLImageElement;
 		if (img.naturalWidth && img.naturalHeight) fileRatio = img.naturalWidth / img.naturalHeight;
@@ -290,7 +302,6 @@
 		}
 		added = true;
 	}
-	const fmt = (v: number) => numero(v, 1);
 	const pezzi = (n: number) => t('configuratore.qty.pezzi', { n: numero(n) });
 </script>
 
@@ -432,20 +443,20 @@
 		<div class="step" class:is-open={step === 'misura'}>
 			<button class="step__head" type="button" onclick={() => (step = 'misura')} aria-expanded={step === 'misura'}>
 				<span class="step__n">{#if stepNo(step) > stepNo('misura')}✓{:else}{stepNo('misura')}{/if}</span>
-				<span class="step__title">{t('configuratore.passi.misura')} {#if step !== 'misura'}<em>{fmt(w)} × {fmt(h)} mm</em>{/if}</span>
+				<span class="step__title">{t('configuratore.passi.misura')} {#if step !== 'misura'}<em>{misure(w, h)}</em>{/if}</span>
 				<span class="step__edit">{step === 'misura' ? '' : t('configuratore.passi.modifica')}</span>
 			</button>
 			{#if step === 'misura'}
 				<div class="step__body">
 					<div class="size-presets">
 						{#each presets as [pw, ph], k (pw)}
-							<button type="button" class="size-btn" class:is-active={w === pw && h === ph} onclick={() => { w = pw; h = ph; }}>{#if k === 0}<small>{t('configuratore.misura.partenza')}</small>{/if}{fmt(pw)} × {fmt(ph)} mm</button>
+							<button type="button" class="size-btn" class:is-active={w === pw && h === ph} onclick={() => { w = pw; h = ph; }}>{#if k === 0}<small>{t('configuratore.misura.partenza')}</small>{/if}{misure(pw, ph)}</button>
 						{/each}
 					</div>
 					<div class="size-inputs">
-						<label><span>{t('configuratore.misura.larghezza')}</span><input type="number" min={MIN_MM} max={MAX_MM} step="0.5" value={w} onchange={(e) => { const el = e.currentTarget as HTMLInputElement; setW(+el.value); el.value = String(w); }} /><em>mm</em></label>
+						<label><span>{t('configuratore.misura.larghezza')}</span><input type="number" min={inU(MIN_MM)} max={inU(MAX_MM)} step={unit === 'in' ? '0.05' : '0.5'} value={inU(w)} onchange={(e) => { const el = e.currentTarget as HTMLInputElement; setW(unitToMm(+el.value, unit)); el.value = String(inU(w)); }} /><em>{unit}</em></label>
 						<span class="size-x">×</span>
-						<label><span>{t('configuratore.misura.altezza')}</span><input type="number" min={MIN_MM} max={MAX_MM} step="0.5" value={h} onchange={(e) => { const el = e.currentTarget as HTMLInputElement; setH(+el.value); el.value = String(h); }} /><em>mm</em></label>
+						<label><span>{t('configuratore.misura.altezza')}</span><input type="number" min={inU(MIN_MM)} max={inU(MAX_MM)} step={unit === 'in' ? '0.05' : '0.5'} value={inU(h)} onchange={(e) => { const el = e.currentTarget as HTMLInputElement; setH(unitToMm(+el.value, unit)); el.value = String(inU(h)); }} /><em>{unit}</em></label>
 					</div>
 				</div>
 			{/if}
@@ -459,7 +470,7 @@
 					<div class="step__body">
 						<ul class="promo-fixed__list">
 							<li><b>{pezzi(promo.qty)}</b> · {t('configuratore.offerta.qty')}</li>
-							<li><b>{fmt(w)} × {fmt(h)} mm</b> · {t('configuratore.offerta.misura')}</li>
+							<li><b>{misure(w, h)}</b> · {t('configuratore.offerta.misura')}</li>
 							<li><b>{opz('materiali', materiale, 'label', material?.label ?? materiale)}</b>{#if finish}, {opz('finiture', finish.id, 'label', finish.label)}{/if} · {t('configuratore.offerta.materiale')}</li>
 					</ul>
 				</div>
@@ -477,7 +488,7 @@
 					{#if foglio && perSheet && file}
 						{@const nf = Math.ceil(qty / perSheet.n)}
 						<!-- testo dal catalogo (mai da input utente): i numeri si inseriscono nei segnaposto -->
-						<p class="step__hint step__hint--box">{@html t('configuratore.hint.foglio', { n: perSheet.n, cols: perSheet.cols, rows: perSheet.rows, w: perSheet.w, h: perSheet.h, qty: numero(qty), fogli: t(nf === 1 ? 'configuratore.hint.foglioUno' : 'configuratore.hint.foglioTanti', { n: numero(nf) }) })}</p>
+						<p class="step__hint step__hint--box">{@html t('configuratore.hint.foglio', { n: perSheet.n, cols: perSheet.cols, rows: perSheet.rows, misura: misure(perSheet.w, perSheet.h), qty: numero(qty), fogli: t(nf === 1 ? 'configuratore.hint.foglioUno' : 'configuratore.hint.foglioTanti', { n: numero(nf) }) })}</p>
 					{/if}
 					<div class="qty-grid">
 						{#each cfg.quantities as n (n)}
@@ -570,7 +581,7 @@
 		<div class="added" role="dialog" aria-modal="true" aria-label={t('configuratore.aggiunto.titolo')}>
 			<span class="added__ck">✓</span>
 			<h3>{t('configuratore.aggiunto.titolo')}</h3>
-			<p>{t('configuratore.aggiunto.riepilogo', { qty: numero(qty), prodotto: productName.replace(/^(i tuoi|le tue) /, ''), w: fmt(w), h: fmt(h), totale: eur0(q.gross) })}</p>
+			<p>{t('configuratore.aggiunto.riepilogo', { qty: numero(qty), prodotto: productName.replace(/^(i tuoi|le tue) /, ''), misura: misure(w, h), totale: eur0(q.gross) })}</p>
 			<div class="added__cta">
 				<a class="btn btn--green btn--lg" href={path('/checkout')}>{t('configuratore.aggiunto.checkout')}</a>
 				<a class="btn btn--ghost btn--lg" href={path('/prodotti')}>{t('configuratore.aggiunto.continua')}</a>

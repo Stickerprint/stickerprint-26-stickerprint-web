@@ -652,6 +652,8 @@ html,body{height:100%;overflow:hidden}
    dopo (textContent/innerHTML), quando il testo intero e' nel dizionario.
    ========================================================================== */
 const LANG=(()=>{const l=String((new URLSearchParams(location.search)).get('lang')||'it').toLowerCase();return /^(en|es|fr|de|nl)$/.test(l)?l:'it';})();
+/* UNITA' — il sito USA apre il motore con &unit=in: le misure restano in mm dentro, cambia solo quello che si legge */
+const UNIT=(new URLSearchParams(location.search)).get('unit')==='in'?'in':'mm';
 const TR={
   en:{
     "Configura il tuo adesivo | Stickerprint":"Set up your sticker | Stickerprint",
@@ -879,6 +881,7 @@ const TR={
     "non stampate → {m}":"not printed → {m}",
     "stampate in bianco":"printed in white",
     "taglio {w} × {h} mm":"cut {w} × {h} mm",
+    "taglio {w} × {h} in":"cut {w} × {h} in",
     "scegli la misura del lato più lungo":"choose the size of the longest side",
     "materiale":"material",
     "bianco":"white",
@@ -1168,6 +1171,7 @@ const TR={
     "non stampate → {m}":"no impresas → {m}",
     "stampate in bianco":"impresas en blanco",
     "taglio {w} × {h} mm":"corte {w} × {h} mm",
+    "taglio {w} × {h} in":"corte {w} × {h} in",
     "scegli la misura del lato più lungo":"elige la medida del lado más largo",
     "materiale":"material",
     "bianco":"blanco",
@@ -1457,6 +1461,7 @@ const TR={
     "non stampate → {m}":"non imprimées → {m}",
     "stampate in bianco":"imprimées en blanc",
     "taglio {w} × {h} mm":"coupe {w} × {h} mm",
+    "taglio {w} × {h} in":"coupe {w} × {h} in",
     "scegli la misura del lato più lungo":"choisissez la taille du côté le plus long",
     "materiale":"matière",
     "bianco":"blanc",
@@ -1746,6 +1751,7 @@ const TR={
     "non stampate → {m}":"nicht gedruckt → {m}",
     "stampate in bianco":"in Weiß gedruckt",
     "taglio {w} × {h} mm":"Schnitt {w} × {h} mm",
+    "taglio {w} × {h} in":"Schnitt {w} × {h} in",
     "scegli la misura del lato più lungo":"wähl das Maß der längsten Seite",
     "materiale":"Material",
     "bianco":"Weiß",
@@ -2035,6 +2041,7 @@ const TR={
     "non stampate → {m}":"niet gedrukt → {m}",
     "stampate in bianco":"in wit gedrukt",
     "taglio {w} × {h} mm":"snede {w} × {h} mm",
+    "taglio {w} × {h} in":"snede {w} × {h} in",
     "scegli la misura del lato più lungo":"kies de maat van de langste zijde",
     "materiale":"materiaal",
     "bianco":"wit",
@@ -6525,7 +6532,7 @@ function uSummary(){
     :'stampate in bianco';
   const si=$('sizeInfo');
   if(si)si.textContent=(S.cutW&&S.cutH)
-    ? tr('taglio {w} × {h} mm',{w:S.cutW.toFixed(1),h:S.cutH.toFixed(1)})
+    ? (UNIT==='in'?tr('taglio {w} × {h} in',{w:(S.cutW/25.4).toFixed(2),h:(S.cutH/25.4).toFixed(2)}):tr('taglio {w} × {h} mm',{w:S.cutW.toFixed(1),h:S.cutH.toFixed(1)}))
     : 'scegli la misura del lato più lungo';
 }
 /* il riepilogo si aggiorna quando si ridisegna: aggancio draw() senza toccarla */

@@ -1,6 +1,7 @@
 import { error, fail, redirect } from '@sveltejs/kit';
 import { slugify, type Post } from '$lib/blog';
 import type { Actions, PageServerLoad } from './$types';
+import { traduciDopoSalvataggio } from '$lib/server/traduttore-contenuti';
 
 export const load: PageServerLoad = async ({ params, locals: { supabase } }) => {
 	const { data: cats } = await supabase.from('post_categories').select('name, sort').order('sort');
@@ -12,7 +13,7 @@ export const load: PageServerLoad = async ({ params, locals: { supabase } }) => 
 };
 
 export const actions: Actions = {
-	save: async ({ request, params, locals: { supabase } }) => {
+	save: async ({ request, params, url, locals: { supabase } }) => {
 		const f = await request.formData();
 		const s = (k: string) => String(f.get(k) ?? '').trim();
 		const title = s('title');
@@ -36,10 +37,12 @@ export const actions: Actions = {
 		if (params.id === 'nuovo') {
 			const { data, error: e } = await supabase.from('posts').insert(row).select('id').single();
 			if (e) return fail(400, { error: e.code === '23505' ? 'Esiste già un articolo con questo slug.' : e.message });
+			traduciDopoSalvataggio(url.origin);
 			redirect(303, `/dashboard/blog/${data.id}`);
 		}
 		const { error: e } = await supabase.from('posts').update(row).eq('id', params.id);
 		if (e) return fail(400, { error: e.code === '23505' ? 'Esiste già un articolo con questo slug.' : e.message });
+		traduciDopoSalvataggio(url.origin);
 		return { ok: true };
 	},
 	delete: async ({ params, locals: { supabase } }) => {

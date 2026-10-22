@@ -334,11 +334,11 @@ export function startSize(cfg: EngineConfig, forma: string, ratio: number): [num
 	return [m, half(Math.min(cfg.size.maxMm, m / r))];
 }
 /** Le quattro misure proposte: la minima e tre piu' grandi (dalle misure della sagoma, altrimenti x1,5 x2 x3) */
-export function sizeProposals(cfg: EngineConfig, forma: string, ratio: number, presets: number[]): [number, number][] {
+export function sizeProposals(cfg: EngineConfig, forma: string, ratio: number, presets: number[], snap: (mm: number) => number = half): [number, number][] {
 	const [w0, h0] = startSize(cfg, forma, ratio);
 	/* la proporzione delle proposte segue la misura di partenza (rettangolo 40x20 -> proposte 2:1) */
 	const r = cfg.size.startByShape?.[forma] ? (h0 > 0 ? w0 / h0 : 1) : (ratio > 0 ? ratio : 1);
-	const fromW = (w: number): [number, number] => [half(w), half(w / r)];
+	const fromW = (w: number): [number, number] => [snap(w), snap(w / r)];
 	const out: [number, number][] = [[w0, h0]];
 	const cand = presets.filter((p) => p > w0 + 2).sort((a, b) => a - b);
 	for (const p of cand) { if (out.length >= 4) break; out.push(fromW(p)); }

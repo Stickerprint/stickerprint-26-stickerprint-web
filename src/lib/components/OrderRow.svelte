@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { customerStatus, trackSteps, materialLabel, fmtMm, type Order } from '$lib/account';
+	import { customerStatus, trackSteps, materialLabel, type Order } from '$lib/account';
 	import { usaLingua } from '$lib/traduzioni';
 	import { LOCALES, formatAmount } from '$lib/i18n';
-	const { t, path, prezzo, numero, data, lang, locale } = usaLingua();
+	const { t, path, prezzo, numero, data, lang, locale, misure } = usaLingua();
 	let { o, onreorder }: { o: Order; onreorder: (o: Order) => void } = $props();
 	const initials = $derived(o.product_name.split(/\s+/).map((s) => s[0]).join('').slice(0, 3).toUpperCase());
 	const stato = $derived(customerStatus(o, lang));
@@ -15,7 +15,7 @@
 	<div>
 		<div class="orow__meta">{t('checkout.ordine.ordine', { numero: o.number, data: data(o.created_at) })}</div>
 		<div class="orow__title">{o.product_name}</div>
-		<div class="orow__spec">{t('checkout.ordine.pz', { n: numero(o.qty) })}{#if o.materiale}{' · '}{materialLabel(o.materiale, lang)}{/if}{#if o.width_mm && o.height_mm}{' · '}{fmtMm(o.width_mm)} × {fmtMm(o.height_mm)} mm{/if}</div>
+		<div class="orow__spec">{t('checkout.ordine.pz', { n: numero(o.qty) })}{#if o.materiale}{' · '}{materialLabel(o.materiale, lang)}{/if}{#if o.width_mm && o.height_mm}{' · '}{misure(o.width_mm, o.height_mm)}{/if}</div>
 		<div class="orow__badges">
 			<span class="st {stato.cls}">{stato.label}</span>
 			{#if o.credit_earned > 0}<span class="credit-pill"><img src="/images/coin-sp.png" alt="" />{t('checkout.ordine.credito', { importo: prezzo(o.credit_earned) })}</span>{/if}

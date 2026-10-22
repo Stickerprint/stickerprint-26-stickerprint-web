@@ -5,7 +5,7 @@
  * Nei componenti: const { t, path, prezzo } = usaLingua(); nel server: t(locale, 'chiave').
  */
 import { getContext, setContext } from 'svelte';
-import { LOCALES, PRICE_BOOKS, localizePath, toCurrency, formatAmount, type LocaleCode, type Locale, type Lang } from '$lib/i18n';
+import { LOCALES, PRICE_BOOKS, localizePath, toCurrency, formatAmount, unitOf, formatSize, formatSizeU, formatDims, type LocaleCode, type Locale, type Lang, type Unit } from '$lib/i18n';
 import { comune } from './comune';
 import { home } from './home';
 import { prodotti } from './prodotti';
@@ -43,7 +43,7 @@ export const perLingua = (lang: Lang): LocaleCode => (lang === 'en' ? 'en' : (Ob
 /** prezzo a partire dagli euro: nella valuta del locale (dollari col listino), formato della lingua */
 export const prezzoIn = (locale: Locale, eur: number, decimali = 2) => formatAmount(toCurrency(eur, locale.currency), locale, decimali);
 /** prezzo al pezzo: fino a 4 decimali (0,295 €), mai meno di 2 */
-export const prezzoUnitIn = (locale: Locale, eur: number) => new Intl.NumberFormat(locale.intl, { style: 'currency', currency: locale.currency, minimumFractionDigits: 2, maximumFractionDigits: 4 }).format(locale.currency === 'EUR' ? eur : (eur / 1.22) * PRICE_BOOKS.USD.rate * PRICE_BOOKS.USD.markup);
+export const prezzoUnitIn = (locale: Locale, eur: number) => new Intl.NumberFormat(locale.intl, { style: 'currency', currency: locale.currency, minimumFractionDigits: 2, maximumFractionDigits: locale.currency === 'USD' ? 2 : 4 }).format(locale.currency === 'EUR' ? eur : (eur / 1.22) * PRICE_BOOKS.USD.rate * PRICE_BOOKS.USD.markup);
 export const numeroIn = (locale: Locale, n: number, decimali = 0) => new Intl.NumberFormat(locale.intl, { maximumFractionDigits: decimali }).format(n);
 export const dataIn = (locale: Locale, d: string | Date, lunga = false) => new Date(d).toLocaleDateString(locale.intl, lunga ? { weekday: 'long', day: 'numeric', month: 'long' } : { day: 'numeric', month: 'long', year: 'numeric' });
 
@@ -58,10 +58,18 @@ export interface Lingua {
 	prezzoUnit: (eur: number) => string;
 	numero: (n: number, decimali?: number) => string;
 	data: (d: string | Date, lunga?: boolean) => string;
+	/** unita' di misura del sito: mm, pollici su /us */
+	unit: Unit;
+	/** misura (in mm) come numero nell'unita' del sito: 50 → "50" / "1.97" */
+	misura: (mm: number) => string;
+	/** misura con unita': "50 mm" / "2″" */
+	misuraU: (mm: number) => string;
+	/** due lati con unita': "50 × 30 mm" / "2″ × 1.18″" */
+	misure: (w: number, h: number) => string;
 }
 export function creaLingua(code: LocaleCode): Lingua {
 	const locale = LOCALES[code] ?? LOCALES.it;
-	return { code: locale.code, lang: locale.lang, locale, t: traduttore(locale.code), path: (p) => localizePath(p, locale.code), prezzo: (e, d) => prezzoIn(locale, e, d), prezzoUnit: (e) => prezzoUnitIn(locale, e), numero: (n, d) => numeroIn(locale, n, d), data: (d, l) => dataIn(locale, d, l) };
+	return { code: locale.code, lang: locale.lang, locale, t: traduttore(locale.code), path: (p) => localizePath(p, locale.code), prezzo: (e, d) => prezzoIn(locale, e, d), prezzoUnit: (e) => prezzoUnitIn(locale, e), numero: (n, d) => numeroIn(locale, n, d), data: (d, l) => dataIn(locale, d, l), unit: unitOf(locale.code), misura: (mm) => formatSize(mm, locale), misuraU: (mm) => formatSizeU(mm, locale), misure: (w, h) => formatDims(w, h, locale) };
 }
 export function impostaLingua(code: LocaleCode): Lingua {
 	const l = creaLingua(code);

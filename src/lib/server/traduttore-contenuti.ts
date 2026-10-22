@@ -2,9 +2,12 @@
  * Traduzione automatica dei contenuti del database (FAQ, categorie, articoli del blog, offerte) nelle cinque lingue
  * del sito, con la Claude API (la stessa chiave della posta). Scrive nella colonna `tr` di ogni riga insieme
  * all'impronta dell'italiano: quando Mattia cambia il testo, al giro dopo la riga viene ritradotta.
- * Gira ogni giorno (/api/cron/traduzioni) e a richiesta dal bottone "Traduci ora" in dashboard, a lotti brevi.
+ * Gira ogni giorno (/api/cron/traduzioni), a richiesta dal bottone "Traduci ora" in dashboard e SUBITO dopo ogni salvataggio
+ * in dashboard (traduciDopoSalvataggio, Mattia 22/10/2026: "tradotte tutte in automatico non appena vengono inserite"), a lotti brevi.
+ * Le lingue sono quelle di LOCALES (LINGUE_ESTERE): una lingua nuova viene tradotta da sola al giro dopo.
  */
 import Anthropic from '@anthropic-ai/sdk';
+import { waitUntil } from '@vercel/functions';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { env } from '$env/dynamic/private';
 import { impronta, LINGUE_ESTERE } from './contenuti-tradotti';
@@ -13,10 +16,22 @@ import { slugify } from '$lib/blog';
 const MODELLO = () => env.POSTA_MODEL || 'claude-sonnet-5-5';
 export const traduttoreAttivo = () => Boolean(env.ANTHROPIC_API_KEY);
 
-const SISTEMA = `Sei il traduttore di Stickerprint, stampa online di adesivi personalizzati (Italia). Traduci i testi dall'italiano in inglese americano (en), spagnolo di Spagna (es), francese (fr), tedesco (de) e olandese (nl).
-Tono: naturale, da negozio online, mai letterale; en "you", es tu, fr vous, de du, nl je. Mantieni esattamente tag HTML, link, emoji, segnaposto fra graffe come {soglia} e {campioni}, numeri e misure (mm restano mm), nomi di marca (Stickerprint, Sephora). Non convertire gli importi in euro.
+/* nomi delle lingue per le istruzioni: quelle note per esteso, le altre dal nome ISO */
+const NOME_LINGUA: Record<string, string> = { en: 'inglese americano (en)', es: 'spagnolo di Spagna (es)', fr: 'francese (fr)', de: 'tedesco (de)', nl: 'olandese (nl)' };
+const nomeLingua = (l: string) => NOME_LINGUA[l] ?? `${new Intl.DisplayNames(['it'], { type: 'language' }).of(l) ?? l} (${l})`;
+const SISTEMA = `Sei il traduttore di Stickerprint, stampa online di adesivi personalizzati (Italia). Traduci i testi dall'italiano in ${LINGUE_ESTERE.map(nomeLingua).join(', ')}.
+Tono: naturale, da negozio online, mai letterale; en "you", es tu, fr vous, de du, nl je, nelle altre lingue il tu informale da negozio online. Mantieni esattamente tag HTML, link, emoji, segnaposto fra graffe come {soglia} e {campioni}, numeri e misure (mm restano mm), nomi di marca (Stickerprint, Sephora). Non convertire gli importi in euro.
 Glossario: adesivi personalizzati = custom stickers / pegatinas personalizadas / stickers personnalisés / individuelle Aufkleber / stickers op maat; adesivi resinati = domed stickers / pegatinas resinadas / stickers résinés / Doming-Aufkleber / doming stickers; adesivi in rilievo = raised stickers / pegatinas en relieve / stickers en relief / Relief-Aufkleber / reliëf stickers; etichette = labels / etiquetas / étiquettes / Etiketten / etiketten; fogli di adesivi = sticker sheets / hojas de pegatinas / planches de stickers / Stickerbögen / stickervellen; vetrofanie = window decals / vinilos para escaparate / stickers vitrine / Fensteraufkleber / raamstickers; kit campioni = sample kit / kit de muestras / kit d'échantillons / Muster-Set / proefpakket; sagomato = die-cut / troquelado / découpe à la forme / konturgeschnitten / contourgesneden; lamina = laminate / laminado / lamination / Laminierung / laminaat; anteprima automatica = instant preview / vista previa automática / aperçu automatique / automatische Vorschau / automatisch voorbeeld; spedizione gratuita da = free shipping from / envío gratis a partir de / livraison gratuite dès / kostenloser Versand ab / gratis verzending vanaf.
-Rispondi SOLO con il JSON richiesto: per ogni elemento gli stessi campi dell'italiano, tradotti, per ognuna delle cinque lingue.`;
+Rispondi SOLO con il JSON richiesto: per ogni elemento gli stessi campi dell'italiano, tradotti, per ognuna delle lingue elencate (chiavi: ${LINGUE_ESTERE.join(', ')}).`;
+
+/** dopo un salvataggio in dashboard: fa partire subito la traduzione di quello che manca, senza far aspettare chi salva.
+ *  Chiama il lavoro giornaliero (/api/cron/traduzioni) in una funzione a parte, che ha il suo tempo; waitUntil tiene viva
+ *  questa finche' la chiamata e' partita. Fuori da Vercel (sviluppo) la fetch parte lo stesso. */
+export function traduciDopoSalvataggio(origin: string): void {
+	if (!traduttoreAttivo() || !env.INTERNAL_API_KEY) return;
+	const p = fetch(`${origin}/api/cron/traduzioni`, { headers: { 'x-internal-key': env.INTERNAL_API_KEY } }).then(() => undefined, () => undefined);
+	try { waitUntil(p); } catch { /* non su Vercel */ }
+}
 
 type Campi = Record<string, unknown>;
 export interface Lavoro { tabella: 'faq_items' | 'faq_categories' | 'posts' | 'promos' | 'post_categories'; id: string; italiano: Campi }

@@ -105,13 +105,13 @@ const en: Prodotti = {
 		hl: 'right to your door.',
 		uno: { titolo: 'Upload your file', testo: 'PNG, PDF, JPG, SVG. Not print-ready? No problem: we fix it for you.' },
 		due: { titolo: 'Instant preview', testo: 'See the shape and cut line right away, before you pay. No leap in the dark.' },
-		tre: { titolo: 'You approve, we print', testo: 'Happy with the preview? Approve it and your order goes straight into production.', spedizione: 'Estimated shipping' },
+		tre: { titolo: 'You approve, we print', testo: 'Happy with the preview? Approve it and your order goes straight into production.', spedizione: 'Estimated ship date:' },
 		quattro: { titolo: 'Get your stickers', testo: 'Tracked express courier. And when they arrive, leave us a review like everyone else.' } },
 	ctaFinale: {
 		titolo: 'Get noticed, everywhere.',
 		titolo2: 'Your brand deserves stickers that are',
 		hl: 'impossible to ignore.',
-		prima: 'Order today: estimated shipping',
+		prima: 'Order today, estimated ship date:',
 		dopo: 'And get your brand out there.',
 		bottone: 'I want my stickers' },
 	campioni: {

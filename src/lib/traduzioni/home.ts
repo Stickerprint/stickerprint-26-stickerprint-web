@@ -104,12 +104,12 @@ const en: Home = {
 		stampaOra: 'Print now',
 		campioni: 'Samples',
 		pillAnteprima: '✦ Instant preview',
-		pillCredito: '✦ Up to 6% back in Stickerprint credit',
-		spedizioneStimata: 'Estimated shipping',
+		pillCredito: '✦ Up to 6% back in in-store credit',
+		spedizioneStimata: 'Estimated ship date:',
 		gratuitaDa: 'free from {soglia}',
 		altPila: 'Stack of custom stickers printed by Stickerprint',
 		stickerAnteprima: '✅ Preview ready in 2 seconds',
-		stickerSpedizione: '📦 Estimated shipping {giorno}' },
+		stickerSpedizione: '📦 Estimated ship date: {giorno}' },
 	loghi: { titolo: 'We’ve printed for' },
 	prodotti: {
 		titolo: 'What are we making today?',
@@ -119,7 +119,7 @@ const en: Home = {
 		resinati: { nome: 'Domed stickers', desc: '3D effect with a resin dome. Premium.' },
 		personalizzati: { nome: 'Custom stickers', desc: 'Die-cut vinyl, any shape. Matte or glossy.' },
 		rilievo: { nome: 'Raised stickers', desc: 'Raised details you can feel.' },
-		etichette: { nome: 'Labels on sheets', desc: 'For products, packaging and boxes.' } },
+		etichette: { nome: 'Custom label sheets', desc: 'For products, packaging and boxes.' } },
 	anteprima: {
 		tag: 'Instant preview',
 		titolo: 'See it first.',
@@ -143,7 +143,7 @@ const en: Home = {
 		produzione: '5 days',
 		produzioneLabel: 'Average production time' },
 	credito: {
-		tag: 'Stickerprint credit',
+		tag: 'In-store credit',
 		titolo: 'Every order leaves you',
 		evidenza: 'something.',
 		testo: 'Part of every purchase comes back to your account as credit, ready for your next order. The more you order, the higher the percentage.',
@@ -166,7 +166,7 @@ const en: Home = {
 		cta: 'Explore business solutions',
 		alt: 'The Stickerprint studio with its wall of stickers' },
 	instagram: {
-		titolo: 'More than {n} creatives are already with us.',
+		titolo: 'Join {n}+ creators in the Stickerprint community.',
 		testo: 'Work in progress, news and real projects <strong>LIVE</strong> straight from our workshop.',
 		apri: 'Open on Instagram',
 		altPost: 'Stickerprint Instagram post',

@@ -6,11 +6,11 @@ export const testiEn: TestiLingua = {
 		adesivi_personalizzati: {
 			name: 'Custom stickers', title: 'Custom stickers', h1: ['Custom', 'stickers'],
 			seoTitle: 'Custom stickers with instant online preview | Stickerprint',
-			seoDesc: 'Custom vinyl stickers, die-cut to any shape, matte or glossy. Upload your file, see the preview right away and order from 15 pieces. Printed in Italy.',
+			seoDesc: 'Custom vinyl stickers, die-cut to any shape, matte or glossy. Upload your file, see the preview right away and order from 15 stickers. Printed in Italy.',
 			seoCategory: 'Custom stickers',
 			sub: 'Done right. Period.',
 			desc: 'Premium materials. High-quality printing. Precise cutting. You upload the file, we handle the rest.',
-			checks: ['Instant automatic proof', 'Estimated delivery {ship} · free shipping from {soglia}', 'We only print if it looks right', 'No surprises on the result'],
+			checks: ['Get an instant preview', 'Estimated ship date: {ship} · free shipping from {soglia}', 'We only print if it looks right', 'No surprises on the result'],
 			cosa: 'Stickers cut to size and printed to last. Solid colors, clean details, materials that stand up to use, time and shipping. Stick them, ship them, pass them around. They do their job. For a long time.',
 			faq: [
 				{ q: 'What does die-cut mean?', a: 'Die-cut means the cut follows the exact outline of your design, with no rectangular white border. The sticker is cut to shape by a precision machine that traces your artwork, for a clean, professional result.' },
@@ -45,7 +45,7 @@ export const testiEn: TestiLingua = {
 			seoCategory: 'Domed stickers',
 			sub: 'Real depth. Premium look, guaranteed.',
 			desc: 'Raised, glossy, three-dimensional finish. For when your design shouldn’t just be seen. It should get noticed.',
-			checks: ['Ultra-glossy premium resin', 'Instant automatic proof', 'Estimated delivery {ship} · free shipping from {soglia}', 'We only print if it looks right', 'No surprises on the result'],
+			checks: ['Ultra-glossy premium resin', 'Get an instant preview', 'Estimated ship date: {ship} · free shipping from {soglia}', 'We only print if it looks right', 'No surprises on the result'],
 			cosa: 'Domed stickers. A premium look you notice right away. Raised 3D finish, deeper colors and a resin that protects and enhances the design. For when a sticker shouldn’t just stick, but stand out.',
 			faq: [
 				{ q: 'Why do the corners need to be rounded?', a: 'Rounded corners are needed so the resin flows evenly. With sharp corners the resin tends not to spread uniformly and can leave flaws. Rounded corners ensure even coverage and a flawless result.' },
@@ -66,7 +66,7 @@ export const testiEn: TestiLingua = {
 			seoCategory: 'Raised stickers',
 			sub: 'Selective raised print. Details with real depth.',
 			desc: 'Spot varnish applied only where it matters. Some details rise up, others stay flat. The result? A sticker you can see and feel.',
-			checks: ['Instant automatic proof', 'Estimated delivery {ship} · free shipping from {soglia}', 'We only print if it looks right', 'No surprises on the result', 'Raised effect applied with precision'],
+			checks: ['Get an instant preview', 'Estimated ship date: {ship} · free shipping from {soglia}', 'We only print if it looks right', 'No surprises on the result', 'Raised effect applied with precision'],
 			cosa: 'Raised stickers. Details that pop. Incredible results. The raised effect goes only on specific parts of the artwork. Some elements stay flat, others gain depth. The result is a sticker you don’t just see, but feel.',
 			faq: [
 				{ q: 'Do raised stickers have a protective laminate?', a: 'Yes, raised stickers are protected with a clear laminate that preserves both the print and the raised effect. The laminate guards against scratches, UV rays and the elements, keeping the 3D effect intact over time.' },
@@ -81,13 +81,13 @@ export const testiEn: TestiLingua = {
 			reviewsTitle: 'Spoiler:', reviewsHl: 'the raised effect makes the difference.', reviewsSub: 'Real orders. Real results.'
 		},
 		etichette: {
-			name: 'Labels on sheets', title: 'Labels on sheets',
+			name: 'Custom label sheets', title: 'Custom label sheets',
 			seoTitle: 'Custom labels on sheets for products and packaging | Stickerprint',
 			seoDesc: 'Custom labels on sheets for products, packaging and shipping: durable materials, protective laminate, kiss-cut for easy peeling. Order online with preview.',
 			seoCategory: 'Adhesive labels',
 			sub: 'Organized, fast, clean results.',
-			desc: 'Several labels on a single sheet, ready to apply. Ideal for packaging, products and shipping. For when you need practicality and quality, together.',
-			checks: ['Several labels on one sheet', 'Easy to peel, quick to apply by hand', 'Materials that resist water, oil and daily use', 'Protective finish for a clean look', 'Instant automatic proof'],
+			desc: 'Multiple labels on one sheet, ready to peel and apply. Practical, high-quality labels for products, packaging, and shipping.',
+			checks: ['Several labels on one sheet', 'Easy to peel, quick to apply by hand', 'Materials that resist water, oil and daily use', 'Protective finish for a clean look', 'Get an instant preview'],
 			cosa: 'Adhesive labels laid out on sheets, designed to be applied by hand quickly and precisely. Durable, legible, reliable. For when the packaging has to live up to what’s inside.',
 			faq: [
 				{ q: 'Do the labels have a protective laminate?', a: 'Yes, all our labels on sheets are coated with a clear protective laminate that makes them resistant to scratches, water, oil and daily use. The laminate ensures a clean look that lasts.' },
@@ -108,7 +108,7 @@ export const testiEn: TestiLingua = {
 			seoCategory: 'Sticker sheets',
 			sub: 'The smartest way to build packs, sets and collections.',
 			desc: 'Put several stickers, even different ones, on a single sheet. You lay them out or we do it for you. Ideal for merch, events, packaging and ready-to-go packs.',
-			checks: ['Instant automatic proof', 'Estimated delivery {ship} · free shipping from {soglia}', 'Kiss-cut on every sticker (easy to peel)', 'Different shapes on the same sheet', 'We only print if it looks right'],
+			checks: ['Get an instant preview', 'Estimated ship date: {ship} · free shipping from {soglia}', 'Kiss-cut on every sticker (easy to peel)', 'Different shapes on the same sheet', 'We only print if it looks right'],
 			cosa: 'Custom sticker sheets with several designs in one layout. Each sticker is cut individually but stays on the sheet. Perfect when you want variety, order and a professional result.',
 			faq: [
 				{ q: 'How many different stickers can I put on one sheet?', a: 'As many as you want, even with completely different designs. We arrange them in the best layout, or you can tell us the arrangement you prefer.' },
@@ -129,7 +129,7 @@ export const testiEn: TestiLingua = {
 			seoCategory: 'Window decals',
 			sub: 'Seen from outside. Perfect inside.',
 			desc: 'Decals designed to go on the inside of the glass and read perfectly from the outside. Clean, professional, built to last on storefronts, offices and commercial spaces.',
-			checks: ['Applied inside, read perfectly from outside', 'Durable vinyl, crisp colors', 'Precise cut to size', 'Instant automatic proof', 'We only print if it looks right'],
+			checks: ['Applied inside, read perfectly from outside', 'Durable vinyl, crisp colors', 'Precise cut to size', 'Get an instant preview', 'We only print if it looks right'],
 			cosa: 'Vinyl window decals with front-facing adhesive, designed to be applied on the inside of storefronts and windows. Long-lasting protection, clean look, clear and professional messaging. For when your message has to last as long as your business.',
 			faq: [
 				{ q: 'Do window decals have a protective laminate?', a: 'Yes, our window decals are protected with a clear laminate that resists scratches and UV rays. It keeps the colors vivid and the text legible over time, even in direct sunlight.' },

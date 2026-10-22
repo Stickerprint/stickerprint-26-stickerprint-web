@@ -20,7 +20,9 @@
 	import { matKindOf, paintSheetBackground } from '$lib/material-texture';
 	import { usaLingua } from '$lib/traduzioni';
 	import { formatAmount } from '$lib/i18n';
-	const { t, lang, locale, prezzo, prezzoUnit, numero, path } = usaLingua();
+	import { mmToUnit, unitToMm, snapMm } from '$lib/i18n';
+	const { t, lang, locale, prezzo, prezzoUnit, numero, path, unit, misuraU, misure } = usaLingua();
+	const inU = (mm: number) => (unit === 'in' ? Math.round(mmToUnit(mm, unit) * 100) / 100 : mm);
 	/** etichetta di una voce del listino (materiale, lamina, sagoma, orientamento, formato) nella lingua: dal catalogo se c'e', altrimenti quella del listino */
 	const opz = (id: string, campo: 'label' | 'description' | 'tag', fallback?: string) => { const k = `fogli.opzioni.${id}.${campo}`; const v = t(k); return v === k ? (fallback ?? '') : v; };
 	/* soglia della spedizione gratuita del locale (50 € IT, 69 € UE, 99 $ USA), mai scritta a mano */
@@ -81,7 +83,7 @@
 	const n = $derived(filled.length);
 	const FREE_MIN = 10;
 	const freeMax = $derived(Math.round(Math.max(cellW, cellH) * 1.6));
-	const clampMM = (v: number) => Math.round(Math.max(FREE_MIN, Math.min(freeMax, v || 0)) * 2) / 2;
+	const clampMM = (v: number) => snapMm(Math.max(FREE_MIN, Math.min(freeMax, v || 0)), unit);
 	/** un adesivo sporge dal foglio: il foglio diventa sagomato e il taglio lo segue */
 	const bbox = (s: Slot) => { const a = (s.rot * Math.PI) / 180, c = Math.abs(Math.cos(a)), n = Math.abs(Math.sin(a)); return { w: s.w * c + s.h * n, h: s.w * n + s.h * c }; };
 	const overhang = (s: Slot) => { if (!s.png) return false; const b = bbox(s); return s.x - b.w / 2 < 0 || s.y - b.h / 2 < 0 || s.x + b.w / 2 > sheetW || s.y + b.h / 2 > sheetH; };
@@ -292,7 +294,6 @@
 		/* anche il motore passa alla nuova misura: cosi' l'adesivo viene ridisegnato alla risoluzione giusta e la misura resta quando cambia il materiale */
 		if (s.cfgW && s.cfgH) { s.cfgW = Math.round(s.cfgW * f * 2) / 2; s.cfgH = Math.round(s.cfgH * f * 2) / 2; s.busy = true; setTimeout(() => { if (slots[i]?.busy) slots[i].busy = false; }, 15000); }
 	}
-	const mm1 = (v: number) => numero(v, 1);
 	function centerAll() { slots.forEach((s, i) => { if (s.file) { const [cx, cy] = cellCenter(i); s.x = cx; s.y = cy; } }); }
 
 	/* ---- file di stampa e anteprima: il foglio composto (sfondo + adesivi) a 12 px/mm, trasparente fuori dal taglio ---- */
@@ -369,7 +370,7 @@
 								<button type="button" title={t('fogli.builder.ruotaDx')} onclick={() => rotate(i, 15)}>↻</button>
 								<span class="sheet__tools-sep"></span>
 								<button type="button" title={t('fogli.builder.riduci')} onclick={() => resize(i, 0.9)}>−</button>
-								<span class="sheet__tools-mm">{mm1(s.w)} × {mm1(s.h)} mm</span>
+								<span class="sheet__tools-mm">{misure(s.w, s.h)}</span>
 								<button type="button" title={t('fogli.builder.ingrandisci')} onclick={() => resize(i, 1.1)}>+</button>
 								<span class="sheet__tools-sep"></span>
 								<button type="button" title={t('fogli.builder.chiudi')} onclick={() => (selected = null)}>✕</button>
@@ -378,7 +379,7 @@
 					{/if}
 				{/each}
 			{/if}
-			<div class="sheet__size">{sheetW} × {sheetH} mm{#if sagomato} · {t('fogli.builder.sagomato')}{/if}</div>
+			<div class="sheet__size">{misure(sheetW, sheetH)}{#if sagomato} · {t('fogli.builder.sagomato')}{/if}</div>
 		</div>
 		{#if n && !pronto}<p class="kit__tip">{t('fogli.builder.tip')} <button type="button" class="link-btn" onclick={centerAll}>{t('fogli.builder.riallinea')}</button></p>{/if}
 	</div>
@@ -565,18 +566,18 @@
 			{/each}
 			{#if pop}
 				<div class="kit__row kit__row--size">
-					<span class="step__hint">{t('fogli.builder.popup.misura', { max: freeMax })}</span>
+					<span class="step__hint">{t('fogli.builder.popup.misura', { max: misuraU(freeMax) })}</span>
 					<label class="kit__free">
 						<span>{t('fogli.builder.popup.misuraLabel')}</span>
 						{#if pop.forma === 'ovale' || pop.forma === 'rettangolare'}
-							<input type="number" min={FREE_MIN} max={freeMax} step="0.5" value={pop.w} onchange={(e) => setPopWH(+e.currentTarget.value, pop?.h ?? 0)} aria-label={t('fogli.builder.popup.larghezza')} /> ×
-							<input type="number" min={FREE_MIN} max={freeMax} step="0.5" value={pop.h} onchange={(e) => setPopWH(pop?.w ?? 0, +e.currentTarget.value)} aria-label={t('fogli.builder.popup.altezza')} /> mm
+							<input type="number" min={inU(FREE_MIN)} max={inU(freeMax)} step={unit === 'in' ? '0.05' : '0.5'} value={inU(pop.w)} onchange={(e) => setPopWH(unitToMm(+e.currentTarget.value, unit), pop?.h ?? 0)} aria-label={t('fogli.builder.popup.larghezza', { u: unit })} /> ×
+							<input type="number" min={inU(FREE_MIN)} max={inU(freeMax)} step={unit === 'in' ? '0.05' : '0.5'} value={inU(pop.h)} onchange={(e) => setPopWH(pop?.w ?? 0, unitToMm(+e.currentTarget.value, unit))} aria-label={t('fogli.builder.popup.altezza', { u: unit })} /> {unit}
 						{:else}
-							<input type="number" min={FREE_MIN} max={freeMax} step="0.5" value={pop.misura} onchange={(e) => setPopSize(+e.currentTarget.value)} aria-label={t('fogli.builder.popup.latoLungo')} /> mm
+							<input type="number" min={inU(FREE_MIN)} max={inU(freeMax)} step={unit === 'in' ? '0.05' : '0.5'} value={inU(pop.misura)} onchange={(e) => setPopSize(unitToMm(+e.currentTarget.value, unit))} aria-label={t('fogli.builder.popup.latoLungo', { u: unit })} /> {unit}
 							<small>{t('fogli.builder.popup.proporzioni')}</small>
 						{/if}
 					</label>
-					{#if pop.last}<span class="step__hint">{t('fogli.builder.popup.esce', { w: numero(pop.last.w, 1), h: numero(pop.last.h, 1) })}</span>{/if}
+					{#if pop.last}<span class="step__hint">{t('fogli.builder.popup.esce', { misura: misure(pop.last.w, pop.last.h) })}</span>{/if}
 				</div>
 				<div class="kit__modal-actions">
 					<button type="button" class="btn btn--sm" onclick={cancelPop}>{t('fogli.builder.popup.annulla')}</button>

@@ -1,5 +1,6 @@
 import { fail } from '@sveltejs/kit';
 import { invalidatePromos, loadPromos, parseLines } from '$lib/server/promos';
+import { traduciDopoSalvataggio } from '$lib/server/traduttore-contenuti';
 import { loadEngine } from '$lib/server/pricing';
 import { PRODUCT_ENGINES } from '$lib/pricing/engine';
 import type { Actions, PageServerLoad } from './$types';
@@ -49,7 +50,7 @@ function leggi(f: FormData) {
 }
 
 export const actions: Actions = {
-	save: async ({ request, locals: { supabase } }) => {
+	save: async ({ request, url, locals: { supabase } }) => {
 		invalidatePromos();
 		const f = await request.formData();
 		const r = leggi(f);
@@ -58,13 +59,15 @@ export const actions: Actions = {
 		const q = id ? supabase.from('promos').update(r.row).eq('id', id) : supabase.from('promos').insert(r.row);
 		const { error } = await q;
 		if (error) return fail(400, { error: error.message });
+		traduciDopoSalvataggio(url.origin);
 		return { ok: true };
 	},
-	toggle: async ({ request, locals: { supabase } }) => {
+	toggle: async ({ request, url, locals: { supabase } }) => {
 		invalidatePromos();
 		const f = await request.formData();
 		const { error } = await supabase.from('promos').update({ active: f.get('active') === 'true' }).eq('id', String(f.get('id')));
 		if (error) return fail(400, { error: error.message });
+		traduciDopoSalvataggio(url.origin);
 		return { ok: true };
 	},
 	delete: async ({ request, locals: { supabase } }) => {

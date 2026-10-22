@@ -7,7 +7,7 @@
  *   4. l'italiano.
  */
 import { createHash } from 'node:crypto';
-import type { Lang } from '$lib/i18n';
+import { LOCALES, type Lang } from '$lib/i18n';
 import { SUPPORT_TOPICS } from '$lib/support-faq';
 import { en } from '$lib/support-faq-lingue/en';
 import { es } from '$lib/support-faq-lingue/es';
@@ -16,7 +16,8 @@ import { de } from '$lib/support-faq-lingue/de';
 import { nl } from '$lib/support-faq-lingue/nl';
 import contenuti from '$lib/contenuti-tradotti/contenuti.json';
 
-export const LINGUE_ESTERE: Exclude<Lang, 'it'>[] = ['en', 'es', 'fr', 'de', 'nl'];
+/** lingue da tradurre: tutte quelle definite in LOCALES tranne l'italiano (una lingua nuova entra da sola, senza altro lavoro) */
+export const LINGUE_ESTERE: Exclude<Lang, 'it'>[] = [...new Set(Object.values(LOCALES).map((l) => l.lang))].filter((l): l is Exclude<Lang, 'it'> => l !== 'it');
 type Riga = { id: string; tr?: Record<string, unknown> | null };
 type File = Record<string, Record<string, { _hash?: string } & Record<string, Record<string, unknown>>>>;
 const FILE = contenuti as unknown as File;

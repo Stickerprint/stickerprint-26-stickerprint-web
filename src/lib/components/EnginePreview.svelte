@@ -68,6 +68,7 @@
 	function buildSrc() {
 		const q = new URLSearchParams({ embed: '1', forma, materiale, prodotto, lamina: finitura });
 		if (lingua.lang !== 'it') q.set('lang', lingua.lang);
+		if (lingua.unit === 'in') q.set('unit', 'in');
 		if (foglio) q.set('foglio', '1');
 		if (rilievo) q.set('rilievo', '1');
 		if (vetro) q.set('vetro', '1');
