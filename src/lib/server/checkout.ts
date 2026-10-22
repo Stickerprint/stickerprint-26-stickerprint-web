@@ -99,7 +99,7 @@ export async function finalizeCheckout(db: DB, group: string, o: { provider: str
 	if (p.creditUsed > 0 && p.userId) await db.from('credit_transactions').insert({ user_id: p.userId, amount: -p.creditUsed, kind: 'spend', order_ref: p.numbers[0], note: t(p.locale ?? 'it', 'checkout.ordine.creditoUsato', { numeri: p.numbers.join(', ') }) });
 	if (p.discountCode) await db.rpc('discount_code_used', { p_code: p.discountCode });
 
-	klaviyoPlacedOrder({ email: p.email, firstName: p.firstName, lastName: p.lastName, lingua: LOCALES[p.locale ?? 'it'].lang, paese: p.ship?.country ?? undefined, orderNumber: p.numbers[0], total: p.toPay, items: p.items.map((l) => ({ productId: `${l.product}_${l.forma}`, productName: `${l.product === 'campioni' ? 'Kit campioni' : l.productName} ${l.forma}`, price: l.gross, quantity: Number(l.qty) })), discountCode: p.discountCode, discountAmount: r2(p.discount * 1.22) }).catch(() => {});
+	klaviyoPlacedOrder({ email: p.email, firstName: p.firstName, lastName: p.lastName, lingua: LOCALES[p.locale ?? 'it'].lang, sito: p.locale ?? 'it', paese: p.ship?.country ?? undefined, orderNumber: p.numbers[0], total: p.toPay, items: p.items.map((l) => ({ productId: `${l.product}_${l.forma}`, productName: `${l.product === 'campioni' ? 'Kit campioni' : l.productName} ${l.forma}`, price: l.gross, quantity: Number(l.qty) })), discountCode: p.discountCode, discountAmount: r2(p.discount * 1.22) }).catch(() => {});
 
 	// fattura: registrata, PDF generato e allegato all'email di conferma
 	const { data: invNum } = await db.rpc('next_invoice_number');
