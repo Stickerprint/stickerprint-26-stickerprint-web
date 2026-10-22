@@ -1,631 +1,2256 @@
 {
- "faq_items": {
-  "62cfe138-66d8-4856-a258-ecd5dac161c7": {
-   "en": {
-    "q": "What are the production and delivery times?",
-    "a": "Standard production time is 5 business days. Standard shipping takes another 1-2 business days. Express shipping is also available for faster delivery, with a 30% surcharge."
-   },
-   "es": {
-    "q": "¿Cuáles son los plazos de producción y entrega?",
-    "a": "El plazo de producción estándar es de 5 días laborables. El envío estándar tarda 1-2 días laborables más. También está disponible el envío exprés para entregas más rápidas, con un recargo del 30 %."
-   },
-   "fr": {
-    "q": "Quels sont les délais de production et de livraison ?",
-    "a": "Le délai de production standard est de 5 jours ouvrés. La livraison standard prend 1 à 2 jours ouvrés supplémentaires. Une livraison express est également disponible pour les commandes urgentes, avec un supplément de 30 %."
-   },
-   "de": {
-    "q": "Wie lange dauern Produktion und Lieferung?",
-    "a": "Die Standard-Produktionszeit beträgt 5 Werktage. Der Standardversand dauert weitere 1–2 Werktage. Für schnellere Lieferungen gibt es auch den Expressversand mit einem Aufschlag von 30 %."
-   },
-   "nl": {
-    "q": "Wat zijn de productie- en levertijden?",
-    "a": "De standaard productietijd is 5 werkdagen. Standaard verzending duurt nog eens 1-2 werkdagen. Voor snellere levering is er ook expressverzending, met een toeslag van 30%."
-   },
-   "_hash": "e5c2d1b2594e2138"
-  },
-  "8d9e5b9f-8a55-4628-9e73-c983efedc373": {
-   "en": {
-    "q": "Why can't I find a phone number to call you?",
-    "a": "We've chosen to offer support exclusively through written channels, so we can give you more accurate, complete and verifiable answers. Every request stays documented and is accessible to our whole team, which avoids errors and misunderstandings. It also lets us analyze each issue more thoroughly and keep improving our service."
-   },
-   "es": {
-    "q": "¿Por qué no encuentro un número de teléfono para llamaros?",
-    "a": "Hemos decidido ofrecer asistencia exclusivamente por canales escritos, para darte respuestas más precisas, completas y verificables. Cada solicitud queda documentada y es accesible para todo nuestro equipo, lo que evita errores y malentendidos. Además, así podemos analizar mejor cada problema y mejorar constantemente nuestro servicio."
-   },
-   "fr": {
-    "q": "Pourquoi je ne trouve pas de numéro de téléphone pour vous appeler ?",
-    "a": "Nous avons choisi d'assurer l'assistance uniquement par écrit, afin de vous apporter des réponses plus précises, complètes et vérifiables. Chaque demande reste documentée et accessible à toute notre équipe, ce qui évite les erreurs et les malentendus. Cela nous permet aussi de mieux analyser chaque problème et d'améliorer constamment notre service."
-   },
-   "de": {
-    "q": "Warum finde ich keine Telefonnummer, um euch anzurufen?",
-    "a": "Wir haben uns entschieden, Support ausschließlich über schriftliche Kanäle anzubieten. So können wir dir genauere, vollständigere und nachvollziehbare Antworten geben. Jede Anfrage bleibt dokumentiert und ist für unser ganzes Team einsehbar – das vermeidet Fehler und Missverständnisse. Außerdem können wir so jedes Problem besser analysieren und unseren Service laufend verbessern."
-   },
-   "nl": {
-    "q": "Waarom vind ik geen telefoonnummer om jullie te bellen?",
-    "a": "We hebben ervoor gekozen om alleen schriftelijk support te geven, zodat we je preciezere, completere en controleerbare antwoorden kunnen geven. Elke aanvraag blijft gedocumenteerd en is voor ons hele team inzichtelijk, wat fouten en misverstanden voorkomt. Zo kunnen we bovendien elk probleem beter analyseren en onze service steeds verder verbeteren."
-   },
-   "_hash": "d20e10acc188e7b9"
-  },
-  "fd7fc98d-7254-46ab-8b91-10df7308158d": {
-   "en": {
-    "q": "Can I order custom samples before placing a large order?",
-    "a": "We don't offer custom samples because our minimum order starts at just 15 pcs, so you can place a small test order and check our quality for yourself. If you'd like to see all our materials instead, you can order a Stickerprint-branded sample kit with all our products and finishes: it costs €10 and you get it back right away on your first order thanks to a €10 discount code included in the kit."
-   },
-   "es": {
-    "q": "¿Puedo pedir muestras personalizadas antes de hacer un pedido grande?",
-    "a": "No ofrecemos muestras personalizadas porque nuestro pedido mínimo es de solo 15 unidades: puedes hacer un pedido de prueba pequeño y comprobar nuestra calidad. Si lo que quieres es conocer todos nuestros materiales, puedes pedir un kit de muestras con la marca Stickerprint, con todos nuestros productos y acabados: cuesta 10 € y los recuperas enseguida en tu primer pedido gracias a un código de descuento de 10 € que encontrarás dentro del kit."
-   },
-   "fr": {
-    "q": "Puis-je commander des échantillons personnalisés avant de passer une grosse commande ?",
-    "a": "Nous ne proposons pas d'échantillons personnalisés, car notre minimum de commande n'est que de 15 pièces : vous pouvez donc passer une petite commande d'essai et tester notre qualité. Si vous souhaitez plutôt découvrir tous nos matériaux, vous pouvez commander un kit d'échantillons aux couleurs de Stickerprint, avec tous nos produits et finitions : il coûte 10 € et vous les récupérez tout de suite sur votre première commande grâce à un code de réduction de 10 € glissé dans le kit."
-   },
-   "de": {
-    "q": "Kann ich individuelle Muster bestellen, bevor ich eine große Bestellung aufgebe?",
-    "a": "Individuelle Muster bieten wir nicht an, denn unsere Mindestbestellmenge liegt bei nur 15 Stück: Du kannst also einfach eine kleine Testbestellung aufgeben und unsere Qualität prüfen. Wenn du stattdessen alle unsere Materialien kennenlernen willst, bestell unser Muster-Set im Stickerprint-Design mit allen Produkten und Veredelungen. Es kostet 10 € und du bekommst den Betrag bei deiner ersten Bestellung sofort zurück – mit dem 10-€-Rabattcode, der im Set liegt."
-   },
-   "nl": {
-    "q": "Kan ik gepersonaliseerde proefstickers bestellen voordat ik een grote bestelling plaats?",
-    "a": "We bieden geen gepersonaliseerde proefstickers aan, omdat onze minimale bestelling al vanaf 15 stuks begint: je kunt dus gewoon een kleine proefbestelling plaatsen en onze kwaliteit zelf testen. Wil je liever al onze materialen leren kennen? Bestel dan ons proefpakket in Stickerprint-stijl, met al onze producten en afwerkingen. Het kost € 10 en je krijgt dat bedrag meteen terug bij je eerste bestelling, dankzij een kortingscode van € 10 die je in het pakket vindt."
-   },
-   "_hash": "1821379a3c4b4bd5"
-  },
-  "6d92eec5-956e-4171-b754-978868cfead6": {
-   "en": {
-    "q": "Is the estimated delivery date guaranteed?",
-    "a": "No, the date shown on the site is an estimate, although we meet it for the vast majority of orders. In some cases, however, unexpected production or shipping issues can cause delays.\n\nIf you have an event or a firm deadline, choose the Express service: your order will be handled with priority, through a separate production queue and a dedicated shipping service.\n\nAny doubts about timing? Contact us before ordering: we'll do everything we can to find the best solution and get your stickers to you on time."
-   },
-   "es": {
-    "q": "¿Está garantizada la fecha de entrega estimada?",
-    "a": "No, la fecha que aparece en la web es una estimación, aunque se cumple en la gran mayoría de los pedidos. En algunos casos, sin embargo, pueden surgir imprevistos de producción o de transporte que causen retrasos.\n\nSi tienes un evento o una fecha límite concreta, elige el servicio Exprés: tu pedido se gestionará con prioridad, en una cola de producción separada y con un servicio de envío dedicado.\n\n¿Tienes dudas sobre los plazos? Contacta con nosotros antes de pedir: haremos todo lo posible por encontrar la mejor solución y que tus pegatinas lleguen a tiempo."
-   },
-   "fr": {
-    "q": "La date de livraison estimée est-elle garantie ?",
-    "a": "Non, la date indiquée sur le site est une estimation, même si elle est respectée pour la grande majorité des commandes. Dans certains cas, des imprévus de production ou de transport peuvent toutefois entraîner des retards.\n\nSi vous avez un événement ou une échéance précise, choisissez le service Express : votre commande sera traitée en priorité, dans une file de production séparée et avec un service d'expédition dédié.\n\nUn doute sur les délais ? Contactez-nous avant de commander : nous ferons tout notre possible pour trouver la meilleure solution et que vos stickers arrivent à temps."
-   },
-   "de": {
-    "q": "Ist das voraussichtliche Lieferdatum garantiert?",
-    "a": "Nein, das Datum auf der Website ist eine Schätzung – auch wenn wir es bei der großen Mehrheit der Bestellungen einhalten. In manchen Fällen kann es durch unvorhergesehene Probleme in der Produktion oder beim Transport zu Verzögerungen kommen.\n\nWenn du ein Event oder einen festen Termin hast, wähl den Express-Service: Deine Bestellung wird mit Priorität bearbeitet, in einer separaten Produktionswarteschlange und mit einem eigenen Versandservice.\n\nDu bist dir bei den Lieferzeiten unsicher? Schreib uns vor der Bestellung: Wir tun alles, um die beste Lösung zu finden und deine Aufkleber rechtzeitig zu dir zu bringen."
-   },
-   "nl": {
-    "q": "Is de geschatte leverdatum gegarandeerd?",
-    "a": "Nee, de datum op de site is een schatting, al halen we die bij de overgrote meerderheid van de bestellingen. In sommige gevallen kunnen onverwachte problemen in de productie of het transport echter voor vertraging zorgen.\n\nHeb je een evenement of een harde deadline? Kies dan de Express-service: je bestelling wordt met voorrang behandeld, in een aparte productiewachtrij en met een speciale verzendservice.\n\nTwijfel je over de levertijd? Neem contact met ons op voordat je bestelt: we doen ons best om de beste oplossing te vinden en je stickers op tijd te bezorgen."
-   },
-   "_hash": "0c34f2ba91685f15"
-  },
-  "356c22be-9d3b-4630-aaca-ec5527798867": {
-   "en": {
-    "q": "What happens after I place an order?",
-    "a": "After you order, you'll receive a confirmation email with a summary of your order. We'll then update you when your order is ready to ship, along with the tracking link."
-   },
-   "es": {
-    "q": "¿Qué pasa después de hacer un pedido?",
-    "a": "Tras el pedido recibirás un email de confirmación con el resumen de lo que has pedido. Después te avisaremos cuando el pedido esté listo para enviarse, con el enlace de seguimiento correspondiente."
-   },
-   "fr": {
-    "q": "Que se passe-t-il une fois ma commande passée ?",
-    "a": "Après votre commande, vous recevrez un e-mail de confirmation avec le récapitulatif de votre achat. Vous serez ensuite informé dès que la commande sera prête à être expédiée, avec le lien de suivi correspondant."
-   },
-   "de": {
-    "q": "Was passiert, nachdem ich bestellt habe?",
-    "a": "Nach der Bestellung bekommst du eine Bestätigungs-E-Mail mit der Zusammenfassung deiner Bestellung. Sobald die Bestellung versandfertig ist, informieren wir dich erneut – inklusive Tracking-Link."
-   },
-   "nl": {
-    "q": "Wat gebeurt er nadat ik een bestelling heb geplaatst?",
-    "a": "Na je bestelling ontvang je een bevestigingsmail met een overzicht van wat je hebt besteld. Daarna krijg je bericht zodra je bestelling klaar is voor verzending, met de bijbehorende track & trace-link."
-   },
-   "_hash": "dac9dd5f43d9eb1c"
-  },
-  "be453ff2-aa25-499c-99dc-00e494111b77": {
-   "en": {
-    "q": "What payment methods do you accept?",
-    "a": "We accept credit/debit cards (Visa, Mastercard, American Express) via Stripe, as well as PayPal. Card payments are processed securely once you approve the proof."
-   },
-   "es": {
-    "q": "¿Qué métodos de pago aceptáis?",
-    "a": "Aceptamos pagos con tarjeta de crédito/débito (Visa, Mastercard, American Express) a través de Stripe y PayPal. El pago con tarjeta se procesa de forma segura en el momento en que apruebas la prueba de impresión."
-   },
-   "fr": {
-    "q": "Quels moyens de paiement acceptez-vous ?",
-    "a": "Nous acceptons les cartes de crédit/débit (Visa, Mastercard, American Express) via Stripe, ainsi que PayPal. Le paiement par carte est traité de manière sécurisée au moment où vous validez le BAT."
-   },
-   "de": {
-    "q": "Welche Zahlungsmethoden akzeptiert ihr?",
-    "a": "Wir akzeptieren Kredit- und Debitkarten (Visa, Mastercard, American Express) über Stripe sowie PayPal. Die Kartenzahlung wird sicher abgewickelt, sobald du die Druckfreigabe erteilst."
-   },
-   "nl": {
-    "q": "Welke betaalmethoden accepteren jullie?",
-    "a": "We accepteren creditcards en debitcards (Visa, Mastercard, American Express) via Stripe, en PayPal. De kaartbetaling wordt veilig verwerkt op het moment dat je de drukproef goedkeurt."
-   },
-   "_hash": "46ed773878534f82"
-  },
-  "60f895fe-f9ae-4ac1-b8d1-c9ad861599eb": {
-   "en": {
-    "q": "How long does it take to produce domed stickers?",
-    "a": "Domed stickers take slightly longer to produce than standard stickers, because of the doming process and the resin's curing time. On average, production takes 5-7 business days from proof approval."
-   },
-   "es": {
-    "q": "¿Cuánto tiempo tarda la producción de pegatinas resinadas?",
-    "a": "Las pegatinas resinadas (3D) necesitan un tiempo de producción algo mayor que las pegatinas estándar, debido al proceso de resinado y al tiempo de endurecimiento de la resina. De media, la producción tarda entre 5 y 7 días laborables desde la aprobación de la prueba de impresión."
-   },
-   "fr": {
-    "q": "Quel est le délai de production des stickers résinés ?",
-    "a": "Les stickers résinés (doming) demandent un délai de production légèrement plus long que les stickers standard, en raison du processus de résinage et du temps de durcissement de la résine. En moyenne, comptez 5 à 7 jours ouvrés après validation du BAT."
-   },
-   "de": {
-    "q": "Wie lange dauert die Produktion von Doming-Aufklebern?",
-    "a": "Doming-Aufkleber brauchen etwas länger in der Produktion als Standard-Aufkleber – wegen des Doming-Verfahrens und der Aushärtezeit des Harzes. Im Schnitt dauert die Produktion 5–7 Werktage ab der Druckfreigabe."
-   },
-   "nl": {
-    "q": "Hoe lang duurt de productie van doming stickers?",
-    "a": "Doming stickers hebben een iets langere productietijd dan standaard stickers, vanwege het doming-proces en de uithardingstijd van de hars. Gemiddeld duurt de productie 5-7 werkdagen vanaf goedkeuring van de drukproef."
-   },
-   "_hash": "037821f5fe831ccd"
-  }
- },
- "faq_categories": {
-  "f302ed98-c829-4bae-a0d3-14f3c6689aef": {
-   "en": {
-    "name": "Materials"
-   },
-   "es": {
-    "name": "Materiales"
-   },
-   "fr": {
-    "name": "Matériaux"
-   },
-   "de": {
-    "name": "Materialien"
-   },
-   "nl": {
-    "name": "Materialen"
-   },
-   "_hash": "fcc0736ff3af63d6"
-  },
-  "fed42b56-2363-4e77-9d59-5071ca888ad0": {
-   "en": {
-    "name": "Protection & finishes"
-   },
-   "es": {
-    "name": "Protecciones y acabados"
-   },
-   "fr": {
-    "name": "Protections et finitions"
-   },
-   "de": {
-    "name": "Schutz und Veredelungen"
-   },
-   "nl": {
-    "name": "Bescherming en afwerkingen"
-   },
-   "_hash": "7ca89c2c81fc130c"
-  },
-  "eb6d27ac-9509-441a-bd1a-2991e5441100": {
-   "en": {
-    "name": "Custom Stickers"
-   },
-   "es": {
-    "name": "Pegatinas personalizadas"
-   },
-   "fr": {
-    "name": "Stickers personnalisés"
-   },
-   "de": {
-    "name": "Individuelle Aufkleber"
-   },
-   "nl": {
-    "name": "Stickers op maat"
-   },
-   "_hash": "7f9a5ef995439ece"
-  },
-  "1022629c-c622-488e-b767-598bc5b1df0b": {
-   "en": {
-    "name": "Domed Stickers"
-   },
-   "es": {
-    "name": "Pegatinas resinadas"
-   },
-   "fr": {
-    "name": "Stickers résinés"
-   },
-   "de": {
-    "name": "Doming-Aufkleber"
-   },
-   "nl": {
-    "name": "Doming stickers"
-   },
-   "_hash": "8a55b87ecac5ed4c"
-  },
-  "d889396a-b4da-4e25-9843-d795cde68c0f": {
-   "en": {
-    "name": "Embossed Stickers"
-   },
-   "es": {
-    "name": "Pegatinas en relieve"
-   },
-   "fr": {
-    "name": "Stickers en relief"
-   },
-   "de": {
-    "name": "Relief-Aufkleber"
-   },
-   "nl": {
-    "name": "Reliëf stickers"
-   },
-   "_hash": "fa5ecc4747270698"
-  },
-  "38cb1136-a118-4c8b-8628-5ad498fdc1a7": {
-   "en": {
-    "name": "Labels"
-   },
-   "es": {
-    "name": "Etiquetas"
-   },
-   "fr": {
-    "name": "Étiquettes"
-   },
-   "de": {
-    "name": "Etiketten"
-   },
-   "nl": {
-    "name": "Etiketten"
-   },
-   "_hash": "0e898df606198ce1"
-  },
-  "72defe1f-aa9b-44c3-bc39-7b0e53d37197": {
-   "en": {
-    "name": "Window Decals"
-   },
-   "es": {
-    "name": "Vinilos para escaparate"
-   },
-   "fr": {
-    "name": "Stickers vitrine"
-   },
-   "de": {
-    "name": "Fensteraufkleber"
-   },
-   "nl": {
-    "name": "Raamstickers"
-   },
-   "_hash": "0f0bc543043cdd76"
-  },
-  "e1264c30-a859-4b46-b6ec-7b01374ebbef": {
-   "en": {
-    "name": "Sticker Sheets"
-   },
-   "es": {
-    "name": "Hojas de pegatinas"
-   },
-   "fr": {
-    "name": "Planches de stickers"
-   },
-   "de": {
-    "name": "Stickerbögen"
-   },
-   "nl": {
-    "name": "Stickervellen"
-   },
-   "_hash": "49fd3c45ad6fde44"
-  },
-  "cf0c2767-4275-4744-a0b9-2e6946b6e8cc": {
-   "en": {
-    "name": "Orders & shipping"
-   },
-   "es": {
-    "name": "Pedidos y envíos"
-   },
-   "fr": {
-    "name": "Commandes et livraison"
-   },
-   "de": {
-    "name": "Bestellungen und Versand"
-   },
-   "nl": {
-    "name": "Bestellingen en verzending"
-   },
-   "_hash": "ff24da5c4518d69f"
-  },
-  "e36de859-7afa-4e31-926f-f3deb23bffa3": {
-   "en": {
-    "name": "Returns & refunds"
-   },
-   "es": {
-    "name": "Devoluciones y reembolsos"
-   },
-   "fr": {
-    "name": "Retours et remboursements"
-   },
-   "de": {
-    "name": "Rückgabe und Erstattungen"
-   },
-   "nl": {
-    "name": "Retouren en terugbetalingen"
-   },
-   "_hash": "4c1f785b107063b9"
-  },
-  "51f487b1-8704-4acc-abb9-d651746ddde1": {
-   "en": {
-    "name": "General questions"
-   },
-   "es": {
-    "name": "Preguntas generales"
-   },
-   "fr": {
-    "name": "Questions générales"
-   },
-   "de": {
-    "name": "Allgemeine Fragen"
-   },
-   "nl": {
-    "name": "Algemene vragen"
-   },
-   "_hash": "614219c23c75bb8d"
-  }
- },
- "posts": {
-  "da18dd23-cf6f-4f5a-b13c-0bfc751b3971": {
-   "en": {
-    "slug": "new-collaboration-sephora-x-stickerprint",
-    "title": "New Collaboration: Sephora X Stickerprint",
-    "excerpt": "For the 2025 holiday campaign we created exclusive domed sticker sheets for Sephora.",
-    "content": "<p>We're excited to announce a new collaboration that's all about style and innovation ✨</p>\n<p>For the 2025 holiday campaign, we created exclusive domed sticker sheets for Sephora, designed to showcase the brand with a premium, durable, high-impact finish.</p>\n<p>A project that brings together design, quality and attention to detail, where the doming adds depth, shine and a tactile feel that makes all the difference. Exactly the kind of result we love achieving when we work alongside major brands.</p>\n<p>This collaboration confirms our commitment to supporting businesses with custom stickers made to measure, built to strengthen marketing campaigns and visual communication.</p>\n<p>👉 Do you have a brand and want professional stickers for your next campaign? Discover all our dedicated solutions on the <a href=\"/aziende\">Business page</a>. 💪🏻</p>"
-   },
-   "es": {
-    "slug": "nueva-colaboracion-sephora-x-stickerprint",
-    "title": "Nueva colaboración Sephora X Stickerprint",
-    "excerpt": "Para la campaña de Navidad 2025 hemos creado para Sephora hojas exclusivas de pegatinas resinadas.",
-    "content": "<p>Estamos felices de anunciar una nueva colaboración que huele a estilo e innovación ✨</p>\n<p>Para la campaña de Navidad 2025 hemos creado para Sephora hojas exclusivas de pegatinas resinadas, pensadas para realzar la marca con un acabado premium, resistente y de alto impacto visual.</p>\n<p>Un proyecto que une diseño, calidad y cuidado por el detalle, donde el resinado aporta profundidad, brillo y una sensación táctil que marca la diferencia. Justo el tipo de resultado que nos encanta conseguir cuando trabajamos junto a grandes marcas.</p>\n<p>Esta colaboración confirma nuestro compromiso de apoyar a las empresas con pegatinas personalizadas a medida, capaces de reforzar campañas de marketing y comunicación visual.</p>\n<p>👉 ¿Tienes una marca y quieres crear pegatinas profesionales para tu próxima campaña? Descubre todas nuestras soluciones dedicadas en la <a href=\"/aziende\">página Empresas</a>. 💪🏻</p>"
-   },
-   "fr": {
-    "slug": "nouvelle-collaboration-sephora-x-stickerprint",
-    "title": "Nouvelle collaboration Sephora X Stickerprint",
-    "excerpt": "Pour la campagne de Noël 2025, nous avons réalisé pour Sephora des planches exclusives de stickers résinés.",
-    "content": "<p>Nous sommes heureux d'annoncer une nouvelle collaboration qui sent bon le style et l'innovation ✨</p>\n<p>Pour la campagne de Noël 2025, nous avons réalisé pour Sephora des planches exclusives de stickers résinés, conçues pour mettre la marque en valeur avec une finition premium, résistante et à fort impact visuel.</p>\n<p>Un projet qui allie design, qualité et souci du détail, où le doming apporte profondeur, brillance et une sensation tactile qui fait toute la différence. Exactement le type de résultat que nous aimons obtenir lorsque nous travaillons aux côtés de grandes marques.</p>\n<p>Cette collaboration confirme notre engagement à accompagner les entreprises avec des stickers personnalisés sur mesure, capables de renforcer leurs campagnes marketing et leur communication visuelle.</p>\n<p>👉 Vous avez une marque et souhaitez créer des stickers professionnels pour votre prochaine campagne ? Découvrez toutes nos solutions dédiées sur la <a href=\"/aziende\">page Entreprises</a>. 💪🏻</p>"
-   },
-   "de": {
-    "slug": "neue-zusammenarbeit-sephora-x-stickerprint",
-    "title": "Neue Zusammenarbeit: Sephora X Stickerprint",
-    "excerpt": "Für die Weihnachtskampagne 2025 haben wir für Sephora exklusive Stickerbögen mit Doming-Aufklebern produziert.",
-    "content": "<p>Wir freuen uns, eine neue Zusammenarbeit anzukündigen, die nach Stil und Innovation duftet ✨</p>\n<p>Für die Weihnachtskampagne 2025 haben wir für Sephora exklusive Stickerbögen mit Doming-Aufklebern produziert – entwickelt, um die Marke mit einem hochwertigen, widerstandsfähigen Finish mit starker visueller Wirkung in Szene zu setzen.</p>\n<p>Ein Projekt, das Design, Qualität und Liebe zum Detail vereint: Das Doming sorgt für Tiefe, Glanz und ein haptisches Erlebnis, das den Unterschied macht. Genau die Art von Ergebnis, die wir lieben, wenn wir mit großen Marken zusammenarbeiten.</p>\n<p>Diese Zusammenarbeit bestätigt unseren Anspruch, Unternehmen mit individuellen Aufklebern nach Maß zu unterstützen – Aufkleber, die Marketingkampagnen und visuelle Kommunikation stärken.</p>\n<p>👉 Du hast eine Marke und willst professionelle Aufkleber für deine nächste Kampagne? Entdecke alle Lösungen für Unternehmen auf unserer <a href=\"/aziende\">Business-Seite</a>. 💪🏻</p>"
-   },
-   "nl": {
-    "slug": "nieuwe-samenwerking-sephora-x-stickerprint",
-    "title": "Nieuwe samenwerking Sephora X Stickerprint",
-    "excerpt": "Voor de kerstcampagne 2025 hebben we voor Sephora exclusieve stickervellen met doming stickers gemaakt.",
-    "content": "<p>We zijn blij om een nieuwe samenwerking aan te kondigen die ruikt naar stijl en innovatie ✨</p>\n<p>Voor de kerstcampagne 2025 hebben we voor Sephora exclusieve stickervellen met doming stickers gemaakt, ontworpen om het merk te laten stralen met een premium, slijtvaste afwerking met veel visuele impact.</p>\n<p>Een project waarin design, kwaliteit en oog voor detail samenkomen: de doming geeft diepte, glans en een voelbare afwerking die het verschil maakt. Precies het soort resultaat dat we graag neerzetten als we met grote merken samenwerken.</p>\n<p>Deze samenwerking bevestigt onze inzet om bedrijven te ondersteunen met stickers op maat die marketingcampagnes en visuele communicatie versterken.</p>\n<p>👉 Heb je een merk en wil je professionele stickers voor je volgende campagne? Ontdek al onze oplossingen voor bedrijven op de <a href=\"/aziende\">pagina Bedrijven</a>. 💪🏻</p>"
-   },
-   "_hash": "5beb9c1af7db9c03"
-  },
-  "af91d6ce-5f28-4f8e-8851-a6e2c0dffee8": {
-   "en": {
-    "slug": "welcome-to-the-new-stickerprint",
-    "title": "✨ Welcome to the New Stickerprint",
-    "excerpt": "We've got a brand-new look 😎",
-    "content": "<p>After months of hard work, we're thrilled to announce our brand-new website — completely redesigned in its look, its features and the shopping experience.</p>\n<p>A restyling built to simplify every step and make everything clearer, faster and, above all… closer to you.</p>\n<h2>🚀 More products, more choice</h2>\n<p>We've expanded our catalog with new formats, materials and finishes, giving you even more freedom to create your custom stickers and labels. Whether you're an individual, a designer or a business, you'll always find the perfect solution for your project.</p>\n<h2>💸 Better (and more transparent) prices</h2>\n<p>We've reworked our pricing to make it clearer, more competitive and free of surprises. Quantity discounts are applied automatically, so you can see right away how much you save. And thanks to the new free instant preview, you only pay after you've approved your design. Zero risk, just perfect results.</p>\n<h2>🧩 The new account area: everything under control</h2>\n<p>One of the features we're proudest of is the new account area, completely redesigned to give you maximum control in a simple, intuitive way. From here you can:</p>\n<ul><li>track the status of your orders in real time</li><li>follow your shipments step by step</li><li>reorder any product you've already printed with one click</li><li>save your billing, shipping and payment details to make every purchase even faster</li><li>and many more features coming soon</li></ul>\n<p>All designed to save you time and simplify every process.</p>\n<h2>🎨 Free proofs, always</h2>\n<p>Before you pay, you'll always see the print-ready preview of your artwork. Only after your approval will we move to production — because transparency and quality are at the heart of how we work.</p>\n<h2>💬 The new Stickerprint: simpler, faster, more yours</h2>\n<p>This restyling isn't just about looks: it's our way of giving you a more modern, clear and personalized experience. From choosing the material to delivery, everything has been optimized so you can create, order and receive perfect stickers… in just a few clicks.</p>"
-   },
-   "es": {
-    "slug": "bienvenidos-al-nuevo-stickerprint",
-    "title": "✨ Bienvenidos al nuevo Stickerprint",
-    "excerpt": "Nos hemos cambiado de look 😎",
-    "content": "<p>Después de meses de duro trabajo, estamos felices de presentar nuestra nueva web, completamente renovada: en el diseño, en las funciones y en la experiencia de compra.</p>\n<p>Un restyling pensado para simplificar cada paso y hacerlo todo más claro, más rápido y, sobre todo… más cercano a ti.</p>\n<h2>🚀 Más productos, más opciones</h2>\n<p>Hemos ampliado nuestro catálogo con nuevos formatos, materiales y acabados, para darte aún más libertad al crear tus pegatinas y etiquetas personalizadas. Seas un particular, un diseñador o una empresa, siempre encontrarás la solución perfecta para tu proyecto.</p>\n<h2>💸 Precios más económicos (y transparentes)</h2>\n<p>Hemos revisado nuestro sistema de precios para hacerlo más claro, más competitivo y sin sorpresas. Los descuentos por cantidad se aplican automáticamente, así ves al momento cuánto ahorras. Y gracias a la nueva vista previa gratuita de impresión, solo pagarás después de aprobar tu diseño. Cero riesgos, solo resultados perfectos.</p>\n<h2>🧩 La nueva área personal: todo bajo control</h2>\n<p>Una de las novedades de las que estamos más orgullosos es la nueva área personal, completamente rediseñada para darte el máximo control de forma sencilla e intuitiva. Desde aquí puedes:</p>\n<ul><li>seguir el estado de tus pedidos en tiempo real</li><li>rastrear los envíos paso a paso</li><li>volver a pedir con un clic cualquier producto ya impreso</li><li>guardar tus datos de facturación, envío y pago para que cada compra sea aún más rápida</li><li>y muchas otras funciones que llegarán muy pronto</li></ul>\n<p>Todo pensado para ahorrarte tiempo y simplificar cada proceso.</p>\n<h2>🎨 Pruebas de impresión gratuitas, siempre</h2>\n<p>Antes de pagar, siempre verás la vista previa de tu diseño listo para imprimir. Solo después de tu confirmación pasaremos a producción, porque la transparencia y la calidad son la base de nuestra forma de trabajar.</p>\n<h2>💬 El nuevo Stickerprint: más sencillo, más rápido, más tuyo</h2>\n<p>Este restyling no es solo una cuestión estética: es nuestra manera de ofrecerte una experiencia más moderna, clara y personalizada. Desde la elección del material hasta la entrega, todo está optimizado para que puedas crear, pedir y recibir pegatinas perfectas… en pocos clics.</p>"
-   },
-   "fr": {
-    "slug": "bienvenue-sur-le-nouveau-stickerprint",
-    "title": "✨ Bienvenue sur le nouveau Stickerprint",
-    "excerpt": "On s'est refait une beauté 😎",
-    "content": "<p>Après des mois de travail, nous sommes heureux de vous présenter notre nouveau site, entièrement repensé — dans son look, ses fonctionnalités et son expérience d'achat.</p>\n<p>Une refonte pensée pour simplifier chaque étape et rendre le tout plus clair, plus rapide et surtout… plus proche de vous.</p>\n<h2>🚀 Plus de produits, plus de choix</h2>\n<p>Nous avons élargi notre catalogue avec de nouveaux formats, matériaux et finitions, pour vous offrir encore plus de liberté dans la création de vos stickers et étiquettes personnalisés. Particulier, designer ou entreprise, vous trouverez toujours la solution parfaite pour votre projet.</p>\n<h2>💸 Des prix plus avantageux (et transparents)</h2>\n<p>Nous avons revu notre système de tarification pour le rendre plus clair, plus compétitif et sans surprise. Les remises sur quantité s'appliquent automatiquement, pour voir tout de suite combien vous économisez. Et grâce au nouvel aperçu d'impression gratuit, vous ne payez qu'après avoir validé votre design. Zéro risque, rien que des résultats parfaits.</p>\n<h2>🧩 Le nouvel espace personnel : tout sous contrôle</h2>\n<p>L'une des nouveautés dont nous sommes le plus fiers, c'est le nouvel espace personnel, entièrement repensé pour vous donner un contrôle total, simplement et intuitivement. Depuis cet espace, vous pouvez :</p>\n<ul><li>suivre l'état de vos commandes en temps réel</li><li>suivre vos expéditions étape par étape</li><li>recommander en un clic n'importe quel produit déjà imprimé</li><li>enregistrer vos données de facturation, de livraison et de paiement pour des achats encore plus rapides</li><li>et bien d'autres fonctionnalités à venir très bientôt</li></ul>\n<p>Tout est pensé pour vous faire gagner du temps et simplifier chaque étape.</p>\n<h2>🎨 BAT gratuit, toujours</h2>\n<p>Avant de payer, vous verrez toujours l'aperçu de votre visuel prêt à imprimer. Ce n'est qu'après votre validation que nous lancerons la production — parce que la transparence et la qualité sont au cœur de notre façon de travailler.</p>\n<h2>💬 Le nouveau Stickerprint : plus simple, plus rapide, plus à vous</h2>\n<p>Cette refonte n'est pas qu'une question d'esthétique : c'est notre façon de vous offrir une expérience plus moderne, plus claire et plus personnalisée. Du choix du matériau à la livraison, tout a été optimisé pour vous permettre de créer, commander et recevoir des stickers parfaits… en quelques clics.</p>"
-   },
-   "de": {
-    "slug": "willkommen-beim-neuen-stickerprint",
-    "title": "✨ Willkommen beim neuen Stickerprint",
-    "excerpt": "Wir haben uns einen neuen Look verpasst 😎",
-    "content": "<p>Nach Monaten harter Arbeit freuen wir uns, unsere neue Website vorzustellen – komplett erneuert: im Look, in den Funktionen und im Einkaufserlebnis.</p>\n<p>Ein Redesign, das jeden Schritt vereinfacht und alles klarer, schneller und vor allem… näher an dir macht.</p>\n<h2>🚀 Mehr Produkte, mehr Auswahl</h2>\n<p>Wir haben unser Sortiment um neue Formate, Materialien und Veredelungen erweitert, damit du noch mehr Freiheit beim Gestalten deiner individuellen Aufkleber und Etiketten hast. Ob Privatperson, Designer oder Unternehmen: Du findest immer die perfekte Lösung für dein Projekt.</p>\n<h2>💸 Günstigere (und transparente) Preise</h2>\n<p>Wir haben unser Preissystem überarbeitet – klarer, wettbewerbsfähiger und ohne Überraschungen. Mengenrabatte werden automatisch angewendet, du siehst also sofort, wie viel du sparst. Und dank der neuen kostenlosen Druckvorschau zahlst du erst, nachdem du dein Design freigegeben hast. Null Risiko, nur perfekte Ergebnisse.</p>\n<h2>🧩 Der neue Kundenbereich: alles im Griff</h2>\n<p>Eine der Neuerungen, auf die wir besonders stolz sind, ist der neue Kundenbereich – komplett neu gestaltet, damit du einfach und intuitiv die volle Kontrolle hast. Hier kannst du:</p>\n<ul><li>den Status deiner Bestellungen in Echtzeit verfolgen</li><li>deine Sendungen Schritt für Schritt tracken</li><li>jedes bereits gedruckte Produkt mit einem Klick nachbestellen</li><li>deine Rechnungs-, Versand- und Zahlungsdaten speichern, damit jeder Einkauf noch schneller geht</li><li>und viele weitere Funktionen nutzen, die bald dazukommen</li></ul>\n<p>Alles gemacht, um dir Zeit zu sparen und jeden Ablauf zu vereinfachen.</p>\n<h2>🎨 Kostenlose Druckvorschau, immer</h2>\n<p>Bevor du bezahlst, siehst du immer die druckfertige Vorschau deiner Grafik. Erst nach deiner Freigabe starten wir die Produktion – denn Transparenz und Qualität sind die Basis unserer Arbeit.</p>\n<h2>💬 Das neue Stickerprint: einfacher, schneller, mehr deins</h2>\n<p>Dieses Redesign ist nicht nur eine Frage der Optik: Es ist unsere Art, dir ein moderneres, klareres und persönlicheres Erlebnis zu bieten. Von der Materialwahl bis zur Lieferung ist alles darauf optimiert, dass du perfekte Aufkleber erstellen, bestellen und erhalten kannst… mit wenigen Klicks.</p>"
-   },
-   "nl": {
-    "slug": "welkom-bij-het-nieuwe-stickerprint",
-    "title": "✨ Welkom bij het nieuwe Stickerprint",
-    "excerpt": "We hebben een nieuwe look 😎",
-    "content": "<p>Na maanden hard werken zijn we blij om onze nieuwe website te presenteren – helemaal vernieuwd: in look, in functies en in winkelervaring.</p>\n<p>Een restyling die elke stap eenvoudiger maakt en alles duidelijker, sneller en vooral… dichter bij jou brengt.</p>\n<h2>🚀 Meer producten, meer keuze</h2>\n<p>We hebben ons assortiment uitgebreid met nieuwe formaten, materialen en afwerkingen, zodat je nog meer vrijheid hebt bij het maken van je stickers op maat en gepersonaliseerde etiketten. Of je nu particulier, designer of bedrijf bent: je vindt altijd de perfecte oplossing voor je project.</p>\n<h2>💸 Voordeligere (en transparante) prijzen</h2>\n<p>We hebben ons prijssysteem herzien: duidelijker, scherper en zonder verrassingen. Staffelkortingen worden automatisch toegepast, zodat je meteen ziet hoeveel je bespaart. En dankzij het nieuwe gratis printvoorbeeld betaal je pas nadat je je ontwerp hebt goedgekeurd. Nul risico, alleen perfecte resultaten.</p>\n<h2>🧩 Het nieuwe account: alles onder controle</h2>\n<p>Een van de vernieuwingen waar we het meest trots op zijn, is je nieuwe persoonlijke account, volledig opnieuw ontworpen om je op een simpele en intuïtieve manier maximale controle te geven. Vanuit hier kun je:</p>\n<ul><li>de status van je bestellingen in realtime volgen</li><li>je zendingen stap voor stap volgen</li><li>elk eerder gedrukt product met één klik opnieuw bestellen</li><li>je factuur-, verzend- en betaalgegevens opslaan, zodat elke aankoop nog sneller gaat</li><li>en nog veel meer functies die binnenkort volgen</li></ul>\n<p>Allemaal bedoeld om je tijd te besparen en elk proces eenvoudiger te maken.</p>\n<h2>🎨 Gratis drukproef, altijd</h2>\n<p>Voordat je betaalt, zie je altijd het drukklare voorbeeld van je ontwerp. Pas na jouw goedkeuring gaan we in productie – want transparantie en kwaliteit vormen de basis van hoe we werken.</p>\n<h2>💬 Het nieuwe Stickerprint: simpeler, sneller, meer van jou</h2>\n<p>Deze restyling is niet alleen een kwestie van uiterlijk: het is onze manier om je een modernere, duidelijkere en persoonlijkere ervaring te bieden. Van de keuze van het materiaal tot de levering: alles is geoptimaliseerd zodat je perfecte stickers kunt maken, bestellen en ontvangen… in een paar klikken.</p>"
-   },
-   "_hash": "7d534545e9715520"
-  }
- },
- "promos": {
-  "0106883e-ede7-4d9c-a70e-18cb6e32214d": {
-   "en": {
-    "product_label": "custom stickers",
-    "subtitle": "This week only: 250 custom stickers for €79, instant preview included.",
-    "chips": [
-     "Waterproof",
-     "Matte laminate"
-    ],
-    "includes": [
-     {
-      "label": "250 custom stickers",
-      "normally": "€171"
-     },
-     {
-      "label": "Instant file preview",
-      "normally": "included"
-     }
-    ],
-    "perks": [
-     {
-      "label": "Instant preview",
-      "saves": "1-2 days"
-     },
-     {
-      "label": "Production in 5 days",
-      "saves": "3-4 days"
-     },
-     {
-      "label": "Tracked express courier",
-      "saves": "1-2 days"
-     }
-    ],
-    "save_text": "8-10 days and €92",
-    "cta": "Upload your file to continue"
-   },
-   "es": {
-    "product_label": "pegatinas personalizadas",
-    "subtitle": "Solo esta semana: 250 pegatinas personalizadas por 79 €, vista previa inmediata incluida.",
-    "chips": [
-     "Resistentes al agua",
-     "Laminado mate"
-    ],
-    "includes": [
-     {
-      "label": "250 pegatinas personalizadas",
-      "normally": "171 €"
-     },
-     {
-      "label": "Vista previa automática del archivo",
-      "normally": "incluida"
-     }
-    ],
-    "perks": [
-     {
-      "label": "Vista previa inmediata",
-      "saves": "1-2 días"
-     },
-     {
-      "label": "Producción en 5 días",
-      "saves": "3-4 días"
-     },
-     {
-      "label": "Mensajería exprés con seguimiento",
-      "saves": "1-2 días"
-     }
-    ],
-    "save_text": "8-10 días y 92 €",
-    "cta": "Sube tu archivo para continuar"
-   },
-   "fr": {
-    "product_label": "stickers personnalisés",
-    "subtitle": "Cette semaine seulement : 250 stickers personnalisés à 79 €, aperçu immédiat compris.",
-    "chips": [
-     "Résistants à l'eau",
-     "Lamination mate"
-    ],
-    "includes": [
-     {
-      "label": "250 stickers personnalisés",
-      "normally": "171 €"
-     },
-     {
-      "label": "Aperçu automatique du fichier",
-      "normally": "inclus"
-     }
-    ],
-    "perks": [
-     {
-      "label": "Aperçu immédiat",
-      "saves": "1-2 jours"
-     },
-     {
-      "label": "Production en 5 jours",
-      "saves": "3-4 jours"
-     },
-     {
-      "label": "Transporteur express avec suivi",
-      "saves": "1-2 jours"
-     }
-    ],
-    "save_text": "8-10 jours et 92 €",
-    "cta": "Chargez votre fichier pour continuer"
-   },
-   "de": {
-    "product_label": "individuelle Aufkleber",
-    "subtitle": "Nur diese Woche: 250 individuelle Aufkleber für 79 €, sofortige Vorschau inklusive.",
-    "chips": [
-     "Wasserfest",
-     "Matte Laminierung"
-    ],
-    "includes": [
-     {
-      "label": "250 individuelle Aufkleber",
-      "normally": "171 €"
-     },
-     {
-      "label": "Automatische Vorschau deiner Datei",
-      "normally": "inklusive"
-     }
-    ],
-    "perks": [
-     {
-      "label": "Sofortige Vorschau",
-      "saves": "1–2 Tage"
-     },
-     {
-      "label": "Produktion in 5 Tagen",
-      "saves": "3–4 Tage"
-     },
-     {
-      "label": "Expressversand mit Tracking",
-      "saves": "1–2 Tage"
-     }
-    ],
-    "save_text": "8–10 Tage und 92 €",
-    "cta": "Lade deine Datei hoch, um fortzufahren"
-   },
-   "nl": {
-    "product_label": "stickers op maat",
-    "subtitle": "Alleen deze week: 250 stickers op maat voor € 79, direct voorbeeld inbegrepen.",
-    "chips": [
-     "Waterbestendig",
-     "Mat laminaat"
-    ],
-    "includes": [
-     {
-      "label": "250 stickers op maat",
-      "normally": "€ 171"
-     },
-     {
-      "label": "Automatisch voorbeeld van je bestand",
-      "normally": "inbegrepen"
-     }
-    ],
-    "perks": [
-     {
-      "label": "Direct voorbeeld",
-      "saves": "1-2 dagen"
-     },
-     {
-      "label": "Productie in 5 dagen",
-      "saves": "3-4 dagen"
-     },
-     {
-      "label": "Expresskoerier met track & trace",
-      "saves": "1-2 dagen"
-     }
-    ],
-    "save_text": "8-10 dagen en € 92",
-    "cta": "Upload je bestand om verder te gaan"
-   },
-   "_hash": "e7b61edb6a6928bd"
-  }
- },
- "post_categories": {
-  "News": {
-   "en": "News",
-   "es": "Noticias",
-   "fr": "Actualités",
-   "de": "News",
-   "nl": "Nieuws"
-  },
-  "Consigli": {
-   "en": "Tips",
-   "es": "Consejos",
-   "fr": "Conseils",
-   "de": "Tipps",
-   "nl": "Tips"
-  },
-  "Idee": {
-   "en": "Ideas",
-   "es": "Ideas",
-   "fr": "Idées",
-   "de": "Ideen",
-   "nl": "Ideeën"
-  }
- }
+	"faq_items": {
+		"62cfe138-66d8-4856-a258-ecd5dac161c7": {
+			"en": {
+				"q": "What are the production and delivery times?",
+				"a": "Standard production time is 5 business days. Standard shipping takes another 1-2 business days. Express shipping is also available for faster delivery, with a 30% surcharge."
+			},
+			"es": {
+				"q": "¿Cuáles son los plazos de producción y entrega?",
+				"a": "El plazo de producción estándar es de 5 días laborables. El envío estándar tarda 1-2 días laborables más. También está disponible el envío exprés para entregas más rápidas, con un recargo del 30 %."
+			},
+			"fr": {
+				"q": "Quels sont les délais de production et de livraison ?",
+				"a": "Le délai de production standard est de 5 jours ouvrés. La livraison standard prend 1 à 2 jours ouvrés supplémentaires. Une livraison express est également disponible pour les commandes urgentes, avec un supplément de 30 %."
+			},
+			"de": {
+				"q": "Wie lange dauern Produktion und Lieferung?",
+				"a": "Die Standard-Produktionszeit beträgt 5 Werktage. Der Standardversand dauert weitere 1–2 Werktage. Für schnellere Lieferungen gibt es auch den Expressversand mit einem Aufschlag von 30 %."
+			},
+			"nl": {
+				"q": "Wat zijn de productie- en levertijden?",
+				"a": "De standaard productietijd is 5 werkdagen. Standaard verzending duurt nog eens 1-2 werkdagen. Voor snellere levering is er ook expressverzending, met een toeslag van 30%."
+			},
+			"_hash": "e5c2d1b2594e2138"
+		},
+		"8d9e5b9f-8a55-4628-9e73-c983efedc373": {
+			"en": {
+				"q": "Why can't I find a phone number to call you?",
+				"a": "We've chosen to offer support exclusively through written channels, so we can give you more accurate, complete and verifiable answers. Every request stays documented and is accessible to our whole team, which avoids errors and misunderstandings. It also lets us analyze each issue more thoroughly and keep improving our service."
+			},
+			"es": {
+				"q": "¿Por qué no encuentro un número de teléfono para llamaros?",
+				"a": "Hemos decidido ofrecer asistencia exclusivamente por canales escritos, para darte respuestas más precisas, completas y verificables. Cada solicitud queda documentada y es accesible para todo nuestro equipo, lo que evita errores y malentendidos. Además, así podemos analizar mejor cada problema y mejorar constantemente nuestro servicio."
+			},
+			"fr": {
+				"q": "Pourquoi je ne trouve pas de numéro de téléphone pour vous appeler ?",
+				"a": "Nous avons choisi d'assurer l'assistance uniquement par écrit, afin de vous apporter des réponses plus précises, complètes et vérifiables. Chaque demande reste documentée et accessible à toute notre équipe, ce qui évite les erreurs et les malentendus. Cela nous permet aussi de mieux analyser chaque problème et d'améliorer constamment notre service."
+			},
+			"de": {
+				"q": "Warum finde ich keine Telefonnummer, um euch anzurufen?",
+				"a": "Wir haben uns entschieden, Support ausschließlich über schriftliche Kanäle anzubieten. So können wir dir genauere, vollständigere und nachvollziehbare Antworten geben. Jede Anfrage bleibt dokumentiert und ist für unser ganzes Team einsehbar – das vermeidet Fehler und Missverständnisse. Außerdem können wir so jedes Problem besser analysieren und unseren Service laufend verbessern."
+			},
+			"nl": {
+				"q": "Waarom vind ik geen telefoonnummer om jullie te bellen?",
+				"a": "We hebben ervoor gekozen om alleen schriftelijk support te geven, zodat we je preciezere, completere en controleerbare antwoorden kunnen geven. Elke aanvraag blijft gedocumenteerd en is voor ons hele team inzichtelijk, wat fouten en misverstanden voorkomt. Zo kunnen we bovendien elk probleem beter analyseren en onze service steeds verder verbeteren."
+			},
+			"_hash": "d20e10acc188e7b9"
+		},
+		"fd7fc98d-7254-46ab-8b91-10df7308158d": {
+			"en": {
+				"q": "Can I order custom samples before placing a large order?",
+				"a": "We don't offer custom samples because our minimum order starts at just 15 pcs, so you can place a small test order and check our quality for yourself. If you'd like to see all our materials instead, you can order a Stickerprint-branded sample kit with all our products and finishes: it costs €10 and you get it back right away on your first order thanks to a €10 discount code included in the kit."
+			},
+			"es": {
+				"q": "¿Puedo pedir muestras personalizadas antes de hacer un pedido grande?",
+				"a": "No ofrecemos muestras personalizadas porque nuestro pedido mínimo es de solo 15 unidades: puedes hacer un pedido de prueba pequeño y comprobar nuestra calidad. Si lo que quieres es conocer todos nuestros materiales, puedes pedir un kit de muestras con la marca Stickerprint, con todos nuestros productos y acabados: cuesta 10 € y los recuperas enseguida en tu primer pedido gracias a un código de descuento de 10 € que encontrarás dentro del kit."
+			},
+			"fr": {
+				"q": "Puis-je commander des échantillons personnalisés avant de passer une grosse commande ?",
+				"a": "Nous ne proposons pas d'échantillons personnalisés, car notre minimum de commande n'est que de 15 pièces : vous pouvez donc passer une petite commande d'essai et tester notre qualité. Si vous souhaitez plutôt découvrir tous nos matériaux, vous pouvez commander un kit d'échantillons aux couleurs de Stickerprint, avec tous nos produits et finitions : il coûte 10 € et vous les récupérez tout de suite sur votre première commande grâce à un code de réduction de 10 € glissé dans le kit."
+			},
+			"de": {
+				"q": "Kann ich individuelle Muster bestellen, bevor ich eine große Bestellung aufgebe?",
+				"a": "Individuelle Muster bieten wir nicht an, denn unsere Mindestbestellmenge liegt bei nur 15 Stück: Du kannst also einfach eine kleine Testbestellung aufgeben und unsere Qualität prüfen. Wenn du stattdessen alle unsere Materialien kennenlernen willst, bestell unser Muster-Set im Stickerprint-Design mit allen Produkten und Veredelungen. Es kostet 10 € und du bekommst den Betrag bei deiner ersten Bestellung sofort zurück – mit dem 10-€-Rabattcode, der im Set liegt."
+			},
+			"nl": {
+				"q": "Kan ik gepersonaliseerde proefstickers bestellen voordat ik een grote bestelling plaats?",
+				"a": "We bieden geen gepersonaliseerde proefstickers aan, omdat onze minimale bestelling al vanaf 15 stuks begint: je kunt dus gewoon een kleine proefbestelling plaatsen en onze kwaliteit zelf testen. Wil je liever al onze materialen leren kennen? Bestel dan ons proefpakket in Stickerprint-stijl, met al onze producten en afwerkingen. Het kost € 10 en je krijgt dat bedrag meteen terug bij je eerste bestelling, dankzij een kortingscode van € 10 die je in het pakket vindt."
+			},
+			"_hash": "1821379a3c4b4bd5"
+		},
+		"6d92eec5-956e-4171-b754-978868cfead6": {
+			"en": {
+				"q": "Is the estimated delivery date guaranteed?",
+				"a": "No, the date shown on the site is an estimate, although we meet it for the vast majority of orders. In some cases, however, unexpected production or shipping issues can cause delays.\n\nIf you have an event or a firm deadline, choose the Express service: your order will be handled with priority, through a separate production queue and a dedicated shipping service.\n\nAny doubts about timing? Contact us before ordering: we'll do everything we can to find the best solution and get your stickers to you on time."
+			},
+			"es": {
+				"q": "¿Está garantizada la fecha de entrega estimada?",
+				"a": "No, la fecha que aparece en la web es una estimación, aunque se cumple en la gran mayoría de los pedidos. En algunos casos, sin embargo, pueden surgir imprevistos de producción o de transporte que causen retrasos.\n\nSi tienes un evento o una fecha límite concreta, elige el servicio Exprés: tu pedido se gestionará con prioridad, en una cola de producción separada y con un servicio de envío dedicado.\n\n¿Tienes dudas sobre los plazos? Contacta con nosotros antes de pedir: haremos todo lo posible por encontrar la mejor solución y que tus pegatinas lleguen a tiempo."
+			},
+			"fr": {
+				"q": "La date de livraison estimée est-elle garantie ?",
+				"a": "Non, la date indiquée sur le site est une estimation, même si elle est respectée pour la grande majorité des commandes. Dans certains cas, des imprévus de production ou de transport peuvent toutefois entraîner des retards.\n\nSi vous avez un événement ou une échéance précise, choisissez le service Express : votre commande sera traitée en priorité, dans une file de production séparée et avec un service d'expédition dédié.\n\nUn doute sur les délais ? Contactez-nous avant de commander : nous ferons tout notre possible pour trouver la meilleure solution et que vos stickers arrivent à temps."
+			},
+			"de": {
+				"q": "Ist das voraussichtliche Lieferdatum garantiert?",
+				"a": "Nein, das Datum auf der Website ist eine Schätzung – auch wenn wir es bei der großen Mehrheit der Bestellungen einhalten. In manchen Fällen kann es durch unvorhergesehene Probleme in der Produktion oder beim Transport zu Verzögerungen kommen.\n\nWenn du ein Event oder einen festen Termin hast, wähl den Express-Service: Deine Bestellung wird mit Priorität bearbeitet, in einer separaten Produktionswarteschlange und mit einem eigenen Versandservice.\n\nDu bist dir bei den Lieferzeiten unsicher? Schreib uns vor der Bestellung: Wir tun alles, um die beste Lösung zu finden und deine Aufkleber rechtzeitig zu dir zu bringen."
+			},
+			"nl": {
+				"q": "Is de geschatte leverdatum gegarandeerd?",
+				"a": "Nee, de datum op de site is een schatting, al halen we die bij de overgrote meerderheid van de bestellingen. In sommige gevallen kunnen onverwachte problemen in de productie of het transport echter voor vertraging zorgen.\n\nHeb je een evenement of een harde deadline? Kies dan de Express-service: je bestelling wordt met voorrang behandeld, in een aparte productiewachtrij en met een speciale verzendservice.\n\nTwijfel je over de levertijd? Neem contact met ons op voordat je bestelt: we doen ons best om de beste oplossing te vinden en je stickers op tijd te bezorgen."
+			},
+			"_hash": "0c34f2ba91685f15"
+		},
+		"356c22be-9d3b-4630-aaca-ec5527798867": {
+			"en": {
+				"q": "What happens after I place an order?",
+				"a": "After you order, you'll receive a confirmation email with a summary of your order. We'll then update you when your order is ready to ship, along with the tracking link."
+			},
+			"es": {
+				"q": "¿Qué pasa después de hacer un pedido?",
+				"a": "Tras el pedido recibirás un email de confirmación con el resumen de lo que has pedido. Después te avisaremos cuando el pedido esté listo para enviarse, con el enlace de seguimiento correspondiente."
+			},
+			"fr": {
+				"q": "Que se passe-t-il une fois ma commande passée ?",
+				"a": "Après votre commande, vous recevrez un e-mail de confirmation avec le récapitulatif de votre achat. Vous serez ensuite informé dès que la commande sera prête à être expédiée, avec le lien de suivi correspondant."
+			},
+			"de": {
+				"q": "Was passiert, nachdem ich bestellt habe?",
+				"a": "Nach der Bestellung bekommst du eine Bestätigungs-E-Mail mit der Zusammenfassung deiner Bestellung. Sobald die Bestellung versandfertig ist, informieren wir dich erneut – inklusive Tracking-Link."
+			},
+			"nl": {
+				"q": "Wat gebeurt er nadat ik een bestelling heb geplaatst?",
+				"a": "Na je bestelling ontvang je een bevestigingsmail met een overzicht van wat je hebt besteld. Daarna krijg je bericht zodra je bestelling klaar is voor verzending, met de bijbehorende track & trace-link."
+			},
+			"_hash": "dac9dd5f43d9eb1c"
+		},
+		"be453ff2-aa25-499c-99dc-00e494111b77": {
+			"en": {
+				"q": "What payment methods do you accept?",
+				"a": "We accept credit/debit cards (Visa, Mastercard, American Express) via Stripe, as well as PayPal. Card payments are processed securely once you approve the proof."
+			},
+			"es": {
+				"q": "¿Qué métodos de pago aceptáis?",
+				"a": "Aceptamos pagos con tarjeta de crédito/débito (Visa, Mastercard, American Express) a través de Stripe y PayPal. El pago con tarjeta se procesa de forma segura en el momento en que apruebas la prueba de impresión."
+			},
+			"fr": {
+				"q": "Quels moyens de paiement acceptez-vous ?",
+				"a": "Nous acceptons les cartes de crédit/débit (Visa, Mastercard, American Express) via Stripe, ainsi que PayPal. Le paiement par carte est traité de manière sécurisée au moment où vous validez le BAT."
+			},
+			"de": {
+				"q": "Welche Zahlungsmethoden akzeptiert ihr?",
+				"a": "Wir akzeptieren Kredit- und Debitkarten (Visa, Mastercard, American Express) über Stripe sowie PayPal. Die Kartenzahlung wird sicher abgewickelt, sobald du die Druckfreigabe erteilst."
+			},
+			"nl": {
+				"q": "Welke betaalmethoden accepteren jullie?",
+				"a": "We accepteren creditcards en debitcards (Visa, Mastercard, American Express) via Stripe, en PayPal. De kaartbetaling wordt veilig verwerkt op het moment dat je de drukproef goedkeurt."
+			},
+			"_hash": "46ed773878534f82"
+		},
+		"60f895fe-f9ae-4ac1-b8d1-c9ad861599eb": {
+			"en": {
+				"q": "How long does it take to produce domed stickers?",
+				"a": "Domed stickers take slightly longer to produce than standard stickers, because of the doming process and the resin's curing time. On average, production takes 5-7 business days from proof approval."
+			},
+			"es": {
+				"q": "¿Cuánto tiempo tarda la producción de pegatinas resinadas?",
+				"a": "Las pegatinas resinadas (3D) necesitan un tiempo de producción algo mayor que las pegatinas estándar, debido al proceso de resinado y al tiempo de endurecimiento de la resina. De media, la producción tarda entre 5 y 7 días laborables desde la aprobación de la prueba de impresión."
+			},
+			"fr": {
+				"q": "Quel est le délai de production des stickers résinés ?",
+				"a": "Les stickers résinés (doming) demandent un délai de production légèrement plus long que les stickers standard, en raison du processus de résinage et du temps de durcissement de la résine. En moyenne, comptez 5 à 7 jours ouvrés après validation du BAT."
+			},
+			"de": {
+				"q": "Wie lange dauert die Produktion von Doming-Aufklebern?",
+				"a": "Doming-Aufkleber brauchen etwas länger in der Produktion als Standard-Aufkleber – wegen des Doming-Verfahrens und der Aushärtezeit des Harzes. Im Schnitt dauert die Produktion 5–7 Werktage ab der Druckfreigabe."
+			},
+			"nl": {
+				"q": "Hoe lang duurt de productie van doming stickers?",
+				"a": "Doming stickers hebben een iets langere productietijd dan standaard stickers, vanwege het doming-proces en de uithardingstijd van de hars. Gemiddeld duurt de productie 5-7 werkdagen vanaf goedkeuring van de drukproef."
+			},
+			"_hash": "037821f5fe831ccd"
+		}
+	},
+	"faq_categories": {
+		"f302ed98-c829-4bae-a0d3-14f3c6689aef": {
+			"en": {
+				"name": "Materials"
+			},
+			"es": {
+				"name": "Materiales"
+			},
+			"fr": {
+				"name": "Matériaux"
+			},
+			"de": {
+				"name": "Materialien"
+			},
+			"nl": {
+				"name": "Materialen"
+			},
+			"_hash": "fcc0736ff3af63d6"
+		},
+		"fed42b56-2363-4e77-9d59-5071ca888ad0": {
+			"en": {
+				"name": "Protection & finishes"
+			},
+			"es": {
+				"name": "Protecciones y acabados"
+			},
+			"fr": {
+				"name": "Protections et finitions"
+			},
+			"de": {
+				"name": "Schutz und Veredelungen"
+			},
+			"nl": {
+				"name": "Bescherming en afwerkingen"
+			},
+			"_hash": "7ca89c2c81fc130c"
+		},
+		"eb6d27ac-9509-441a-bd1a-2991e5441100": {
+			"en": {
+				"name": "Custom Stickers"
+			},
+			"es": {
+				"name": "Pegatinas personalizadas"
+			},
+			"fr": {
+				"name": "Stickers personnalisés"
+			},
+			"de": {
+				"name": "Individuelle Aufkleber"
+			},
+			"nl": {
+				"name": "Stickers op maat"
+			},
+			"_hash": "7f9a5ef995439ece"
+		},
+		"1022629c-c622-488e-b767-598bc5b1df0b": {
+			"en": {
+				"name": "Domed Stickers"
+			},
+			"es": {
+				"name": "Pegatinas resinadas"
+			},
+			"fr": {
+				"name": "Stickers résinés"
+			},
+			"de": {
+				"name": "Doming-Aufkleber"
+			},
+			"nl": {
+				"name": "Doming stickers"
+			},
+			"_hash": "8a55b87ecac5ed4c"
+		},
+		"d889396a-b4da-4e25-9843-d795cde68c0f": {
+			"en": {
+				"name": "Embossed Stickers"
+			},
+			"es": {
+				"name": "Pegatinas en relieve"
+			},
+			"fr": {
+				"name": "Stickers en relief"
+			},
+			"de": {
+				"name": "Relief-Aufkleber"
+			},
+			"nl": {
+				"name": "Reliëf stickers"
+			},
+			"_hash": "fa5ecc4747270698"
+		},
+		"38cb1136-a118-4c8b-8628-5ad498fdc1a7": {
+			"en": {
+				"name": "Labels"
+			},
+			"es": {
+				"name": "Etiquetas"
+			},
+			"fr": {
+				"name": "Étiquettes"
+			},
+			"de": {
+				"name": "Etiketten"
+			},
+			"nl": {
+				"name": "Etiketten"
+			},
+			"_hash": "0e898df606198ce1"
+		},
+		"72defe1f-aa9b-44c3-bc39-7b0e53d37197": {
+			"en": {
+				"name": "Window Decals"
+			},
+			"es": {
+				"name": "Vinilos para escaparate"
+			},
+			"fr": {
+				"name": "Stickers vitrine"
+			},
+			"de": {
+				"name": "Fensteraufkleber"
+			},
+			"nl": {
+				"name": "Raamstickers"
+			},
+			"_hash": "0f0bc543043cdd76"
+		},
+		"e1264c30-a859-4b46-b6ec-7b01374ebbef": {
+			"en": {
+				"name": "Sticker Sheets"
+			},
+			"es": {
+				"name": "Hojas de pegatinas"
+			},
+			"fr": {
+				"name": "Planches de stickers"
+			},
+			"de": {
+				"name": "Stickerbögen"
+			},
+			"nl": {
+				"name": "Stickervellen"
+			},
+			"_hash": "49fd3c45ad6fde44"
+		},
+		"cf0c2767-4275-4744-a0b9-2e6946b6e8cc": {
+			"en": {
+				"name": "Orders & shipping"
+			},
+			"es": {
+				"name": "Pedidos y envíos"
+			},
+			"fr": {
+				"name": "Commandes et livraison"
+			},
+			"de": {
+				"name": "Bestellungen und Versand"
+			},
+			"nl": {
+				"name": "Bestellingen en verzending"
+			},
+			"_hash": "ff24da5c4518d69f"
+		},
+		"e36de859-7afa-4e31-926f-f3deb23bffa3": {
+			"en": {
+				"name": "Returns & refunds"
+			},
+			"es": {
+				"name": "Devoluciones y reembolsos"
+			},
+			"fr": {
+				"name": "Retours et remboursements"
+			},
+			"de": {
+				"name": "Rückgabe und Erstattungen"
+			},
+			"nl": {
+				"name": "Retouren en terugbetalingen"
+			},
+			"_hash": "4c1f785b107063b9"
+		},
+		"51f487b1-8704-4acc-abb9-d651746ddde1": {
+			"en": {
+				"name": "General questions"
+			},
+			"es": {
+				"name": "Preguntas generales"
+			},
+			"fr": {
+				"name": "Questions générales"
+			},
+			"de": {
+				"name": "Allgemeine Fragen"
+			},
+			"nl": {
+				"name": "Algemene vragen"
+			},
+			"_hash": "614219c23c75bb8d"
+		}
+	},
+	"posts": {
+		"da18dd23-cf6f-4f5a-b13c-0bfc751b3971": {
+			"en": {
+				"slug": "new-collaboration-sephora-x-stickerprint",
+				"title": "New Collaboration: Sephora X Stickerprint",
+				"excerpt": "For the 2025 holiday campaign we created exclusive domed sticker sheets for Sephora.",
+				"content": "<p>We're excited to announce a new collaboration that's all about style and innovation ✨</p>\n<p>For the 2025 holiday campaign, we created exclusive domed sticker sheets for Sephora, designed to showcase the brand with a premium, durable, high-impact finish.</p>\n<p>A project that brings together design, quality and attention to detail, where the doming adds depth, shine and a tactile feel that makes all the difference. Exactly the kind of result we love achieving when we work alongside major brands.</p>\n<p>This collaboration confirms our commitment to supporting businesses with custom stickers made to measure, built to strengthen marketing campaigns and visual communication.</p>\n<p>👉 Do you have a brand and want professional stickers for your next campaign? Discover all our dedicated solutions on the <a href=\"/aziende\">Business page</a>. 💪🏻</p>"
+			},
+			"es": {
+				"slug": "nueva-colaboracion-sephora-x-stickerprint",
+				"title": "Nueva colaboración Sephora X Stickerprint",
+				"excerpt": "Para la campaña de Navidad 2025 hemos creado para Sephora hojas exclusivas de pegatinas resinadas.",
+				"content": "<p>Estamos felices de anunciar una nueva colaboración que huele a estilo e innovación ✨</p>\n<p>Para la campaña de Navidad 2025 hemos creado para Sephora hojas exclusivas de pegatinas resinadas, pensadas para realzar la marca con un acabado premium, resistente y de alto impacto visual.</p>\n<p>Un proyecto que une diseño, calidad y cuidado por el detalle, donde el resinado aporta profundidad, brillo y una sensación táctil que marca la diferencia. Justo el tipo de resultado que nos encanta conseguir cuando trabajamos junto a grandes marcas.</p>\n<p>Esta colaboración confirma nuestro compromiso de apoyar a las empresas con pegatinas personalizadas a medida, capaces de reforzar campañas de marketing y comunicación visual.</p>\n<p>👉 ¿Tienes una marca y quieres crear pegatinas profesionales para tu próxima campaña? Descubre todas nuestras soluciones dedicadas en la <a href=\"/aziende\">página Empresas</a>. 💪🏻</p>"
+			},
+			"fr": {
+				"slug": "nouvelle-collaboration-sephora-x-stickerprint",
+				"title": "Nouvelle collaboration Sephora X Stickerprint",
+				"excerpt": "Pour la campagne de Noël 2025, nous avons réalisé pour Sephora des planches exclusives de stickers résinés.",
+				"content": "<p>Nous sommes heureux d'annoncer une nouvelle collaboration qui sent bon le style et l'innovation ✨</p>\n<p>Pour la campagne de Noël 2025, nous avons réalisé pour Sephora des planches exclusives de stickers résinés, conçues pour mettre la marque en valeur avec une finition premium, résistante et à fort impact visuel.</p>\n<p>Un projet qui allie design, qualité et souci du détail, où le doming apporte profondeur, brillance et une sensation tactile qui fait toute la différence. Exactement le type de résultat que nous aimons obtenir lorsque nous travaillons aux côtés de grandes marques.</p>\n<p>Cette collaboration confirme notre engagement à accompagner les entreprises avec des stickers personnalisés sur mesure, capables de renforcer leurs campagnes marketing et leur communication visuelle.</p>\n<p>👉 Vous avez une marque et souhaitez créer des stickers professionnels pour votre prochaine campagne ? Découvrez toutes nos solutions dédiées sur la <a href=\"/aziende\">page Entreprises</a>. 💪🏻</p>"
+			},
+			"de": {
+				"slug": "neue-zusammenarbeit-sephora-x-stickerprint",
+				"title": "Neue Zusammenarbeit: Sephora X Stickerprint",
+				"excerpt": "Für die Weihnachtskampagne 2025 haben wir für Sephora exklusive Stickerbögen mit Doming-Aufklebern produziert.",
+				"content": "<p>Wir freuen uns, eine neue Zusammenarbeit anzukündigen, die nach Stil und Innovation duftet ✨</p>\n<p>Für die Weihnachtskampagne 2025 haben wir für Sephora exklusive Stickerbögen mit Doming-Aufklebern produziert – entwickelt, um die Marke mit einem hochwertigen, widerstandsfähigen Finish mit starker visueller Wirkung in Szene zu setzen.</p>\n<p>Ein Projekt, das Design, Qualität und Liebe zum Detail vereint: Das Doming sorgt für Tiefe, Glanz und ein haptisches Erlebnis, das den Unterschied macht. Genau die Art von Ergebnis, die wir lieben, wenn wir mit großen Marken zusammenarbeiten.</p>\n<p>Diese Zusammenarbeit bestätigt unseren Anspruch, Unternehmen mit individuellen Aufklebern nach Maß zu unterstützen – Aufkleber, die Marketingkampagnen und visuelle Kommunikation stärken.</p>\n<p>👉 Du hast eine Marke und willst professionelle Aufkleber für deine nächste Kampagne? Entdecke alle Lösungen für Unternehmen auf unserer <a href=\"/aziende\">Business-Seite</a>. 💪🏻</p>"
+			},
+			"nl": {
+				"slug": "nieuwe-samenwerking-sephora-x-stickerprint",
+				"title": "Nieuwe samenwerking Sephora X Stickerprint",
+				"excerpt": "Voor de kerstcampagne 2025 hebben we voor Sephora exclusieve stickervellen met doming stickers gemaakt.",
+				"content": "<p>We zijn blij om een nieuwe samenwerking aan te kondigen die ruikt naar stijl en innovatie ✨</p>\n<p>Voor de kerstcampagne 2025 hebben we voor Sephora exclusieve stickervellen met doming stickers gemaakt, ontworpen om het merk te laten stralen met een premium, slijtvaste afwerking met veel visuele impact.</p>\n<p>Een project waarin design, kwaliteit en oog voor detail samenkomen: de doming geeft diepte, glans en een voelbare afwerking die het verschil maakt. Precies het soort resultaat dat we graag neerzetten als we met grote merken samenwerken.</p>\n<p>Deze samenwerking bevestigt onze inzet om bedrijven te ondersteunen met stickers op maat die marketingcampagnes en visuele communicatie versterken.</p>\n<p>👉 Heb je een merk en wil je professionele stickers voor je volgende campagne? Ontdek al onze oplossingen voor bedrijven op de <a href=\"/aziende\">pagina Bedrijven</a>. 💪🏻</p>"
+			},
+			"_hash": "5beb9c1af7db9c03"
+		},
+		"af91d6ce-5f28-4f8e-8851-a6e2c0dffee8": {
+			"en": {
+				"slug": "welcome-to-the-new-stickerprint",
+				"title": "✨ Welcome to the New Stickerprint",
+				"excerpt": "We've got a brand-new look 😎",
+				"content": "<p>After months of hard work, we're thrilled to announce our brand-new website — completely redesigned in its look, its features and the shopping experience.</p>\n<p>A restyling built to simplify every step and make everything clearer, faster and, above all… closer to you.</p>\n<h2>🚀 More products, more choice</h2>\n<p>We've expanded our catalog with new formats, materials and finishes, giving you even more freedom to create your custom stickers and labels. Whether you're an individual, a designer or a business, you'll always find the perfect solution for your project.</p>\n<h2>💸 Better (and more transparent) prices</h2>\n<p>We've reworked our pricing to make it clearer, more competitive and free of surprises. Quantity discounts are applied automatically, so you can see right away how much you save. And thanks to the new free instant preview, you only pay after you've approved your design. Zero risk, just perfect results.</p>\n<h2>🧩 The new account area: everything under control</h2>\n<p>One of the features we're proudest of is the new account area, completely redesigned to give you maximum control in a simple, intuitive way. From here you can:</p>\n<ul><li>track the status of your orders in real time</li><li>follow your shipments step by step</li><li>reorder any product you've already printed with one click</li><li>save your billing, shipping and payment details to make every purchase even faster</li><li>and many more features coming soon</li></ul>\n<p>All designed to save you time and simplify every process.</p>\n<h2>🎨 Free proofs, always</h2>\n<p>Before you pay, you'll always see the print-ready preview of your artwork. Only after your approval will we move to production — because transparency and quality are at the heart of how we work.</p>\n<h2>💬 The new Stickerprint: simpler, faster, more yours</h2>\n<p>This restyling isn't just about looks: it's our way of giving you a more modern, clear and personalized experience. From choosing the material to delivery, everything has been optimized so you can create, order and receive perfect stickers… in just a few clicks.</p>"
+			},
+			"es": {
+				"slug": "bienvenidos-al-nuevo-stickerprint",
+				"title": "✨ Bienvenidos al nuevo Stickerprint",
+				"excerpt": "Nos hemos cambiado de look 😎",
+				"content": "<p>Después de meses de duro trabajo, estamos felices de presentar nuestra nueva web, completamente renovada: en el diseño, en las funciones y en la experiencia de compra.</p>\n<p>Un restyling pensado para simplificar cada paso y hacerlo todo más claro, más rápido y, sobre todo… más cercano a ti.</p>\n<h2>🚀 Más productos, más opciones</h2>\n<p>Hemos ampliado nuestro catálogo con nuevos formatos, materiales y acabados, para darte aún más libertad al crear tus pegatinas y etiquetas personalizadas. Seas un particular, un diseñador o una empresa, siempre encontrarás la solución perfecta para tu proyecto.</p>\n<h2>💸 Precios más económicos (y transparentes)</h2>\n<p>Hemos revisado nuestro sistema de precios para hacerlo más claro, más competitivo y sin sorpresas. Los descuentos por cantidad se aplican automáticamente, así ves al momento cuánto ahorras. Y gracias a la nueva vista previa gratuita de impresión, solo pagarás después de aprobar tu diseño. Cero riesgos, solo resultados perfectos.</p>\n<h2>🧩 La nueva área personal: todo bajo control</h2>\n<p>Una de las novedades de las que estamos más orgullosos es la nueva área personal, completamente rediseñada para darte el máximo control de forma sencilla e intuitiva. Desde aquí puedes:</p>\n<ul><li>seguir el estado de tus pedidos en tiempo real</li><li>rastrear los envíos paso a paso</li><li>volver a pedir con un clic cualquier producto ya impreso</li><li>guardar tus datos de facturación, envío y pago para que cada compra sea aún más rápida</li><li>y muchas otras funciones que llegarán muy pronto</li></ul>\n<p>Todo pensado para ahorrarte tiempo y simplificar cada proceso.</p>\n<h2>🎨 Pruebas de impresión gratuitas, siempre</h2>\n<p>Antes de pagar, siempre verás la vista previa de tu diseño listo para imprimir. Solo después de tu confirmación pasaremos a producción, porque la transparencia y la calidad son la base de nuestra forma de trabajar.</p>\n<h2>💬 El nuevo Stickerprint: más sencillo, más rápido, más tuyo</h2>\n<p>Este restyling no es solo una cuestión estética: es nuestra manera de ofrecerte una experiencia más moderna, clara y personalizada. Desde la elección del material hasta la entrega, todo está optimizado para que puedas crear, pedir y recibir pegatinas perfectas… en pocos clics.</p>"
+			},
+			"fr": {
+				"slug": "bienvenue-sur-le-nouveau-stickerprint",
+				"title": "✨ Bienvenue sur le nouveau Stickerprint",
+				"excerpt": "On s'est refait une beauté 😎",
+				"content": "<p>Après des mois de travail, nous sommes heureux de vous présenter notre nouveau site, entièrement repensé — dans son look, ses fonctionnalités et son expérience d'achat.</p>\n<p>Une refonte pensée pour simplifier chaque étape et rendre le tout plus clair, plus rapide et surtout… plus proche de vous.</p>\n<h2>🚀 Plus de produits, plus de choix</h2>\n<p>Nous avons élargi notre catalogue avec de nouveaux formats, matériaux et finitions, pour vous offrir encore plus de liberté dans la création de vos stickers et étiquettes personnalisés. Particulier, designer ou entreprise, vous trouverez toujours la solution parfaite pour votre projet.</p>\n<h2>💸 Des prix plus avantageux (et transparents)</h2>\n<p>Nous avons revu notre système de tarification pour le rendre plus clair, plus compétitif et sans surprise. Les remises sur quantité s'appliquent automatiquement, pour voir tout de suite combien vous économisez. Et grâce au nouvel aperçu d'impression gratuit, vous ne payez qu'après avoir validé votre design. Zéro risque, rien que des résultats parfaits.</p>\n<h2>🧩 Le nouvel espace personnel : tout sous contrôle</h2>\n<p>L'une des nouveautés dont nous sommes le plus fiers, c'est le nouvel espace personnel, entièrement repensé pour vous donner un contrôle total, simplement et intuitivement. Depuis cet espace, vous pouvez :</p>\n<ul><li>suivre l'état de vos commandes en temps réel</li><li>suivre vos expéditions étape par étape</li><li>recommander en un clic n'importe quel produit déjà imprimé</li><li>enregistrer vos données de facturation, de livraison et de paiement pour des achats encore plus rapides</li><li>et bien d'autres fonctionnalités à venir très bientôt</li></ul>\n<p>Tout est pensé pour vous faire gagner du temps et simplifier chaque étape.</p>\n<h2>🎨 BAT gratuit, toujours</h2>\n<p>Avant de payer, vous verrez toujours l'aperçu de votre visuel prêt à imprimer. Ce n'est qu'après votre validation que nous lancerons la production — parce que la transparence et la qualité sont au cœur de notre façon de travailler.</p>\n<h2>💬 Le nouveau Stickerprint : plus simple, plus rapide, plus à vous</h2>\n<p>Cette refonte n'est pas qu'une question d'esthétique : c'est notre façon de vous offrir une expérience plus moderne, plus claire et plus personnalisée. Du choix du matériau à la livraison, tout a été optimisé pour vous permettre de créer, commander et recevoir des stickers parfaits… en quelques clics.</p>"
+			},
+			"de": {
+				"slug": "willkommen-beim-neuen-stickerprint",
+				"title": "✨ Willkommen beim neuen Stickerprint",
+				"excerpt": "Wir haben uns einen neuen Look verpasst 😎",
+				"content": "<p>Nach Monaten harter Arbeit freuen wir uns, unsere neue Website vorzustellen – komplett erneuert: im Look, in den Funktionen und im Einkaufserlebnis.</p>\n<p>Ein Redesign, das jeden Schritt vereinfacht und alles klarer, schneller und vor allem… näher an dir macht.</p>\n<h2>🚀 Mehr Produkte, mehr Auswahl</h2>\n<p>Wir haben unser Sortiment um neue Formate, Materialien und Veredelungen erweitert, damit du noch mehr Freiheit beim Gestalten deiner individuellen Aufkleber und Etiketten hast. Ob Privatperson, Designer oder Unternehmen: Du findest immer die perfekte Lösung für dein Projekt.</p>\n<h2>💸 Günstigere (und transparente) Preise</h2>\n<p>Wir haben unser Preissystem überarbeitet – klarer, wettbewerbsfähiger und ohne Überraschungen. Mengenrabatte werden automatisch angewendet, du siehst also sofort, wie viel du sparst. Und dank der neuen kostenlosen Druckvorschau zahlst du erst, nachdem du dein Design freigegeben hast. Null Risiko, nur perfekte Ergebnisse.</p>\n<h2>🧩 Der neue Kundenbereich: alles im Griff</h2>\n<p>Eine der Neuerungen, auf die wir besonders stolz sind, ist der neue Kundenbereich – komplett neu gestaltet, damit du einfach und intuitiv die volle Kontrolle hast. Hier kannst du:</p>\n<ul><li>den Status deiner Bestellungen in Echtzeit verfolgen</li><li>deine Sendungen Schritt für Schritt tracken</li><li>jedes bereits gedruckte Produkt mit einem Klick nachbestellen</li><li>deine Rechnungs-, Versand- und Zahlungsdaten speichern, damit jeder Einkauf noch schneller geht</li><li>und viele weitere Funktionen nutzen, die bald dazukommen</li></ul>\n<p>Alles gemacht, um dir Zeit zu sparen und jeden Ablauf zu vereinfachen.</p>\n<h2>🎨 Kostenlose Druckvorschau, immer</h2>\n<p>Bevor du bezahlst, siehst du immer die druckfertige Vorschau deiner Grafik. Erst nach deiner Freigabe starten wir die Produktion – denn Transparenz und Qualität sind die Basis unserer Arbeit.</p>\n<h2>💬 Das neue Stickerprint: einfacher, schneller, mehr deins</h2>\n<p>Dieses Redesign ist nicht nur eine Frage der Optik: Es ist unsere Art, dir ein moderneres, klareres und persönlicheres Erlebnis zu bieten. Von der Materialwahl bis zur Lieferung ist alles darauf optimiert, dass du perfekte Aufkleber erstellen, bestellen und erhalten kannst… mit wenigen Klicks.</p>"
+			},
+			"nl": {
+				"slug": "welkom-bij-het-nieuwe-stickerprint",
+				"title": "✨ Welkom bij het nieuwe Stickerprint",
+				"excerpt": "We hebben een nieuwe look 😎",
+				"content": "<p>Na maanden hard werken zijn we blij om onze nieuwe website te presenteren – helemaal vernieuwd: in look, in functies en in winkelervaring.</p>\n<p>Een restyling die elke stap eenvoudiger maakt en alles duidelijker, sneller en vooral… dichter bij jou brengt.</p>\n<h2>🚀 Meer producten, meer keuze</h2>\n<p>We hebben ons assortiment uitgebreid met nieuwe formaten, materialen en afwerkingen, zodat je nog meer vrijheid hebt bij het maken van je stickers op maat en gepersonaliseerde etiketten. Of je nu particulier, designer of bedrijf bent: je vindt altijd de perfecte oplossing voor je project.</p>\n<h2>💸 Voordeligere (en transparante) prijzen</h2>\n<p>We hebben ons prijssysteem herzien: duidelijker, scherper en zonder verrassingen. Staffelkortingen worden automatisch toegepast, zodat je meteen ziet hoeveel je bespaart. En dankzij het nieuwe gratis printvoorbeeld betaal je pas nadat je je ontwerp hebt goedgekeurd. Nul risico, alleen perfecte resultaten.</p>\n<h2>🧩 Het nieuwe account: alles onder controle</h2>\n<p>Een van de vernieuwingen waar we het meest trots op zijn, is je nieuwe persoonlijke account, volledig opnieuw ontworpen om je op een simpele en intuïtieve manier maximale controle te geven. Vanuit hier kun je:</p>\n<ul><li>de status van je bestellingen in realtime volgen</li><li>je zendingen stap voor stap volgen</li><li>elk eerder gedrukt product met één klik opnieuw bestellen</li><li>je factuur-, verzend- en betaalgegevens opslaan, zodat elke aankoop nog sneller gaat</li><li>en nog veel meer functies die binnenkort volgen</li></ul>\n<p>Allemaal bedoeld om je tijd te besparen en elk proces eenvoudiger te maken.</p>\n<h2>🎨 Gratis drukproef, altijd</h2>\n<p>Voordat je betaalt, zie je altijd het drukklare voorbeeld van je ontwerp. Pas na jouw goedkeuring gaan we in productie – want transparantie en kwaliteit vormen de basis van hoe we werken.</p>\n<h2>💬 Het nieuwe Stickerprint: simpeler, sneller, meer van jou</h2>\n<p>Deze restyling is niet alleen een kwestie van uiterlijk: het is onze manier om je een modernere, duidelijkere en persoonlijkere ervaring te bieden. Van de keuze van het materiaal tot de levering: alles is geoptimaliseerd zodat je perfecte stickers kunt maken, bestellen en ontvangen… in een paar klikken.</p>"
+			},
+			"_hash": "7d534545e9715520"
+		}
+	},
+	"promos": {
+		"0106883e-ede7-4d9c-a70e-18cb6e32214d": {
+			"en": {
+				"product_label": "custom stickers",
+				"subtitle": "This week only: 250 custom stickers for €79, instant preview included.",
+				"chips": [
+					"Waterproof",
+					"Matte laminate"
+				],
+				"includes": [
+					{
+						"label": "250 custom stickers",
+						"normally": "€171"
+					},
+					{
+						"label": "Instant file preview",
+						"normally": "included"
+					}
+				],
+				"perks": [
+					{
+						"label": "Instant preview",
+						"saves": "1-2 days"
+					},
+					{
+						"label": "Production in 5 days",
+						"saves": "3-4 days"
+					},
+					{
+						"label": "Tracked express courier",
+						"saves": "1-2 days"
+					}
+				],
+				"save_text": "8-10 days and €92",
+				"cta": "Upload your file to continue"
+			},
+			"es": {
+				"product_label": "pegatinas personalizadas",
+				"subtitle": "Solo esta semana: 250 pegatinas personalizadas por 79 €, vista previa inmediata incluida.",
+				"chips": [
+					"Resistentes al agua",
+					"Laminado mate"
+				],
+				"includes": [
+					{
+						"label": "250 pegatinas personalizadas",
+						"normally": "171 €"
+					},
+					{
+						"label": "Vista previa automática del archivo",
+						"normally": "incluida"
+					}
+				],
+				"perks": [
+					{
+						"label": "Vista previa inmediata",
+						"saves": "1-2 días"
+					},
+					{
+						"label": "Producción en 5 días",
+						"saves": "3-4 días"
+					},
+					{
+						"label": "Mensajería exprés con seguimiento",
+						"saves": "1-2 días"
+					}
+				],
+				"save_text": "8-10 días y 92 €",
+				"cta": "Sube tu archivo para continuar"
+			},
+			"fr": {
+				"product_label": "stickers personnalisés",
+				"subtitle": "Cette semaine seulement : 250 stickers personnalisés à 79 €, aperçu immédiat compris.",
+				"chips": [
+					"Résistants à l'eau",
+					"Lamination mate"
+				],
+				"includes": [
+					{
+						"label": "250 stickers personnalisés",
+						"normally": "171 €"
+					},
+					{
+						"label": "Aperçu automatique du fichier",
+						"normally": "inclus"
+					}
+				],
+				"perks": [
+					{
+						"label": "Aperçu immédiat",
+						"saves": "1-2 jours"
+					},
+					{
+						"label": "Production en 5 jours",
+						"saves": "3-4 jours"
+					},
+					{
+						"label": "Transporteur express avec suivi",
+						"saves": "1-2 jours"
+					}
+				],
+				"save_text": "8-10 jours et 92 €",
+				"cta": "Chargez votre fichier pour continuer"
+			},
+			"de": {
+				"product_label": "individuelle Aufkleber",
+				"subtitle": "Nur diese Woche: 250 individuelle Aufkleber für 79 €, sofortige Vorschau inklusive.",
+				"chips": [
+					"Wasserfest",
+					"Matte Laminierung"
+				],
+				"includes": [
+					{
+						"label": "250 individuelle Aufkleber",
+						"normally": "171 €"
+					},
+					{
+						"label": "Automatische Vorschau deiner Datei",
+						"normally": "inklusive"
+					}
+				],
+				"perks": [
+					{
+						"label": "Sofortige Vorschau",
+						"saves": "1–2 Tage"
+					},
+					{
+						"label": "Produktion in 5 Tagen",
+						"saves": "3–4 Tage"
+					},
+					{
+						"label": "Expressversand mit Tracking",
+						"saves": "1–2 Tage"
+					}
+				],
+				"save_text": "8–10 Tage und 92 €",
+				"cta": "Lade deine Datei hoch, um fortzufahren"
+			},
+			"nl": {
+				"product_label": "stickers op maat",
+				"subtitle": "Alleen deze week: 250 stickers op maat voor € 79, direct voorbeeld inbegrepen.",
+				"chips": [
+					"Waterbestendig",
+					"Mat laminaat"
+				],
+				"includes": [
+					{
+						"label": "250 stickers op maat",
+						"normally": "€ 171"
+					},
+					{
+						"label": "Automatisch voorbeeld van je bestand",
+						"normally": "inbegrepen"
+					}
+				],
+				"perks": [
+					{
+						"label": "Direct voorbeeld",
+						"saves": "1-2 dagen"
+					},
+					{
+						"label": "Productie in 5 dagen",
+						"saves": "3-4 dagen"
+					},
+					{
+						"label": "Expresskoerier met track & trace",
+						"saves": "1-2 dagen"
+					}
+				],
+				"save_text": "8-10 dagen en € 92",
+				"cta": "Upload je bestand om verder te gaan"
+			},
+			"_hash": "e7b61edb6a6928bd"
+		}
+	},
+	"post_categories": {
+		"News": {
+			"en": "News",
+			"es": "Noticias",
+			"fr": "Actualités",
+			"de": "News",
+			"nl": "Nieuws"
+		},
+		"Consigli": {
+			"en": "Tips",
+			"es": "Consejos",
+			"fr": "Conseils",
+			"de": "Tipps",
+			"nl": "Tips"
+		},
+		"Idee": {
+			"en": "Ideas",
+			"es": "Ideas",
+			"fr": "Idées",
+			"de": "Ideen",
+			"nl": "Ideeën"
+		}
+	},
+	"reviews": {
+		"1b786be1-b582-4496-8581-d7100a32f5f9": {
+			"_hash": "819f71b8c6acc162",
+			"en": {
+				"title": "Stickers printed as a test, gorgeous",
+				"comment": "I placed this order as a test, and they're gorgeous. I'm already preparing my next order. Highly recommended. \nIt's easy to use even from a phone (which isn't a given), I submitted a logo with “jagged” edges, and the printing precision is incredible. Satisfied"
+			},
+			"es": {
+				"title": "Pegatinas impresas de prueba, preciosas",
+				"comment": "Hice este pedido de prueba, son preciosas. Ya estoy preparando el nuevo pedido. Muy recomendable. \nEs fácil de usar incluso desde el móvil (algo que no es obvio), propuse un logo con los bordes “dentados”, la precisión de la impresión es increíble. Satisfecho"
+			},
+			"fr": {
+				"title": "Stickers imprimés pour essai, magnifiques",
+				"comment": "J'ai passé cette commande pour essayer, ils sont magnifiques. Je prépare déjà la prochaine commande. Je recommande vivement. \nC'est facile à utiliser même depuis un téléphone (ce qui n'est pas évident), j'ai proposé un logo aux bords « dentelés », la précision de l'impression est incroyable. Satisfait"
+			},
+			"de": {
+				"title": "Aufkleber zur Probe gedruckt, wunderschön",
+				"comment": "Ich habe diese Bestellung zur Probe aufgegeben, sie sind wunderschön. Ich bereite schon die nächste Bestellung vor. Absolut empfehlenswert. \nEs ist auch über das Handy einfach zu bedienen (was nicht selbstverständlich ist), ich habe ein Logo mit „ausgefransten“ Rändern eingereicht, die Präzision des Drucks ist unglaublich. Zufrieden"
+			},
+			"nl": {
+				"title": "Stickers als proef gedrukt, prachtig",
+				"comment": "Ik heb deze bestelling als proef geplaatst, ze zijn prachtig. Ik ben al bezig met de volgende bestelling. Echt een aanrader. \nHet is ook via de telefoon makkelijk te gebruiken (wat niet vanzelfsprekend is), ik heb een logo met “gekartelde” randen aangeleverd, de precisie van de print is ongelooflijk. Tevreden"
+			}
+		},
+		"1892395f-d4af-4e8e-b7ac-c010c5b24e50": {
+			"_hash": "dd1c30d66219837b",
+			"en": {
+				"title": "Very good",
+				"comment": "despite the delay due to the mix-up it was w orth the wait"
+			},
+			"es": {
+				"title": "Muy bien",
+				"comment": "a pesar del retraso por el contratiempo ha v alido la pena esperar"
+			},
+			"fr": {
+				"title": "Très bien",
+				"comment": "malgré le retard dû au contretemps ça v alait la peine d'attendre"
+			},
+			"de": {
+				"title": "Sehr gut",
+				"comment": "trotz der Verzögerung wegen des Missverständnisses hat sich das Warten g elohnt"
+			},
+			"nl": {
+				"title": "Heel goed",
+				"comment": "ondanks de vertraging door het misverstand was het w achten de moeite waard"
+			}
+		},
+		"8a093e0c-284c-43bc-914d-79ba63892f87": {
+			"_hash": "6a45ebac8b569406",
+			"en": {
+				"title": "Speed and quality",
+				"comment": "Excellent printing service. Fast, clear and on time. Well-made, simple website.\n(Worth pointing out that the estimated delivery date indicates the day the package will be shipped, not the day the stickers arrive at your door.)"
+			},
+			"es": {
+				"title": "Rapidez y calidad",
+				"comment": "Excelente servicio de impresión. Rápido, claro y puntual. Sitio web bien hecho y sencillo.\n(Cabe destacar que la fecha de entrega prevista indica el día en que se enviará el paquete y no el día en que las pegatinas llegan a casa.)"
+			},
+			"fr": {
+				"title": "Rapidité et qualité",
+				"comment": "Excellent service d'impression. Rapide, clair et ponctuel. Site web bien fait et simple.\n(À souligner que la date de livraison prévue indique le jour où le colis sera expédié et non le jour où les stickers arrivent chez vous.)"
+			},
+			"de": {
+				"title": "Schnelligkeit und Qualität",
+				"comment": "Ausgezeichneter Druckservice. Schnell, klar und pünktlich. Gut gemachte, einfache Website.\n(Zu beachten: Das voraussichtliche Lieferdatum gibt den Tag an, an dem das Paket verschickt wird, und nicht den Tag, an dem die Aufkleber zu Hause ankommen.)"
+			},
+			"nl": {
+				"title": "Snelheid en kwaliteit",
+				"comment": "Uitstekende printservice. Snel, duidelijk en stipt. Goed gemaakte, eenvoudige website.\n(Let wel: de verwachte leverdatum geeft de dag aan waarop het pakket wordt verzonden en niet de dag waarop de stickers thuis aankomen.)"
+			}
+		},
+		"e1b9284c-bf7a-43d0-902f-55140e2d148f": {
+			"_hash": "c88aa5277f7748a4",
+			"en": {
+				"comment": "Excellent product, well done"
+			},
+			"es": {
+				"comment": "Producto excelente, enhorabuena"
+			},
+			"fr": {
+				"comment": "Excellent produit, bravo"
+			},
+			"de": {
+				"comment": "Ausgezeichnetes Produkt, Kompliment"
+			},
+			"nl": {
+				"comment": "Uitstekend product, complimenten"
+			}
+		},
+		"7b65ae2d-3219-4d6e-a2a4-992c12706d38": {
+			"_hash": "09c2c644b3c435ab",
+			"en": {
+				"title": "Really beautiful, exactly as I had imagined them",
+				"comment": "All good within the timeframe indcated"
+			},
+			"es": {
+				"title": "Realmente bonitas, exactamente como me las había imaginado",
+				"comment": "Todo ok según los plazos indcados"
+			},
+			"fr": {
+				"title": "Vraiment beaux, exactement comme je les avais imaginés",
+				"comment": "Tout ok dans les délais indqués"
+			},
+			"de": {
+				"title": "Wirklich schön, genau wie ich sie mir vorgestellt hatte",
+				"comment": "Alles ok innerhalb der angegebnen Zeit"
+			},
+			"nl": {
+				"title": "Echt mooi, precies zoals ik ze me had voorgesteld",
+				"comment": "Alles ok binnen de aangegven tijd"
+			}
+		},
+		"871e5dfc-713a-4191-a6ee-a19d44f5b62e": {
+			"_hash": "2727d8981583ebbb",
+			"en": {
+				"title": "Excellent stickers",
+				"comment": "Excellent stickers, and good customer service."
+			},
+			"es": {
+				"title": "Pegatinas excelentes",
+				"comment": "Pegatinas excelentes, y buen servicio de atención al cliente."
+			},
+			"fr": {
+				"title": "Excellents stickers",
+				"comment": "Excellents stickers, et bon service client."
+			},
+			"de": {
+				"title": "Ausgezeichnete Aufkleber",
+				"comment": "Ausgezeichnete Aufkleber, und guter Kundenservice."
+			},
+			"nl": {
+				"title": "Uitstekende stickers",
+				"comment": "Uitstekende stickers, en goede klantenservice."
+			}
+		},
+		"3ce2983b-041f-443b-b679-982efd5329aa": {
+			"_hash": "c16d54a84dcee913",
+			"en": {
+				"title": "Beautiful!",
+				"comment": "A complete kit, a must if you want to start figuring out how you want to create your own sticker."
+			},
+			"es": {
+				"title": "¡Preciosas!",
+				"comment": "Un kit completo, necesario si quieres empezar a estudiar cómo quieres crear tu propia pegatina."
+			},
+			"fr": {
+				"title": "Magnifiques !",
+				"comment": "Un kit complet, indispensable si vous voulez commencer à étudier comment créer votre propre sticker."
+			},
+			"de": {
+				"title": "Wunderschön!",
+				"comment": "Ein komplettes Set, unverzichtbar, wenn du anfangen willst herauszufinden, wie du deinen eigenen Aufkleber gestalten möchtest."
+			},
+			"nl": {
+				"title": "Prachtig!",
+				"comment": "Een complete kit, onmisbaar als je wilt beginnen uit te zoeken hoe je je eigen sticker wilt maken."
+			}
+		},
+		"261e1aa4-486e-4824-a5aa-4cd965726847": {
+			"_hash": "2b75922d3366afd2",
+			"en": {
+				"title": "Perfect stickers",
+				"comment": "Stickers perfectly centered and in line with expectations. Thanks also to the proof that's provided before going into production, it's impossible to get it wrong \n\nOne note: You just need to get the hang of peeling them off the backing paper ;)"
+			},
+			"es": {
+				"title": "Pegatinas perfectas",
+				"comment": "Pegatinas perfectamente centradas y a la altura de las expectativas. Gracias también a la prueba de impresión que se facilita antes de pasar a producción, es imposible equivocarse \n\nUna nota: Solo hay que cogerle un poco el truco para despegarlas del papel ;)"
+			},
+			"fr": {
+				"title": "Stickers parfaits",
+				"comment": "Stickers parfaitement centrés et conformes aux attentes. Grâce aussi à l'épreuve fournie avant de passer à la production, impossible de se tromper \n\nUne remarque : Il faut juste prendre un peu le coup de main pour les décoller du papier ;)"
+			},
+			"de": {
+				"title": "Perfekte Aufkleber",
+				"comment": "Aufkleber perfekt zentriert und ganz nach den Erwartungen. Auch dank des Proofs, der vor der Produktion geliefert wird, kann man nichts falsch machen \n\nEine Anmerkung: Man muss nur ein bisschen den Dreh raushaben, um sie vom Papier abzulösen ;)"
+			},
+			"nl": {
+				"title": "Perfecte stickers",
+				"comment": "Stickers perfect gecentreerd en helemaal volgens verwachting. Mede dankzij de proof die je krijgt voordat de productie start, kan het niet misgaan \n\nEén opmerking: Je moet alleen even de slag te pakken krijgen om ze van het papier te halen ;)"
+			}
+		},
+		"608916ff-6aaf-471d-a7b1-f4be71b647b0": {
+			"_hash": "be9db8c9896d43c3",
+			"en": {
+				"comment": "A truly excellent experience, in every respect.\nThe stickers arrived on schedule and the result is beautiful, exactly as I imagined it.\nI also really appreciated everything that happened before printing: they took care directly of some technical issues related to the cut contour paths, lightening my workload and making sure the files were correct. Customer service was always fast, helpful and precise every time I needed a clarification.\nOn top of that, a very competitive price compared to other quotes I had considered. And, something that matters to me, it's an Italian company.\nIn short: beautiful, skilled, reliable and affordable too. Five well-deserved stars, I'll definitely be back to print with them."
+			},
+			"es": {
+				"comment": "Una experiencia realmente excelente, en todos los sentidos.\nLos stickers llegaron en el plazo previsto y el resultado es precioso, exactamente como me lo imaginaba.\nTambién valoré muchísimo todo lo que pasó antes de la impresión: se ocuparon directamente de algunas cuestiones técnicas relacionadas con los trazados de recorte, aligerándome el trabajo y asegurándose de que los archivos estuvieran correctos. El servicio de atención al cliente fue siempre rápido, atento y preciso cada vez que necesité una aclaración.\nA esto se suma un precio muy competitivo respecto a otros presupuestos que había valorado. Y, algo que para mí tiene su peso, es una empresa italiana.\nEn resumen: bonitos, buenos, fiables y además económicos. Cinco estrellas merecidísimas, volveré seguro a imprimir con ellos."
+			},
+			"fr": {
+				"comment": "Une expérience vraiment excellente, à tous points de vue.\nLes stickers sont arrivés dans les délais prévus et le résultat est magnifique, exactement comme je l'imaginais.\nJ'ai aussi énormément apprécié tout ce qui s'est passé avant l'impression : ils se sont occupés directement de quelques questions techniques liées aux tracés de découpe, m'allégeant le travail et s'assurant que les fichiers étaient corrects. Le service client a toujours été rapide, disponible et précis chaque fois que j'ai eu besoin d'une précision.\nÀ cela s'ajoute un prix très compétitif par rapport à d'autres devis que j'avais évalués. Et, ce qui pour moi a son importance, c'est une entreprise italienne.\nBref : beaux, compétents, fiables et en plus abordables. Cinq étoiles amplement méritées, je reviendrai sans aucun doute imprimer chez eux."
+			},
+			"de": {
+				"comment": "Eine wirklich ausgezeichnete Erfahrung, in jeder Hinsicht.\nDie Sticker kamen in der vorgesehenen Zeit an und das Ergebnis ist wunderschön, genau wie ich es mir vorgestellt hatte.\nSehr geschätzt habe ich auch alles, was vor dem Druck passiert ist: Sie haben sich direkt um einige technische Fragen zu den Konturschnittpfaden gekümmert, mir Arbeit abgenommen und sichergestellt, dass die Dateien korrekt waren. Der Kundenservice war immer schnell, hilfsbereit und präzise, jedes Mal, wenn ich eine Klärung brauchte.\nDazu kommt ein sehr wettbewerbsfähiger Preis im Vergleich zu anderen Angeboten, die ich geprüft hatte. Und, was für mich durchaus Gewicht hat, es ist ein italienisches Unternehmen.\nKurz gesagt: schön, kompetent, zuverlässig und auch noch günstig. Fünf hochverdiente Sterne, ich werde ganz sicher wieder bei ihnen drucken lassen."
+			},
+			"nl": {
+				"comment": "Een echt uitstekende ervaring, in alle opzichten.\nDe stickers kwamen binnen de verwachte tijd aan en het resultaat is prachtig, precies zoals ik het me voorstelde.\nIk heb ook enorm gewaardeerd wat er allemaal vóór het drukken gebeurde: ze hebben zelf een paar technische kwesties rond de snijcontouren opgelost, waardoor ik minder werk had en de bestanden zeker in orde waren. De klantenservice was altijd snel, behulpzaam en precies, elke keer als ik een verduidelijking nodig had.\nDaar komt nog een zeer scherpe prijs bij in vergelijking met andere offertes die ik had bekeken. En, iets wat voor mij meeweegt, het is een Italiaans bedrijf.\nKortom: mooi, vakkundig, betrouwbaar en ook nog voordelig. Vijf dikverdiende sterren, ik kom zeker terug om bij hen te laten drukken."
+			}
+		},
+		"7c62e7fe-e639-4969-9f16-36a51fd262aa": {
+			"_hash": "c32a32d403555f41",
+			"en": {
+				"title": "FANTASTIC!!",
+				"comment": "First there's Stickerprint.. then there are the others!!\nI've tried pretty much everyone selling stickers online and I have to say that the ease of ordering\nand the quality of their stickers is truly something else!!"
+			},
+			"es": {
+				"title": "¡¡FANTÁSTICAS!!",
+				"comment": "Primero está Stickerprint.. ¡¡luego están los demás!!\nHe probado más o menos a todos los que venden stickers en internet y tengo que decir que la sencillez del pedido\ny la calidad de sus pegatinas es realmente otra cosa!!"
+			},
+			"fr": {
+				"title": "FANTASTIQUES !!",
+				"comment": "D'abord il y a Stickerprint.. ensuite il y a les autres !!\nJ'ai essayé plus ou moins tous ceux qui vendent des stickers sur le net et je dois dire que la simplicité de commande\net la qualité de leurs stickers, c'est vraiment autre chose !!"
+			},
+			"de": {
+				"title": "FANTASTISCH!!",
+				"comment": "Zuerst kommt Stickerprint.. dann kommen die anderen!!\nIch habe mehr oder weniger alle ausprobiert, die Sticker im Netz verkaufen, und ich muss sagen, dass die Einfachheit der Bestellung\nund die Qualität ihrer Aufkleber wirklich etwas ganz anderes sind!!"
+			},
+			"nl": {
+				"title": "FANTASTISCH!!",
+				"comment": "Eerst is er Stickerprint.. dan komen de anderen!!\nIk heb zo'n beetje iedereen geprobeerd die stickers online verkoopt en ik moet zeggen dat het gemak van bestellen\nen de kwaliteit van hun stickers echt van een ander niveau zijn!!"
+			}
+		},
+		"badb2c93-0f8d-478e-b2cc-4f9d255d65fa": {
+			"_hash": "dd9f69c15b2e7e94",
+			"en": {
+				"title": "matte finish stickers",
+				"comment": "Nice print quality, very professional"
+			},
+			"es": {
+				"title": "pegatinas acabado mate",
+				"comment": "Buena calidad de impresión muy profesional"
+			},
+			"fr": {
+				"title": "stickers finition mate",
+				"comment": "Belle qualité d'impression très professionnelle"
+			},
+			"de": {
+				"title": "Aufkleber mit matter Oberfläche",
+				"comment": "Schöne Druckqualität, sehr professionell"
+			},
+			"nl": {
+				"title": "stickers met matte afwerking",
+				"comment": "Mooie printkwaliteit, heel professioneel"
+			}
+		},
+		"8623afb1-f493-4e7c-9547-4cf5b19d872e": {
+			"_hash": "d5c623d28df4f3c1",
+			"en": {
+				"title": "WOW effect!!!",
+				"comment": "I have to be honest: I've often used online printing services, but never for stickers! I was a bit prejudiced, I admit it, but despite a delay in delivery, (due solely to the courier) it was truly worth the wait, because the result was SPECTACULAR! Fantastic rendering, beautiful colors, quality material, and the owners were extremely kind in helping me sort out the mix-up with the courier.\nI've just sent in 6 more designs to print: from today Stickerprint is my go-to for printing stickers!"
+			},
+			"es": {
+				"title": "¡¡¡Efecto WOW!!!",
+				"comment": "Tengo que ser sincero: he recurrido a menudo a servicios de impresión online, ¡pero nunca para pegatinas! Tenía algo de prejuicio, lo admito, pero a pesar de un retraso en la entrega, (debido exclusivamente al transportista) ha valido realmente la pena esperar, ¡porque el resultado ha sido ESPECTACULAR! Fantástico acabado, colores preciosos, material de calidad, dueños amabilísimos al ayudarme a resolver el contratiempo con el transportista.\nAcabo de enviar otros 6 diseños para imprimir: ¡desde hoy Stickerprint es mi referencia para la impresión de stickers!"
+			},
+			"fr": {
+				"title": "Effet WOW !!!",
+				"comment": "Je dois être sincère : j'ai souvent fait appel à des services d'impression en ligne, mais jamais pour des stickers ! J'avais un peu d'a priori, je l'admets, mais malgré un retard de livraison, (dû exclusivement au transporteur) ça valait vraiment la peine d'attendre, car le résultat a été SPECTACULAIRE ! Rendu fantastique, magnifiques couleurs, matériau de qualité, propriétaires très gentils pour m'aider à résoudre le contretemps avec le transporteur.\nJe viens d'envoyer 6 autres visuels à imprimer : à partir d'aujourd'hui Stickerprint est ma référence pour l'impression de stickers !"
+			},
+			"de": {
+				"title": "WOW-Effekt!!!",
+				"comment": "Ich muss ehrlich sein: Ich habe oft Online-Druckereien genutzt, aber nie für Aufkleber! Ich war etwas voreingenommen, das gebe ich zu, aber trotz einer Lieferverzögerung, (ausschließlich durch den Paketdienst verursacht) hat sich das Warten wirklich gelohnt, denn das Ergebnis war SPEKTAKULÄR! Fantastische Wiedergabe, wunderschöne Farben, Qualitätsmaterial, die Inhaber waren überaus freundlich und haben mir geholfen, das Missverständnis mit dem Paketdienst zu klären.\nIch habe gerade 6 weitere Motive zum Drucken geschickt: Ab heute ist Stickerprint meine erste Adresse für den Druck von Stickern!"
+			},
+			"nl": {
+				"title": "WOW-effect!!!",
+				"comment": "Ik moet eerlijk zijn: ik heb vaak online drukdiensten gebruikt, maar nooit voor stickers! Ik had wat vooroordelen, dat geef ik toe, maar ondanks een vertraging in de levering, (uitsluitend door de koerier) was het echt het wachten waard, want het resultaat was SPECTACULAIR! Fantastische weergave, prachtige kleuren, kwaliteitsmateriaal, en de eigenaars waren super vriendelijk toen ze me hielpen het misverstand met de koerier op te lossen.\nIk heb net 6 nieuwe ontwerpen opgestuurd om te drukken: vanaf vandaag is Stickerprint mijn vaste adres voor het drukken van stickers!"
+			}
+		},
+		"a16153e1-f758-4794-8f87-c6471ea81754": {
+			"_hash": "71f8fe108bbb8e3d",
+			"en": {
+				"title": "Excellent",
+				"comment": "Well-made stickers of excellent quality and the the print is really excellent"
+			},
+			"es": {
+				"title": "Excelente",
+				"comment": "Pegatinas bien hechas y de excelente calidad la la impresión es realmente excelente"
+			},
+			"fr": {
+				"title": "Excellent",
+				"comment": "Stickers bien faits et d'excellente qualité l'impression est est vraiment excellente"
+			},
+			"de": {
+				"title": "Ausgezeichnet",
+				"comment": "Gut gemachte Aufkleber in ausgezeichneter Qualität der der Druck ist wirklich ausgezeichnet"
+			},
+			"nl": {
+				"title": "Uitstekend",
+				"comment": "Goed gemaakte stickers van uitstekende kwaliteit de de print is echt uitstekend"
+			}
+		},
+		"cae37be3-e34b-4a30-8e13-acc89ceda717": {
+			"_hash": "c3f66179cf34facc",
+			"en": {
+				"title": "Fantastic!!",
+				"comment": "Incredible support, super kind and always available! Thank you so much, I recommend it !!!"
+			},
+			"es": {
+				"title": "¡¡Fantásticas!!",
+				"comment": "¡Atención increíble, amabilísimos y siempre disponibles! Muchas gracias, lo recomiendo !!!"
+			},
+			"fr": {
+				"title": "Fantastiques !!",
+				"comment": "Assistance incroyable, très gentils et toujours disponibles ! Merci beaucoup, je recommande !!!"
+			},
+			"de": {
+				"title": "Fantastisch!!",
+				"comment": "Unglaublicher Support, super freundlich und immer erreichbar! Vielen Dank, ich empfehle es !!!"
+			},
+			"nl": {
+				"title": "Fantastisch!!",
+				"comment": "Ongelooflijke ondersteuning, super vriendelijk en altijd bereikbaar! Heel erg bedankt, ik raad het aan !!!"
+			}
+		},
+		"54a4c025-aae4-4cbb-9f89-a4a5a79b3f4c": {
+			"_hash": "d1a04a2373547ce6",
+			"en": {
+				"title": "There’s no comparison with the others!",
+				"comment": "Fantastic quality"
+			},
+			"es": {
+				"title": "¡No hay comparación con los demás!",
+				"comment": "Calidad fantástica"
+			},
+			"fr": {
+				"title": "Aucune comparaison avec les autres !",
+				"comment": "Qualité fantastique"
+			},
+			"de": {
+				"title": "Kein Vergleich mit den anderen!",
+				"comment": "Fantastische Qualität"
+			},
+			"nl": {
+				"title": "Geen vergelijking met de anderen!",
+				"comment": "Fantastische kwaliteit"
+			}
+		},
+		"53c511a1-dd2b-4830-868c-6ca24fc44c2f": {
+			"_hash": "22ab2f7ff256888b",
+			"en": {
+				"title": "Beautiful!",
+				"comment": "Everything perfect! Incredible stickers!"
+			},
+			"es": {
+				"title": "¡Preciosas!",
+				"comment": "¡Todo perfecto! ¡Pegatinas increíbles!"
+			},
+			"fr": {
+				"title": "Magnifiques !",
+				"comment": "Tout est parfait ! Stickers incroyables !"
+			},
+			"de": {
+				"title": "Wunderschön!",
+				"comment": "Alles perfekt! Unglaubliche Aufkleber!"
+			},
+			"nl": {
+				"title": "Prachtig!",
+				"comment": "Alles perfect! Ongelooflijke stickers!"
+			}
+		},
+		"35cb3d0a-55fc-453e-83d8-edbc5b1f1b33": {
+			"_hash": "af9db157f26d6c5f",
+			"en": {
+				"title": "Impeccable",
+				"comment": "Everything impeccable, ordering on this site is really very simple, before the print confirmation they even send you a proof of the stickers so whoever's buying knows right away what to expect. Precise with shipping. The stickers are beautiful and stick perfectly"
+			},
+			"es": {
+				"title": "Impecable",
+				"comment": "Todo impecable, hacer un pedido en esta web es realmente muy sencillo, antes de confirmar la impresión te envían además una prueba de las pegatinas para que quien compra lo tenga claro desde el principio. Precisos en el envío. Las pegatinas son preciosas y se pegan a la perfección"
+			},
+			"fr": {
+				"title": "Impeccable",
+				"comment": "Tout est impeccable, commander sur ce site est vraiment très simple, avant la confirmation d'impression ils vous envoient aussi une épreuve des stickers pour que l'acheteur ait tout de suite les idées claires. Précis sur l'expédition. Les stickers sont magnifiques et se collent à la perfection"
+			},
+			"de": {
+				"title": "Tadellos",
+				"comment": "Alles tadellos, auf dieser Seite zu bestellen ist wirklich sehr einfach, vor der Druckfreigabe schicken sie dir auch einen Proof der Aufkleber, sodass man als Käufer sofort Klarheit hat. Präzise beim Versand. Die Aufkleber sind wunderschön und haften perfekt"
+			},
+			"nl": {
+				"title": "Onberispelijk",
+				"comment": "Alles onberispelijk, bestellen op deze site is echt heel eenvoudig, vóór de drukbevestiging sturen ze je ook een proof van de stickers zodat je als koper meteen weet waar je aan toe bent. Precies in de verzending. De stickers zijn prachtig en plakken perfect"
+			}
+		},
+		"38259b34-7a83-4fc7-ae3c-043f948bddce": {
+			"_hash": "fb21211db736dbbb",
+			"en": {
+				"title": "MIND-BLOWING",
+				"comment": "what can I say, super simple purchase process, impeccable support and a MIND-BLOWING product! An absolute must-try"
+			},
+			"es": {
+				"title": "DE OTRO PLANETA",
+				"comment": "qué puedo decir, proceso de compra sencillísimo, atención impecable y producto DE OTRO PLANETA! Hay que probarlo sí o sí"
+			},
+			"fr": {
+				"title": "DE LA BOMBE",
+				"comment": "que dire, processus d'achat ultra simple, assistance impeccable et produit DE LA BOMBE ! À essayer absolument"
+			},
+			"de": {
+				"title": "DER HAMMER",
+				"comment": "was soll ich sagen, kinderleichter Bestellprozess, tadelloser Support und ein Produkt, das DER HAMMER ist! Unbedingt ausprobieren"
+			},
+			"nl": {
+				"title": "WAANZINNIG",
+				"comment": "wat kan ik zeggen, supersimpel bestelproces, onberispelijke ondersteuning en een WAANZINNIG product! Absoluut het proberen waard"
+			}
+		},
+		"11c5fc1e-7b34-4f70-85c0-7c70bd4190cb": {
+			"_hash": "4d4d47dfefdb3e18",
+			"en": {
+				"title": "Experience and reliability.",
+				"comment": "Reliable, on time and experienced. I placed my order, they quickly sent me the proof, I accepted right away and a few days later the material was at my house. Really good material, from now on I'll know who to turn to for my stickers"
+			},
+			"es": {
+				"title": "Experiencia y seriedad.",
+				"comment": "Serios puntuales y con experiencia. Hice mi pedido me enviaron rápidamente la prueba acepté justo después y a los pocos días el material estaba en mi casa. Material realmente bueno, de ahora en adelante sabré a quién acudir para mis stickers"
+			},
+			"fr": {
+				"title": "Expérience et sérieux.",
+				"comment": "Sérieux ponctuels et expérimentés. J'ai passé ma commande ils m'ont envoyé rapidement l'épreuve j'ai accepté tout de suite après et quelques jours plus tard le matériel était chez moi. Matériel vraiment bon, désormais je saurai à qui m'adresser pour mes stickers"
+			},
+			"de": {
+				"title": "Erfahrung und Seriosität.",
+				"comment": "Seriös pünktlich und erfahren. Ich habe meine Bestellung aufgegeben sie haben mir schnell den Proof geschickt ich habe gleich danach freigegeben und nach wenigen Tagen war das Material bei mir zu Hause. Wirklich gutes Material, ab jetzt weiß ich, an wen ich mich für meine Sticker wenden kann"
+			},
+			"nl": {
+				"title": "Ervaring en betrouwbaarheid.",
+				"comment": "Betrouwbaar stipt en met ervaring. Ik heb mijn bestelling geplaatst ze stuurden me snel de proof ik heb die meteen goedgekeurd en na een paar dagen was het materiaal bij mij thuis. Echt goed materiaal, vanaf nu weet ik bij wie ik moet zijn voor mijn stickers"
+			}
+		},
+		"1638d4ad-e453-4090-8125-554e70574de3": {
+			"_hash": "eee1b82ab6a3e9a9",
+			"en": {
+				"title": "Fantastic!",
+				"comment": "If I could I'd give 1000 stars! I was patiently looked after from the moment I ordered, I received the package super on time and my stickers are even better than I expected! I'll definitely place another mega order, thank you so much and huge congrats ✨❤️"
+			},
+			"es": {
+				"title": "¡Fantásticas!",
+				"comment": "¡Si pudiera pondría 1000 estrellas! Me han atendido con paciencia desde el momento del pedido, recibí el paquete súper puntual ¡y mis pegatinas son incluso mejores de lo que esperaba! Haré seguro otro mega pedido, muchas gracias y enhorabuena ✨❤️"
+			},
+			"fr": {
+				"title": "Fantastiques !",
+				"comment": "Si je pouvais je mettrais 1000 étoiles ! J'ai été suivie avec patience dès le moment de la commande, j'ai reçu le colis super ponctuellement et mes stickers sont encore mieux que ce que j'attendais ! Je ferai sûrement une autre méga commande, merci beaucoup et un grand bravo ✨❤️"
+			},
+			"de": {
+				"title": "Fantastisch!",
+				"comment": "Wenn ich könnte, würde ich 1000 Sterne geben! Ich wurde ab dem Moment der Bestellung geduldig betreut, das Paket kam super pünktlich und meine Aufkleber sind sogar noch besser, als ich erwartet hatte! Ich werde ganz sicher noch eine Mega-Bestellung aufgeben, vielen Dank und ein riesiges Kompliment ✨❤️"
+			},
+			"nl": {
+				"title": "Fantastisch!",
+				"comment": "Als ik kon zou ik 1000 sterren geven! Ik ben vanaf het moment van bestellen geduldig begeleid, het pakket kwam super op tijd en mijn stickers zijn nog mooier dan ik had verwacht! Ik ga zeker nog een megabestelling plaatsen, heel erg bedankt en dikke complimenten ✨❤️"
+			}
+		},
+		"4931740f-89e1-4507-b1c9-4fbf37564643": {
+			"_hash": "c9b1c6d7a24f8d64",
+			"en": {
+				"title": "die-cut and embossed sitckers",
+				"comment": "really really beautiful. Highly recommended."
+			},
+			"es": {
+				"title": "sitckers troquelados y en relieve",
+				"comment": "realmente realmente bonitos. Súper recomendados."
+			},
+			"fr": {
+				"title": "sitckers découpés et en relief",
+				"comment": "vraiment vraiment beaux. Archi recommandés."
+			},
+			"de": {
+				"title": "gestanzte und geprägte Sitcker",
+				"comment": "wirklich wirklich schön. Absolut empfehlenswert."
+			},
+			"nl": {
+				"title": "gestanste en reliëf sitckers",
+				"comment": "echt echt mooi. Dikke aanrader."
+			}
+		},
+		"66a9600d-2273-4855-b460-ef5356438e56": {
+			"_hash": "ef7640d240a5a155",
+			"en": {
+				"title": "The best",
+				"comment": "Well, what can I say. I wanted to try Sticker Print after being a customer of other competitors for quite a while. Right now I'm more than satisfied, both with the product, which is decidedly above my expectations, but above all because I found a care and attention toward the customer that I wasn't expecting, leaving me more than fully satisfied. Honestly they have a new customer (I hope for their sake they find many more, they deserve it) and for my part I invite you to try their service and their stickers. I'll close by thanking Mattia infinitely."
+			},
+			"es": {
+				"title": "Los mejores",
+				"comment": "Bueno, qué decir. Quise probar Sticker Print después de haber sido cliente durante bastante tiempo de otros competidores. Actualmente estoy más que satisfecho, tanto por el producto, claramente superior a mis expectativas, pero sobre todo porque he encontrado un cuidado y una atención hacia el cliente que no me esperaba, dejándome más que plenamente satisfecho. Sinceramente tienen un nuevo cliente (espero por ellos que encuentren muchos más, se lo merecen) y por mi parte os invito a probar su servicio y sus pegatinas. Además cierro agradeciendo infinitamente a Mattia."
+			},
+			"fr": {
+				"title": "Les meilleurs",
+				"comment": "Bah que dire. J'ai voulu essayer Sticker Print après avoir été longtemps client d'autres concurrents. Actuellement je suis plus que satisfait, tant pour le produit, nettement supérieur à mes attentes, mais surtout parce que j'ai trouvé un soin et une attention envers le client auxquels je ne m'attendais pas, me laissant plus que pleinement satisfait. Sincèrement ils ont un nouveau client (j'espère pour eux qu'ils en trouveront beaucoup d'autres, ils le méritent) et pour ma part je vous invite à essayer leur service et leurs stickers. Je termine en remerciant infiniment Mattia."
+			},
+			"de": {
+				"title": "Die Besten",
+				"comment": "Tja, was soll ich sagen. Ich wollte Sticker Print ausprobieren, nachdem ich lange Zeit Kunde bei anderen Mitbewerbern war. Aktuell bin ich mehr als zufrieden, sowohl mit dem Produkt, das meine Erwartungen deutlich übertrifft, aber vor allem, weil ich eine Sorgfalt und Aufmerksamkeit gegenüber dem Kunden gefunden habe, die ich nicht erwartet hatte, was mich mehr als voll und ganz zufrieden zurücklässt. Ehrlich gesagt haben sie einen neuen Kunden (ich hoffe für sie, dass sie noch viele weitere finden, sie verdienen es), und ich lade dich ein, ihren Service und ihre Aufkleber auszuprobieren. Zum Schluss danke ich Mattia unendlich."
+			},
+			"nl": {
+				"title": "De besten",
+				"comment": "Tja, wat zal ik zeggen. Ik wilde Sticker Print proberen nadat ik lange tijd klant was geweest bij andere concurrenten. Op dit moment ben ik meer dan tevreden, zowel over het product, dat duidelijk boven mijn verwachtingen ligt, maar vooral omdat ik een zorg en aandacht voor de klant heb gevonden die ik niet had verwacht, waardoor ik meer dan volledig tevreden ben. Eerlijk gezegd hebben ze er een nieuwe klant bij (ik hoop voor hen dat ze er nog veel meer vinden, ze verdienen het) en van mijn kant nodig ik je uit om hun service en hun stickers te proberen. Tot slot bedank ik Mattia oneindig."
+			}
+		},
+		"345c2bad-6578-4937-8a4c-8a4f5d914739": {
+			"_hash": "0f8da41efd76bf74",
+			"en": {
+				"title": "Stickers 🔝",
+				"comment": "Stickers made really well, gorgeous, top-notch, super quality"
+			},
+			"es": {
+				"title": "Pegatinas 🔝",
+				"comment": "Pegatinas realmente bien hechas preciosas top, súper calidad"
+			},
+			"fr": {
+				"title": "Stickers 🔝",
+				"comment": "Stickers vraiment bien faits magnifiques top, super qualité"
+			},
+			"de": {
+				"title": "Aufkleber 🔝",
+				"comment": "Wirklich gut gemachte Aufkleber, wunderschön, top, super Qualität"
+			},
+			"nl": {
+				"title": "Stickers 🔝",
+				"comment": "Echt goed gemaakte stickers, prachtig, top, superkwaliteit"
+			}
+		},
+		"cf28ade3-52ad-4c5f-b0de-bbad88dae19a": {
+			"_hash": "6f0dbe84271a8650",
+			"en": {
+				"title": "So cool",
+				"comment": "They're literally awesome!"
+			},
+			"es": {
+				"title": "Chulísimas",
+				"comment": "¡Son literalmente una pasada!"
+			},
+			"fr": {
+				"title": "Trop stylés",
+				"comment": "Ils sont littéralement trop cool !"
+			},
+			"de": {
+				"title": "Mega cool",
+				"comment": "Sie sind buchstäblich der Hammer!"
+			},
+			"nl": {
+				"title": "Supercool",
+				"comment": "Ze zijn letterlijk te gek!"
+			}
+		},
+		"bda60523-2acf-44b2-b47f-3d9f6d399bd2": {
+			"_hash": "03b5a49cea24e1c2",
+			"en": {
+				"title": "High quality and professionalism",
+				"comment": "I've been working with Stickerprint for several years and both the product quality and the customer service are excellent. for us artisan businesses these are essential qualities to stand out from the crowd and from low-cost products."
+			},
+			"es": {
+				"title": "Alta calidad y profesionalidad",
+				"comment": "Colaboro con Stickerprint desde hace varios años y tanto la calidad del producto como el servicio al cliente son excelentes. para nosotros las empresas artesanas, características fundamentales para distinguirse de la masa y de los productos low cost."
+			},
+			"fr": {
+				"title": "Haute qualité et professionnalisme",
+				"comment": "Je collabore avec Stickerprint depuis plusieurs années et aussi bien la qualité du produit que le service rendu au client sont excellents. pour nous, entreprises artisanales, des caractéristiques fondamentales pour se démarquer de la masse et des produits low cost."
+			},
+			"de": {
+				"title": "Hohe Qualität und Professionalität",
+				"comment": "Ich arbeite seit einigen Jahren mit Stickerprint zusammen und sowohl die Produktqualität als auch der Kundenservice sind ausgezeichnet. für uns Handwerksbetriebe grundlegende Eigenschaften, um sich von der Masse und von Billigprodukten abzuheben."
+			},
+			"nl": {
+				"title": "Hoge kwaliteit en professionaliteit",
+				"comment": "Ik werk al een flink aantal jaren samen met Stickerprint en zowel de kwaliteit van het product als de klantenservice zijn uitstekend. voor ons ambachtelijke bedrijven essentiële eigenschappen om ons te onderscheiden van de massa en van goedkope producten."
+			}
+		},
+		"5236bee7-11fe-408a-91d1-d9809496ccb1": {
+			"_hash": "13141dc1dd77be52",
+			"en": {
+				"title": "Beautiful!!",
+				"comment": "I had embossed stickers made with my pepa, our mascot, and the result is truly incredible!"
+			},
+			"es": {
+				"title": "¡¡Preciosas!!",
+				"comment": "Mandé hacer las pegatinas en relieve con mi pepa, nuestra mascota, ¡el resultado es realmente increíble!"
+			},
+			"fr": {
+				"title": "Magnifiques !!",
+				"comment": "J'ai fait réaliser les stickers en relief avec ma pepa, notre mascotte, le résultat est vraiment incroyable !"
+			},
+			"de": {
+				"title": "Wunderschön!!",
+				"comment": "Ich habe die geprägten Aufkleber mit meiner pepa, unserem Maskottchen, anfertigen lassen, das Ergebnis ist wirklich unglaublich!"
+			},
+			"nl": {
+				"title": "Prachtig!!",
+				"comment": "Ik heb de reliëfstickers laten maken met mijn pepa, onze mascotte, het resultaat is echt ongelooflijk!"
+			}
+		},
+		"dabe0d37-e1b2-4d66-8827-980fb45fa27d": {
+			"_hash": "8b0c7a30a4ed190c",
+			"en": {
+				"title": "embossed stickers",
+				"comment": "Very nice, professional print"
+			},
+			"es": {
+				"title": "pegatinas con relieve",
+				"comment": "Impresión muy bonita y profesional"
+			},
+			"fr": {
+				"title": "stickers avec relief",
+				"comment": "Impression très belle et professionnelle"
+			},
+			"de": {
+				"title": "Aufkleber mit Prägung",
+				"comment": "Sehr schöner und professioneller Druck"
+			},
+			"nl": {
+				"title": "stickers met reliëf",
+				"comment": "Heel mooie en professionele print"
+			}
+		},
+		"2c884213-40a1-4cf7-afe3-2d17bfbaba53": {
+			"_hash": "bc6eb00ec33d8f28",
+			"en": {
+				"title": "Top-quality supplier",
+				"comment": "A supplier of great quality and professionalism that has never let my expectations down. Excellent value for money but above all they're able to help the customer make the best choice for the job at hand. I highly recommend them."
+			},
+			"es": {
+				"title": "Proveedor de gran calidad",
+				"comment": "Proveedor de gran calidad y profesionalidad que nunca ha defraudado mis expectativas. Excelente relación calidad-precio pero sobre todo es capaz de ayudar al cliente en la mejor elección respecto al trabajo a realizar. Lo recomiendo vivamente."
+			},
+			"fr": {
+				"title": "Fournisseur de grande qualité",
+				"comment": "Fournisseur de grande qualité et de professionnalisme qui n'a jamais déçu mes attentes. Excellent rapport qualité-prix mais surtout il est capable d'aider le client à faire le meilleur choix par rapport au travail à réaliser. Je recommande vivement."
+			},
+			"de": {
+				"title": "Lieferant von hoher Qualität",
+				"comment": "Ein Lieferant von hoher Qualität und Professionalität, der meine Erwartungen nie enttäuscht hat. Ausgezeichnetes Preis-Leistungs-Verhältnis, aber vor allem ist er in der Lage, dem Kunden bei der besten Wahl für die auszuführende Arbeit zu helfen. Ich empfehle ihn wärmstens."
+			},
+			"nl": {
+				"title": "Leverancier van hoge kwaliteit",
+				"comment": "Leverancier van hoge kwaliteit en professionaliteit die mijn verwachtingen nooit heeft teleurgesteld. Uitstekende prijs-kwaliteitverhouding maar vooral in staat om de klant te helpen bij de beste keuze voor het uit te voeren werk. Ik raad ze van harte aan."
+			}
+		},
+		"86444fd8-682a-4473-9e87-5a35630f537f": {
+			"_hash": "1645d93f8f5ca4be",
+			"en": {
+				"title": "Domed",
+				"comment": "I had various domed jobs produced for Tiffany and the service turned out excellent in terms of quality, price and turnaround"
+			},
+			"es": {
+				"title": "Resinas",
+				"comment": "Mandé producir varios trabajos resinados para Tiffany y el servicio resultó excelente en calidad precio y plazos"
+			},
+			"fr": {
+				"title": "Résines",
+				"comment": "J'ai fait produire plusieurs travaux en résine pour Tiffany et le service s'est révélé excellent en qualité prix et délais"
+			},
+			"de": {
+				"title": "Doming",
+				"comment": "Ich habe verschiedene Doming-Arbeiten für Tiffany anfertigen lassen und der Service war ausgezeichnet in Qualität, Preis und Zeit"
+			},
+			"nl": {
+				"title": "Doming",
+				"comment": "Ik heb verschillende doming-opdrachten voor Tiffany laten produceren en de service was uitstekend qua kwaliteit, prijs en levertijd"
+			}
+		},
+		"a2a89aba-4750-41f8-ab9c-db38b9529949": {
+			"_hash": "972282c0897e5929",
+			"en": {
+				"title": "sample kit",
+				"comment": "Beautiful and well-stocked sample kit"
+			},
+			"es": {
+				"title": "muestrario",
+				"comment": "Muestrario precioso y completo"
+			},
+			"fr": {
+				"title": "échantillons",
+				"comment": "Kit d'échantillons magnifique et bien fourni"
+			},
+			"de": {
+				"title": "Musterkollektion",
+				"comment": "Wunderschöne und umfangreiche Musterkollektion"
+			},
+			"nl": {
+				"title": "stalenset",
+				"comment": "Prachtige en goed gevulde stalenset"
+			}
+		},
+		"fa12ab0c-fbf9-4404-a76b-d377c87c9b53": {
+			"_hash": "1170d6af915f27d7",
+			"en": {
+				"title": "Excellent value for money",
+				"comment": "excellent value for money, dynamic service"
+			},
+			"es": {
+				"title": "Excelente relación calidad precio",
+				"comment": "excelente relación calidad precio, servicio dinámico"
+			},
+			"fr": {
+				"title": "Excellent rapport qualité prix",
+				"comment": "excellent rapport qualité prix, service dynamique"
+			},
+			"de": {
+				"title": "Ausgezeichnetes Preis-Leistungs-Verhältnis",
+				"comment": "ausgezeichnetes Preis-Leistungs-Verhältnis, dynamischer Service"
+			},
+			"nl": {
+				"title": "Uitstekende prijs-kwaliteitverhouding",
+				"comment": "uitstekende prijs-kwaliteitverhouding, dynamische service"
+			}
+		},
+		"95f6dbe4-f994-4783-994a-2a36fc28bd2f": {
+			"_hash": "fd8bcaedd93ae74c",
+			"en": {
+				"title": "Well done Mattia",
+				"comment": "I've been ordering from them for years, even before they sold online, Great and helpful!"
+			},
+			"es": {
+				"title": "Bravo Mattia",
+				"comment": "Llevo años pidiéndoles, desde antes incluso de que vendieran online, ¡Buenos y atentos!"
+			},
+			"fr": {
+				"title": "Bravo Mattia",
+				"comment": "Je commande chez eux depuis des années, avant même qu'ils vendent en ligne, Compétents et disponibles !"
+			},
+			"de": {
+				"title": "Bravo Mattia",
+				"comment": "Ich bestelle seit Jahren bei ihnen, schon bevor sie online verkauft haben, Toll und hilfsbereit!"
+			},
+			"nl": {
+				"title": "Bravo Mattia",
+				"comment": "Ik bestel al jaren bij hen, nog voordat ze online verkochten, Goed en behulpzaam!"
+			}
+		},
+		"91bbd301-9e86-4468-b73f-9aac785752d4": {
+			"_hash": "be9bdd7809aae0ea",
+			"en": {
+				"title": "WELL DONE!!",
+				"comment": "I put them to the test with a pretty tricky design, before coming to them I went to a competitor, who however couldn't cut that shape and had made me a proposal I wasn't convinced by, the guys instead, albeit with a few slight changes (communicated promptly), pulled it off, well done!"
+			},
+			"es": {
+				"title": "¡¡BRAVO!!",
+				"comment": "Los puse a prueba con un diseño bastante difícil, antes de llegar a ellos fui a un competidor, que sin embargo no conseguía cortar esa silueta y me había hecho una propuesta que no me convencía, los chicos en cambio aunque con alguna ligera modificación (comunicada a tiempo) lo consiguieron, ¡bravo!"
+			},
+			"fr": {
+				"title": "BRAVO !!",
+				"comment": "Je les ai mis à l'épreuve avec un dessin bien difficile, avant d'arriver chez eux je suis allé chez un concurrent, qui n'arrivait pourtant pas à découper cette forme et m'avait fait une proposition qui ne me convainquait pas, les gars en revanche, même avec quelques légères modifications (communiquées rapidement), y sont arrivés, bravo !"
+			},
+			"de": {
+				"title": "BRAVO!!",
+				"comment": "Ich habe sie mit einem ziemlich schwierigen Motiv auf die Probe gestellt, bevor ich zu ihnen kam, war ich bei einem Mitbewerber, der diese Form aber nicht schneiden konnte und mir einen Vorschlag gemacht hatte, der mich nicht überzeugte, die Jungs haben es dagegen, wenn auch mit ein paar kleinen Änderungen (rechtzeitig mitgeteilt), geschafft, bravo!"
+			},
+			"nl": {
+				"title": "BRAVO!!",
+				"comment": "Ik heb ze op de proef gesteld met een behoorlijk lastig ontwerp, voordat ik bij hen kwam was ik bij een concurrent geweest, die die vorm echter niet kon snijden en me een voorstel had gedaan dat me niet overtuigde, de jongens zijn er daarentegen, zij het met een paar kleine aanpassingen (tijdig gecommuniceerd), wel in geslaagd, bravo!"
+			}
+		},
+		"c1494740-26d7-4e7d-8ceb-6af8cd321983": {
+			"_hash": "bdbf8d15d5bec1b0",
+			"en": {
+				"title": "Custom stickers",
+				"comment": "Very nice stickers exactly like the proof sent"
+			},
+			"es": {
+				"title": "Stickers personalizados",
+				"comment": "Stickers muy bonitos exactamente como la prueba enviada"
+			},
+			"fr": {
+				"title": "Stickers personnalisés",
+				"comment": "Stickers très beaux exactement comme l'épreuve envoyée"
+			},
+			"de": {
+				"title": "Personalisierte Sticker",
+				"comment": "Sehr schöne Sticker genau wie der gesendete Proof"
+			},
+			"nl": {
+				"title": "Gepersonaliseerde stickers",
+				"comment": "Heel mooie stickers precies zoals de verstuurde proof"
+			}
+		},
+		"dbbd23ef-23de-4fd5-bf70-5dc3e20c7e1c": {
+			"_hash": "99f3670452a220e4",
+			"en": {
+				"title": "Reliable",
+				"comment": "We buy domed stickers from them regularly. fast and precise."
+			},
+			"es": {
+				"title": "Fiable",
+				"comment": "Les compramos pegatinas resinadas regularmente. rápidos y precisos."
+			},
+			"fr": {
+				"title": "Fiable",
+				"comment": "Nous achetons régulièrement des stickers résinés chez eux. rapides et précis."
+			},
+			"de": {
+				"title": "Zuverlässig",
+				"comment": "Wir kaufen regelmäßig Doming-Aufkleber bei ihnen. schnell und präzise."
+			},
+			"nl": {
+				"title": "Betrouwbaar",
+				"comment": "We kopen regelmatig doming stickers bij hen. snel en precies."
+			}
+		},
+		"b5c9c5a1-ee0e-4888-a4c4-f0d06921d045": {
+			"_hash": "0322f8cfcbfc796d",
+			"en": {
+				"title": "Good product",
+				"comment": "The laminated labels turned out extremely durable, the cut was probably a bit too light, but I sorted it out quickly"
+			},
+			"es": {
+				"title": "Buen producto",
+				"comment": "Las etiquetas con laminado han resultado extremadamente resistentes, el corte probablemente era un poco demasiado ligero, pero lo resolví rápidamente"
+			},
+			"fr": {
+				"title": "Bon produit",
+				"comment": "Les étiquettes avec pelliculage se sont révélées extrêmement résistantes, la découpe était probablement un peu trop légère, mais j'ai vite résolu le problème"
+			},
+			"de": {
+				"title": "Gutes Produkt",
+				"comment": "Die laminierten Etiketten haben sich als extrem widerstandsfähig erwiesen, der Schnitt war wahrscheinlich etwas zu leicht, aber ich habe es schnell gelöst"
+			},
+			"nl": {
+				"title": "Goed product",
+				"comment": "De gelamineerde etiketten bleken extreem sterk, de snede was waarschijnlijk iets te licht, maar ik heb het snel opgelost"
+			}
+		},
+		"ddda45d4-5a7e-4527-a4d8-11f5d2cf18a6": {
+			"_hash": "64be5e9bc6565b7a",
+			"en": {
+				"title": "As expected",
+				"comment": "They do what they promise, no ifs or buts."
+			},
+			"es": {
+				"title": "Según lo esperado",
+				"comment": "Hacen lo que prometen, sin peros."
+			},
+			"fr": {
+				"title": "Conforme aux attentes",
+				"comment": "Ils font ce qu'ils promettent, sans si ni mais."
+			},
+			"de": {
+				"title": "Wie erwartet",
+				"comment": "Sie tun, was sie versprechen, ohne Wenn und Aber."
+			},
+			"nl": {
+				"title": "Zoals verwacht",
+				"comment": "Ze doen wat ze beloven, zonder mitsen en maren."
+			}
+		},
+		"7bcaea09-4b9f-4165-aca8-ede3248d6de9": {
+			"_hash": "396f0da4f7fd4ef5",
+			"en": {
+				"title": "So awesome",
+				"comment": "the holographic sticker is something insane!"
+			},
+			"es": {
+				"title": "Qué pasada",
+				"comment": "¡la pegatina holográfica es algo absurdo!"
+			},
+			"fr": {
+				"title": "Quel truc de ouf",
+				"comment": "le sticker holographique, c'est quelque chose de dingue !"
+			},
+			"de": {
+				"title": "Einfach top",
+				"comment": "der holografische Aufkleber ist der Wahnsinn!"
+			},
+			"nl": {
+				"title": "Wat een topper",
+				"comment": "de holografische sticker is echt waanzinnig!"
+			}
+		},
+		"e45751f1-c115-4b64-a069-38594a90bc18": {
+			"_hash": "34daff0e8aec5935",
+			"en": {
+				"title": "Fun!",
+				"comment": "I made sticker sheets with my coworkers' faces and we stuck them all over the office, very nice print and a fun product!"
+			},
+			"es": {
+				"title": "¡Divertidas!",
+				"comment": "Hice unas hojas de stickers con las caras de mis compañeras y las pegamos por toda la oficina, ¡impresión muy bonita y producto divertido!"
+			},
+			"fr": {
+				"title": "Amusants !",
+				"comment": "J'ai fait des planches de stickers avec les visages de mes collègues et on les a collés partout dans le bureau, très belle impression et produit amusant !"
+			},
+			"de": {
+				"title": "Lustig!",
+				"comment": "Ich habe Stickerbögen mit den Gesichtern meiner Kolleginnen gemacht und wir haben sie im ganzen Büro verklebt, sehr schöner Druck und ein lustiges Produkt!"
+			},
+			"nl": {
+				"title": "Leuk!",
+				"comment": "Ik heb stickervellen gemaakt met de gezichten van mijn collega's en we hebben ze door het hele kantoor geplakt, heel mooie print en een leuk product!"
+			}
+		},
+		"d96eb238-15db-46b1-9954-731265a2214e": {
+			"_hash": "f4777c0adce684d2",
+			"en": {
+				"title": "Stickers ok",
+				"comment": "I didn't know how the result would turn out, but I have to say they're very nice."
+			},
+			"es": {
+				"title": "Pegatinas ok",
+				"comment": "No sabía cómo quedaría el resultado, pero tengo que decir que son muy bonitas."
+			},
+			"fr": {
+				"title": "Stickers ok",
+				"comment": "Je ne savais pas ce que donnerait le résultat, mais je dois dire qu'ils sont très beaux."
+			},
+			"de": {
+				"title": "Aufkleber ok",
+				"comment": "Ich wusste nicht, wie das Ergebnis ausfallen würde, aber ich muss sagen, sie sind sehr schön."
+			},
+			"nl": {
+				"title": "Stickers ok",
+				"comment": "Ik wist niet hoe het resultaat zou worden, maar ik moet zeggen dat ze heel mooi zijn."
+			}
+		},
+		"9ebc58eb-93a9-4798-b646-0ee40a81012d": {
+			"_hash": "1240929607556fb4",
+			"en": {
+				"title": "Nice, shame about the delivery",
+				"comment": "4 stars because the courier delivered a day late, but the product is definitely good. The guys were very kind and sent me a discount code. I'll definitely reorder."
+			},
+			"es": {
+				"title": "Bonitas, lástima la entrega",
+				"comment": "4 estrellas porque el transportista entregó con un día de retraso, pero el producto es sin duda bueno. Muy amables los chicos que me enviaron un código de descuento. volveré a pedir seguro."
+			},
+			"fr": {
+				"title": "Beaux, dommage pour la livraison",
+				"comment": "4 étoiles parce que le transporteur a livré avec un jour de retard, mais le produit est sans aucun doute de qualité. Très gentils les gars qui m'ont envoyé un code de réduction. je recommanderai sûrement."
+			},
+			"de": {
+				"title": "Schön, schade um die Lieferung",
+				"comment": "4 Sterne, weil der Paketdienst einen Tag zu spät geliefert hat, aber das Produkt ist auf jeden Fall gut. Sehr nett die Jungs, die mir einen Rabattcode geschickt haben. ich werde sicher wieder bestellen."
+			},
+			"nl": {
+				"title": "Mooi, jammer van de levering",
+				"comment": "4 sterren omdat de koerier een dag te laat heeft geleverd, maar het product is zeker goed. Heel vriendelijk van de jongens dat ze me een kortingscode hebben gestuurd. ik bestel zeker opnieuw."
+			}
+		},
+		"71ffc419-da1f-451e-a165-c6ed99daf5c7": {
+			"_hash": "8bbfd39a2447c17f",
+			"en": {
+				"title": "Always great",
+				"comment": "I used to order on stickerprint with the old site too, now that they've redone it it's even nicer! well done!!"
+			},
+			"es": {
+				"title": "Siempre buenos",
+				"comment": "Ya pedía en stickerprint con la web antigua, ahora que la han rehecho ¡es aún más bonita! ¡¡bravo!!"
+			},
+			"fr": {
+				"title": "Toujours au top",
+				"comment": "Je commandais sur stickerprint déjà avec l'ancien site, maintenant qu'ils l'ont refait il est encore plus beau ! bravo !!"
+			},
+			"de": {
+				"title": "Immer gut",
+				"comment": "Ich habe auch schon mit der alten Website bei stickerprint bestellt, jetzt, wo sie sie neu gemacht haben, ist sie noch schöner! bravo!!"
+			},
+			"nl": {
+				"title": "Altijd goed",
+				"comment": "Ik bestelde al bij stickerprint met de oude site, nu ze hem vernieuwd hebben is hij nog mooier! bravo!!"
+			}
+		},
+		"fedb609b-936e-42c9-bd8d-d6508805b7cf": {
+			"_hash": "f41cd0a2cf8cd3a0",
+			"en": {
+				"title": "Dynamic",
+				"comment": "a young, dynamic company that supports us on several projects"
+			},
+			"es": {
+				"title": "Dinámicos",
+				"comment": "empresa joven y dinámica que nos apoya en varios proyectos"
+			},
+			"fr": {
+				"title": "Dynamiques",
+				"comment": "entreprise jeune et dynamique qui nous accompagne sur plusieurs projets"
+			},
+			"de": {
+				"title": "Dynamisch",
+				"comment": "junges, dynamisches Unternehmen, das uns bei verschiedenen Projekten unterstützt"
+			},
+			"nl": {
+				"title": "Dynamisch",
+				"comment": "jong en dynamisch bedrijf dat ons bij verschillende projecten ondersteunt"
+			}
+		},
+		"d97a9c61-c9a6-458b-8c7b-9170979ac0bd": {
+			"_hash": "3136eb5736e578c2",
+			"en": {
+				"title": "Always fast and impeccable",
+				"comment": "Always fast and impeccable! The stickers we've commissioned have always arrived perfect and within the requested timeframe."
+			},
+			"es": {
+				"title": "Siempre rápidos e impecables",
+				"comment": "¡Siempre rápidos e impecables! Las pegatinas que hemos encargado han llegado siempre perfectas y en los plazos solicitados."
+			},
+			"fr": {
+				"title": "Toujours rapides et impeccables",
+				"comment": "Toujours rapides et impeccables ! Les stickers que nous avons commandés sont toujours arrivés parfaits et dans les délais demandés."
+			},
+			"de": {
+				"title": "Immer schnell und tadellos",
+				"comment": "Immer schnell und tadellos! Die Aufkleber, die wir in Auftrag gegeben haben, sind immer perfekt und in der gewünschten Zeit angekommen."
+			},
+			"nl": {
+				"title": "Altijd snel en onberispelijk",
+				"comment": "Altijd snel en onberispelijk! De stickers die we hebben besteld zijn altijd perfect en binnen de gevraagde tijd aangekomen."
+			}
+		},
+		"d68a6415-4316-4e7d-a0fc-fab66c8864ff": {
+			"_hash": "ab706c9af7def1a8",
+			"en": {
+				"title": "Labels",
+				"comment": "A supplier worth recommending, precise, competent and fast."
+			},
+			"es": {
+				"title": "Etiquetas",
+				"comment": "Proveedor recomendable preciso, competente y rápido."
+			},
+			"fr": {
+				"title": "Étiquettes",
+				"comment": "Fournisseur à recommander, précis, compétent et rapide."
+			},
+			"de": {
+				"title": "Etiketten",
+				"comment": "Empfehlenswerter Lieferant, präzise, kompetent und schnell."
+			},
+			"nl": {
+				"title": "Etiketten",
+				"comment": "Aan te raden leverancier, precies, deskundig en snel."
+			}
+		},
+		"bfaa851e-a5c8-4473-aa50-60547bd0e47f": {
+			"_hash": "35c983c77740625c",
+			"en": {
+				"title": "Top speed and quality",
+				"comment": "Very fast and flawless in quality. Well done! Ps. This compliment comes from someone in the trade"
+			},
+			"es": {
+				"title": "Rapidez y calidad top",
+				"comment": "Muy rápidos y de calidad irreprochable. ¡Bravo! Pd. El cumplido viene de alguien del sector"
+			},
+			"fr": {
+				"title": "Rapidité et qualité au top",
+				"comment": "Très rapides et d'une qualité irréprochable. Bravo ! Ps. Le compliment vient d'un professionnel du métier"
+			},
+			"de": {
+				"title": "Top Schnelligkeit und Qualität",
+				"comment": "Sehr schnell und qualitativ einwandfrei. Bravo! Ps. Das Kompliment kommt von jemandem vom Fach"
+			},
+			"nl": {
+				"title": "Topsnelheid en topkwaliteit",
+				"comment": "Heel snel en kwalitatief onberispelijk. Bravo! Ps. Dit compliment komt van iemand uit het vak"
+			}
+		},
+		"535b96b4-310a-4237-8dc7-4eec6c86d3e7": {
+			"_hash": "5d20ca0490b3c225",
+			"en": {
+				"title": "Everything perfect 👏",
+				"comment": "Very nice, well done 👏"
+			},
+			"es": {
+				"title": "Todo perfecto 👏",
+				"comment": "Muy bonitas, enhorabuena 👏"
+			},
+			"fr": {
+				"title": "Tout est parfait 👏",
+				"comment": "Très beaux, bravo 👏"
+			},
+			"de": {
+				"title": "Alles perfekt 👏",
+				"comment": "Sehr schön, Kompliment 👏"
+			},
+			"nl": {
+				"title": "Alles perfect 👏",
+				"comment": "Heel mooi, complimenten 👏"
+			}
+		},
+		"b093e964-4406-4799-bc1c-1bebf7f8e106": {
+			"_hash": "783728225c7aaeee",
+			"en": {
+				"title": "Exceptional quality!!",
+				"comment": "Super Quality!!"
+			},
+			"es": {
+				"title": "¡¡Calidad excepcional!!",
+				"comment": "Super Quality!!"
+			},
+			"fr": {
+				"title": "Qualité exceptionnelle !!",
+				"comment": "Super Quality!!"
+			},
+			"de": {
+				"title": "Außergewöhnliche Qualität!!",
+				"comment": "Super Quality!!"
+			},
+			"nl": {
+				"title": "Uitzonderlijke kwaliteit!!",
+				"comment": "Super Quality!!"
+			}
+		},
+		"6165c607-ed69-4476-90cc-abe88ba13239": {
+			"_hash": "2066ef3dd40e6173",
+			"en": {
+				"title": "Our go-to",
+				"comment": "A go-to. We always order from them the domed badges to put on the medals and trophies we sell"
+			},
+			"es": {
+				"title": "Nuestro punto de referencia",
+				"comment": "Un punto de referencia. Siempre les pedimos las pegatinas resinadas redondas que ponemos en las medallas y trofeos que vendemos"
+			},
+			"fr": {
+				"title": "Notre référence",
+				"comment": "Une référence. Nous commandons toujours chez eux les pastilles résinées à mettre sur les médailles et trophées que nous vendons"
+			},
+			"de": {
+				"title": "Unsere erste Adresse",
+				"comment": "Eine feste Adresse. Wir bestellen bei ihnen immer die Doming-Plaketten für die Medaillen und Pokale, die wir verkaufen"
+			},
+			"nl": {
+				"title": "Ons vaste adres",
+				"comment": "Een vast adres. We bestellen bij hen altijd de doming badges voor op de medailles en trofeeën die we verkopen"
+			}
+		},
+		"bd0057b8-f6ac-40e7-bd6c-f6d1f0deadee": {
+			"_hash": "fcd429ddf8ec707e",
+			"en": {
+				"title": "100% satisfied customer",
+				"comment": "We placed a test order for domed stickers to use as a gift for the launch of a client's new eyewear line. Very interesting result and, most importantly, a satisfied client. We'll definitely reorder."
+			},
+			"es": {
+				"title": "Cliente satisfecho al 100%",
+				"comment": "Hicimos un pedido de prueba de pegatinas resinadas para usar como regalo en el lanzamiento de la nueva línea de gafas de un cliente nuestro. Resultado muy interesante y, lo más importante, cliente satisfecho. Volveremos a pedir seguro."
+			},
+			"fr": {
+				"title": "Client satisfait à 100 %",
+				"comment": "Nous avons passé une commande d'essai pour des stickers résinés à utiliser comme cadeau pour le lancement de la nouvelle ligne de lunettes d'un de nos clients. Résultat très intéressant et, le plus important, client satisfait. Nous recommanderons sans aucun doute."
+			},
+			"de": {
+				"title": "Zu 100 % zufriedener Kunde",
+				"comment": "Wir haben eine Testbestellung für Doming-Aufkleber aufgegeben, die als Geschenk zum Launch der neuen Brillenlinie eines unserer Kunden dienen sollten. Sehr interessantes Ergebnis und, was am wichtigsten ist, zufriedener Kunde. Wir werden sicher wieder bestellen."
+			},
+			"nl": {
+				"title": "100% tevreden klant",
+				"comment": "We hebben een proefbestelling geplaatst voor doming stickers om als geschenk te gebruiken bij de lancering van de nieuwe brillenlijn van een klant van ons. Heel interessant resultaat en, het belangrijkste, tevreden klant. We bestellen zeker opnieuw."
+			}
+		},
+		"a13a072c-7a72-4630-8483-e3e15ed75acf": {
+			"_hash": "bb038cfa1043c381",
+			"en": {
+				"title": "Exactly as hoped",
+				"comment": "Beautiful stickers, exactly as we wanted them"
+			},
+			"es": {
+				"title": "Exactamente como esperábamos",
+				"comment": "Stickers preciosos, exactamente como los queríamos"
+			},
+			"fr": {
+				"title": "Exactement comme espéré",
+				"comment": "Magnifiques stickers, exactement comme nous les voulions"
+			},
+			"de": {
+				"title": "Genau wie erhofft",
+				"comment": "Wunderschöne Sticker, genau wie wir sie wollten"
+			},
+			"nl": {
+				"title": "Precies zoals gehoopt",
+				"comment": "Prachtige stickers, precies zoals we ze wilden"
+			}
+		},
+		"54b293b4-c12d-4578-9a68-3f70b0665421": {
+			"_hash": "15510db6de291a51",
+			"en": {
+				"title": "Top quality always!!",
+				"comment": "Service, friendliness, products: super!! Tried several prints, all of the highest quality!!!"
+			},
+			"es": {
+				"title": "¡¡Altísima calidad siempre!!",
+				"comment": "¡¡Servicio, amabilidad, productos súper!! ¡¡¡He probado varias impresiones, todas de altísima calidad!!!"
+			},
+			"fr": {
+				"title": "Très haute qualité toujours !!",
+				"comment": "Service, convivialité, produits super !! Testé plusieurs impressions, toutes de très haute qualité !!!"
+			},
+			"de": {
+				"title": "Immer höchste Qualität!!",
+				"comment": "Service, Freundlichkeit, Produkte super!! Verschiedene Drucke ausprobiert, alle von höchster Qualität!!!"
+			},
+			"nl": {
+				"title": "Altijd topkwaliteit!!",
+				"comment": "Service, vriendelijkheid, producten super!! Verschillende prints geprobeerd, allemaal van topkwaliteit!!!"
+			}
+		},
+		"d73fc1c6-5c5c-4cd2-8995-a2e1a7bd60a2": {
+			"_hash": "58e6fd952862186e",
+			"en": {
+				"title": "Always reliable",
+				"comment": "They never miss. Recommended"
+			},
+			"es": {
+				"title": "Siempre fiables",
+				"comment": "No fallan ni una. Recomendados"
+			},
+			"fr": {
+				"title": "Toujours fiables",
+				"comment": "Ils ne ratent jamais leur coup. Recommandés"
+			},
+			"de": {
+				"title": "Immer zuverlässig",
+				"comment": "Sie machen keinen Fehler. Empfehlenswert"
+			},
+			"nl": {
+				"title": "Altijd betrouwbaar",
+				"comment": "Ze slaan nooit de plank mis. Aanrader"
+			}
+		},
+		"58a1622d-7cd4-46ec-9932-aa77b94d5892": {
+			"_hash": "2d91c69c943b4c4a",
+			"en": {
+				"title": "Super recommended for everyone",
+				"comment": "We printed labels with stickerprint to customize some cans. Quality in line with expectations (very high). The real added value is that they're super easy to apply, thanks to the material that doesn't bubble, ideal for anyone who isn't used to applying labels every day. Super recommended, I'll definitely re-order."
+			},
+			"es": {
+				"title": "Súper recomendado para todos",
+				"comment": "Imprimimos con stickerprint unas etiquetas para personalizar unas latas. Calidad acorde a las expectativas (muy altas). El verdadero valor añadido es que son facilísimas de pegar, gracias al material que no hace burbujas, ideal para quien no está acostumbrado a pegar etiquetas todos los días. Súper recomendado, volveré a pedir seguro."
+			},
+			"fr": {
+				"title": "Super recommandé pour tous",
+				"comment": "Nous avons imprimé avec stickerprint des étiquettes pour personnaliser des canettes. Qualité conforme aux attentes (très élevées). La vraie valeur ajoutée, c'est qu'elles sont très faciles à coller, grâce au matériau qui ne fait pas de bulles, idéal pour qui n'a pas l'habitude de coller des étiquettes tous les jours. Super recommandé, je recommanderai sans aucun doute."
+			},
+			"de": {
+				"title": "Super empfehlenswert für alle",
+				"comment": "Wir haben bei stickerprint Etiketten drucken lassen, um Dosen zu personalisieren. Qualität entsprechend den (sehr hohen) Erwartungen. Der echte Mehrwert ist, dass sie kinderleicht anzubringen sind, dank des Materials, das keine Blasen wirft, ideal für alle, die nicht täglich Etiketten aufkleben. Super empfehlenswert, ich werde sicher wieder bestellen."
+			},
+			"nl": {
+				"title": "Super aanrader voor iedereen",
+				"comment": "We hebben bij stickerprint etiketten laten drukken om blikjes te personaliseren. Kwaliteit in lijn met de (zeer hoge) verwachtingen. De echte meerwaarde is dat ze supermakkelijk aan te brengen zijn, dankzij het materiaal dat geen bellen vormt, ideaal voor wie niet gewend is om dagelijks etiketten te plakken. Super aanrader, ik bestel zeker opnieuw."
+			}
+		},
+		"59d418c0-e3d0-4597-a2d3-087948ba4ce9": {
+			"_hash": "0eeebbe8fba0c643",
+			"en": {
+				"title": "Trusted partner",
+				"comment": "By now they're my regular partner!"
+			},
+			"es": {
+				"title": "Socio de confianza",
+				"comment": "¡Ya son mi partner fijo!"
+			},
+			"fr": {
+				"title": "Partenaire de confiance",
+				"comment": "Désormais c'est mon partenaire attitré !"
+			},
+			"de": {
+				"title": "Vertrauenspartner",
+				"comment": "Inzwischen sind sie mein fester Partner!"
+			},
+			"nl": {
+				"title": "Betrouwbare partner",
+				"comment": "Inmiddels zijn ze mijn vaste partner!"
+			}
+		},
+		"0e0a0363-4d2d-47c4-b8f5-36601c1da0b7": {
+			"_hash": "9d511e8aa0207689",
+			"en": {
+				"title": "Beautiful 3d stickers!!",
+				"comment": "We needed some 3d stickers for our club beautiful!!"
+			},
+			"es": {
+				"title": "¡¡Pegatinas 3d preciosas!!",
+				"comment": "Necesitábamos unas pegatinas 3d para nuestro club ¡¡preciosas!!"
+			},
+			"fr": {
+				"title": "Stickers 3d magnifiques !!",
+				"comment": "Il nous fallait des stickers 3d pour notre club magnifiques !!"
+			},
+			"de": {
+				"title": "Wunderschöne 3d-Aufkleber!!",
+				"comment": "Wir brauchten 3d-Aufkleber für unseren Club wunderschön!!"
+			},
+			"nl": {
+				"title": "Prachtige 3d-stickers!!",
+				"comment": "We hadden 3d-stickers nodig voor onze club prachtig!!"
+			}
+		},
+		"0d94a5f9-51a2-45ba-af1b-6e6a516f094b": {
+			"_hash": "044d8cb8cabb0069",
+			"en": {
+				"title": "Competent and helpful team",
+				"comment": "Fast, quality production, very helpful and competent team"
+			},
+			"es": {
+				"title": "Equipo competente y atento",
+				"comment": "Producción rápida y de calidad, equipo muy atento y competente"
+			},
+			"fr": {
+				"title": "Équipe compétente et disponible",
+				"comment": "Production rapide et de qualité, équipe très disponible et compétente"
+			},
+			"de": {
+				"title": "Kompetentes und hilfsbereites Team",
+				"comment": "Schnelle und hochwertige Produktion, sehr hilfsbereites und kompetentes Team"
+			},
+			"nl": {
+				"title": "Deskundig en behulpzaam team",
+				"comment": "Snelle productie van kwaliteit, heel behulpzaam en deskundig team"
+			}
+		},
+		"666376a1-d4af-4aeb-96e6-f5bfce303661": {
+			"_hash": "622a5cdf954dd146",
+			"en": {
+				"title": "Perfect result!!",
+				"comment": "They reproduced exactly what I had in mind!! beautiful!!"
+			},
+			"es": {
+				"title": "¡¡Resultado perfecto!!",
+				"comment": "¡¡Reprodujeron exactamente lo que quería!! ¡¡preciosas!!"
+			},
+			"fr": {
+				"title": "Résultat parfait !!",
+				"comment": "Ils ont reproduit exactement ce que je voulais !! magnifiques !!"
+			},
+			"de": {
+				"title": "Perfektes Ergebnis!!",
+				"comment": "Sie haben genau das umgesetzt, was ich im Sinn hatte!! wunderschön!!"
+			},
+			"nl": {
+				"title": "Perfect resultaat!!",
+				"comment": "Ze hebben precies gemaakt wat ik bedoelde!! prachtig!!"
+			}
+		},
+		"34b6adfb-10ff-48a0-92cb-2d3896256f91": {
+			"_hash": "4dacf74076f9064e",
+			"en": {
+				"title": "Highly recommended for events",
+				"comment": "I was looking for stickers to customize some boxes for an event for an important client of mine and I came across stickerprint. They advised and helped me with everything, even when I was unsure about the type of sticker.. thank you!! I'll definitely reorder!!"
+			},
+			"es": {
+				"title": "Muy recomendables para eventos",
+				"comment": "Buscaba unas pegatinas para personalizar unas cajas para un evento de un cliente importante mío y di con stickerprint. Me aconsejaron y ayudaron en todo incluso cuando tenía dudas sobre el tipo de pegatina.. ¡¡gracias!! ¡¡volveré a pedir seguro!!"
+			},
+			"fr": {
+				"title": "Hautement recommandés pour les événements",
+				"comment": "Je cherchais des stickers pour personnaliser des boîtes pour un événement pour un de mes clients importants et je suis tombé sur stickerprint. Ils m'ont conseillé et aidé en tout, même quand j'hésitais sur le type de sticker.. merci !! je recommanderai sûrement !!"
+			},
+			"de": {
+				"title": "Sehr empfehlenswert für Events",
+				"comment": "Ich suchte Aufkleber, um Schachteln für ein Event eines wichtigen Kunden von mir zu personalisieren, und bin auf stickerprint gestoßen. Sie haben mich in allem beraten und unterstützt, auch als ich bei der Art des Aufklebers unsicher war.. danke!! ich werde sicher wieder bestellen!!"
+			},
+			"nl": {
+				"title": "Dikke aanrader voor evenementen",
+				"comment": "Ik zocht stickers om dozen te personaliseren voor een evenement van een belangrijke klant van mij en kwam bij stickerprint terecht. Ze hebben me in alles geadviseerd en geholpen, ook toen ik twijfelde over het type sticker.. bedankt!! ik bestel zeker opnieuw!!"
+			}
+		},
+		"9a6cfcdc-414a-4468-9df9-79e1f8f5b651": {
+			"_hash": "9e2ad3b0d2257f0f",
+			"en": {
+				"title": "Fantastic result for the body shop",
+				"comment": "I had domed labels made for my body shop , the result exceeded expectations, top quality!! We'll definitely order again"
+			},
+			"es": {
+				"title": "Resultado fantástico para el taller de carrocería",
+				"comment": "Hice unas etiquetas resinadas para mi taller de carrocería , el resultado superó las expectativas, ¡¡calidad top!! Volveremos a pedir seguro"
+			},
+			"fr": {
+				"title": "Résultat fantastique pour la carrosserie",
+				"comment": "J'ai fait faire des étiquettes résinées pour ma carrosserie , le résultat a dépassé les attentes, qualité au top !! Nous recommanderons sûrement encore"
+			},
+			"de": {
+				"title": "Fantastisches Ergebnis für die Karosseriewerkstatt",
+				"comment": "Ich habe Doming-Etiketten für meine Karosseriewerkstatt machen lassen , das Ergebnis hat die Erwartungen übertroffen, Top-Qualität!! Wir werden sicher wieder bestellen"
+			},
+			"nl": {
+				"title": "Fantastisch resultaat voor de carrosseriewerkplaats",
+				"comment": "Ik heb doming etiketten laten maken voor mijn carrosseriewerkplaats , het resultaat overtrof de verwachtingen, topkwaliteit!! We bestellen zeker opnieuw"
+			}
+		},
+		"f0dcd802-1a2b-40cd-9cc0-7ea92c1c3269": {
+			"_hash": "89d73dea470e1680",
+			"en": {
+				"title": "An industry benchmark",
+				"comment": "I had domed labels made for my boiler installation and maintenance company. Kindness, courtesy and professionalism , fast delivery times for the goods along with their outstanding quality , make this Company an industry benchmark."
+			},
+			"es": {
+				"title": "Referente del sector",
+				"comment": "Mandé hacer unas etiquetas resinadas para mi empresa de instalación y mantenimiento de calderas. Amabilidad cortesía y profesionalidad , plazos de entrega rápidos de la mercancía además de una grandísima calidad de la misma , hacen de esta Empresa un referente del sector."
+			},
+			"fr": {
+				"title": "Référence du secteur",
+				"comment": "J'ai fait faire des étiquettes en résine pour mon entreprise d'installation et d'entretien de chaudières. Gentillesse courtoisie et professionnalisme , délais de livraison rapides de la marchandise en plus d'une très grande qualité de celle-ci , font de cette Entreprise une référence du secteur."
+			},
+			"de": {
+				"title": "Referenz der Branche",
+				"comment": "Ich habe Doming-Etiketten für meine Firma für Heizungsinstallation und -wartung anfertigen lassen. Freundlichkeit Höflichkeit und Professionalität , schnelle Lieferzeiten der Ware sowie eine hervorragende Qualität derselben , machen dieses Unternehmen zu einer Referenz der Branche."
+			},
+			"nl": {
+				"title": "Referentie in de sector",
+				"comment": "Ik heb doming etiketten laten maken voor mijn bedrijf voor installatie en onderhoud van cv-ketels. Vriendelijkheid hoffelijkheid en professionaliteit , snelle levertijden van de goederen naast een uitstekende kwaliteit ervan , maken van dit Bedrijf een referentie in de sector."
+			}
+		},
+		"d6699635-e327-4211-a016-b359eaed62fa": {
+			"_hash": "16340862eea125b6",
+			"en": {
+				"title": "Perfect gift for the client",
+				"comment": "We were looking for a sticker that was different from the usual to include as a gift in a magazine for one of our clients. We tried making domed stickers, exceptional result and a super satisfied client!! highly recommended!"
+			},
+			"es": {
+				"title": "Regalo perfecto para el cliente",
+				"comment": "Buscábamos una pegatina diferente de lo habitual para incluir como regalo en una revista para un cliente nuestro. Probamos a hacer las pegatinas resinadas, ¡¡resultado excepcional y cliente súper satisfecho!! ¡súper recomendado!"
+			},
+			"fr": {
+				"title": "Cadeau parfait pour le client",
+				"comment": "Nous cherchions un sticker différent de l'habitude à insérer comme cadeau dans un magazine pour un de nos clients. Nous avons essayé de faire les stickers en résine, résultat exceptionnel et client super satisfait !! archi recommandé !"
+			},
+			"de": {
+				"title": "Perfektes Geschenk für den Kunden",
+				"comment": "Wir suchten einen Aufkleber, der anders ist als üblich, um ihn als Geschenk einer Zeitschrift für einen unserer Kunden beizulegen. Wir haben es mit Doming-Aufklebern versucht, außergewöhnliches Ergebnis und ein super zufriedener Kunde!! absolut empfehlenswert!"
+			},
+			"nl": {
+				"title": "Perfect geschenk voor de klant",
+				"comment": "We zochten een sticker die anders is dan anders om als geschenk in een tijdschrift te stoppen voor een klant van ons. We hebben doming stickers geprobeerd, uitzonderlijk resultaat en een super tevreden klant!! dikke aanrader!"
+			}
+		},
+		"1383c540-568b-4f19-8df0-1f615fa83cad": {
+			"_hash": "21d8f42978896fe3",
+			"en": {
+				"title": "Incredible quality in the stickers",
+				"comment": "Excellent quality in the domed stickers, I'll definately buy more!"
+			},
+			"es": {
+				"title": "Calidad increíble en los stickers",
+				"comment": "Excelente calidad en los stickers resinados, ¡seguro que compraré mas!"
+			},
+			"fr": {
+				"title": "Qualité incroyable des stickers",
+				"comment": "Excellente qualité des stickers résinés, j'en achèterais sûrement d'autres !"
+			},
+			"de": {
+				"title": "Unglaubliche Qualität der Sticker",
+				"comment": "Ausgezeichnete Qualität der Doming-Sticker, ich werde sicher noch mehr kauffen!"
+			},
+			"nl": {
+				"title": "Ongelooflijke kwaliteit van de stickers",
+				"comment": "Uitstekende kwaliteit van de doming stickers, ik koop er zeker nog meer!"
+			}
+		},
+		"b5a2cccf-78a1-41cf-a3ca-2de920166d4c": {
+			"_hash": "385fc7a4a47cba3a",
+			"en": {
+				"title": "Perfect for customizing",
+				"comment": "I had square domed stickers made to customize my little boxes.. beautiful!!"
+			},
+			"es": {
+				"title": "Perfectas para personalizar",
+				"comment": "Mandé hacer unas pegatinas cuadradas resinadas para personalizar mis cajitas.. ¡¡preciosas!!"
+			},
+			"fr": {
+				"title": "Parfaits pour personnaliser",
+				"comment": "J'ai fait faire des stickers carrés en résine pour personnaliser mes petites boîtes.. magnifiques !!"
+			},
+			"de": {
+				"title": "Perfekt zum Personalisieren",
+				"comment": "Ich habe quadratische Doming-Aufkleber machen lassen, um meine Schächtelchen zu personalisieren.. wunderschön!!"
+			},
+			"nl": {
+				"title": "Perfect om te personaliseren",
+				"comment": "Ik heb vierkante doming stickers laten maken om mijn doosjes te personaliseren.. prachtig!!"
+			}
+		},
+		"887f402e-8fee-4c0b-95d5-da82a83d7c99": {
+			"_hash": "6a1b7a156489b6b7",
+			"en": {
+				"title": "Beautiful and a very vivid logo",
+				"comment": "I didn't know about domed stickers, so I wanted to try them. what can I say, they're beautiful, the dome makes the logo 3d and very vivid"
+			},
+			"es": {
+				"title": "Preciosas y logo muy vivo",
+				"comment": "No conocía las pegatinas resinadas, así que quise probarlas. qué decir, son preciosas, el abombado hace que el logo sea 3d y muy vivo"
+			},
+			"fr": {
+				"title": "Magnifiques et logo très vif",
+				"comment": "Je ne connaissais pas les stickers résinés, alors j'ai voulu les essayer. que dire, ils sont magnifiques, le bombage rend le logo 3d et très vif"
+			},
+			"de": {
+				"title": "Wunderschön und ein sehr lebendiges Logo",
+				"comment": "Ich kannte Doming-Aufkleber nicht, also wollte ich sie ausprobieren. was soll ich sagen, sie sind wunderschön, die Wölbung macht das Logo 3d und sehr lebendig"
+			},
+			"nl": {
+				"title": "Prachtig en een heel levendig logo",
+				"comment": "Ik kende doming stickers niet, dus ik wilde ze proberen. wat zal ik zeggen, ze zijn prachtig, de bolling maakt het logo 3d en heel levendig"
+			}
+		},
+		"8a48db97-d9f9-487f-8cf9-160576eeeb75": {
+			"_hash": "f1d97d23a8d1278c",
+			"en": {
+				"title": "Everything perfect as always",
+				"comment": "perfect stickers and fast turnaround.."
+			},
+			"es": {
+				"title": "Todo perfecto como siempre",
+				"comment": "pegatinas perfectas y plazos rápidos.."
+			},
+			"fr": {
+				"title": "Tout est parfait comme toujours",
+				"comment": "stickers parfaits et délais rapides.."
+			},
+			"de": {
+				"title": "Alles perfekt wie immer",
+				"comment": "perfekte Aufkleber und schnelle Lieferzeiten.."
+			},
+			"nl": {
+				"title": "Alles perfect zoals altijd",
+				"comment": "perfecte stickers en snelle levertijd.."
+			}
+		},
+		"35f23773-0b2d-4496-be90-d322f3fdf462": {
+			"_hash": "a4d7ed51fb14e7a1",
+			"en": {
+				"title": "Positive experience",
+				"comment": "Nice site and fast at"
+			},
+			"es": {
+				"title": "Experiencia positiva",
+				"comment": "Bonita la web y rápidos a"
+			},
+			"fr": {
+				"title": "Expérience positive",
+				"comment": "Beau site et rapides à"
+			},
+			"de": {
+				"title": "Positive Erfahrung",
+				"comment": "Schöne Website und schnell beim"
+			},
+			"nl": {
+				"title": "Positieve ervaring",
+				"comment": "Mooie site en snel met"
+			}
+		},
+		"d4a2bd51-0f19-4521-9d3e-b73539ee8118": {
+			"_hash": "693168bf4d4ad1e8",
+			"en": {
+				"title": "Fantastic product",
+				"comment": "Astonishing quality 👍👍"
+			},
+			"es": {
+				"title": "Producto fantástico",
+				"comment": "Calidad asombrosa 👍👍"
+			},
+			"fr": {
+				"title": "Produit fantastique",
+				"comment": "Qualité stupéfiante 👍👍"
+			},
+			"de": {
+				"title": "Fantastisches Produkt",
+				"comment": "Verblüffende Qualität 👍👍"
+			},
+			"nl": {
+				"title": "Fantastisch product",
+				"comment": "Verbluffende kwaliteit 👍👍"
+			}
+		},
+		"131b9c5a-e53f-402b-93af-79ec48c7e15c": {
+			"_hash": "e20f9a4c4f2b02fd",
+			"en": {
+				"title": "Professional and fast",
+				"comment": "Perfect as requested, fast, professional"
+			},
+			"es": {
+				"title": "Profesionales y rápidos",
+				"comment": "Perfectas como las pedí, rápidos, profesionales"
+			},
+			"fr": {
+				"title": "Professionnels et rapides",
+				"comment": "Parfaits comme demandé, rapides, professionnels"
+			},
+			"de": {
+				"title": "Professionell und schnell",
+				"comment": "Perfekt wie gewünscht, schnell, professionell"
+			},
+			"nl": {
+				"title": "Professioneel en snel",
+				"comment": "Perfect zoals gevraagd, snel, professioneel"
+			}
+		},
+		"f4038d74-8161-4053-b248-5db04a169acf": {
+			"_hash": "ec9f7e013476dea3",
+			"en": {
+				"title": "Excellent shopping experience",
+				"comment": "Excellent quality and very professional service"
+			},
+			"es": {
+				"title": "Excelente experiencia de compra",
+				"comment": "Calidad excelente y servicio muy profesional"
+			},
+			"fr": {
+				"title": "Excellente expérience d'achat",
+				"comment": "Qualité excellente et service très professionnel"
+			},
+			"de": {
+				"title": "Ausgezeichnetes Einkaufserlebnis",
+				"comment": "Exzellente Qualität und sehr professioneller Service"
+			},
+			"nl": {
+				"title": "Uitstekende winkelervaring",
+				"comment": "Uitstekende kwaliteit en heel professionele service"
+			}
+		},
+		"80a65dbe-0348-41bb-b9e5-8e891d8b943d": {
+			"_hash": "d1ce9c8bc74130f5",
+			"en": {
+				"title": "They saved me",
+				"comment": "Our usual supplier let us down and we urgently needed domed stickers for our company event to customize some gadgets. I contacted them and in 3 days they had them ready for us, amazing! now we've found a new supplier!"
+			},
+			"es": {
+				"title": "Me salvaron",
+				"comment": "Nuestro proveedor habitual nos dejó tirados y necesitábamos urgentemente unas pegatinas resinadas para nuestro evento de empresa para personalizar unos gadgets. Los contacté y en 3 días nos las tenían listas, ¡grandísimos! ¡ahora hemos encontrado un nuevo proveedor!"
+			},
+			"fr": {
+				"title": "Ils m'ont sauvé",
+				"comment": "Notre fournisseur habituel nous a fait faux bond et il nous fallait d'urgence des stickers résinés pour notre événement d'entreprise afin de personnaliser des goodies. Je les ai contactés et en 3 jours ils nous les ont préparés, énormes ! maintenant nous avons trouvé un nouveau fournisseur !"
+			},
+			"de": {
+				"title": "Sie haben mich gerettet",
+				"comment": "Unser üblicher Lieferant hat uns hängen lassen und wir brauchten dringend Doming-Aufkleber für unsere Firmenveranstaltung, um Werbeartikel zu personalisieren. Ich habe sie kontaktiert und in 3 Tagen lagen sie fertig für uns bereit, großartig! jetzt haben wir einen neuen Lieferanten gefunden!"
+			},
+			"nl": {
+				"title": "Ze hebben me gered",
+				"comment": "Onze vaste leverancier liet ons in de steek en we hadden dringend doming stickers nodig voor ons bedrijfsevenement om gadgets te personaliseren. Ik heb contact met ze opgenomen en binnen 3 dagen lagen ze klaar, geweldig! nu hebben we een nieuwe leverancier gevonden!"
+			}
+		}
+	}
 }
