@@ -7,7 +7,7 @@ import { estimatedShipDate } from '$lib/utils/shipping';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals: { supabase, locale } }) => {
-	const [promos, { reviews, stats }] = await Promise.all([loadPromos(supabase, false, langOf(locale)), loadReviews(supabase)]);
+	const [promos, { reviews, stats }] = await Promise.all([loadPromos(supabase, false, langOf(locale)), loadReviews(supabase, undefined, langOf(locale))]);
 	// il preventivatore del prodotto in offerta si apre dentro la pagina: serve il suo listino
 	const engines: Record<string, EngineConfig> = {};
 	for (const slug of [...new Set(promos.map((p) => p.product_slug))]) engines[slug] = (await loadEngine(supabase, slug)).config;

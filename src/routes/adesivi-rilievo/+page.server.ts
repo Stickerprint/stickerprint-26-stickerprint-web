@@ -14,7 +14,7 @@ export const load: PageServerLoad = async ({ locals: { supabase, locale: code } 
 	/* testi del prodotto nella lingua della pagina; le FAQ del database sono solo in italiano, nelle altre lingue si usano quelle del prodotto */
 	const locale = LOCALES[code] ?? LOCALES.it;
 	const lang = locale.lang;
-	const [{ reviews, stats }, { config }, faq] = await Promise.all([loadReviews(supabase, SLUG), loadEngine(supabase, SLUG), loadFaqFor(supabase, SLUG, lang, code)]);
+	const [{ reviews, stats }, { config }, faq] = await Promise.all([loadReviews(supabase, SLUG, lang), loadEngine(supabase, SLUG), loadFaqFor(supabase, SLUG, lang, code)]);
 	const ship = estimatedShipDate(5);
 	return {
 		product: productFor(SLUG, lang) ?? PRODUCTS[SLUG],

@@ -1,3 +1,4 @@
+import { langOf } from '$lib/i18n';
 import { getInstagram } from '$lib/server/instagram';
 import { loadReviews, type HomeReview } from '$lib/server/reviews';
 export type { HomeReview };
@@ -8,11 +9,11 @@ import type { PageServerLoad } from './$types';
 
 const localeNoon = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T12:00:00`;
 
-export const load: PageServerLoad = async ({ locals: { supabase } }) => {
+export const load: PageServerLoad = async ({ locals: { supabase, locale } }) => {
 	// tutto in parallelo: recensioni, feed Instagram (con cache) e listini (con cache)
 	const SLUGS = ['adesivi_resinati', 'adesivi_personalizzati', 'adesivi_rilievo', 'etichette'];
 	const [{ reviews, stats }, instagram, engines] = await Promise.all([
-		loadReviews(supabase),
+		loadReviews(supabase, undefined, langOf(locale)),
 		getInstagram(),
 		Promise.all(SLUGS.map((slug) => loadEngine(supabase, slug).then((e) => [slug, lowestPrice(e.config)] as const).catch((e) => { console.warn('[home] prezzo minimo non disponibile', slug, e); return null; })))
 	]);
