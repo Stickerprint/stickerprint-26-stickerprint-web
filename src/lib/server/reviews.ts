@@ -83,7 +83,14 @@ async function loadReviewsFresh(supabase: SupabaseClient, productType?: string, 
 			.order('created_at', { ascending: false })
 			.limit(300);
 		if (productType) q = q.eq('product_slug', productType);
-		const { data: rows } = await q;
+		let { data: rows, error } = await q;
+		/* colonna tr non ancora creata (migrazione 0061): stessa lettura senza tr, le traduzioni vengono dal file */
+		if (error && /tr/.test(error.message)) {
+			let q2 = supabase.from('reviews').select('id, title, comment, rating, created_at, author, product_slug, source, source_note, order:orders(product_slug, shipping), profile:profiles(full_name)').eq('is_public', true).eq('status', 'approved').gte('rating', 4).order('created_at', { ascending: false }).limit(300);
+			if (productType) q2 = q2.eq('product_slug', productType);
+			({ data: rows, error } = await q2);
+		}
+		if (error) throw error;
 
 		if (rows && rows.length) {
 			const mapped = rows
