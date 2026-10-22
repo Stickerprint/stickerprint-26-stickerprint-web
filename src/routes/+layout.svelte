@@ -12,6 +12,7 @@
 	import Header from '$lib/components/Header.svelte';
 	import Footer from '$lib/components/Footer.svelte';
 	import AvvisoLingua from '$lib/components/AvvisoLingua.svelte';
+	import PopupIscrizione from '$lib/components/PopupIscrizione.svelte';
 	import { LOCALES, activeLocales, localizePath, stripLocale } from '$lib/i18n';
 	import { impostaLingua } from '$lib/traduzioni';
 
@@ -61,6 +62,8 @@
 		{@render children()}
 	</main>
 	{#if !isDashboard}<Footer locale={data.locale} anteprima={data.anteprimaLingue} />{/if}
+	<!-- popup di iscrizione nelle lingue estere (in italiano c'e' quello di Klaviyo) -->
+	{#if !isDashboard && data.locale !== 'it'}<PopupIscrizione />{/if}
 </div>
 
 <style>

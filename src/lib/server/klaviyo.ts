@@ -20,3 +20,28 @@ export async function klaviyoPlacedOrder(o: { email: string; firstName?: string;
 		if (!r.ok) console.error('[klaviyo] Placed Order', r.status, await r.text());
 	} catch (e) { console.error('[klaviyo]', e); }
 }
+
+/**
+ * Iscrizione alla lista Klaviyo "Contatti Popup" (RBFVRm, trigger del flusso di benvenuto) con la lingua del sito:
+ * usata dal popup in lingua del sito e dal modulo newsletter del footer. Consenso email esplicito (il cliente ha
+ * inserito l'email in un modulo nostro). Senza chiave privata non fa nulla.
+ */
+export async function klaviyoIscrivi(o: { email: string; lingua: string; sito: string; paese?: string | null; fonte: string; listId?: string }): Promise<boolean> {
+	const key = env.KLAVIYO_PRIVATE_KEY;
+	if (!key || !o.email) return false;
+	const body = {
+		data: { type: 'profile-subscription-bulk-create-job', attributes: {
+			custom_source: o.fonte,
+			profiles: { data: [{ type: 'profile', attributes: {
+				email: o.email,
+				properties: { lingua: o.lingua, sito: o.sito, ...(o.paese ? { paese: o.paese } : {}) },
+				subscriptions: { email: { marketing: { consent: 'SUBSCRIBED' } } }
+			} }] }
+		}, relationships: { list: { data: { type: 'list', id: o.listId ?? env.KLAVIYO_LIST_POPUP ?? 'RBFVRm' } } } }
+	};
+	try {
+		const r = await fetch('https://a.klaviyo.com/api/profile-subscription-bulk-create-jobs/', { method: 'POST', headers: { Authorization: `Klaviyo-API-Key ${key}`, 'Content-Type': 'application/json', accept: 'application/json', revision: '2024-10-15' }, body: JSON.stringify(body) });
+		if (!r.ok) { console.error('[klaviyo] iscrizione', r.status, await r.text()); return false; }
+		return true;
+	} catch (e) { console.error('[klaviyo] iscrizione', e); return false; }
+}
