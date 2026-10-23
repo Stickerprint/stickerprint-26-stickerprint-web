@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { zonaDi, ivaDi, valutaDi, paesiPer, capValido, SPEDIZIONE } from './mercati';
+import { zonaDi, ivaDi, valutaDi, paesiPer, capValido, SPEDIZIONE, costoSpedizioneUE } from './mercati';
 import { shippingForCountry, shippingGrossFor } from './shipping-rules';
 import { PRICE_BOOKS, toCurrency } from './i18n';
 
@@ -28,7 +28,10 @@ describe('spedizione per zona', () => {
 		expect(shippingForCountry(60, false, 'IT', 'MI').gross).toBe(0);
 	});
 	it('UE: gratis da 69 €, altrimenti la tariffa', () => {
-		expect(shippingForCountry(68.99, false, 'DE').gross).toBe(SPEDIZIONE.ue.costo);
+		expect(shippingForCountry(68.99, false, 'DE').gross).toBe(11.9);
+		expect(shippingForCountry(68.99, false, 'PL').gross).toBe(14.9);
+		expect(shippingForCountry(68.99, false, 'MT').gross).toBe(24.9);
+		expect(costoSpedizioneUE('XX')).toBe(14.9);
 		expect(shippingForCountry(69, false, 'DE').gross).toBe(0);
 		expect(shippingForCountry(10, true, 'FR').gross).toBe(0);
 	});
@@ -40,6 +43,8 @@ describe('spedizione per zona', () => {
 		const r = shippingForCountry(lordoSoglia - 5, false, 'US');
 		expect(r.zona).toBe('us'); expect(r.gratisDa).toBe(99);
 		expect(Math.round(r.gross * fx * 100) / 100).toBeCloseTo(SPEDIZIONE.us.costo, 1);
+		const pr = shippingForCountry(lordoSoglia - 5, false, 'US', 'PR');
+		expect(Math.round(pr.gross * fx * 100) / 100).toBeCloseTo(SPEDIZIONE.us.costoRemoto, 1);
 	});
 	it('toCurrency toglie l’IVA italiana prima del cambio', () => {
 		expect(toCurrency(12.2, 'USD')).toBeCloseTo(10 * PRICE_BOOKS.USD.rate * PRICE_BOOKS.USD.markup, 1);

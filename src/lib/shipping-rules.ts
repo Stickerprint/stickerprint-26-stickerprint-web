@@ -13,7 +13,7 @@ export const REMOTE_PROVINCES = new Set([
 	'CA', 'NU', 'OR', 'SS', 'SU', 'CI', 'VS', 'OG', 'OT', // Sardegna (sigle attuali e vecchie)
 	'CS', 'CZ', 'KR', 'RC', 'VV' // Calabria
 ]);
-import { SPEDIZIONE, zonaDi, type Zona } from './mercati';
+import { SPEDIZIONE, costoSpedizioneUE, zonaDi, type Zona } from './mercati';
 import { PRICE_BOOKS } from './i18n';
 const VAT = 1.22;
 export const isRemote = (province?: string | null) => REMOTE_PROVINCES.has(String(province ?? '').trim().toUpperCase());
@@ -38,8 +38,10 @@ export function shippingForCountry(productsGross: number, onlySamples: boolean, 
 		const fx = PRICE_BOOKS.USD.rate * PRICE_BOOKS.USD.markup;
 		const usd = (productsGross / VAT) * fx;
 		if (onlySamples || productsGross <= 0 || usd >= z.gratisDa - 0.005) return { gross: 0, zona, gratisDa: z.gratisDa };
-		return { gross: Math.round((z.costo / fx) * 100) / 100, zona, gratisDa: z.gratisDa };
+		/* Puerto Rico: zona FedEx a parte, costa di piu' */
+		const costoUsd = String(province ?? '').trim().toUpperCase() === 'PR' ? z.costoRemoto : z.costo;
+		return { gross: Math.round((costoUsd / fx) * 100) / 100, zona, gratisDa: z.gratisDa };
 	}
 	if (onlySamples || productsGross <= 0 || productsGross >= z.gratisDa - 0.005) return { gross: 0, zona, gratisDa: z.gratisDa };
-	return { gross: z.costo, zona, gratisDa: z.gratisDa };
+	return { gross: costoSpedizioneUE(country), zona, gratisDa: z.gratisDa };
 }
