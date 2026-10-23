@@ -317,6 +317,17 @@
 		return new Promise((res) => c.toBlob(res, 'image/png'));
 	}
 	const readyToAdd = $derived(pronto ? !!readyFile : n > 0 && slots.every((s) => !s.busy));
+	// Dal telefono il bottone verde, finche' manca il file, apre subito la galleria invece di restare spento
+	let quickInput = $state<HTMLInputElement>();
+	const firstEmpty = $derived(slots.slice(0, MAX).findIndex((s) => !s.file));
+	const canUpload = $derived(pronto || (firstEmpty >= 0 && slots.every((s) => !s.busy)));
+	function cartClick() {
+		if (readyToAdd) return addSheet();
+		if (!canUpload) return;
+		step = 'adesivi';
+		quickInput?.click();
+	}
+	function pickQuick(e: Event) { if (pronto) pickReady(e); else if (firstEmpty >= 0) pickSlot(e, firstEmpty); }
 	async function addSheet() {
 		if (!readyToAdd || adding) return;
 		adding = true;
@@ -359,7 +370,7 @@
 				<div class="sheet" class:is-cut={sagomato} style="left:{px(PAD)}px;top:{px(PAD)}px;width:{px(sheetW)}px;height:{px(sheetH)}px;background:{bgColor}">
 					<canvas class="sheet__bg" bind:this={bgCanvas}></canvas>
 					{#if bgUrl}<img class="sheet__bg" src={bgUrl} alt="" />{/if}
-					{#if !n}<p class="sheet__hint">{t('fogli.builder.trascina')}<br /><small>{t('fogli.builder.trascinaSub', { max: MAX })}</small></p>{/if}
+					{#if !n}<button type="button" class="sheet__hint sheet__hint--tap" onclick={cartClick}>{t('fogli.builder.trascina')}<br /><small>{t('fogli.builder.trascinaSub', { max: MAX })}</small></button>{/if}
 				</div>
 				{#each slots.slice(0, MAX) as s, i (i)}
 					{#if s.png}
@@ -546,7 +557,8 @@
 			</div>
 			<span class="sum__per">{t('fogli.builder.qty.perFoglio', { prezzo: prezzoUnit(q.perPiece) })}</span>
 		</div>
-		<button class="btn btn--green btn--cart" type="button" onclick={addSheet} disabled={!readyToAdd || adding} title={readyToAdd ? '' : t('fogli.builder.riepilogo.serve')}>{adding ? t('fogli.builder.riepilogo.unAttimo') : readyToAdd ? t('fogli.builder.riepilogo.aggiungi') : pronto ? t('fogli.builder.riepilogo.caricaFile') : t('fogli.builder.riepilogo.caricaDesign')}</button>
+		<input bind:this={quickInput} type="file" hidden accept={ACCEPT} onchange={pickQuick} />
+		<button class="btn btn--green btn--cart" type="button" onclick={cartClick} disabled={adding || (!readyToAdd && !canUpload)} title={readyToAdd ? '' : t('fogli.builder.riepilogo.serve')}>{adding ? t('fogli.builder.riepilogo.unAttimo') : readyToAdd ? t('fogli.builder.riepilogo.aggiungi') : pronto ? t('fogli.builder.riepilogo.caricaFile') : t('fogli.builder.riepilogo.caricaDesign')}</button>
 	</div>
 </section>
 
