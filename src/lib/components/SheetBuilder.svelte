@@ -4,12 +4,13 @@
 	 * tutto il foglio, lo sfondo (colore o immagine) e carica i design (6 / 8 / 12 a seconda del formato).
 	 * Ogni file passa dal motore degli adesivi (popup: sagoma, bordo, misura), poi cade sul foglio dove si
 	 * sposta col mouse. Un adesivo che esce dal bordo trasforma il foglio in "sagomato": il taglio lo segue.
-	 * In alternativa: "ho gia' il foglio impaginato" → un solo file, senza anteprima.
+	 * In alternativa: "ho gia' il foglio impaginato" → un solo file con tutti gli adesivi: il motore trova ogni
+	 * soggetto e gli disegna intorno la sagoma di taglio (soggettiFoglio, la stessa dello Studio), il cliente la vede sul foglio.
 	 */
 	import '$lib/styles/kit.css';
 	import '$lib/styles/sheet.css';
 	import { goto } from '$app/navigation';
-	import { onMount } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import { track } from '$lib/tracking';
 	import { klaviyo } from '$lib/klaviyo';
 	import FreeShippingBar from './FreeShippingBar.svelte';
@@ -109,6 +110,39 @@
 	let readyFile = $state<File | null>(null);
 	let readyUrl = $state<string | null>(null);
 	function pickReady(e: Event) { const f = (e.currentTarget as HTMLInputElement).files?.[0]; (e.currentTarget as HTMLInputElement).value = ''; if (!f || !ok(f)) return; if (readyUrl) URL.revokeObjectURL(readyUrl); readyFile = f; readyUrl = /^image\//.test(f.type) ? URL.createObjectURL(f) : null; }
+	/* ---- file unico: le sagome di taglio intorno a ogni soggetto, calcolate dal motore come nello Studio ---- */
+	type Sogg = { pathD: string; x: number; y: number; w: number; h: number };
+	let readyEngine = $state<EnginePreview | undefined>();
+	let sogg = $state<Sogg[]>([]);
+	let soggFoglio = $state<{ w: number; h: number } | null>(null);
+	let soggBusy = $state(false);
+	let soggFatto = $state(false);
+	let soggBordo = $state(2);
+	let soggUnione = 0;
+	let soggRenders = $state(0);
+	let soggToken = 0;
+	async function rilevaSoggetti() {
+		if (!readyEngine || !readyFile) return;
+		const mio = ++soggToken;
+		soggBusy = true;
+		try {
+			const r = await readyEngine.studio('soggetti', { foglioW: sheetW, bordo: soggBordo });
+			if (mio !== soggToken) return;
+			sogg = (r.soggetti ?? []).map(({ pathD, x, y, w, h }) => ({ pathD, x, y, w, h }));
+			soggFoglio = r.foglio ?? null;
+			soggUnione = r.unione ?? 0;
+		} catch { if (mio === soggToken) { sogg = []; soggFoglio = null; } }
+		finally { if (mio === soggToken) { soggBusy = false; soggFatto = true; } }
+	}
+	/* file nuovo: le sagome del file di prima non valgono piu' */
+	$effect(() => { void readyFile; untrack(() => { soggToken++; sogg = []; soggFoglio = null; soggFatto = false; soggBusy = false; }); });
+	let soggTimer: ReturnType<typeof setTimeout> | undefined;
+	$effect(() => {
+		if (!pronto || !readyFile || soggRenders < 1) return;
+		const key = `${sheetW}|${soggBordo}|${soggRenders}`;
+		clearTimeout(soggTimer);
+		soggTimer = setTimeout(() => { void key; void rilevaSoggetti(); }, 400);
+	});
 	onMount(() => { setTimeout(() => track.viewItem({ product: 'fogli_adesivi', productName: 'Fogli di adesivi', forma: orientamento, w: sheetW, h: sheetH, materiale, finitura, qty, gross: q.gross }), 500); });
 
 	/* ---- popup con il motore (stesso schema del kit: un motore per file, sempre montato) ---- */
@@ -316,11 +350,11 @@
 		}
 		return new Promise((res) => c.toBlob(res, 'image/png'));
 	}
-	const readyToAdd = $derived(pronto ? !!readyFile : n > 0 && slots.every((s) => !s.busy));
+	const readyToAdd = $derived(pronto ? !!readyFile && !soggBusy : n > 0 && slots.every((s) => !s.busy));
 	// Dal telefono il bottone verde, finche' manca il file, apre subito la galleria invece di restare spento
 	let quickInput = $state<HTMLInputElement>();
 	const firstEmpty = $derived(slots.slice(0, MAX).findIndex((s) => !s.file));
-	const canUpload = $derived(pronto || (firstEmpty >= 0 && slots.every((s) => !s.busy)));
+	const canUpload = $derived((pronto && !soggBusy) || (firstEmpty >= 0 && slots.every((s) => !s.busy)));
 	function cartClick() {
 		if (readyToAdd) return addSheet();
 		if (!canUpload) return;
@@ -335,7 +369,7 @@
 			const quote = quoteWith(cfg, { w: sheetW, h: sheetH, forma, materiale, finitura, qty, vatIncluded: true });
 			const fmtLabel = `${sheetW}×${sheetH} mm`;
 			if (pronto && readyFile) {
-				const item = addToCart({ product: 'fogli_adesivi', productName: t('checkout.carrello.fogliNome'), engineProduct: 'sticker', forma: orientamento, materiale, finitura, w: sheetW, h: sheetH, qty, net: quote.net, gross: quote.gross, fileName: readyFile.name, note: t('checkout.carrello.foglioPronto') });
+				const item = addToCart({ product: 'fogli_adesivi', productName: t('checkout.carrello.fogliNome'), engineProduct: 'sticker', forma: orientamento, materiale, finitura, w: sheetW, h: sheetH, qty, net: quote.net, gross: quote.gross, fileName: readyFile.name, note: sogg.length > 1 ? t('checkout.carrello.foglioSagome', { n: sogg.length, bordo: soggBordo }) : t('checkout.carrello.foglioPronto'), engineState: sogg.length > 1 ? { soggetti: sogg.length, bordo: soggBordo, unione: soggUnione, foglioW: sheetW } : null });
 				await saveCartFile(item.id, readyFile);
 				if (readyUrl) { try { const b = await fetch(readyUrl).then((r) => r.blob()); await saveCartPreview(item.id, b); } catch { /* niente anteprima */ } }
 			} else {
@@ -364,7 +398,13 @@
 		<div class="sheet__stage" class:is-over={over} bind:this={stage} style="height:{px(sheetH + 2 * PAD)}px" role="region" aria-label={t('fogli.builder.anteprima')} ondragover={(e) => { e.preventDefault(); over = true; }} ondragleave={() => (over = false)} ondrop={onDrop} onpointermove={move} onpointerup={up} onpointercancel={up}>
 			{#if pronto}
 				<div class="sheet" class:is-dark={!readyUrl} style="left:{px(PAD)}px;top:{px(PAD)}px;width:{px(sheetW)}px;height:{px(sheetH)}px;background:#fff">
-					{#if readyUrl}<img class="sheet__ready" src={readyUrl} alt="" />{:else}<p class="sheet__hint">{readyFile ? t('fogli.builder.prontoCosi', { file: readyFile.name }) : t('fogli.builder.prontoHint')}</p>{/if}
+					{#if readyUrl}<img class="sheet__ready" src={readyUrl} alt="" />{/if}
+					{#if sogg.length && soggFoglio}
+						<svg class="sheet__sagome" viewBox="0 0 {soggFoglio.w} {soggFoglio.h}" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+							{#each sogg as x, i (i)}<path d={x.pathD} transform="translate({x.x} {x.y})" vector-effect="non-scaling-stroke" />{/each}
+						</svg>
+					{/if}
+					{#if readyUrl}{:else if sogg.length}{:else}<p class="sheet__hint">{readyFile ? t('fogli.builder.prontoCosi', { file: readyFile.name }) : t('fogli.builder.prontoHint')}</p>{/if}
 				</div>
 			{:else}
 				<div class="sheet" class:is-cut={sagomato} style="left:{px(PAD)}px;top:{px(PAD)}px;width:{px(sheetW)}px;height:{px(sheetH)}px;background:{bgColor}">
@@ -495,6 +535,13 @@
 							{#if readyUrl}<img src={readyUrl} alt="" />{:else if readyFile}<span class="kit__plus">📄</span>{:else}<span class="kit__plus">+</span>{/if}
 							<span>{readyFile ? readyFile.name : t('fogli.builder.design.caricaFile')}</span>{#if readyFile}<b>{t('fogli.builder.design.cambia')}</b>{/if}
 						</label>
+						{#if readyFile}
+							<p class="sheet__sagome-info" class:is-ok={sogg.length > 1} aria-live="polite">{soggBusy || (!soggFatto && sogg.length === 0) ? t('fogli.builder.design.sagomeCerco') : sogg.length > 1 ? t('fogli.builder.design.sagomeTrovati', { n: sogg.length }) : t('fogli.builder.design.sagomeNessuno')}</p>
+							{#if sogg.length > 1}
+								<div class="sheet__sagome-bordo"><span>{t('fogli.builder.design.sagomeBordo')}</span>{#each [1, 2, 3] as mm (mm)}<button type="button" class="chip" class:is-active={soggBordo === mm} onclick={() => (soggBordo = mm)}>{t('fogli.builder.design.sagomeBordoMm', { mm })}</button>{/each}</div>
+							{/if}
+							<div class="sheet__engine" aria-hidden="true"><EnginePreview bind:this={readyEngine} file={readyFile} forma="sagomato" {materiale} finitura="lucida" prodotto="sticker" w={0} h={0} showCut={false} stage={120} onrender={() => soggRenders++} /></div>
+						{/if}
 						<button type="button" class="link-btn" style="margin-top:10px" onclick={() => { pronto = false; step = 'adesivi'; }}>{t('fogli.builder.design.preferisco')}</button>
 						{#if readyFile}<button type="button" class="btn btn--blue btn--sm" style="margin-top:12px;display:block" onclick={() => (step = 'qty')}>{t('fogli.builder.design.avanti')}</button>{/if}
 					{:else}
