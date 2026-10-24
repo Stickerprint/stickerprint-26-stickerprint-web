@@ -28,6 +28,15 @@ export interface Locale {
 	/** spedizione gratuita da (nella valuta del locale) */
 	freeShipping: number;
 }
+/**
+ * Lingua per la cassa PayPal (experience_context.locale): PayPal accetta solo il formato BCP-47 con il trattino,
+ * "it-IT" o "en-US" (regola: ^[a-z]{2}(?:-[A-Z][a-z]{3})?(?:-[A-Z]{2})?$). Un valore con l'underscore ("it_IT",
+ * come lo vuole Stripe) o fuori regola farebbe rifiutare l'ordine: si normalizza, e in dubbio si ripiega su it-IT.
+ */
+export function paypalLocale(intl: string | null | undefined): string {
+	const v = (intl ?? '').trim().replace(/_/g, '-');
+	return /^[a-z]{2}(?:-[A-Z][a-z]{3})?(?:-[A-Z]{2})?$/.test(v) ? v : 'it-IT';
+}
 export const LOCALES: Record<LocaleCode, Locale> = {
 	it: { code: 'it', lang: 'it', currency: 'EUR', hreflang: 'it', intl: 'it-IT', label: 'Italiano · € EUR', path: '', flag: 'it', countries: ['IT', 'SM', 'VA', 'CH'], freeShipping: 50 },
 	es: { code: 'es', lang: 'es', currency: 'EUR', hreflang: 'es', intl: 'es-ES', label: 'Español · € EUR', path: '/es', flag: 'es', countries: ['ES'], freeShipping: 69 },

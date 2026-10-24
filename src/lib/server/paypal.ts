@@ -10,7 +10,7 @@ import { checkoutPending, finalizeCheckout } from './checkout';
 import { setPaymentStatus } from './conferme';
 import { setInvoicePaymentStatus } from './fatture';
 import { t } from '$lib/traduzioni';
-import type { LocaleCode } from '$lib/i18n';
+import { paypalLocale, type LocaleCode } from '$lib/i18n';
 
 /** messaggi al cliente nella sua lingua (catalogo checkout.paypal); chi non ha un locale (webhook, log) li ha in italiano */
 const msg = (locale: LocaleCode, k: string) => t(locale, `checkout.paypal.${k}`);
@@ -43,7 +43,7 @@ export async function createPayPalOrder(o: { amount: number; currency?: 'EUR' | 
 	const j = await call('/v2/checkout/orders', {
 		intent: 'CAPTURE',
 		purchase_units: [{ reference_id: o.reference, custom_id: o.customId, invoice_id: undefined, description: o.description.slice(0, 127), amount: { currency_code: o.currency ?? 'EUR', value: o.amount.toFixed(2) } }],
-		payment_source: { paypal: { experience_context: { brand_name: 'Stickerprint', locale: o.locale ?? 'it-IT', landing_page: 'LOGIN', user_action: 'PAY_NOW', shipping_preference: 'NO_SHIPPING', return_url: o.returnUrl, cancel_url: o.cancelUrl } } }
+		payment_source: { paypal: { experience_context: { brand_name: 'Stickerprint', locale: paypalLocale(o.locale), landing_page: 'LOGIN', user_action: 'PAY_NOW', shipping_preference: 'NO_SHIPPING', return_url: o.returnUrl, cancel_url: o.cancelUrl } } }
 	});
 	const links = (j.links ?? []) as { rel: string; href: string }[];
 	const approve = links.find((l) => l.rel === 'payer-action' || l.rel === 'approve')?.href;

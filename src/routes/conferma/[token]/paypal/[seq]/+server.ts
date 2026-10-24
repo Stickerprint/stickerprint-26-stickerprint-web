@@ -19,6 +19,6 @@ export const GET: RequestHandler = async ({ params, url, locals: { locale } }) =
 	if (p.status === 'pagato') redirect(303, `${page}?pagato=1`);
 	if (!p.upfront && /ricevuta|riba|rid\b|sdd/i.test(p.method)) error(400, t(locale, 'account.errori.scadenzaRiba'));
 	const base = `${url.origin}${page}`;
-	const o = await createPayPalOrder({ amount: Number(p.amount), locale: LOCALES[locale].intl.replace('-', '_'), description: `${t(locale, 'account.paga.ordine', { n: c.group.number })}${c.payments.length > 1 ? t(locale, 'account.paga.scadenzaDi', { seq: p.seq, tot: c.payments.length }) : ` · ${t(locale, 'account.paga.anticipato')}`}`, reference: c.group.number, customId: `order:${c.group.key}:${p.seq}`, returnUrl: `${base}?pp=1`, cancelUrl: `${base}?annullato=1` });
+	const o = await createPayPalOrder({ amount: Number(p.amount), locale: LOCALES[locale].intl, description: `${t(locale, 'account.paga.ordine', { n: c.group.number })}${c.payments.length > 1 ? t(locale, 'account.paga.scadenzaDi', { seq: p.seq, tot: c.payments.length }) : ` · ${t(locale, 'account.paga.anticipato')}`}`, reference: c.group.number, customId: `order:${c.group.key}:${p.seq}`, returnUrl: `${base}?pp=1`, cancelUrl: `${base}?annullato=1` });
 	redirect(303, o.approveUrl);
 };
