@@ -321,7 +321,7 @@ export const actions: Actions = {
 			// PayPal diretto: il cliente paga sul sito PayPal e torna sulla pagina Grazie, che cattura l'incasso e chiude l'ordine
 			const origin = PUBLIC_SITE_URL || url.origin;
 			try {
-				const o = await createPayPalOrder({ amount: toPayCurrency, currency, locale: LOCALES[locale].intl.replace('-', '_'), description: descrizionePagamento, reference: numbers[0], customId: `checkout:${group}`, returnUrl: `${origin}${urlGrazie}?pp=1${express ? '&e=1' : ''}`, cancelUrl: `${origin}${urlAnnullato}` }, locale);
+				const o = await createPayPalOrder({ amount: toPayCurrency, currency, locale: LOCALES[locale].intl, description: descrizionePagamento, reference: numbers[0], customId: `checkout:${group}`, returnUrl: `${origin}${urlGrazie}?pp=1${express ? '&e=1' : ''}`, cancelUrl: `${origin}${urlAnnullato}` }, locale);
 				await setCheckoutSession(fdb, group, o.id);
 				return { ok: true, redirect: o.approveUrl, numbers, toPay };
 			} catch (e) {
