@@ -126,7 +126,7 @@ export const formatDims = (w: number, h: number, locale: Locale) => (unitOf(loca
  *  quando si parte davvero con gli USA: cambio e maggiorazione li decide Mattia. */
 export const PRICE_BOOKS: Record<Currency, { rate: number; markup: number; step: number }> = {
 	EUR: { rate: 1, markup: 1, step: 0.01 },
-	USD: { rate: 1.08, markup: 1.1, step: 0.05 }
+	USD: { rate: 1.12, markup: 1.1, step: 0.05 } // cambio BCE 21/10/2026: 1,1234
 };
 /** @deprecated usa PRICE_BOOKS.USD.rate */
 export const USD_RATE = PRICE_BOOKS.USD.rate;
