@@ -204,7 +204,7 @@
 						<div class="ofiles">
 							{#if (data.files[it.id] || data.fileLists[it.id]?.some((f) => f.name === 'foglio.png')) && studioOrderHref(it.product_slug, it.id)}<a class="btn btn--blue btn--xs" href={studioOrderHref(it.product_slug, it.id)} target="_blank" rel="noopener">Passa il file su Stickerprint Studio</a>{/if}
 							{#if data.fileLists[it.id]?.length}
-								{#each data.fileLists[it.id] as f, k (f.name)}<a class="btn btn--ghost btn--xs" href={f.url} target="_blank" rel="noopener" download={f.name}>⬇ {f.name.startsWith('cavallotto') ? 'Cavallotto' : 'Adesivo ' + f.name.replace(/\D/g, '')} ({f.name.split('.').pop()?.toUpperCase()})</a>{/each}
+								{#each data.fileLists[it.id] as f, k (f.name)}<a class="btn btn--ghost btn--xs" href={f.url} target="_blank" rel="noopener" download={f.name}>⬇ {f.name.startsWith('cavallotto') ? 'Cavallotto' : f.name.startsWith('foglio') ? 'Foglio composto (anteprima)' : f.name.startsWith('layout') ? 'Disposizione' : f.name.startsWith('sfondo') ? 'Sfondo' : f.name.startsWith('design') ? 'Design ' + f.name.replace(/\D/g, '') : 'Adesivo ' + f.name.replace(/\D/g, '')} ({f.name.split('.').pop()?.toUpperCase()})</a>{/each}
 							{:else if data.files[it.id]}<a class="btn btn--ghost btn--xs" href={data.files[it.id]} target="_blank" rel="noopener" download>⬇ Scarica file cliente</a>{:else}<span class="btn btn--ghost btn--xs is-off">File cliente non presente</span>{/if}
 						</div>
 						{#if g.items.length > 1}
