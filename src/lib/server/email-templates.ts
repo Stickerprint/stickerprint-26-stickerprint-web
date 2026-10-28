@@ -366,6 +366,16 @@ export function integrationInvoiceEmail(o: { name?: string | null; number: strin
 	return { subject: T('integrazioneRicevuta.oggetto', { n: o.number, fattura: o.invoice }), tag: 'order-integration-paid', html: layoutHtml(T('integrazioneRicevuta.titolo', { parola: hl(T('integrazioneRicevuta.parola')) }), body, null, lang) };
 }
 
+/** Area personale creata dallo staff (dashboard, scheda cliente): il link porta a scegliere la password. */
+export function areaPersonaleEmail(o: { name?: string | null; email: string; href: string; orders: number }, lang: Lang = 'it') {
+	const T = tt(lang);
+	const ciao = o.name?.trim() ? T('auth.ciaoNome', { nome: esc(o.name.trim()) }) : T('auth.ciao');
+	const ordini = o.orders === 1 ? T('areaPersonale.ordiniUno') : o.orders > 1 ? T('areaPersonale.ordiniN', { n: o.orders }) : '';
+	const reset = `<a href="${link(lang, '/reset-password')}" style="color:#1d6bf3;font-weight:700;">${T('areaPersonale.scadutoLink')}</a>`;
+	const body = T('areaPersonale.corpo', { email: esc(o.email), ordini }) + `<p style="font-size:13px;color:#8e92b0;">${T('areaPersonale.scaduto', { link: reset })}</p><p>${T('areaPersonale.grazie')}</p>`;
+	return { subject: T('areaPersonale.oggetto'), tag: 'area-personale', html: layout(T('areaPersonale.titolo', { ciao }), body, { label: T('areaPersonale.cta'), href: o.href }, lang) };
+}
+
 /** Email di Supabase Auth (conferma account, reset password, magic link, cambio email, invito, codice): le manda il sito via Postmark
     tramite l'hook "Send Email" di Supabase, con il nostro mittente e la nostra grafica. */
 export type AuthMailKind = 'signup' | 'recovery' | 'magiclink' | 'email_change' | 'invite' | 'reauthentication' | 'email';

@@ -1,6 +1,7 @@
 import { error, fail, redirect } from '@sveltejs/kit';
 import { groupOrders, type OrderRow } from '$lib/dashboard/orders';
 import { upsertContact } from '$lib/server/orders';
+import { anteprimaAreaPersonale, creaAreaPersonale } from '$lib/server/area-personale';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ params, locals: { supabase } }) => {
@@ -37,9 +38,39 @@ export const actions: Actions = {
 		await supabase.from('contacts').update({ notes: s('notes') || null }).eq('id', params.id);
 		return { ok: true };
 	},
+	/** scheda cliente → email, nome e telefono del profilo o dell'anagrafica */
+	areaAnteprima: async ({ params, locals: { supabase } }) => {
+		const c = await clienteArea(supabase, params.id);
+		if (!c) return fail(400, { error: 'Cliente senza email: aggiungila prima nell\'anagrafica.' });
+		const mail = anteprimaAreaPersonale({ email: c.email, name: c.name, orders: c.orders });
+		return { anteprima: { subject: mail.subject, html: mail.html, to: c.email } };
+	},
+	areaCrea: async ({ request, params, locals: { supabase } }) => {
+		const c = await clienteArea(supabase, params.id);
+		if (!c) return fail(400, { error: 'Cliente senza email: aggiungila prima nell\'anagrafica.' });
+		const altre = String((await request.formData()).get('altre_email') ?? '').split(/[,;\s]+/).filter(Boolean);
+		const r = await creaAreaPersonale({ email: c.email, name: c.name, phone: c.phone, altreEmail: altre });
+		if (!r.ok) return fail(400, { error: r.error });
+		return { area: r.esito };
+	},
 	delete: async ({ params, locals: { supabase } }) => {
 		const { error: e } = await supabase.from('contacts').delete().eq('id', params.id);
 		if (e) return fail(400, { error: e.message });
 		redirect(303, '/dashboard/anagrafica/clienti');
 	}
 };
+
+/** email, nome, telefono e numero di ordini del cliente (profilo registrato o anagrafica) */
+async function clienteArea(supabase: App.Locals['supabase'], id: string): Promise<{ email: string; name: string | null; phone: string | null; orders: number } | null> {
+	const { data: p } = await supabase.from('profiles').select('email, full_name, phone').eq('id', id).maybeSingle();
+	const base = p ? { email: p.email as string, name: (p.full_name as string | null) || null, phone: (p.phone as string | null) || null } : null;
+	let c: { email: string; name: string | null; phone: string | null } | null = base;
+	if (!c) {
+		const { data: k } = await supabase.from('contacts').select('email, name, first_name, last_name, phone').eq('id', id).maybeSingle();
+		if (!k?.email) return null;
+		c = { email: k.email, name: [k.first_name, k.last_name].filter(Boolean).join(' ') || k.name || null, phone: k.phone ?? null };
+	}
+	if (!c.email) return null;
+	const { count } = await supabase.from('orders').select('id', { count: 'exact', head: true }).ilike('email', c.email).neq('status', 'annullato');
+	return { ...c, orders: count ?? 0 };
+}

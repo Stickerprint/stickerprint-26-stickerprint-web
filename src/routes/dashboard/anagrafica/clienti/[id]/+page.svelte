@@ -54,6 +54,29 @@
 		{/if}
 	</div>
 	<div class="dcard">
+		<h3>Area personale</h3>
+		{#if p}<p class="osub" style="margin:0 0 8px">Account registrato dal {dmy(p.created_at)}. Se il cliente non riesce a entrare: confermo l'email, collego gli ordini fatti da ospite e gli mando il link per scegliere la password.</p>
+		{:else}<p class="osub" style="margin:0 0 8px">Il cliente non ha un account. Lo creo io con la sua email, collego gli ordini già fatti e gli mando il link per scegliere la password.</p>{/if}
+		{#if form?.area}
+			<p class="success" style="margin:0 0 8px">
+				{form.area.esisteva ? 'Account già esistente' : 'Account creato'}{form.area.confermataOra ? ', email confermata ora' : ''} ·
+				{form.area.ordiniCollegati} ordini e {form.area.fattureCollegate} fatture collegati ·
+				{form.area.emailInviata ? 'email con il link inviata ✓' : `email NON inviata: ${form.area.erroreEmail}`}
+			</p>
+		{/if}
+		<form method="POST" use:enhance class="dform dform--1">
+			<label>Altre email dello stesso cliente <span class="note">facoltativo, es. indirizzo con refuso: i suoi ordini passano a questo account</span><input name="altre_email" placeholder="nome@gmai.com, altro@esempio.it" /></label>
+			<div style="display:flex;gap:8px;flex-wrap:wrap">
+				<button class="btn btn--xs" type="submit" formaction="?/areaAnteprima">👁 Anteprima email</button>
+				<button class="btn btn--green btn--xs" type="submit" formaction="?/areaCrea">{p ? '🔑 Manda il link password e collega gli ordini' : '🔑 Crea area personale e manda il link'}</button>
+			</div>
+		</form>
+		{#if form?.anteprima}
+			<p class="osub" style="margin:12px 0 4px">A: {form.anteprima.to} · Oggetto: <b>{form.anteprima.subject}</b></p>
+			<iframe title="Anteprima email" srcdoc={form.anteprima.html} style="width:100%;height:640px;border:1px solid #e5e7eb;border-radius:10px;background:#f4f5fa"></iframe>
+		{/if}
+	</div>
+	<div class="dcard">
 		<h3>Ordini</h3>
 		{#each data.groups as g (g.key)}
 			<div class="sumrow"><span><a class="oid" href="/dashboard/fatturazione/ordini/{g.key}">{g.number}</a> <span class="osub">{dmy(g.created_at)}</span></span><span><span class="st" style="background:{st(g.status).soft};color:{st(g.status).color}">{st(g.status).label}</span> <b>{money(g.net)}</b></span></div>
