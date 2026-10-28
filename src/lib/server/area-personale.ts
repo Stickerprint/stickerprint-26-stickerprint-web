@@ -91,3 +91,21 @@ export async function creaAreaPersonale(o: { email: string; name?: string | null
 	const r = await sendEmail({ to: email, subject: mail.subject, html: mail.html, tag: mail.tag, metadata: { user_id: userId } });
 	return { ok: true, esito: { userId, esisteva, confermataOra, ordiniCollegati, fattureCollegate, emailInviata: r.ok, erroreEmail: r.ok ? undefined : (r.error ?? 'invio fallito') } };
 }
+
+/** Elimina un account registrato (es. profilo doppio con l'email sbagliata): solo se non ha ordini ne' fatture.
+    Cancellando l'utente di Supabase Auth cadono a cascata profilo, fedelta', credito e indirizzi. */
+export async function eliminaAccount(userId: string): Promise<{ ok: true; email: string } | { ok: false; error: string }> {
+	const admin = adminClient();
+	if (!admin) return { ok: false, error: 'Manca SUPABASE_SERVICE_ROLE_KEY sul server: non posso eliminare account.' };
+	const { data: prof } = await admin.from('profiles').select('id, email, role').eq('id', userId).maybeSingle();
+	if (!prof) return { ok: false, error: 'Account non trovato.' };
+	if (prof.role !== 'customer') return { ok: false, error: 'Questo e\' un account dello staff: non si elimina da qui.' };
+	const [{ count: ordini }, { count: fatture }] = await Promise.all([
+		admin.from('orders').select('id', { count: 'exact', head: true }).eq('user_id', userId),
+		admin.from('invoices').select('id', { count: 'exact', head: true }).eq('user_id', userId)
+	]);
+	if ((ordini ?? 0) > 0 || (fatture ?? 0) > 0) return { ok: false, error: `L'account ha ${ordini ?? 0} ordini e ${fatture ?? 0} fatture: prima spostali su un altro account (campo "altre email").` };
+	const { error } = await admin.auth.admin.deleteUser(userId);
+	if (error) return { ok: false, error: `Eliminazione fallita: ${error.message}` };
+	return { ok: true, email: prof.email };
+}

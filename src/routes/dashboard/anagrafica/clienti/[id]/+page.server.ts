@@ -1,7 +1,7 @@
 import { error, fail, redirect } from '@sveltejs/kit';
 import { groupOrders, type OrderRow } from '$lib/dashboard/orders';
 import { upsertContact } from '$lib/server/orders';
-import { anteprimaAreaPersonale, creaAreaPersonale } from '$lib/server/area-personale';
+import { anteprimaAreaPersonale, creaAreaPersonale, eliminaAccount } from '$lib/server/area-personale';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ params, locals: { supabase } }) => {
@@ -52,6 +52,11 @@ export const actions: Actions = {
 		const r = await creaAreaPersonale({ email: c.email, name: c.name, phone: c.phone, altreEmail: altre });
 		if (!r.ok) return fail(400, { error: r.error });
 		return { area: r.esito };
+	},
+	eliminaAccount: async ({ params }) => {
+		const r = await eliminaAccount(params.id);
+		if (!r.ok) return fail(400, { error: r.error });
+		redirect(303, '/dashboard/anagrafica/clienti?eliminato=' + encodeURIComponent(r.email));
 	},
 	delete: async ({ params, locals: { supabase } }) => {
 		const { error: e } = await supabase.from('contacts').delete().eq('id', params.id);

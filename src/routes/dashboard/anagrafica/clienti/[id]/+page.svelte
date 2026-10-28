@@ -71,6 +71,11 @@
 				<button class="btn btn--green btn--xs" type="submit" formaction="?/areaCrea">{p ? '🔑 Manda il link password e collega gli ordini' : '🔑 Crea area personale e manda il link'}</button>
 			</div>
 		</form>
+		{#if p && data.groups.length === 0 && data.invoices.length === 0 && p.role === 'customer'}
+			<form method="POST" action="?/eliminaAccount" use:enhance style="margin-top:10px">
+				<button class="link-btn" type="submit" style="color:#b3261e" onclick={(e) => { if (!confirm(`Eliminare l'account ${p.email}? Non ha ordini né fatture.`)) e.preventDefault(); }}>🗑️ Elimina questo account (nessun ordine, es. doppione con email sbagliata)</button>
+			</form>
+		{/if}
 		{#if form?.anteprima}
 			<p class="osub" style="margin:12px 0 4px">A: {form.anteprima.to} · Oggetto: <b>{form.anteprima.subject}</b></p>
 			<iframe title="Anteprima email" srcdoc={form.anteprima.html} style="width:100%;height:640px;border:1px solid #e5e7eb;border-radius:10px;background:#f4f5fa"></iframe>
