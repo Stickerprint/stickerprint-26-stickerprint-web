@@ -370,7 +370,7 @@ export function integrationInvoiceEmail(o: { name?: string | null; number: strin
 export function areaPersonaleEmail(o: { name?: string | null; email: string; href: string; orders: number }, lang: Lang = 'it') {
 	const T = tt(lang);
 	const ciao = o.name?.trim() ? T('auth.ciaoNome', { nome: esc(o.name.trim()) }) : T('auth.ciao');
-	const ordini = o.orders === 1 ? T('areaPersonale.ordiniUno') : o.orders > 1 ? T('areaPersonale.ordiniN', { n: o.orders }) : '';
+	const ordini = o.orders === 1 ? T('areaPersonale.ordiniUno') : o.orders > 1 ? T('areaPersonale.ordiniN', { n: o.orders }) : T('areaPersonale.ordiniNessuno');
 	const reset = `<a href="${link(lang, '/reset-password')}" style="color:#1d6bf3;font-weight:700;">${T('areaPersonale.scadutoLink')}</a>`;
 	const body = T('areaPersonale.corpo', { email: esc(o.email), ordini }) + `<p style="font-size:13px;color:#8e92b0;">${T('areaPersonale.scaduto', { link: reset })}</p><p>${T('areaPersonale.grazie')}</p>`;
 	return { subject: T('areaPersonale.oggetto'), tag: 'area-personale', html: layout(T('areaPersonale.titolo', { ciao }), body, { label: T('areaPersonale.cta'), href: o.href }, lang) };
