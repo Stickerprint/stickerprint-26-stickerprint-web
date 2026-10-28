@@ -294,7 +294,14 @@
 			try {
 				const ref = recuperoRef as unknown as { studio: (what: string, o?: Record<string, unknown>) => Promise<Record<string, unknown>> } | undefined;
 				if (!ref) throw new Error('motore assente');
-				const r1 = await ref.studio('print', { dpi: FOGLIO_PPM * 25.4, ...(recupero?.pathD ? { pathD: recupero.pathD } : {}) });
+				/* senza tracciato approvato (ordini vecchi) si fa come per gli altri prodotti: contorno del motore
+				   riadattato con poche curve (fit.ts), poi la stampa con quel tracciato */
+				let pathD = recupero?.pathD;
+				if (!pathD) {
+					const g0 = await ref.studio('geom');
+					if (g0.pathD) pathD = (await tracciato({ pathD: String(g0.pathD), shape: String(g0.shape ?? 'diecut'), border: Number(g0.border) || 1 })).d;
+				}
+				const r1 = await ref.studio('print', { dpi: FOGLIO_PPM * 25.4, ...(pathD ? { pathD } : {}) });
 				const blob = r1.blob as Blob | undefined;
 				if (!blob || !(Number(r1.cutW) > 0)) throw new Error('senza grafica');
 				stampaFine?.({ blob, cutW: Number(r1.cutW), cutH: Number(r1.cutH), bleed: Number(r1.bleed) || 0, pathD: String(r1.pathD ?? '') });
