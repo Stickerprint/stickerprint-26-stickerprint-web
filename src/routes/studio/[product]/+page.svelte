@@ -3,7 +3,7 @@
 	import EnginePreview from '$lib/components/EnginePreview.svelte';
 	import StudioLente from '$lib/components/StudioLente.svelte';
 	import { showFinishStep, showMaterialStep, minForShape, startSize, sizeProposals, roundHalf, proportionalSize, sizeRule } from '$lib/pricing/engine';
-	import { bordoFoglio, descriviFoglio, misureFoglio, soggettiDelFoglio, type FoglioLayout } from '$lib/studio/foglio';
+	import { FOGLIO_PPM, ariaFoglio, bordoFoglio, descriviFoglio, misureFoglio, type FoglioAdesivo, type FoglioLayout, type SoggettoFoglio } from '$lib/studio/foglio';
 	import { KIT_CAVALLOTTO } from '$lib/studio/products';
 	import { STRIP_MATERIALS, SHEET_RULES, SHEET_AUTO_MAX_H, layoutLoose, layoutSheets, type Strip, type Verso } from '$lib/studio/layout';
 	import { angoliVivi, smussa } from '$lib/studio/smussa';
@@ -270,105 +270,143 @@
 	}
 
 	/* ------------------------------------------------------------ foglio composto dal cliente sul sito */
-	/* L'ordine ha foglio.png (stampabile 1:1) e layout.json con la posizione di ogni adesivo e il suo
-	   tracciato approvato: lo studio NON rilegge la grafica, mette i mezzi tagli dove stanno gli
-	   adesivi e il passante sul bordo del foglio (che segue gli adesivi quando sporgono). */
+	/* L'ordine ha foglio.png (l'anteprima del sito), layout.json con la posizione di ogni adesivo e il suo
+	   tracciato approvato, e i file dei design: lo studio NON rilegge la grafica del foglio, rifa' il foglio
+	   con la stampa vera di ogni design e mette i mezzi tagli dove stanno gli adesivi e il passante sul bordo
+	   (che segue gli adesivi quando sporgono). */
 	let composto = $state<{ layout: FoglioLayout; descr: string; stimati: number; ricostruiti: number } | null>(null);
-	/* ordini fatti prima che il sito salvasse il tracciato: si riapre il file del design nello stesso motore,
-	   con la stessa sagoma e misura, e se ne prende il contorno (un motore nascosto, un design alla volta) */
-	let recupero = $state<{ file: File; forma: string; w: number; h: number } | null>(null);
+	/* il design in lavorazione nel motore nascosto (stessa sagoma e misura del sito) */
+	let recupero = $state<{ file: File; forma: string; w: number; h: number; pathD?: string } | null>(null);
 	let recuperoRef = $state<{ studio: (what: 'geom') => Promise<{ pathD?: string; cutW?: number; cutH?: number; shape?: string; border?: number }> } | undefined>();
 	let recuperoN = $state(0);
-	type Geom = { pathD?: string; cutW?: number; cutH?: number; shape?: string; border?: number };
-	let recuperoFine: ((g: Geom | null) => void) | null = null;
 	let recuperoTimer: ReturnType<typeof setTimeout> | undefined;
-	function onRecuperoRender(r: { w: number; h: number }) {
-		if (!recupero || !(r.w > 0)) return;
-		/* il motore puo' ridisegnare piu' volte: si prende il contorno quando sta fermo da un attimo */
-		clearTimeout(recuperoTimer);
-		recuperoTimer = setTimeout(async () => {
-			try { recuperoFine?.(await recuperoRef?.studio('geom') ?? null); } catch { recuperoFine?.(null); }
-		}, 400);
-	}
-	function geomDaMotore(file: File, forma: string, w: number, h: number): Promise<Geom | null> {
-		return new Promise((ok) => {
-			const fine = (g: Geom | null) => { if (recuperoFine !== fine) return; recuperoFine = null; recupero = null; clearTimeout(tempo); ok(g); };
-			const tempo = setTimeout(() => fine(null), 60000);
-			recuperoFine = fine;
-			recupero = { file, forma, w, h };
-		});
-	}
 	/* bordo del foglio in tracciato (mm, origine nell'angolo del file di lavoro) */
 	let sheetPathD = $state('');
+	/** un design del foglio, stampato dal motore: grafica senza effetti di anteprima, abbondanza e tracciato */
+	type Stampa = { blob: Blob; cutW: number; cutH: number; bleed: number; pathD: string };
+	let stampaFine: ((g: Stampa | null) => void) | null = null;
+	/* il motore nascosto stampa un design alla volta: con il tracciato approvato dal cliente se c'e', altrimenti rifa' la sagoma */
+	function onRecuperoRender(r: { w: number; h: number }) {
+		if (!recupero || !(r.w > 0)) return;
+		/* il motore puo' ridisegnare piu' volte: si chiede la stampa quando sta fermo da un attimo */
+		clearTimeout(recuperoTimer);
+		recuperoTimer = setTimeout(async () => {
+			try {
+				const ref = recuperoRef as unknown as { studio: (what: string, o?: Record<string, unknown>) => Promise<Record<string, unknown>> } | undefined;
+				if (!ref) throw new Error('motore assente');
+				const r1 = await ref.studio('print', { dpi: FOGLIO_PPM * 25.4, ...(recupero?.pathD ? { pathD: recupero.pathD } : {}) });
+				const blob = r1.blob as Blob | undefined;
+				if (!blob || !(Number(r1.cutW) > 0)) throw new Error('senza grafica');
+				stampaFine?.({ blob, cutW: Number(r1.cutW), cutH: Number(r1.cutH), bleed: Number(r1.bleed) || 0, pathD: String(r1.pathD ?? '') });
+			} catch { stampaFine?.(null); }
+		}, 400);
+	}
+	function stampaDaMotore(file: File, forma: string, w: number, h: number, pathD?: string): Promise<Stampa | null> {
+		return new Promise((ok) => {
+			const fine = (g: Stampa | null) => { if (stampaFine !== fine) return; stampaFine = null; recupero = null; clearTimeout(tempo); ok(g); };
+			const tempo = setTimeout(() => fine(null), 90000);
+			stampaFine = fine;
+			recupero = { file, forma, w, h, pathD };
+		});
+	}
+	const caricaImg = (src: string) => new Promise<HTMLImageElement>((ok, ko) => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => ko(new Error('Non riesco a leggere un file dell’ordine.')); i.src = src; });
+	/* Il foglio si RIFA' qui, non si stampa foglio.png: quello e' l'anteprima del sito (texture del
+	   materiale, riflessi, tratteggio del taglio dentro l'immagine). Sfondo pulito (colore o immagine,
+	   il bianco non si stampa) + la grafica di stampa vera di ogni design, dal motore, al suo posto. */
 	async function caricaFoglioComposto() {
 		const o = data.order, fg = o?.foglio;
 		if (!o || !fg) return;
 		ordStato = 'carico'; soggBusy = true; soggErr = ''; downloadErr = '';
 		try {
-			const res = await fetch(fg.url);
-			if (!res.ok) throw new Error(`foglio non scaricabile (${res.status})`);
-			const blob = await res.blob();
-			const src = URL.createObjectURL(blob);
-			const img = await new Promise<HTMLImageElement>((ok, ko) => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => ko(new Error('Non riesco a leggere foglio.png.')); i.src = src; });
 			const lay = fg.layout;
 			const mis = misureFoglio(lay);
-			const ppm = img.naturalWidth / mis.w;
-			/* tracciati sagomati: la stessa rifinitura dello studio (poche curve), partendo dalla linea approvata */
-			const [{ fitPathD, samplePath }, { parsePath, spostaPath }, { contornoAlpha }] = await Promise.all([import('$lib/studio/fit'), import('$lib/studio/path'), import('$lib/studio/contorno')]);
+			const a = ariaFoglio(lay);
+			const ppm = FOGLIO_PPM;
+			const [{ fitPathD, samplePath }, { parsePath, spostaPath, matriceAdesivo, trasformaPath }, { contornoAlpha }] = await Promise.all([import('$lib/studio/fit'), import('$lib/studio/path'), import('$lib/studio/contorno')]);
 			const rifinisci = (d: string, border: number) => fitPathD(samplePath(parsePath(d)), fitOpts(border)).d;
 			if (o.materiale && MATERIALS.some((x) => x.id === o.materiale)) materiale = o.materiale;
 			if (o.finitura && FINISHES.some((x) => x.id === o.finitura)) finitura = o.finitura;
-			/* tracciati mancanti (ordini vecchi): sagomati ricostruiti dal file del design con il motore */
-			let ricostruiti = 0;
+			/* 1. ogni design stampato dal motore (stessa sagoma e misura del sito, tracciato approvato se c'e') */
+			const stampe: { s: FoglioAdesivo; st: Stampa; img: HTMLImageElement; ricostruito: boolean }[] = [];
+			let ricostruiti = 0, stimati = 0;
 			for (const st of lay.stickers) {
-				if (st.cut?.pathD || st.forma !== 'sagomato') continue;
 				const d = fg.designs?.[String(st.n)];
-				if (!d) continue;
-				try {
-					recuperoN = st.n;
-					const r = await fetch(d.url);
-					if (!r.ok) continue;
-					const b = await r.blob();
-					const g = await geomDaMotore(new File([b], d.name, { type: b.type }), st.forma, st.w, st.h);
-					if (g?.pathD) { st.cut = { pathD: g.pathD, w: g.cutW || st.w, h: g.cutH || st.h, shape: g.shape ?? 'diecut', border: g.border ?? null }; ricostruiti++; }
-				} catch { /* resta il riquadro */ }
+				if (!d) { stimati++; continue; }
+				recuperoN = st.n;
+				const r = await fetch(d.url);
+				if (!r.ok) { stimati++; continue; }
+				const b = await r.blob();
+				const approvato = st.cut?.pathD && (st.cut.shape ?? 'diecut') === 'diecut' ? rifinisci(st.cut.pathD, st.cut.border ?? 1) : st.cut?.pathD;
+				const out = await stampaDaMotore(new File([b], d.name, { type: b.type }), st.forma, st.w, st.h, approvato || undefined);
+				if (!out) { stimati++; continue; }
+				const img = await caricaImg(URL.createObjectURL(out.blob));
+				if (!st.cut?.pathD) ricostruiti++;
+				stampe.push({ s: st, st: out, img, ricostruito: !st.cut?.pathD });
 			}
 			recuperoN = 0;
-			const list = soggettiDelFoglio(lay, rifinisci);
-			let bordo: string;
+			if (!stampe.length) throw new Error('Nessun design dell’ordine si può stampare: mancano i file.');
+			/* 2. il foglio: sfondo + design al loro posto (12 px/mm come il sito) e, a parte, la maschera per il passante */
+			const W = Math.round(mis.w * ppm), H = Math.round(mis.h * ppm);
+			const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+			const mk = document.createElement('canvas'); mk.width = W; mk.height = H;
+			const g = cv.getContext('2d'), gm = mk.getContext('2d');
+			if (!g || !gm) throw new Error('Canvas non disponibile.');
+			const bordo = new Path2D(bordoFoglio(lay));
+			gm.save(); gm.translate(a * ppm, a * ppm); gm.scale(ppm, ppm); gm.fillStyle = '#000'; gm.fill(bordo); gm.restore();
+			const bianco = !lay.sheet.bgColor || /^#?(fff|ffffff)$/i.test(lay.sheet.bgColor);
+			g.save(); g.translate(a * ppm, a * ppm); g.scale(ppm, ppm); g.clip(bordo); g.setTransform(1, 0, 0, 1, 0, 0);
+			if (lay.sheet.bgImage && fg.sfondo) {
+				try {
+					const im = await caricaImg(fg.sfondo);
+					const k = Math.max((lay.sheet.w * ppm) / im.width, (lay.sheet.h * ppm) / im.height);
+					const dw = im.width * k, dh = im.height * k;
+					g.drawImage(im, a * ppm + (lay.sheet.w * ppm - dw) / 2, a * ppm + (lay.sheet.h * ppm - dh) / 2, dw, dh);
+				} catch { /* senza sfondo */ }
+			} else if (!bianco) { g.fillStyle = lay.sheet.bgColor; g.fillRect(a * ppm, a * ppm, lay.sheet.w * ppm, lay.sheet.h * ppm); }
+			g.restore();
+			const list: SoggettoFoglio[] = [];
+			for (const { s, st, img, ricostruito } of stampe) {
+				/* la grafica del motore ha l'abbondanza attorno: sul foglio ci va solo il riquadro del taglio */
+				const k = img.naturalWidth / (st.cutW + 2 * st.bleed);
+				const sx = st.bleed * k, sy = st.bleed * k, sw = st.cutW * k, sh = st.cutH * k;
+				for (const ctx of [g, gm]) {
+					ctx.save(); ctx.translate((a + s.x) * ppm, (a + s.y) * ppm); ctx.rotate(((s.rot || 0) * Math.PI) / 180);
+					ctx.drawImage(img, sx, sy, sw, sh, (-st.cutW / 2) * ppm, (-st.cutH / 2) * ppm, st.cutW * ppm, st.cutH * ppm);
+					ctx.restore();
+				}
+				const d = st.pathD || s.cut?.pathD || '';
+				const abs = trasformaPath(d, matriceAdesivo(a + s.x, a + s.y, st.cutW, st.cutH, s.rot || 0));
+				list.push({ pathD: abs, x: 0, y: 0, w: st.cutW, h: st.cutH, nodi: (abs.match(/[MLCmlc]/g) ?? []).length, stimato: ricostruito });
+			}
+			/* 3. il passante: bordo del foglio, oppure il profilo di foglio + adesivi che sporgono */
+			let bordoD: string;
 			let crop = { x: 0, y: 0, w: mis.w, h: mis.h };
 			if (lay.sheet.sagomato) {
-				/* il passante segue il profilo opaco del PNG (foglio + adesivi che sporgono) */
-				const cv = document.createElement('canvas'); cv.width = img.naturalWidth; cv.height = img.naturalHeight;
-				const g = cv.getContext('2d', { willReadFrequently: true });
-				if (!g) throw new Error('Canvas non disponibile.');
-				g.drawImage(img, 0, 0);
-				const c = contornoAlpha(g.getImageData(0, 0, cv.width, cv.height), ppm, { tolerance: 0.2, smooth: 0.5 });
-				if (!c) throw new Error('Nel foglio non trovo niente di stampato.');
-				/* il file di lavoro si ritaglia al profilo (piu' 1 mm): sulla striscia non si spreca l'aria attorno */
+				const c = contornoAlpha(gm.getImageData(0, 0, W, H), ppm, { tolerance: 0.2, smooth: 0.5 });
+				if (!c) throw new Error('Non riesco a ricavare il profilo del foglio.');
 				const m = 1, mezzo = (v: number, su: boolean) => (su ? Math.ceil(v * 2) / 2 : Math.floor(v * 2) / 2);
 				const x0 = Math.max(0, mezzo(c.bbox.x - m, false)), y0 = Math.max(0, mezzo(c.bbox.y - m, false));
 				const x1 = Math.min(mis.w, mezzo(c.bbox.x + c.bbox.w + m, true)), y1 = Math.min(mis.h, mezzo(c.bbox.y + c.bbox.h + m, true));
 				crop = { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
-				bordo = spostaPath(c.pathD, -x0, -y0);
-			} else bordo = bordoFoglio(lay);
-			let f: File;
+				bordoD = spostaPath(c.pathD, -x0, -y0);
+			} else bordoD = bordoFoglio(lay);
+			let fileCanvas = cv;
 			if (crop.x || crop.y || Math.abs(crop.w - mis.w) > 0.01 || Math.abs(crop.h - mis.h) > 0.01) {
-				const cv = document.createElement('canvas'); cv.width = Math.round(crop.w * ppm); cv.height = Math.round(crop.h * ppm);
-				const g = cv.getContext('2d');
-				if (!g) throw new Error('Canvas non disponibile.');
-				g.drawImage(img, -Math.round(crop.x * ppm), -Math.round(crop.y * ppm));
-				const b2 = await new Promise<Blob | null>((r) => cv.toBlob(r, 'image/png'));
-				if (!b2) throw new Error('Non riesco a ritagliare il foglio.');
-				f = new File([b2], 'foglio.png', { type: 'image/png' });
-			} else f = new File([blob], 'foglio.png', { type: 'image/png' });
-			URL.revokeObjectURL(src);
+				const c2 = document.createElement('canvas'); c2.width = Math.round(crop.w * ppm); c2.height = Math.round(crop.h * ppm);
+				const g2 = c2.getContext('2d');
+				if (!g2) throw new Error('Canvas non disponibile.');
+				g2.drawImage(cv, -Math.round(crop.x * ppm), -Math.round(crop.y * ppm));
+				fileCanvas = c2;
+			}
+			const blob = await new Promise<Blob | null>((r) => fileCanvas.toBlob(r, 'image/png'));
+			if (!blob) throw new Error('Non riesco a comporre il foglio.');
+			const f = new File([blob], `${o.number}_foglio.png`, { type: 'image/png' });
 			sogg = list.map((x) => ({ pathD: crop.x || crop.y ? spostaPath(x.pathD, -crop.x, -crop.y) : x.pathD, x: 0, y: 0, w: x.w, h: x.h, nodi: x.nodi }));
-			nodiF = list.reduce((a, x) => a + x.nodi, 0);
-			sheetPathD = bordo;
+			nodiF = list.reduce((q, x) => q + x.nodi, 0);
+			sheetPathD = bordoD;
 			foglioW = Math.round(crop.w * 10) / 10;
 			foglioH = Math.round(crop.h * 10) / 10;
-			composto = { layout: lay, descr: descriviFoglio(lay), stimati: list.filter((x) => x.stimato).length, ricostruiti };
+			composto = { layout: lay, descr: descriviFoglio(lay), stimati, ricostruiti };
 			if (o.qty) qty = o.qty;
 			pick(f);
 			jobName = o.number;
@@ -992,7 +1030,7 @@
 				</div>
 				<p class="st-ord__s">
 					{#if ordStato === 'prova'}Aperta la <b>prova</b> al posto del file originale: serve solo per confrontare, il taglio segue il profilo della prova.
-					{:else if ordStato === 'carico' && recuperoN}Ricostruisco il tracciato del design {recuperoN} con il motore del sito…
+					{:else if ordStato === 'carico' && recuperoN}Preparo la stampa del design {recuperoN} con il motore del sito…
 					{:else if ordStato === 'carico'}Carico il file…
 					{:else if composto}✓ Foglio composto sul sito: mezzo taglio su ogni adesivo come approvato dal cliente, passante sul bordo del foglio.
 					{:else if ordStato === 'applico'}Rimetto le regolazioni approvate dal cliente…
@@ -1123,9 +1161,9 @@
 				<div class="st-block">
 					<p class="st-label">Foglio composto dal cliente</p>
 					<p class="st-note">{composto.descr}</p>
-					<p class="st-note">Si stampa com’è: {P.pieceCut} su ogni adesivo (il tracciato approvato sul sito) e {P.sheetCut} sul bordo del foglio{composto.layout.sheet.sagomato ? ', che segue gli adesivi che sporgono' : ''}. File di lavoro {foglioW} × {foglioH} mm.</p>
-					{#if composto.ricostruiti}<p class="st-note">{composto.ricostruiti} {composto.ricostruiti === 1 ? 'tracciato ricostruito' : 'tracciati ricostruiti'} dal file del design con il motore del sito (ordine fatto prima che il sito lo salvasse): controlla con la lente.</p>{/if}
-					{#if composto.stimati}<p class="st-warn">{composto.stimati} {composto.stimati === 1 ? 'adesivo è stato ordinato' : 'adesivi sono stati ordinati'} prima che il sito salvasse il tracciato: il taglio segue la forma geometrica (o il riquadro, se sagomato). Controlla con la lente.</p>{/if}
+					<p class="st-note">Foglio rifatto per la stampa: sfondo pulito (il bianco non si stampa) e la grafica di stampa di ogni design dal motore, al posto scelto dal cliente. {P.pieceCut} su ogni adesivo, {P.sheetCut} sul bordo del foglio{composto.layout.sheet.sagomato ? ', che segue gli adesivi che sporgono' : ''}. File di lavoro {foglioW} × {foglioH} mm.</p>
+					{#if composto.ricostruiti}<p class="st-note">{composto.ricostruiti} {composto.ricostruiti === 1 ? 'tracciato rifatto' : 'tracciati rifatti'} dal motore sul file del design (ordine fatto prima che il sito salvasse quello approvato): controlla con la lente e con l’anteprima del cliente qui sopra.</p>{/if}
+					{#if composto.stimati}<p class="st-warn">{composto.stimati} {composto.stimati === 1 ? 'design manca' : 'design mancano'} nella cartella dell’ordine: {composto.stimati === 1 ? 'non è' : 'non sono'} sul foglio. Scarica i file dalla dashboard e controlla.</p>{/if}
 					{#if ordStato === 'errore'}<p class="st-err">{ordErr}</p>{/if}
 				</div>
 				{:else}

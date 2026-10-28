@@ -4,7 +4,7 @@ import { STUDIO_PRODUCTS, studioProduct } from '$lib/studio/products';
 import type { FoglioLayout } from '$lib/studio/foglio';
 
 /** foglio di adesivi composto sul sito: il PNG stampabile, la disposizione e i file dei singoli design */
-type FoglioOrdine = { url: string; layout: FoglioLayout; designs: Record<string, { url: string; name: string }> };
+type FoglioOrdine = { url: string; layout: FoglioLayout; designs: Record<string, { url: string; name: string }>; sfondo: string | null };
 import type { PageServerLoad } from './$types';
 
 /** file dell'ordine: percorso nel bucket privato -> link firmato; un indirizzo completo resta com'e' */
@@ -49,13 +49,15 @@ export const load: PageServerLoad = async ({ params, url, locals: { supabase } }
 					if (layout?.sheet?.w > 0 && Array.isArray(layout.stickers)) {
 						/* i file dei singoli design: servono a ricostruire il tracciato negli ordini fatti prima che il sito lo salvasse */
 						const designs: Record<string, { url: string; name: string }> = {};
+						let sfondo: string | null = null;
 						for (const f of lista.data ?? []) {
+							if (/^sfondo\./.test(f.name)) { sfondo = await signed(supabase, dir + f.name); continue; }
 							const m = /^design-(\d+)\./.exec(f.name);
 							if (!m) continue;
 							const u = await signed(supabase, dir + f.name);
 							if (u) designs[m[1]] = { url: u, name: f.name };
 						}
-						foglio = { url: png, layout, designs };
+						foglio = { url: png, layout, designs, sfondo };
 					}
 				} catch { /* layout illeggibile: si lavora come cartella */ }
 			}
