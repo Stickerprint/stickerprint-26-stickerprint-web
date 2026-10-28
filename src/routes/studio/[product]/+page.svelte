@@ -273,7 +273,31 @@
 	/* L'ordine ha foglio.png (stampabile 1:1) e layout.json con la posizione di ogni adesivo e il suo
 	   tracciato approvato: lo studio NON rilegge la grafica, mette i mezzi tagli dove stanno gli
 	   adesivi e il passante sul bordo del foglio (che segue gli adesivi quando sporgono). */
-	let composto = $state<{ layout: FoglioLayout; descr: string; stimati: number } | null>(null);
+	let composto = $state<{ layout: FoglioLayout; descr: string; stimati: number; ricostruiti: number } | null>(null);
+	/* ordini fatti prima che il sito salvasse il tracciato: si riapre il file del design nello stesso motore,
+	   con la stessa sagoma e misura, e se ne prende il contorno (un motore nascosto, un design alla volta) */
+	let recupero = $state<{ file: File; forma: string; w: number; h: number } | null>(null);
+	let recuperoRef = $state<{ studio: (what: 'geom') => Promise<{ pathD?: string; cutW?: number; cutH?: number; shape?: string; border?: number }> } | undefined>();
+	let recuperoN = $state(0);
+	type Geom = { pathD?: string; cutW?: number; cutH?: number; shape?: string; border?: number };
+	let recuperoFine: ((g: Geom | null) => void) | null = null;
+	let recuperoTimer: ReturnType<typeof setTimeout> | undefined;
+	function onRecuperoRender(r: { w: number; h: number }) {
+		if (!recupero || !(r.w > 0)) return;
+		/* il motore puo' ridisegnare piu' volte: si prende il contorno quando sta fermo da un attimo */
+		clearTimeout(recuperoTimer);
+		recuperoTimer = setTimeout(async () => {
+			try { recuperoFine?.(await recuperoRef?.studio('geom') ?? null); } catch { recuperoFine?.(null); }
+		}, 400);
+	}
+	function geomDaMotore(file: File, forma: string, w: number, h: number): Promise<Geom | null> {
+		return new Promise((ok) => {
+			const fine = (g: Geom | null) => { if (recuperoFine !== fine) return; recuperoFine = null; recupero = null; clearTimeout(tempo); ok(g); };
+			const tempo = setTimeout(() => fine(null), 60000);
+			recuperoFine = fine;
+			recupero = { file, forma, w, h };
+		});
+	}
 	/* bordo del foglio in tracciato (mm, origine nell'angolo del file di lavoro) */
 	let sheetPathD = $state('');
 	async function caricaFoglioComposto() {
@@ -292,6 +316,24 @@
 			/* tracciati sagomati: la stessa rifinitura dello studio (poche curve), partendo dalla linea approvata */
 			const [{ fitPathD, samplePath }, { parsePath, spostaPath }, { contornoAlpha }] = await Promise.all([import('$lib/studio/fit'), import('$lib/studio/path'), import('$lib/studio/contorno')]);
 			const rifinisci = (d: string, border: number) => fitPathD(samplePath(parsePath(d)), fitOpts(border)).d;
+			if (o.materiale && MATERIALS.some((x) => x.id === o.materiale)) materiale = o.materiale;
+			if (o.finitura && FINISHES.some((x) => x.id === o.finitura)) finitura = o.finitura;
+			/* tracciati mancanti (ordini vecchi): sagomati ricostruiti dal file del design con il motore */
+			let ricostruiti = 0;
+			for (const st of lay.stickers) {
+				if (st.cut?.pathD || st.forma !== 'sagomato') continue;
+				const d = fg.designs?.[String(st.n)];
+				if (!d) continue;
+				try {
+					recuperoN = st.n;
+					const r = await fetch(d.url);
+					if (!r.ok) continue;
+					const b = await r.blob();
+					const g = await geomDaMotore(new File([b], d.name, { type: b.type }), st.forma, st.w, st.h);
+					if (g?.pathD) { st.cut = { pathD: g.pathD, w: g.cutW || st.w, h: g.cutH || st.h, shape: g.shape ?? 'diecut', border: g.border ?? null }; ricostruiti++; }
+				} catch { /* resta il riquadro */ }
+			}
+			recuperoN = 0;
 			const list = soggettiDelFoglio(lay, rifinisci);
 			let bordo: string;
 			let crop = { x: 0, y: 0, w: mis.w, h: mis.h };
@@ -326,9 +368,7 @@
 			sheetPathD = bordo;
 			foglioW = Math.round(crop.w * 10) / 10;
 			foglioH = Math.round(crop.h * 10) / 10;
-			composto = { layout: lay, descr: descriviFoglio(lay), stimati: list.filter((x) => x.stimato).length };
-			if (o.materiale && MATERIALS.some((x) => x.id === o.materiale)) materiale = o.materiale;
-			if (o.finitura && FINISHES.some((x) => x.id === o.finitura)) finitura = o.finitura;
+			composto = { layout: lay, descr: descriviFoglio(lay), stimati: list.filter((x) => x.stimato).length, ricostruiti };
 			if (o.qty) qty = o.qty;
 			pick(f);
 			jobName = o.number;
@@ -336,7 +376,7 @@
 			rendered = true;
 			ordStato = '';
 		} catch (e) { ordStato = 'errore'; ordErr = e instanceof Error ? e.message : String(e); }
-		finally { soggBusy = false; }
+		finally { soggBusy = false; recupero = null; recuperoN = 0; }
 	}
 
 	let soggTimer: ReturnType<typeof setTimeout> | undefined;
@@ -936,6 +976,11 @@
 		</p>
 	</div>
 
+	{#if recupero}
+		<!-- motore nascosto: ricostruisce il tracciato dei design degli ordini vecchi -->
+		<div class="st-hidden"><EnginePreview bind:this={recuperoRef} file={recupero.file} forma={recupero.forma} {materiale} {finitura} prodotto="sticker" w={recupero.w} h={recupero.h} showCut={false} hires noombra stage={120} onrender={onRecuperoRender} /></div>
+	{/if}
+
 	{#if ORD}
 		<div class="st-ord" class:is-ok={ordStato === 'identico'} class:is-warn={ordStato === 'diverso' || ordStato === 'senza'} class:is-err={ordStato === 'errore'}>
 			{#if ORD.previewUrl}<a class="st-ord__img" href={ORD.previewUrl} target="_blank" rel="noopener" title="Anteprima approvata dal cliente"><img src={ORD.previewUrl} alt="Anteprima approvata" /></a>{/if}
@@ -947,7 +992,9 @@
 				</div>
 				<p class="st-ord__s">
 					{#if ordStato === 'prova'}Aperta la <b>prova</b> al posto del file originale: serve solo per confrontare, il taglio segue il profilo della prova.
+					{:else if ordStato === 'carico' && recuperoN}Ricostruisco il tracciato del design {recuperoN} con il motore del sito…
 					{:else if ordStato === 'carico'}Carico il file…
+					{:else if composto}✓ Foglio composto sul sito: mezzo taglio su ogni adesivo come approvato dal cliente, passante sul bordo del foglio.
 					{:else if ordStato === 'applico'}Rimetto le regolazioni approvate dal cliente…
 					{:else if ordStato === 'identico'}✓ Regolazioni del cliente applicate: il tracciato è <b>identico</b> a quello che ha approvato.
 					{:else if ordStato === 'diverso'}Regolazioni del cliente applicate, ma il tracciato non coincide al millesimo con quello approvato: confronta con l’anteprima qui a fianco prima di stampare.
@@ -1077,6 +1124,7 @@
 					<p class="st-label">Foglio composto dal cliente</p>
 					<p class="st-note">{composto.descr}</p>
 					<p class="st-note">Si stampa com’è: {P.pieceCut} su ogni adesivo (il tracciato approvato sul sito) e {P.sheetCut} sul bordo del foglio{composto.layout.sheet.sagomato ? ', che segue gli adesivi che sporgono' : ''}. File di lavoro {foglioW} × {foglioH} mm.</p>
+					{#if composto.ricostruiti}<p class="st-note">{composto.ricostruiti} {composto.ricostruiti === 1 ? 'tracciato ricostruito' : 'tracciati ricostruiti'} dal file del design con il motore del sito (ordine fatto prima che il sito lo salvasse): controlla con la lente.</p>{/if}
 					{#if composto.stimati}<p class="st-warn">{composto.stimati} {composto.stimati === 1 ? 'adesivo è stato ordinato' : 'adesivi sono stati ordinati'} prima che il sito salvasse il tracciato: il taglio segue la forma geometrica (o il riquadro, se sagomato). Controlla con la lente.</p>{/if}
 					{#if ordStato === 'errore'}<p class="st-err">{ordErr}</p>{/if}
 				</div>

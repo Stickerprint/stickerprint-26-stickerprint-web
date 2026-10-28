@@ -2,6 +2,9 @@ import { error, redirect } from '@sveltejs/kit';
 import { loadEngine } from '$lib/server/pricing';
 import { STUDIO_PRODUCTS, studioProduct } from '$lib/studio/products';
 import type { FoglioLayout } from '$lib/studio/foglio';
+
+/** foglio di adesivi composto sul sito: il PNG stampabile, la disposizione e i file dei singoli design */
+type FoglioOrdine = { url: string; layout: FoglioLayout; designs: Record<string, { url: string; name: string }> };
 import type { PageServerLoad } from './$types';
 
 /** file dell'ordine: percorso nel bucket privato -> link firmato; un indirizzo completo resta com'e' */
@@ -22,7 +25,7 @@ export const load: PageServerLoad = async ({ params, url, locals: { supabase } }
 		id: string; number: string; productName: string; forma: string | null; materiale: string | null; finitura: string | null;
 		w: number; h: number; qty: number; fileUrl: string | null; fileName: string | null; previewUrl: string | null; engineState: Record<string, unknown> | null; folder: boolean;
 		/** foglio di adesivi composto sul sito: il PNG stampabile e la disposizione degli adesivi */
-		foglio: { url: string; layout: FoglioLayout } | null;
+		foglio: FoglioOrdine | null;
 	} = null;
 	if (orderId) {
 		const { data: o } = await supabase.from('orders').select('*').eq('id', orderId).maybeSingle();
@@ -32,14 +35,28 @@ export const load: PageServerLoad = async ({ params, url, locals: { supabase } }
 		if (target && target !== product.id) redirect(303, `/studio/${target}?ordine=${orderId}`);
 		product = studioProduct(target ?? product.id) ?? product;
 		const folder = typeof o.file_path === 'string' && o.file_path.endsWith('/');
-		let foglio: { url: string; layout: FoglioLayout } | null = null;
+		let foglio: FoglioOrdine | null = null;
 		if (folder && o.product_slug === 'fogli_adesivi') {
 			const dir = o.file_path as string;
-			const [png, lay] = await Promise.all([signed(supabase, dir + 'foglio.png'), supabase.storage.from('order-files').download(dir + 'layout.json')]);
+			const [png, lay, lista] = await Promise.all([
+				signed(supabase, dir + 'foglio.png'),
+				supabase.storage.from('order-files').download(dir + 'layout.json'),
+				supabase.storage.from('order-files').list(dir.replace(/\/$/, ''), { limit: 50 })
+			]);
 			if (png && lay.data) {
 				try {
 					const layout = JSON.parse(await lay.data.text()) as FoglioLayout;
-					if (layout?.sheet?.w > 0 && Array.isArray(layout.stickers)) foglio = { url: png, layout };
+					if (layout?.sheet?.w > 0 && Array.isArray(layout.stickers)) {
+						/* i file dei singoli design: servono a ricostruire il tracciato negli ordini fatti prima che il sito lo salvasse */
+						const designs: Record<string, { url: string; name: string }> = {};
+						for (const f of lista.data ?? []) {
+							const m = /^design-(\d+)\./.exec(f.name);
+							if (!m) continue;
+							const u = await signed(supabase, dir + f.name);
+							if (u) designs[m[1]] = { url: u, name: f.name };
+						}
+						foglio = { url: png, layout, designs };
+					}
 				} catch { /* layout illeggibile: si lavora come cartella */ }
 			}
 		}
