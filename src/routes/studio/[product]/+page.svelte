@@ -277,9 +277,11 @@
 	let composto = $state<{ layout: FoglioLayout; descr: string; stimati: number; ricostruiti: number } | null>(null);
 	/* il design in lavorazione nel motore nascosto (stessa sagoma e misura del sito) */
 	let recupero = $state<{ file: File; forma: string; w: number; h: number; pathD?: string } | null>(null);
-	let recuperoRef = $state<{ studio: (what: 'geom') => Promise<{ pathD?: string; cutW?: number; cutH?: number; shape?: string; border?: number }> } | undefined>();
+	let recuperoRef = $state<{ post: (type: string, detail?: Record<string, unknown>) => void; studio: (what: 'geom') => Promise<{ pathD?: string; cutW?: number; cutH?: number; shape?: string; border?: number }> } | undefined>();
 	let recuperoN = $state(0);
 	let recuperoTimer: ReturnType<typeof setTimeout> | undefined;
+	/* quante volte si e' rimandata la misura al motore per questo design */
+	let recuperoForzati = 0;
 	/* bordo del foglio in tracciato (mm, origine nell'angolo del file di lavoro) */
 	let sheetPathD = $state('');
 	/** un design del foglio, stampato dal motore: grafica senza effetti di anteprima, abbondanza e tracciato */
@@ -288,6 +290,16 @@
 	/* il motore nascosto stampa un design alla volta: con il tracciato approvato dal cliente se c'e', altrimenti rifa' la sagoma */
 	function onRecuperoRender(r: { w: number; h: number }) {
 		if (!recupero || !(r.w > 0)) return;
+		/* il motore parte dalla SUA misura iniziale, non da quella del sito (SP00479: 36×40 usciva 46×51):
+		   la misura ordinata si rimanda con 'config', come fa il configuratore, finche' il disegno non la rispetta */
+		const want = recupero;
+		const giusta = Math.abs(r.w - want.w) < 0.6 || Math.abs(r.h - want.h) < 0.6;
+		if (!giusta && recuperoForzati < 3) {
+			recuperoForzati++;
+			clearTimeout(recuperoTimer);
+			recuperoRef?.post('config', { config: { forma: want.forma, w: want.w, h: want.h, materiale, lamina: finitura, prodotto: 'sticker' } });
+			return;
+		}
 		/* il motore puo' ridisegnare piu' volte: si chiede la stampa quando sta fermo da un attimo */
 		clearTimeout(recuperoTimer);
 		recuperoTimer = setTimeout(async () => {
@@ -313,6 +325,7 @@
 			const fine = (g: Stampa | null) => { if (stampaFine !== fine) return; stampaFine = null; recupero = null; clearTimeout(tempo); ok(g); };
 			const tempo = setTimeout(() => fine(null), 90000);
 			stampaFine = fine;
+			recuperoForzati = 0;
 			recupero = { file, forma, w, h, pathD };
 		});
 	}
@@ -376,14 +389,18 @@
 				/* la grafica del motore ha l'abbondanza attorno: sul foglio ci va solo il riquadro del taglio */
 				const k = img.naturalWidth / (st.cutW + 2 * st.bleed);
 				const sx = st.bleed * k, sy = st.bleed * k, sw = st.cutW * k, sh = st.cutH * k;
+				/* la misura e' quella ORDINATA (layout): se il motore ha fatto il pezzo un po' diverso, si riporta
+				   in scala (grafica e tracciato insieme), cosi' il foglio e' quello che il cliente ha visto */
+				const z = s.w > 0 && st.cutW > 0 ? s.w / st.cutW : 1;
+				const W1 = st.cutW * z, H1 = st.cutH * z;
 				for (const ctx of [g, gm]) {
 					ctx.save(); ctx.translate((a + s.x) * ppm, (a + s.y) * ppm); ctx.rotate(((s.rot || 0) * Math.PI) / 180);
-					ctx.drawImage(img, sx, sy, sw, sh, (-st.cutW / 2) * ppm, (-st.cutH / 2) * ppm, st.cutW * ppm, st.cutH * ppm);
+					ctx.drawImage(img, sx, sy, sw, sh, (-W1 / 2) * ppm, (-H1 / 2) * ppm, W1 * ppm, H1 * ppm);
 					ctx.restore();
 				}
-				const d = st.pathD || s.cut?.pathD || '';
-				const abs = trasformaPath(d, matriceAdesivo(a + s.x, a + s.y, st.cutW, st.cutH, s.rot || 0));
-				list.push({ pathD: abs, x: 0, y: 0, w: st.cutW, h: st.cutH, nodi: (abs.match(/[MLCmlc]/g) ?? []).length, stimato: ricostruito });
+				const d = trasformaPath(st.pathD || s.cut?.pathD || '', [z, 0, 0, z, 0, 0]);
+				const abs = trasformaPath(d, matriceAdesivo(a + s.x, a + s.y, W1, H1, s.rot || 0));
+				list.push({ pathD: abs, x: 0, y: 0, w: W1, h: H1, nodi: (abs.match(/[MLCmlc]/g) ?? []).length, stimato: ricostruito });
 			}
 			/* 3. il passante: bordo del foglio, oppure il profilo di foglio + adesivi che sporgono */
 			let bordoD: string;
