@@ -90,3 +90,52 @@ export function spostaPath(d: string, dx: number, dy: number): string {
 		})
 		.join(' ');
 }
+
+/** matrice affine [a, b, c, d, e, f] come in SVG/PDF: x' = a·x + c·y + e, y' = b·x + d·y + f */
+export type Matrice = [number, number, number, number, number, number];
+
+/** segmenti -> `d` (M/L/C/Z assoluti, tre decimali) */
+export function scriviPath(segs: Seg[]): string {
+	const n = (v: number) => (Math.round(v * 1000) / 1000).toString();
+	return segs
+		.map((s) => {
+			if (s[0] === 'M') return `M${n(s[1])} ${n(s[2])}`;
+			if (s[0] === 'L') return `L${n(s[1])} ${n(s[2])}`;
+			if (s[0] === 'C') return `C${n(s[1])} ${n(s[2])} ${n(s[3])} ${n(s[4])} ${n(s[5])} ${n(s[6])}`;
+			return 'Z';
+		})
+		.join(' ');
+}
+
+/** applica una matrice affine a un tracciato (mm): serve a mettere un adesivo ruotato al suo posto nel foglio */
+export function trasformaPath(d: string, m: Matrice): string {
+	const [a, b, c, dd, e, f] = m;
+	const T = (x: number, y: number): [number, number] => [a * x + c * y + e, b * x + dd * y + f];
+	return scriviPath(
+		parsePath(d).map((s): Seg => {
+			if (s[0] === 'M' || s[0] === 'L') { const [x, y] = T(s[1], s[2]); return [s[0], x, y]; }
+			if (s[0] === 'C') { const p = T(s[1], s[2]), q = T(s[3], s[4]), r = T(s[5], s[6]); return ['C', p[0], p[1], q[0], q[1], r[0], r[1]]; }
+			return s;
+		})
+	);
+}
+
+/** matrice di un adesivo del foglio composto sul sito: riquadro w×h (mm) con il centro in (cx, cy), ruotato di `gradi` */
+export function matriceAdesivo(cx: number, cy: number, w: number, h: number, gradi: number): Matrice {
+	const r = (gradi * Math.PI) / 180, cos = Math.cos(r), sin = Math.sin(r);
+	/* translate(cx, cy) · rotate(r) · translate(-w/2, -h/2) */
+	return [cos, sin, -sin, cos, cx - (cos * w) / 2 + (sin * h) / 2, cy - (sin * w) / 2 - (cos * h) / 2];
+}
+
+/** rettangolo con gli angoli arrotondati (mm), origine nell'angolo in alto a sinistra: il bordo del foglio composto sul sito */
+export function rettangoloArrotondato(w: number, h: number, raggio: number): string {
+	const r = Math.max(0, Math.min(raggio, w / 2, h / 2));
+	if (r <= 0) return scriviPath([['M', 0, 0], ['L', w, 0], ['L', w, h], ['L', 0, h], ['Z']]);
+	const k = 0.5523 * r;
+	return scriviPath([
+		['M', r, 0], ['L', w - r, 0], ['C', w - r + k, 0, w, r - k, w, r],
+		['L', w, h - r], ['C', w, h - r + k, w - r + k, h, w - r, h],
+		['L', r, h], ['C', r - k, h, 0, h - r + k, 0, h - r],
+		['L', 0, r], ['C', 0, r - k, r - k, 0, r, 0], ['Z']
+	]);
+}

@@ -237,6 +237,22 @@ export function xpfCommands(j: XpfJob): string {
 	if (j.sheetCond && j.sheets?.length) {
 		out.push(first ? `&100,100,100,^0,0,\\0,0,J${j.sheetCond}` : `J${j.sheetCond}`, 'L0,B0');
 		for (const s of j.sheets) {
+			if (s.pathD) {
+				/* bordo del foglio in tracciato (foglio composto sul sito); w/h sono gia' ruotati */
+				const segs = parsePath(s.pathD);
+				const tf = (x: number, y: number): [number, number] => (s.rot ? [s.x + s.w - y, s.y + x] : [s.x + x, s.y + y]);
+				let cur: [number, number] = [0, 0], start: [number, number] = [0, 0];
+				for (const g of segs) {
+					if (g[0] === 'M') { cur = start = tf(g[1], g[2]); out.push(`M${P(...cur)}`); }
+					else if (g[0] === 'L') { cur = tf(g[1], g[2]); out.push(`D${P(...cur)}`); }
+					else if (g[0] === 'C') {
+						const a = tf(g[1], g[2]), b = tf(g[3], g[4]), c = tf(g[5], g[6]);
+						out.push(`BZ1,${P(...cur)},${P(...a)},${P(...b)},${P(...c)},`);
+						cur = c;
+					} else if (cur[0] !== start[0] || cur[1] !== start[1]) { out.push(`D${P(...start)}`); cur = start; }
+				}
+				continue;
+			}
 			out.push(`M${P(s.x, s.y + s.h)}`, `D${P(s.x, s.y)}`, `D${P(s.x + s.w, s.y)}`, `D${P(s.x + s.w, s.y + s.h)}`, `D${P(s.x, s.y + s.h)}`);
 		}
 	}
@@ -289,6 +305,25 @@ function thumbnail(j: XpfJob, tw: number, th: number): Uint8Array {
 	if (j.sheetCond && j.sheets?.length) {
 		const c = colOf(j.sheetCond);
 		for (const r of j.sheets) {
+			if (r.pathD) {
+				const tf = (x: number, y: number): [number, number] => (r.rot ? [r.x + r.w - y, r.y + x] : [r.x + x, r.y + y]);
+				let cur: [number, number] = [0, 0], start: [number, number] = [0, 0];
+				for (const s of parsePath(r.pathD)) {
+					if (s[0] === 'M') cur = start = tf(s[1], s[2]);
+					else if (s[0] === 'L') { const b = tf(s[1], s[2]); line(cur, b, c); cur = b; }
+					else if (s[0] === 'C') {
+						const p0 = cur, p1 = tf(s[1], s[2]), p2 = tf(s[3], s[4]), p3 = tf(s[5], s[6]);
+						let prev = p0;
+						for (let k = 1; k <= 8; k++) {
+							const t = k / 8, u = 1 - t;
+							const q: [number, number] = [u * u * u * p0[0] + 3 * u * u * t * p1[0] + 3 * u * t * t * p2[0] + t * t * t * p3[0], u * u * u * p0[1] + 3 * u * u * t * p1[1] + 3 * u * t * t * p2[1] + t * t * t * p3[1]];
+							line(prev, q, c); prev = q;
+						}
+						cur = p3;
+					} else { line(cur, start, c); cur = start; }
+				}
+				continue;
+			}
 			line([r.x, r.y], [r.x + r.w, r.y], c); line([r.x + r.w, r.y], [r.x + r.w, r.y + r.h], c);
 			line([r.x + r.w, r.y + r.h], [r.x, r.y + r.h], c); line([r.x, r.y + r.h], [r.x, r.y], c);
 		}

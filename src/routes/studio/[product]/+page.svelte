@@ -3,6 +3,7 @@
 	import EnginePreview from '$lib/components/EnginePreview.svelte';
 	import StudioLente from '$lib/components/StudioLente.svelte';
 	import { showFinishStep, showMaterialStep, minForShape, startSize, sizeProposals, roundHalf, proportionalSize, sizeRule } from '$lib/pricing/engine';
+	import { bordoFoglio, descriviFoglio, misureFoglio, soggettiDelFoglio, type FoglioLayout } from '$lib/studio/foglio';
 	import { KIT_CAVALLOTTO } from '$lib/studio/products';
 	import { STRIP_MATERIALS, SHEET_RULES, SHEET_AUTO_MAX_H, layoutLoose, layoutSheets, type Strip, type Verso } from '$lib/studio/layout';
 	import { angoliVivi, smussa } from '$lib/studio/smussa';
@@ -101,7 +102,7 @@
 	   (Mattia, 26/09/2026: la prova puo' contenere errori, si riparte dall'originale).
 	   La prova resta a portata di clic, per confrontare. */
 	let fonteOrdine = $state<'prova' | 'originale'>(data.order?.fileUrl ? 'originale' : 'prova');
-	onMount(() => { void caricaOrdine(fonteOrdine); });
+	onMount(() => { if (data.order?.foglio) void caricaFoglioComposto(); else void caricaOrdine(fonteOrdine); });
 
 	async function caricaOrdine(quale: 'prova' | 'originale') {
 		const o = data.order;
@@ -163,6 +164,8 @@
 	function onRender(s: { w: number; h: number; palette?: { hex: string; img?: string }[]; palIdx?: number; rimuovi?: boolean; shape?: string | null }) {
 		rendered = true;
 		renders++;
+		/* foglio composto sul sito: misure e tagli vengono dal layout dell'ordine, non dal motore */
+		if (composto) return;
 		if (s.w > 0 && s.h > 0) engCut = { w: s.w, h: s.h };
 		if (s.palette) palette = s.palette;
 		palIdx = s.palIdx ?? 0;
@@ -266,9 +269,79 @@
 		} finally { if (mio === soggToken) soggBusy = false; }
 	}
 
+	/* ------------------------------------------------------------ foglio composto dal cliente sul sito */
+	/* L'ordine ha foglio.png (stampabile 1:1) e layout.json con la posizione di ogni adesivo e il suo
+	   tracciato approvato: lo studio NON rilegge la grafica, mette i mezzi tagli dove stanno gli
+	   adesivi e il passante sul bordo del foglio (che segue gli adesivi quando sporgono). */
+	let composto = $state<{ layout: FoglioLayout; descr: string; stimati: number } | null>(null);
+	/* bordo del foglio in tracciato (mm, origine nell'angolo del file di lavoro) */
+	let sheetPathD = $state('');
+	async function caricaFoglioComposto() {
+		const o = data.order, fg = o?.foglio;
+		if (!o || !fg) return;
+		ordStato = 'carico'; soggBusy = true; soggErr = ''; downloadErr = '';
+		try {
+			const res = await fetch(fg.url);
+			if (!res.ok) throw new Error(`foglio non scaricabile (${res.status})`);
+			const blob = await res.blob();
+			const src = URL.createObjectURL(blob);
+			const img = await new Promise<HTMLImageElement>((ok, ko) => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => ko(new Error('Non riesco a leggere foglio.png.')); i.src = src; });
+			const lay = fg.layout;
+			const mis = misureFoglio(lay);
+			const ppm = img.naturalWidth / mis.w;
+			/* tracciati sagomati: la stessa rifinitura dello studio (poche curve), partendo dalla linea approvata */
+			const [{ fitPathD, samplePath }, { parsePath, spostaPath }, { contornoAlpha }] = await Promise.all([import('$lib/studio/fit'), import('$lib/studio/path'), import('$lib/studio/contorno')]);
+			const rifinisci = (d: string, border: number) => fitPathD(samplePath(parsePath(d)), fitOpts(border)).d;
+			const list = soggettiDelFoglio(lay, rifinisci);
+			let bordo: string;
+			let crop = { x: 0, y: 0, w: mis.w, h: mis.h };
+			if (lay.sheet.sagomato) {
+				/* il passante segue il profilo opaco del PNG (foglio + adesivi che sporgono) */
+				const cv = document.createElement('canvas'); cv.width = img.naturalWidth; cv.height = img.naturalHeight;
+				const g = cv.getContext('2d', { willReadFrequently: true });
+				if (!g) throw new Error('Canvas non disponibile.');
+				g.drawImage(img, 0, 0);
+				const c = contornoAlpha(g.getImageData(0, 0, cv.width, cv.height), ppm, { tolerance: 0.2, smooth: 0.5 });
+				if (!c) throw new Error('Nel foglio non trovo niente di stampato.');
+				/* il file di lavoro si ritaglia al profilo (piu' 1 mm): sulla striscia non si spreca l'aria attorno */
+				const m = 1, mezzo = (v: number, su: boolean) => (su ? Math.ceil(v * 2) / 2 : Math.floor(v * 2) / 2);
+				const x0 = Math.max(0, mezzo(c.bbox.x - m, false)), y0 = Math.max(0, mezzo(c.bbox.y - m, false));
+				const x1 = Math.min(mis.w, mezzo(c.bbox.x + c.bbox.w + m, true)), y1 = Math.min(mis.h, mezzo(c.bbox.y + c.bbox.h + m, true));
+				crop = { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+				bordo = spostaPath(c.pathD, -x0, -y0);
+			} else bordo = bordoFoglio(lay);
+			let f: File;
+			if (crop.x || crop.y || Math.abs(crop.w - mis.w) > 0.01 || Math.abs(crop.h - mis.h) > 0.01) {
+				const cv = document.createElement('canvas'); cv.width = Math.round(crop.w * ppm); cv.height = Math.round(crop.h * ppm);
+				const g = cv.getContext('2d');
+				if (!g) throw new Error('Canvas non disponibile.');
+				g.drawImage(img, -Math.round(crop.x * ppm), -Math.round(crop.y * ppm));
+				const b2 = await new Promise<Blob | null>((r) => cv.toBlob(r, 'image/png'));
+				if (!b2) throw new Error('Non riesco a ritagliare il foglio.');
+				f = new File([b2], 'foglio.png', { type: 'image/png' });
+			} else f = new File([blob], 'foglio.png', { type: 'image/png' });
+			URL.revokeObjectURL(src);
+			sogg = list.map((x) => ({ pathD: crop.x || crop.y ? spostaPath(x.pathD, -crop.x, -crop.y) : x.pathD, x: 0, y: 0, w: x.w, h: x.h, nodi: x.nodi }));
+			nodiF = list.reduce((a, x) => a + x.nodi, 0);
+			sheetPathD = bordo;
+			foglioW = Math.round(crop.w * 10) / 10;
+			foglioH = Math.round(crop.h * 10) / 10;
+			composto = { layout: lay, descr: descriviFoglio(lay), stimati: list.filter((x) => x.stimato).length };
+			if (o.materiale && MATERIALS.some((x) => x.id === o.materiale)) materiale = o.materiale;
+			if (o.finitura && FINISHES.some((x) => x.id === o.finitura)) finitura = o.finitura;
+			if (o.qty) qty = o.qty;
+			pick(f);
+			jobName = o.number;
+			engCut = { w: foglioW, h: foglioH };
+			rendered = true;
+			ordStato = '';
+		} catch (e) { ordStato = 'errore'; ordErr = e instanceof Error ? e.message : String(e); }
+		finally { soggBusy = false; }
+	}
+
 	let soggTimer: ReturnType<typeof setTimeout> | undefined;
 	$effect(() => {
-		if (!MULTI || !file || renders < 1) return;
+		if (!MULTI || !file || renders < 1 || composto) return;
 		const key = `${foglioW}|${bordoF}|${unioneF}|${renders}|${semplifica}|${morbido}`;
 		clearTimeout(soggTimer);
 		soggTimer = setTimeout(() => { void key; void rilevaSoggetti(); }, 700);
@@ -382,7 +455,7 @@
 
 	/* il tracciato si ricalcola qui, senza ridisegnare la grafica: i selettori rispondono subito */
 	async function disegnaLente() {
-		if (MULTI) { lentePaths = sogg.map((x) => ({ d: x.pathD, x: x.x, y: x.y })); lenteNodi = nodiF; return; }
+		if (MULTI) { lentePaths = [...sogg.map((x) => ({ d: x.pathD, x: x.x, y: x.y })), ...(sheetPathD ? [{ d: sheetPathD }] : [])]; lenteNodi = nodiF; return; }
 		if (fonte === 'pronto') {
 			if (!ready) return;
 			const r = ritoccato ? await rifinisci(ready.pathD, 1) : { d: ready.pathD, nodes: (ready.pathD.match(/[MLCZmlcz]/g) ?? []).length };
@@ -478,7 +551,7 @@
 		const art = await artwork();
 		const pagina = singleStrip(art);
 		/* foglio di adesivi: attorno al foglio ci va il passante */
-		if (MULTI) pagina.sheets = [{ x: art.bleed, y: art.bleed, w: art.cutW, h: art.cutH, rot: false }];
+		if (MULTI) pagina.sheets = [{ x: art.bleed, y: art.bleed, w: art.cutW, h: art.cutH, rot: false, pathD: sheetPathD || undefined }];
 		const bytes = await buildPdf({ title: `${jobName} — stampa e taglio`, arts: [art], pages: [pagina], pieceCut: P.pieceCut, sheetCut: MULTI ? P.sheetCut : undefined });
 		/* il PDF del pezzo singolo: con l'ordine si chiama come lui, con la parola che lo distingue
 		   dall'impaginato che va in macchina */
@@ -656,7 +729,7 @@
 			const r = layoutLoose(art.cutW, art.cutH, { stripW: pageW, stripH: H, margin, marginY, gap: sGap, qty: qtyDaFare, verso: versoFoglio });
 			if (!r.ok) throw new Error(r.error ?? 'Impaginazione non possibile');
 			/* ogni foglio porta il suo passante attorno */
-			pages = r.strips.map((pg) => ({ ...pg, sheets: pg.pieces.map((q) => ({ x: q.x, y: q.y, w: q.rot ? art.cutH : art.cutW, h: q.rot ? art.cutW : art.cutH, rot: q.rot })) }));
+			pages = r.strips.map((pg) => ({ ...pg, sheets: pg.pieces.map((q) => ({ x: q.x, y: q.y, w: q.rot ? art.cutH : art.cutW, h: q.rot ? art.cutW : art.cutH, rot: q.rot, pathD: sheetPathD || undefined })) }));
 		} else if (P.mode === 'fogli') {
 			const rules = regole;
 			const probe = layoutSheets(art.cutW, art.cutH, rules, { stripW: pageW, stripH: H, margin, marginY, sheetGap: sGap, sheets: 0, versoPezzi, versoFoglio, ...fogliOpz });
@@ -978,23 +1051,36 @@
 				<div class="st-foglio__art">
 					{#if fileUrl}<img src={fileUrl} alt="Foglio del cliente" onerror={anteprimaKo} />{/if}
 					<svg viewBox="0 0 {foglioW} {foglioH}" preserveAspectRatio="xMidYMid meet">
-						<rect x="0" y="0" width={foglioW} height={foglioH} fill="none" stroke={cutColor(P.sheetCut ?? 'Passante')} stroke-width="0.4" />
+						{#if sheetPathD}
+							<path d={sheetPathD} fill="none" stroke={cutColor(P.sheetCut ?? 'Passante')} stroke-width="0.4" />
+						{:else}
+							<rect x="0" y="0" width={foglioW} height={foglioH} fill="none" stroke={cutColor(P.sheetCut ?? 'Passante')} stroke-width="0.4" />
+						{/if}
 						{#each sogg as sg, i (i)}
 							<path d={sg.pathD} transform="translate({sg.x} {sg.y})" fill="none" stroke={cutColor(P.pieceCut)} stroke-width="0.35" />
 						{/each}
 					</svg>
-					{#if soggBusy}<span class="st-foglio__wait">Cerco gli adesivi…</span>{/if}
+					{#if soggBusy}<span class="st-foglio__wait">{composto || data.order?.foglio ? 'Preparo il foglio…' : 'Cerco gli adesivi…'}</span>{/if}
 				</div>
 				<div class="st-bar">
 					<button type="button" class="st-tool" disabled={!sogg.length} onclick={apriLente}>🔍 Tracciato da vicino</button>
-					<button type="button" class="st-tool st-tool--blue" disabled={soggBusy} onclick={rilevaSoggetti}>↻ Rileggi</button>
-					<span class="st-note">{sogg.length ? `${sogg.length} adesivi riconosciuti · ${nodiF} punti di ancoraggio` : 'Nessun adesivo riconosciuto'}{ritoccato ? ` · ritoccato (semplifica ${semplifica}, morbido ${morbido})` : ''}</span>
+					{#if !composto}<button type="button" class="st-tool st-tool--blue" disabled={soggBusy} onclick={rilevaSoggetti}>↻ Rileggi</button>{/if}
+					<span class="st-note">{composto ? `${sogg.length} adesivi dal foglio composto sul sito · ${nodiF} punti di ancoraggio` : sogg.length ? `${sogg.length} adesivi riconosciuti · ${nodiF} punti di ancoraggio` : 'Nessun adesivo riconosciuto'}{ritoccato && !composto ? ` · ritoccato (semplifica ${semplifica}, morbido ${morbido})` : ''}</span>
 				</div>
 				<!-- il motore serve per riconoscere gli adesivi: resta fuori vista -->
 				<div class="st-hidden"><EnginePreview bind:this={engine} {file} forma="sagomato" {materiale} finitura="lucida" prodotto={P.engineProduct} w={0} h={0} showCut={false} stage={120} onrender={onRender} /></div>
 			</div>
 			<aside class="st-side">
 				<label class="st-field"><span>Nome lavoro / n. ordine</span><input class="input" bind:value={jobName} /></label>
+				{#if composto}
+				<div class="st-block">
+					<p class="st-label">Foglio composto dal cliente</p>
+					<p class="st-note">{composto.descr}</p>
+					<p class="st-note">Si stampa com’è: {P.pieceCut} su ogni adesivo (il tracciato approvato sul sito) e {P.sheetCut} sul bordo del foglio{composto.layout.sheet.sagomato ? ', che segue gli adesivi che sporgono' : ''}. File di lavoro {foglioW} × {foglioH} mm.</p>
+					{#if composto.stimati}<p class="st-warn">{composto.stimati} {composto.stimati === 1 ? 'adesivo è stato ordinato' : 'adesivi sono stati ordinati'} prima che il sito salvasse il tracciato: il taglio segue la forma geometrica (o il riquadro, se sagomato). Controlla con la lente.</p>{/if}
+					{#if ordStato === 'errore'}<p class="st-err">{ordErr}</p>{/if}
+				</div>
+				{:else}
 				<div class="st-block">
 					<p class="st-label">Foglio del cliente</p>
 					<div class="st-row2">
@@ -1016,6 +1102,7 @@
 					{#if soggErr}<p class="st-err">{soggErr}</p>{/if}
 					{#if sogg.length === 1 && !soggErr}<p class="st-warn">Ho trovato un solo adesivo: se nel foglio ce ne sono di più, abbassa l’unione delle parti (per esempio {(unioneUsata / 2).toFixed(1)} mm) e premi Rileggi.</p>{/if}
 				</div>
+				{/if}
 				<div class="st-actions">
 					<button type="button" class="btn btn--pink st-act" disabled={!sogg.length || !!busy} onclick={scaricaStampaTaglio}>{busy === 'print' ? 'Preparo il file…' : 'Scarica file di stampa e taglio'}<small>PDF del foglio: grafica + {P.pieceCut} su ogni adesivo + {P.sheetCut} sul foglio</small></button>
 					<button type="button" class="btn btn--green st-act" disabled={!sogg.length || !!busy} onclick={() => (stripOpen = !stripOpen)} aria-expanded={stripOpen}>Genera file di stampa<small>fogli interi sulla striscia, crocini e codice a barre Graphtec</small></button>
@@ -1264,7 +1351,11 @@
 							<!-- foglio di adesivi: ogni copia porta il suo passante attorno e il mezzo taglio su ogni adesivo -->
 							{#each preview.pieces as p, i (i)}
 								<g transform={pieceTf(p)}>
-									<rect x="0" y="0" width={foglioW} height={foglioH} fill="#fff" stroke={cutColor(P.sheetCut ?? 'Passante')} stroke-width="0.8" />
+									{#if sheetPathD}
+										<path d={sheetPathD} fill="#fff" stroke={cutColor(P.sheetCut ?? 'Passante')} stroke-width="0.8" />
+									{:else}
+										<rect x="0" y="0" width={foglioW} height={foglioH} fill="#fff" stroke={cutColor(P.sheetCut ?? 'Passante')} stroke-width="0.8" />
+									{/if}
 									{#each sogg as sg, j (j)}
 										<path d={sg.pathD} transform="translate({sg.x} {sg.y})" fill="#eef0fb" stroke={cutColor(P.pieceCut)} stroke-width="0.4" />
 									{/each}

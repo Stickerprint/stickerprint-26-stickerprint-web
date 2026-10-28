@@ -124,8 +124,9 @@ export interface Strip {
 	w: number;
 	h: number;
 	pieces: Placement[];
-	/** fogli, solo nel modo FOGLI */
-	sheets?: { x: number; y: number; w: number; h: number; rot: boolean }[];
+	/** fogli, solo nel modo FOGLI. `pathD` = bordo del foglio in tracciato (mm, nel riquadro w×h non ruotato):
+	    quando manca il passante e' il rettangolo */
+	sheets?: { x: number; y: number; w: number; h: number; rot: boolean; pathD?: string }[];
 }
 
 export interface LooseResult {

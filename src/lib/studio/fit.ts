@@ -11,7 +11,7 @@
  * Il risultato segue il contorno entro la tolleranza con pochi nodi, raccordati in tangenza.
  */
 
-type P = [number, number];
+export type P = [number, number];
 export type Bez = [P, P, P, P];
 
 const add = (a: P, b: P): P => [a[0] + b[0], a[1] + b[1]];

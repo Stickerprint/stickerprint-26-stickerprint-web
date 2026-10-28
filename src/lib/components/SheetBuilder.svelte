@@ -76,8 +76,10 @@
 	type View = { zoom: number; dx: number; dy: number };
 	type Cut = { x: number; y: number; w: number; h: number };
 	type Render = { png: string; w: number; h: number; view: View | null; cut: Cut | null };
-	type Slot = { file: File | null; png: string | null; w: number; h: number; cfgW: number; cfgH: number; misura: number; forma: string; x: number; y: number; rot: number; busy: boolean };
-	const blank = (): Slot => ({ file: null, png: null, w: 0, h: 0, cfgW: 0, cfgH: 0, misura: 40, forma: 'sagomato', x: 0, y: 0, rot: 0, busy: false });
+	/** tracciato di taglio approvato (dal motore, mm nel riquadro w×h): lo studio lo rimette uguale sul foglio */
+	type SlotCut = { pathD: string; w: number; h: number; shape: string | null; border: number | null };
+	type Slot = { file: File | null; png: string | null; w: number; h: number; cfgW: number; cfgH: number; misura: number; forma: string; x: number; y: number; rot: number; busy: boolean; cut: SlotCut | null };
+	const blank = (): Slot => ({ file: null, png: null, w: 0, h: 0, cfgW: 0, cfgH: 0, misura: 40, forma: 'sagomato', x: 0, y: 0, rot: 0, busy: false, cut: null });
 	let slots = $state<Slot[]>(Array.from({ length: 12 }, blank));
 	const filled = $derived(slots.slice(0, MAX).filter((s) => s.file));
 	const n = $derived(filled.length);
@@ -185,9 +187,14 @@
 		const p = pop, last = pop.last; pop = null;
 		const s = slots[p.index];
 		const isNew = !s.file;
-		s.file = p.file; s.w = last.w; s.h = last.h; s.cfgW = p.w; s.cfgH = p.h; s.misura = p.misura; s.forma = p.forma; s.busy = true;
+		s.file = p.file; s.w = last.w; s.h = last.h; s.cfgW = p.w; s.cfgH = p.h; s.misura = p.misura; s.forma = p.forma; s.busy = true; s.cut = null;
 		if (isNew) { const [cx, cy] = cellCenter(p.index); s.x = cx; s.y = cy; }
 		cropCut(last.png, last.cut).then((png) => { if (slots[p.index]?.file === p.file) { slots[p.index].png = png; slots[p.index].busy = false; } });
+		/* il tracciato di questo adesivo, com'e' adesso nel motore: va nell'ordine (layout.json) per lo studio */
+		engRefs[p.key]?.studio('geom').then((g) => {
+			if (!g.pathD || slots[p.index]?.file !== p.file) return;
+			slots[p.index].cut = { pathD: g.pathD, w: g.cutW || last.w, h: g.cutH || last.h, shape: g.shape ?? null, border: g.border ?? null };
+		}).catch(() => { /* senza tracciato: lo studio usa la forma geometrica */ });
 		if (filled.length + 1 >= MAX && step === 'adesivi') step = 'qty';
 	}
 	function cancelPop() {
@@ -348,7 +355,7 @@
 				if (preview) await saveCartPreview(item.id, preview);
 				if (bgFile) await saveCartFile(`${item.id}:bg`, bgFile);
 				let k = 0; for (const s of filled) if (s.file) { k++; await saveCartFile(`${item.id}:s${k}`, s.file); }
-				const layout = { sheet: { w: sheetW, h: sheetH, orientamento, formato, sagomato, bgColor, bgImage: !!bgFile, materiale, finitura }, stickers: filled.map((s, i) => ({ n: i + 1, file: s.file?.name, forma: s.forma, w: s.w, h: s.h, x: s.x, y: s.y, rot: s.rot })) };
+				const layout = { sheet: { w: sheetW, h: sheetH, orientamento, formato, sagomato, bgColor, bgImage: !!bgFile, materiale, finitura, pad: PAD, raggio: 4, ppm: 12 }, stickers: filled.map((s, i) => ({ n: i + 1, file: s.file?.name, forma: s.forma, w: s.w, h: s.h, x: s.x, y: s.y, rot: s.rot, cut: s.cut })) };
 				await saveCartFile(`${item.id}:layout`, new File([JSON.stringify(layout, null, 2)], 'layout.json', { type: 'application/json' }));
 			}
 			track.addToCart({ product: 'fogli_adesivi', productName: 'Fogli di adesivi', forma, w: sheetW, h: sheetH, materiale, finitura, qty, gross: quote.gross });

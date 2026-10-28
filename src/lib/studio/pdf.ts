@@ -46,6 +46,11 @@ function pieceMatrix(p: Placement, cutW: number, cutH: number): [number, number,
 	return p.rot ? [0, 1, -1, 0, p.x + cutH, p.y] : [1, 0, 0, 1, p.x, p.y];
 }
 
+/** come pieceMatrix, per un foglio: `w`/`h` sono gia' quelli ruotati, quindi l'altezza non ruotata e' `w` */
+function sheetMatrix(s: NonNullable<Strip['sheets']>[number]): [number, number, number, number, number, number] {
+	return s.rot ? [0, 1, -1, 0, s.x + s.w, s.y] : [1, 0, 0, 1, s.x, s.y];
+}
+
 /* ------------------------------------------------------------ documento */
 
 export interface Artwork {
@@ -173,7 +178,13 @@ function drawPage(page: PDFPage, job: PdfJob, strip: Strip, res: Res, pageIndex:
 	}
 	if (job.sheetCut && strip.sheets?.length) {
 		cutOps.push(op(Op.StrokingColorspace, PDFName.of(job.sheetCut)), op(Op.StrokingColorN, 1));
-		for (const s of strip.sheets) cutOps.push(op(Op.AppendRectangle, s.x, s.y, s.w, s.h), op(Op.StrokePath));
+		for (const s of strip.sheets) {
+			if (s.pathD) {
+				/* bordo del foglio in tracciato (foglio composto sul sito: angoli tondi, adesivi che sporgono) */
+				cutOps.push(op(Op.PushGraphicsState), op(Op.ConcatTransformationMatrix, ...sheetMatrix(s)));
+				cutOps.push(...pathOps(parsePath(s.pathD)), op(Op.StrokePath), op(Op.PopGraphicsState));
+			} else cutOps.push(op(Op.AppendRectangle, s.x, s.y, s.w, s.h), op(Op.StrokePath));
+		}
 	}
 	const cutForm = ctx.register(ctx.formXObject(cutOps, { BBox: [0, 0, W, H], Resources: { ColorSpace: cs, ExtGState: { GS: res.gs } } }));
 

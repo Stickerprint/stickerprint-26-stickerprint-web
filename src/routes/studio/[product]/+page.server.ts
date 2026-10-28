@@ -1,6 +1,7 @@
 import { error, redirect } from '@sveltejs/kit';
 import { loadEngine } from '$lib/server/pricing';
 import { STUDIO_PRODUCTS, studioProduct } from '$lib/studio/products';
+import type { FoglioLayout } from '$lib/studio/foglio';
 import type { PageServerLoad } from './$types';
 
 /** file dell'ordine: percorso nel bucket privato -> link firmato; un indirizzo completo resta com'e' */
@@ -20,6 +21,8 @@ export const load: PageServerLoad = async ({ params, url, locals: { supabase } }
 	let order: null | {
 		id: string; number: string; productName: string; forma: string | null; materiale: string | null; finitura: string | null;
 		w: number; h: number; qty: number; fileUrl: string | null; fileName: string | null; previewUrl: string | null; engineState: Record<string, unknown> | null; folder: boolean;
+		/** foglio di adesivi composto sul sito: il PNG stampabile e la disposizione degli adesivi */
+		foglio: { url: string; layout: FoglioLayout } | null;
 	} = null;
 	if (orderId) {
 		const { data: o } = await supabase.from('orders').select('*').eq('id', orderId).maybeSingle();
@@ -29,6 +32,17 @@ export const load: PageServerLoad = async ({ params, url, locals: { supabase } }
 		if (target && target !== product.id) redirect(303, `/studio/${target}?ordine=${orderId}`);
 		product = studioProduct(target ?? product.id) ?? product;
 		const folder = typeof o.file_path === 'string' && o.file_path.endsWith('/');
+		let foglio: { url: string; layout: FoglioLayout } | null = null;
+		if (folder && o.product_slug === 'fogli_adesivi') {
+			const dir = o.file_path as string;
+			const [png, lay] = await Promise.all([signed(supabase, dir + 'foglio.png'), supabase.storage.from('order-files').download(dir + 'layout.json')]);
+			if (png && lay.data) {
+				try {
+					const layout = JSON.parse(await lay.data.text()) as FoglioLayout;
+					if (layout?.sheet?.w > 0 && Array.isArray(layout.stickers)) foglio = { url: png, layout };
+				} catch { /* layout illeggibile: si lavora come cartella */ }
+			}
+		}
 		order = {
 			id: o.id, number: o.number, productName: o.product_name, forma: o.forma, materiale: o.materiale, finitura: o.finitura,
 			w: Number(o.width_mm) || 0, h: Number(o.height_mm) || 0, qty: Number(o.qty) || 0,
@@ -36,7 +50,8 @@ export const load: PageServerLoad = async ({ params, url, locals: { supabase } }
 			fileName: typeof o.file_path === 'string' ? (o.file_path.split('/').pop() || null) : null,
 			previewUrl: await signed(supabase, o.proof_url ?? o.preview_url),
 			engineState: (o.engine_state as Record<string, unknown> | null) ?? null,
-			folder
+			folder,
+			foglio
 		};
 	}
 	const { config } = await loadEngine(supabase, product.engineSlug);
