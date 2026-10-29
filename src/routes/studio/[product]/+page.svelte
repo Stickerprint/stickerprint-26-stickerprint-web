@@ -939,7 +939,11 @@
 	let condHalf = $state(DEFAULT_COND.half);
 	let condThrough = $state(DEFAULT_COND.through);
 	let sent = $state('');
-	onMount(async () => { try { dlDir = await savedDataLink(); dlName = dlDir?.name ?? ''; } catch { /* nessuna cartella salvata */ } });
+	onMount(async () => {
+		/* chiediamo a Chrome di non buttare via la memoria del sito: e' li' che stanno le cartelle collegate */
+		try { await navigator.storage?.persist?.(); } catch { /* non supportato */ }
+		try { dlDir = await savedDataLink(); dlName = dlDir?.name ?? ''; } catch { /* nessuna cartella salvata */ }
+	});
 	async function sceglieCartella() {
 		try { dlDir = await pickDataLink(); dlName = dlDir.name; } catch (e) { if (e instanceof Error && e.name !== 'AbortError') downloadErr = e.message; }
 	}
@@ -957,10 +961,13 @@
 	}
 	let sentErr = $state('');
 	/* cartella pronta con il permesso: si chiede per prima cosa, finche' vale il clic dell'operatore */
+	/* Senza cartella collegata NON si apre piu' la scelta a ogni "Genera" (Mattia, 29/10/2026: Chrome aveva
+	   perso la memoria del sito e a ogni clic chiedeva dove salvare): il taglio si scarica in Download e sul Mac
+	   del Data Link Server il postino lo porta nella hot folder (scripts/datalink-postino). La cartella si
+	   collega solo dal bottone apposito. */
 	async function cartellaPronta(): Promise<DataLinkDir | null> {
 		if (vwDir) await grantVersaworks(vwDir);
 		if (arcDir) await grantArchivio(arcDir);
-		if (!dlDir) await sceglieCartella();
 		if (!dlDir) return null;
 		return (await grantDataLink(dlDir)) ? dlDir : null;
 	}
@@ -988,14 +995,18 @@
 				sent = `Taglio in Data Link Server: ${jobs.map((j) => j.id).join(', ')}. Stampa la striscia e fai leggere il codice a barre.`;
 				return;
 			} catch (e) { sentErr = `Non riesco a scrivere nella cartella di Data Link Server (${e instanceof Error ? e.message : e}).`; }
-		} else sentErr = 'Cartella di Data Link Server non collegata.';
+		}
+		const nomi: string[] = [];
 		for (const [i, j] of jobs.entries()) {
 			const x = buildXpf(j);
 			const nome = nomeXpf(j.id, i, jobs.length);
 			download(new Blob([x as BlobPart], { type: 'application/octet-stream' }), nome);
 			await archivia(nome, x);
+			nomi.push(nome);
 		}
-		sentErr += ' Ho scaricato il file di taglio: mettilo nella cartella cut_jobs.';
+		const scaricato = `Taglio scaricato in Download: ${nomi.join(', ')}.`;
+		if (sentErr) sentErr += ` ${scaricato} Mettilo tu nella cartella DataLink.`;
+		else sent = `${scaricato} Sul Mac del Data Link Server il postino lo porta da solo nella cartella DataLink; su un altro computer spostalo tu, oppure collega la cartella qui sotto.`;
 	}
 	/* rimanda lo stesso taglio (es. cambiato mezzo taglio/passante): stesso codice, stessa striscia stampata */
 	const inviaDataLink = () => run('dls', async () => {
@@ -1413,7 +1424,7 @@
 						{/if}
 					</div>
 
-					<button type="button" class="btn btn--green st-act" disabled={!!busy || !strips.length} onclick={generaStriscia}>{busy === 'strip' ? 'Genero striscia e taglio…' : 'Genera striscia e taglio'}<small>{vwDir && vwStampante ? `stampa in coda sulla ${vwStampante}` : 'PDF da stampare'} + taglio in Data Link Server</small></button>
+					<button type="button" class="btn btn--green st-act" disabled={!!busy || !strips.length} onclick={generaStriscia}>{busy === 'strip' ? 'Genero striscia e taglio…' : 'Genera striscia e taglio'}<small>{vwDir && vwStampante ? `stampa in coda sulla ${vwStampante}` : 'PDF in Download'} + {dlDir ? 'taglio in Data Link Server' : 'taglio in Download'}</small></button>
 
 					<div class="st-dls">
 						<p class="st-label">Archivio dei lavori</p>
@@ -1444,10 +1455,11 @@
 						{#if sentErr}<p class="st-err">{sentErr}</p>{/if}
 						<p class="st-note">
 							{#if lastJob}Codice{new Set(lastJob.ids).size > 1 ? 'i' : ''}: <b>{[...new Set(lastJob.ids)].join(', ')}</b> · {/if}
-							Cartella Data Link Server: {dlName ? dlName : 'da scegliere alla prima striscia (cut_jobs in rete)'} <button type="button" class="st-link" onclick={sceglieCartella}>cambia</button>
+							Cartella Data Link Server: {#if dlName}<b>{dlName}</b> <button type="button" class="st-link" onclick={sceglieCartella}>cambia</button>{:else}non collegata, il taglio si scarica in Download · <button type="button" class="st-link" onclick={sceglieCartella}>collega la cartella DataLink</button>{/if}
 							{#if lastJob}· <button type="button" class="st-link" disabled={!!busy} onclick={inviaDataLink}>rimanda il taglio</button>
 							· <button type="button" class="st-link" disabled={!!busy} onclick={scaricaXpf}>scarica il file di taglio</button>{/if}
 						</p>
+						{#if !dlName}<p class="st-note">Per collegarla: nella finestra di Chrome vai in <b>Macintosh HD › Utenti › Condivisa</b>, evidenzia la cartella <b>DataLink</b> e premi Apri. Se Chrome dice che la cartella «contiene file di sistema» hai evidenziato quella sbagliata (il disco, Utenti o Condivisa): entra fino a DataLink. Senza collegarla funziona lo stesso: il taglio va in Download e il postino lo sposta.</p>{/if}
 					</div>
 				{/if}
 			</div>

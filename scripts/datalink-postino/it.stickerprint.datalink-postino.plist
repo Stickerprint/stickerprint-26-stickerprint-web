@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Label</key><string>it.stickerprint.datalink-postino</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/bin/bash</string>
+		<string>/Users/stickerprint/Library/Application Support/Stickerprint/datalink-postino.sh</string>
+	</array>
+	<key>WatchPaths</key>
+	<array><string>/Users/stickerprint/Downloads</string></array>
+	<key>RunAtLoad</key><true/>
+	<key>ThrottleInterval</key><integer>3</integer>
+	<key>StandardOutPath</key><string>/Users/stickerprint/Library/Logs/datalink-postino.out.log</string>
+	<key>StandardErrorPath</key><string>/Users/stickerprint/Library/Logs/datalink-postino.out.log</string>
+</dict>
+</plist>
