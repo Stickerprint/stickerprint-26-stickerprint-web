@@ -384,20 +384,28 @@
 				} catch { /* senza sfondo */ }
 			} else if (!bianco) { g.fillStyle = lay.sheet.bgColor; g.fillRect(a * ppm, a * ppm, lay.sheet.w * ppm, lay.sheet.h * ppm); }
 			g.restore();
+			const { graficaConAbbondanza, disegnaDesign } = await import('$lib/studio/foglio-stampa');
 			const list: SoggettoFoglio[] = [];
-			for (const { s, st, img, ricostruito } of stampe) {
-				/* la grafica del motore ha l'abbondanza attorno: sul foglio ci va solo il riquadro del taglio */
-				const k = img.naturalWidth / (st.cutW + 2 * st.bleed);
-				const sx = st.bleed * k, sy = st.bleed * k, sw = st.cutW * k, sh = st.cutH * k;
-				/* la misura e' quella ORDINATA (layout): se il motore ha fatto il pezzo un po' diverso, si riporta
-				   in scala (grafica e tracciato insieme), cosi' il foglio e' quello che il cliente ha visto */
+			/* la grafica del motore ha attorno la sua ABBONDANZA, che segue la sagoma del taglio: sul foglio
+			   va tutta (dal 29/10/2026; prima si ritagliava il riquadro del taglio e l'abbondanza restava
+			   piatta ai lati), col bianco tolto fuori dal tracciato. Prima le abbondanze di tutti, poi i
+			   disegni dentro il tracciato: l'abbondanza di un adesivo non copre mai il vicino (foglio-stampa.ts).
+			   La misura e' quella ORDINATA (layout): se il motore ha fatto il pezzo un po' diverso, si riporta
+			   in scala (grafica e tracciato insieme), cosi' il foglio e' quello che il cliente ha visto */
+			const posiziona = (ctx: CanvasRenderingContext2D, s: FoglioAdesivo) => { ctx.translate((a + s.x) * ppm, (a + s.y) * ppm); ctx.rotate(((s.rot || 0) * Math.PI) / 180); };
+			const pezzi = stampe.map(({ s, st, img, ricostruito }) => {
 				const z = s.w > 0 && st.cutW > 0 ? s.w / st.cutW : 1;
+				const stampa = { img, cutW: st.cutW, cutH: st.cutH, bleed: st.bleed, pathD: st.pathD || s.cut?.pathD || '' };
+				return { s, st, z, stampa, pulita: graficaConAbbondanza(stampa), ricostruito };
+			});
+			for (const p of pezzi) {
+				g.save(); posiziona(g, p.s); disegnaDesign(g, p.pulita, p.stampa, p.z, ppm, 'tutto'); g.restore();
+				/* la maschera del passante prende l'abbondanza intera, bianco compreso: e' il margine attorno agli adesivi che sporgono */
+				gm.save(); posiziona(gm, p.s); disegnaDesign(gm, p.stampa.img, p.stampa, p.z, ppm, 'tutto'); gm.restore();
+			}
+			for (const { s, st, z, stampa, ricostruito } of pezzi) {
+				g.save(); posiziona(g, s); disegnaDesign(g, stampa.img, stampa, z, ppm, 'dentro'); g.restore();
 				const W1 = st.cutW * z, H1 = st.cutH * z;
-				for (const ctx of [g, gm]) {
-					ctx.save(); ctx.translate((a + s.x) * ppm, (a + s.y) * ppm); ctx.rotate(((s.rot || 0) * Math.PI) / 180);
-					ctx.drawImage(img, sx, sy, sw, sh, (-W1 / 2) * ppm, (-H1 / 2) * ppm, W1 * ppm, H1 * ppm);
-					ctx.restore();
-				}
 				const d = trasformaPath(st.pathD || s.cut?.pathD || '', [z, 0, 0, z, 0, 0]);
 				const abs = trasformaPath(d, matriceAdesivo(a + s.x, a + s.y, W1, H1, s.rot || 0));
 				list.push({ pathD: abs, x: 0, y: 0, w: W1, h: H1, nodi: (abs.match(/[MLCmlc]/g) ?? []).length, stimato: ricostruito });
@@ -1196,7 +1204,7 @@
 				<div class="st-block">
 					<p class="st-label">Foglio composto dal cliente</p>
 					<p class="st-note">{composto.descr}</p>
-					<p class="st-note">Foglio rifatto per la stampa: sfondo pulito (il bianco non si stampa) e la grafica di stampa di ogni design dal motore, al posto scelto dal cliente. {P.pieceCut} su ogni adesivo, {P.sheetCut} sul bordo del foglio{composto.layout.sheet.sagomato ? ', che segue gli adesivi che sporgono' : ''}. File di lavoro {foglioW} × {foglioH} mm.</p>
+					<p class="st-note">Foglio rifatto per la stampa: sfondo pulito (il bianco non si stampa) e la grafica di stampa di ogni design dal motore, al posto scelto dal cliente, con l’abbondanza che segue la sagoma (solo dove il design arriva al taglio con un colore: il bianco non si stampa). {P.pieceCut} su ogni adesivo, {P.sheetCut} sul bordo del foglio{composto.layout.sheet.sagomato ? ', che segue gli adesivi che sporgono' : ''}. File di lavoro {foglioW} × {foglioH} mm.</p>
 					{#if composto.ricostruiti}<p class="st-note">{composto.ricostruiti} {composto.ricostruiti === 1 ? 'tracciato rifatto' : 'tracciati rifatti'} dal motore sul file del design (ordine fatto prima che il sito salvasse quello approvato): controlla con la lente e con l’anteprima del cliente qui sopra.</p>{/if}
 					{#if composto.stimati}<p class="st-warn">{composto.stimati} {composto.stimati === 1 ? 'design manca' : 'design mancano'} nella cartella dell’ordine: {composto.stimati === 1 ? 'non è' : 'non sono'} sul foglio. Scarica i file dalla dashboard e controlla.</p>{/if}
 					{#if ordStato === 'errore'}<p class="st-err">{ordErr}</p>{/if}
