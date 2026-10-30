@@ -183,6 +183,8 @@ export interface FitOptions {
 	cornerDeg?: number;
 	/** raggio della lisciatura del contorno (mm) */
 	smooth?: number;
+	/** tratto su cui si misura una svolta per dirla "angolo" (mm) */
+	cornerWindow?: number;
 }
 
 /** un contorno chiuso (spezzata in mm) -> curve di Bezier con pochi nodi */
@@ -194,7 +196,7 @@ export function fitClosed(poly: P[], o: FitOptions = {}): Bez[] {
 	// lisciatura su circa ±0,5 mm: toglie le ondine del contorno (angoli inutili) senza spostarlo
 	const pts = smoothClosed(resampleClosed(poly, step), Math.max(1, Math.round((o.smooth ?? 0.5) / step)), 2);
 	const n = pts.length;
-	const k = Math.max(2, Math.round(0.8 / step)); // angoli misurati su circa 0,8 mm
+	const k = Math.max(2, Math.round((o.cornerWindow ?? 0.8) / step)); // angoli misurati su circa 0,8 mm (di piu' sui pezzi grandi)
 	let cuts = findCorners(pts, k, o.cornerDeg ?? 55);
 	const corner = new Set(cuts);
 	// nessun angolo (o uno solo): si spezza comunque in punti lisci, con tangente continua
@@ -255,4 +257,57 @@ export function fitPathD(polys: P[][], o: FitOptions = {}): { d: string; nodes: 
 		nodes += bz.length;
 	}
 	return { d: d.trim(), nodes };
+}
+
+/* ------------------------------------------------------------ pulizia del tracciato */
+
+export interface Pulizia {
+	/** zig-zag ogni 100 mm di contorno: svolte di almeno 12 gradi che invertono il verso entro 3 mm */
+	zigzag100: number;
+	/** svolta media per millimetro di contorno (gradi) */
+	mediaGradi: number;
+	/** perimetro totale (mm) */
+	perimetro: number;
+	/** vero = linee pulite, falso = tracciato frastagliato */
+	ok: boolean;
+}
+
+/**
+ * Quanto e' pulito un tracciato: si campiona a passo fisso (in scala col pezzo) e si contano le svolte che invertono il
+ * verso a poca distanza (il dente di sega). Un angolo vero (stella, lettera) e' isolato e non
+ * conta; una riga seghettata ne fa decine ogni 10 cm. Soglia tarata sul caso SP00509 (vercetti,
+ * 381 mm: 9 zig-zag ogni 100 mm in stampa) e sui tondi e le sagome pulite (0).
+ */
+export function puliziaTracciato(polys: P[][]): Pulizia {
+	/* la scala e' quella del pezzo: su uno sticker da 45 mm le curve da un millimetro sono il disegno
+	   (orecchie, pelo), su uno da 381 mm sono seghettatura. Passo e finestra crescono con il lato lungo */
+	let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+	for (const poly of polys) for (const [x, y] of poly) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+	const lato = Math.max(1, x1 - x0, y1 - y0);
+	const step = Math.max(0.25, Math.min(0.6, lato / 800));
+	let perimetro = 0, zig = 0, somma = 0, campioni = 0;
+	for (const poly of polys) {
+		const L = polyLength(poly);
+		if (poly.length < 3 || L < 2) continue;
+		const Q = resampleClosed(poly, step), n = Q.length;
+		const ang: number[] = new Array(n);
+		for (let j = 0; j < n; j++) {
+			const a = Q[(j - 2 + n) % n], b = Q[j], c = Q[(j + 2) % n];
+			const v1 = sub(b, a), v2 = sub(c, b);
+			ang[j] = (Math.atan2(v1[0] * v2[1] - v1[1] * v2[0], dot(v1, v2)) * 180) / Math.PI;
+			somma += Math.abs(ang[j]);
+		}
+		/* inversioni: una svolta >= 12 gradi seguita entro 6 passi da una >= 12 gradi di segno opposto */
+		for (let j = 0; j < n; j++) {
+			if (Math.abs(ang[j]) < 12) continue;
+			for (let k = 1; k <= 6; k++) {
+				const a2 = ang[(j + k) % n];
+				if (Math.abs(a2) >= 12) { if (Math.sign(a2) !== Math.sign(ang[j])) zig++; break; }
+			}
+		}
+		perimetro += L; campioni += n;
+	}
+	const zigzag100 = perimetro > 0 ? (zig / perimetro) * 100 : 0;
+	const mediaGradi = campioni > 0 ? somma / campioni / step : 0; // gradi per millimetro di contorno
+	return { zigzag100: Math.round(zigzag100 * 10) / 10, mediaGradi: Math.round(mediaGradi * 10) / 10, perimetro: Math.round(perimetro), ok: zigzag100 <= 1.5 };
 }

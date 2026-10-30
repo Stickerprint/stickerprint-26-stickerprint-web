@@ -249,15 +249,15 @@
 			if (!list.length) throw new Error('Nel file non trovo nessun adesivo.');
 			/* stesso alleggerimento degli adesivi sagomati: pochi nodi, il plotter non rallenta */
 			const [{ fitPathD, samplePath }, { parsePath }] = await Promise.all([import('$lib/studio/fit'), import('$lib/studio/path')]);
-			const opt = fitOpts(bordoF);
 			let nodi = 0;
 			sogg = list.map((x) => {
-				const f = fitPathD(samplePath(parsePath(x.pathD)), opt);
+				const f = fitPathD(samplePath(parsePath(x.pathD)), fitOpts(bordoF, Math.max(x.w, x.h)));
 				nodi += f.d ? f.nodes : x.nodi;
 				return { ...x, pathD: f.d || x.pathD };
 			});
 			if (mio !== soggToken) return;
 			nodiF = nodi;
+			void misuraPulizia(sogg.map((x) => x.pathD).join(' '));
 			if (r.foglio) foglioH = Math.round(r.foglio.h * 10) / 10;
 			unioneUsata = r.unione ?? 0;
 			engCut = { w: foglioW, h: foglioH };
@@ -343,7 +343,7 @@
 			const a = ariaFoglio(lay);
 			const ppm = FOGLIO_PPM;
 			const [{ fitPathD, samplePath }, { parsePath, spostaPath, matriceAdesivo, trasformaPath }, { contornoAlpha }] = await Promise.all([import('$lib/studio/fit'), import('$lib/studio/path'), import('$lib/studio/contorno')]);
-			const rifinisci = (d: string, border: number) => fitPathD(samplePath(parsePath(d)), fitOpts(border)).d;
+			const rifinisci = (d: string, border: number, lato: number) => fitPathD(samplePath(parsePath(d)), fitOpts(border, lato)).d;
 			if (o.materiale && MATERIALS.some((x) => x.id === o.materiale)) materiale = o.materiale;
 			if (o.finitura && FINISHES.some((x) => x.id === o.finitura)) finitura = o.finitura;
 			/* 1. ogni design stampato dal motore (stessa sagoma e misura del sito, tracciato approvato se c'e') */
@@ -356,7 +356,7 @@
 				const r = await fetch(d.url);
 				if (!r.ok) { stimati++; continue; }
 				const b = await r.blob();
-				const approvato = st.cut?.pathD && (st.cut.shape ?? 'diecut') === 'diecut' ? rifinisci(st.cut.pathD, st.cut.border ?? 1) : st.cut?.pathD;
+				const approvato = st.cut?.pathD && (st.cut.shape ?? 'diecut') === 'diecut' ? rifinisci(st.cut.pathD, st.cut.border ?? 1, Math.max(st.w, st.h)) : st.cut?.pathD;
 				const out = await stampaDaMotore(new File([b], d.name, { type: b.type }), st.forma, st.w, st.h, approvato || undefined);
 				if (!out) { stimati++; continue; }
 				const img = await caricaImg(URL.createObjectURL(out.blob));
@@ -435,6 +435,7 @@
 			const f = new File([blob], `${o.number}_foglio.png`, { type: 'image/png' });
 			sogg = list.map((x) => ({ pathD: crop.x || crop.y ? spostaPath(x.pathD, -crop.x, -crop.y) : x.pathD, x: 0, y: 0, w: x.w, h: x.h, nodi: x.nodi }));
 			nodiF = list.reduce((q, x) => q + x.nodi, 0);
+			void misuraPulizia(list.map((x) => x.pathD).join(' '));
 			sheetPathD = bordoD;
 			foglioW = Math.round(crop.w * 10) / 10;
 			foglioH = Math.round(crop.h * 10) / 10;
@@ -513,18 +514,33 @@
 	   A meta' (50) vale esattamente la regolazione automatica di prima. */
 	let semplifica = $state(50);
 	let morbido = $state(50);
-	function fitOpts(border: number) {
+	/* lato lungo del pezzo in lavorazione (mm): le tolleranze del tracciato crescono con la misura */
+	const latoPezzo = () => Math.max(engCut?.w ?? 0, engCut?.h ?? 0, w || 0, h || 0);
+	function fitOpts(border: number, lato = latoPezzo()) {
 		const b = border > 0 ? border : 1;
-		const autoTol = Math.min(0.15, Math.max(0.05, b * 0.25));
-		const autoSm = Math.min(0.15, Math.max(0.05, b * 0.12));
+		/* [30/10/2026] LINEE PULITE: lisciatura e scarto crescono con la misura del pezzo. Su uno sticker
+		   da 381 mm (SP00509 "vercetti") il motore lavora a 0,4 mm per pixel e una lisciatura da 0,15 mm
+		   lasciava tutti i gradini: in stampa il bordo era seghettato. Da 50 mm in giu' non cambia nulla. */
+		const L = Math.max(20, lato || 0);
+		const autoTol = Math.max(Math.min(0.15, Math.max(0.05, b * 0.25)), 0.0015 * L);
+		const autoSm = Math.max(Math.min(0.15, Math.max(0.05, b * 0.12)), 0.004 * L);
 		/* 0 = fedele al disegno, 50 = automatico, 100 = molto pulito */
 		const kS = semplifica <= 50 ? 0.35 + (semplifica / 50) * 0.65 : 1 + ((semplifica - 50) / 50) * 5;
 		const kM = morbido <= 50 ? 0.2 + (morbido / 50) * 0.8 : 1 + ((morbido - 50) / 50) * 9;
 		return {
 			tolerance: Math.max(0.02, autoTol * kS),
 			smooth: Math.max(0.01, autoSm * kM),
-			cornerDeg: 55 + (morbido - 50) * 0.5 - (semplifica - 50) * 0.1
+			cornerDeg: 55 + (morbido - 50) * 0.5 - (semplifica - 50) * 0.1,
+			cornerWindow: Math.max(0.8, 0.006 * L)
 		};
+	}
+	/* pulizia del tracciato finale (fit.ts): se e' frastagliato lo si dice forte, PRIMA di stampare */
+	let pulizia = $state<import('$lib/studio/fit').Pulizia | null>(null);
+	async function misuraPulizia(d: string) {
+		try {
+			const [{ puliziaTracciato, samplePath }, { parsePath }] = await Promise.all([import('$lib/studio/fit'), import('$lib/studio/path')]);
+			pulizia = d ? puliziaTracciato(samplePath(parsePath(d))) : null;
+		} catch { pulizia = null; }
 	}
 	const ritoccato = $derived(semplifica !== 50 || morbido !== 50);
 
@@ -610,9 +626,10 @@
 			/* si parte dalla LINEA APPROVATA (quella che il cliente ha visto) e se ne scosta di circa un quarto del bordo */
 			const [{ fitPathD, samplePath }, { parsePath }] = await Promise.all([import('$lib/studio/fit'), import('$lib/studio/path')]);
 			const f = fitPathD(samplePath(parsePath(r.pathD)), fitOpts(r.border ?? 1));
-			if (f.d) return { d: f.d, nodes: f.nodes };
+			if (f.d) { void misuraPulizia(f.d); return { d: f.d, nodes: f.nodes }; }
 		}
 		const d = r.pathD ?? '';
+		void misuraPulizia(d);
 		return { d, nodes: (d.match(/[MLHVCAZmlhvcaz]/g) ?? []).filter((c) => !/[Zz]/.test(c)).length };
 	}
 
@@ -1194,6 +1211,7 @@
 					<button type="button" class="st-tool" disabled={!sogg.length} onclick={apriLente}>🔍 Tracciato da vicino</button>
 					{#if !composto}<button type="button" class="st-tool st-tool--blue" disabled={soggBusy} onclick={rilevaSoggetti}>↻ Rileggi</button>{/if}
 					<span class="st-note">{composto ? `${sogg.length} adesivi dal foglio composto sul sito · ${nodiF} punti di ancoraggio` : sogg.length ? `${sogg.length} adesivi riconosciuti · ${nodiF} punti di ancoraggio` : 'Nessun adesivo riconosciuto'}{ritoccato && !composto ? ` · ritoccato (semplifica ${semplifica}, morbido ${morbido})` : ''}</span>
+					{#if pulizia && !pulizia.ok}<p class="st-note st-trace" style="color:#b3261e;font-weight:700;width:100%">⚠ Tracciato frastagliato: {pulizia.zigzag100} zig-zag ogni 10 cm di contorno. Guardalo con la lente, alza Semplifica e Morbido prima di stampare.</p>{/if}
 				</div>
 				<!-- il motore serve per riconoscere gli adesivi: resta fuori vista -->
 				<div class="st-hidden"><EnginePreview bind:this={engine} {file} forma="sagomato" {materiale} finitura="lucida" prodotto={P.engineProduct} w={0} h={0} showCut={false} stage={120} onrender={onRender} /></div>
@@ -1235,7 +1253,8 @@
 				<div class="st-actions">
 					<button type="button" class="btn btn--pink st-act" disabled={!sogg.length || !!busy} onclick={scaricaStampaTaglio}>{busy === 'print' ? 'Preparo il file…' : 'Scarica file di stampa e taglio'}<small>PDF del foglio: grafica + {P.pieceCut} su ogni adesivo + {P.sheetCut} sul foglio</small></button>
 					<button type="button" class="btn btn--green st-act" disabled={!sogg.length || !!busy} onclick={() => (stripOpen = !stripOpen)} aria-expanded={stripOpen}>Genera file di stampa<small>fogli interi sulla striscia, crocini e codice a barre Graphtec</small></button>
-					{#if traceInfo}<p class="st-note st-trace">{traceInfo}</p>{/if}
+					{#if traceInfo}<p class="st-note st-trace">{traceInfo}{#if pulizia} · {pulizia.ok ? 'linee pulite' : `${pulizia.zigzag100} zig-zag ogni 10 cm`}{/if}</p>{/if}
+					{#if pulizia && !pulizia.ok}<p class="st-note st-trace" style="color:#b3261e;font-weight:700">⚠ Tracciato frastagliato: {pulizia.zigzag100} zig-zag ogni 10 cm di contorno. Guardalo con la lente, alza Semplifica e Morbido o cambia il bordo. Non stampare così.</p>{/if}
 					{#if downloadErr}<p class="st-err">{downloadErr}</p>{/if}
 				</div>
 			</aside>
@@ -1340,7 +1359,8 @@
 					</button>
 					<label class="st-dpi">Risoluzione <select bind:value={dpi}><option value="auto">Massima (min. 600 dpi)</option><option value={300}>300 dpi</option><option value={600}>600 dpi</option><option value={1200}>1200 dpi</option></select></label>
 					{#if ritoccato}<p class="st-note">Tracciato ritoccato a mano: semplifica <b>{semplifica}</b>, morbido <b>{morbido}</b>. <button type="button" class="st-link" onclick={() => { semplifica = 50; morbido = 50; }}>rimetti automatico</button></p>{/if}
-					{#if traceInfo}<p class="st-note st-trace">{traceInfo}</p>{/if}
+					{#if traceInfo}<p class="st-note st-trace">{traceInfo}{#if pulizia} · {pulizia.ok ? 'linee pulite' : `${pulizia.zigzag100} zig-zag ogni 10 cm`}{/if}</p>{/if}
+					{#if pulizia && !pulizia.ok}<p class="st-note st-trace" style="color:#b3261e;font-weight:700">⚠ Tracciato frastagliato: {pulizia.zigzag100} zig-zag ogni 10 cm di contorno. Guardalo con la lente, alza Semplifica e Morbido o cambia il bordo. Non stampare così.</p>{/if}
 					{#if downloadErr}<p class="st-err">{downloadErr}</p>{/if}
 					{#if P.rilievo}<p class="st-note">Rilievo: sotto la grafica c’è il livello <b>RDG_GLOSS</b> vettoriale, solo sulle zone in rilievo (le stesse di “Effetto rilievo”).</p>{/if}
 				</div>

@@ -2728,7 +2728,27 @@ function selfXI(P){const n=P.length,step=Math.max(1,Math.floor(n/400));let c=0;
     if(i===0&&j>=n-2*step)continue;
     if(X(P[i],P[(i+step)%n],P[j],P[(j+step)%n]))c++;}
   return c;}
+/* media mobile circolare su una spezzata chiusa: toglie i gradini dei pixel senza spostare le parti dritte */
+function smoothLoop(P,r,passes){let cur=P;const n=P.length;if(n<2*r+3)return P;
+  for(let p=0;p<passes;p++){const nx=new Array(n);
+    for(let i=0;i<n;i++){let sx=0,sy=0;for(let k=-r;k<=r;k++){const q=cur[(i+k+n)%n];sx+=q[0];sy+=q[1];}
+      nx[i]=[sx/(2*r+1),sy/(2*r+1)];}
+    cur=nx;}
+  return cur;}
 function contourOne(raw,o){
+  /* --------------------------------------------------------------------
+     LINEE PULITE (30/10/2026)
+     La spezzata arriva da traceLoops: e' il bordo dei PIXEL della sagoma, una scala di
+     gradini da un pixel. Su uno sticker da 50 mm un pixel e' 0,05 mm e non si vede; su
+     uno da 381 mm (SP00509 "vercetti") e' 0,42 mm, la semplificazione sotto inseguiva
+     ogni gradino (826 nodi, 104 "angoli") e la lama tagliava un bordo seghettato. Prima
+     di tutto il resto si liscia la spezzata con una media mobile di ±3 pixel (due
+     passate): i gradini spariscono, le parti dritte restano dritte, gli angoli veri si
+     arrotondano di un pixel e il taglio non entra nel disegno (il bordo e' sempre piu'
+     largo). In millimetri il raggio cresce con la misura del pezzo, da solo.
+     -------------------------------------------------------------------- */
+  const pre=o.preSmoothPx===undefined?3:o.preSmoothPx;
+  if(pre>0&&!S.noPreSmooth)raw=smoothLoop(raw,Math.round(pre),2);
   const md=o.maxDevPx||2,cr=(o.cornerDeg||42)*Math.PI/180,sm0=o.smooth===undefined?0.85:o.smooth;
   const tries=[[0.80,1],[0.55,1],[0.40,1],[0.30,0],[0.20,0]];
   let P=null,ang=null,flat=null,dev=1e9,sm=sm0;
@@ -3886,7 +3906,8 @@ function buildCut(){
     const kSub=Math.min(1,900/Math.max(bb.w,bb.h));
     const sw=Math.max(8,Math.round(bb.w*kSub)),sh=Math.max(8,Math.round(bb.h*kSub));
     const mmPerPx=innerW/sw;
-    const devPx=Math.max(0.5,maxDevMM/mmPerPx);
+    /* mai sotto il pixel: con 0,5 px la spezzata ricalcava la griglia (vedi contourOne, LINEE PULITE) */
+    const devPx=Math.max(0.9,maxDevMM/mmPerPx);
     // Il tracciato non deve MAI entrare nel disegno: se il bordo è già più largo
     // di quanto la semplificazione può tagliare corto, non aggiungo niente.
     const need=devPx*1.15, base=off/mmPerPx;
