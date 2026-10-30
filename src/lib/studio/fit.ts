@@ -185,6 +185,44 @@ export interface FitOptions {
 	smooth?: number;
 	/** tratto su cui si misura una svolta per dirla "angolo" (mm) */
 	cornerWindow?: number;
+	/** tratti dritti: scarto massimo dalla corda (mm) e lunghezza minima (mm); false = spento */
+	straight?: { tol: number; minLen: number } | false;
+}
+
+/* ------------------------------------------------------------ tratti dritti */
+
+/**
+ * LINEE DRITTE (30/10/2026). Dove il disegno ha un lato dritto (il fianco della V, l'asta del 7)
+ * il taglio deve essere una RETTA, non una curva che lo segue a onde. Qui si cercano, in un tratto
+ * fra due angoli, le corse di punti che stanno tutti entro `tol` dalla loro corda, lunghe almeno
+ * `minLen` e senza curvatura (svolta totale sotto i 3 gradi: un arco largo sta sotto `tol` ma gira,
+ * e non va spezzato in faccette). Ritorna gli indici [inizio, fine] di ogni corsa, in ordine.
+ */
+export function trattiDritti(seg: P[], tol: number, minLen: number): [number, number][] {
+	const n = seg.length, out: [number, number][] = [];
+	if (n < 4) return out;
+	const turn = (i: number) => {
+		const a = sub(seg[i], seg[i - 1]), b = sub(seg[i + 1], seg[i]);
+		return (Math.atan2(a[0] * b[1] - a[1] * b[0], dot(a, b)) * 180) / Math.PI;
+	};
+	let i = 0;
+	while (i < n - 1) {
+		let j = i + 1, best = i;
+		let tot = 0;
+		while (j < n) {
+			// tutti i punti fra i e j entro tol dalla corda i-j?
+			const a = seg[i], b = seg[j], dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy) || 1e-9;
+			let ok = true;
+			for (let k = i + 1; k < j && ok; k++) if (Math.abs((seg[k][0] - a[0]) * dy - (seg[k][1] - a[1]) * dx) / L > tol) ok = false;
+			if (!ok) break;
+			if (j >= i + 2) tot += turn(j - 1);
+			if (Math.abs(tot) > 3) break;
+			if (L >= minLen) best = j;
+			j++;
+		}
+		if (best > i) { out.push([i, best]); i = best; } else i++;
+	}
+	return out;
 }
 
 /** un contorno chiuso (spezzata in mm) -> curve di Bezier con pochi nodi */
@@ -219,7 +257,25 @@ export function fitClosed(poly: P[], o: FitOptions = {}): Bez[] {
 		const seg: P[] = [];
 		for (let i = a; ; i = (i + 1) % n) { seg.push(pts[i]); if (i === b) break; if (seg.length > n + 1) break; }
 		if (seg.length < 2) continue;
-		fitCubic(seg, tangentAt(a, 1), tangentAt(b, -1), tol, out);
+		const st = o.straight === false ? [] : trattiDritti(seg, o.straight?.tol ?? Math.max(0.1, tol * 0.6), o.straight?.minLen ?? 3);
+		if (!st.length) { fitCubic(seg, tangentAt(a, 1), tangentAt(b, -1), tol, out); continue; }
+		/* curva - retta - curva...: le rette sono Bezier con i controlli sulla corda; le curve accanto
+		   partono con la tangente della retta, cosi' il raccordo e' continuo e senza gradino */
+		let pos = 0, tIn = tangentAt(a, 1);
+		for (const [i0, i1] of st) {
+			const dir = norm(sub(seg[i1], seg[i0]));
+			if (i0 > pos) {
+				const parte = seg.slice(pos, i0 + 1);
+				if (parte.length >= 2) fitCubic(parte, tIn, mul(dir, -1), tol, out);
+			}
+			const p0 = seg[i0], p1 = seg[i1], d3 = dist(p0, p1) / 3;
+			out.push([p0, add(p0, mul(dir, d3)), add(p1, mul(dir, -d3)), p1]);
+			pos = i1; tIn = dir;
+		}
+		if (pos < seg.length - 1) {
+			const parte = seg.slice(pos);
+			if (parte.length >= 2) fitCubic(parte, tIn, tangentAt(b, -1), tol, out);
+		}
 	}
 	return out;
 }
