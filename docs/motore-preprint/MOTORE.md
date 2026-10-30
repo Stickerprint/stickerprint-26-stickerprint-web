@@ -176,6 +176,18 @@ e' stato stretto per gli adesivi: piccolo `[86,12,14]`, medio `[70,25,32]`, gran
 di prima (`P_TAGLIO_L_RES`): la resina vuole raccordi dolci. Banco di prova:
 `scratchpad/harness/contorno.html` (prima/dopo sui tre bordi, grafica testo+stella).
 
+## Linee pulite sul tracciato (30 ottobre 2026)
+
+Ordine SP00509 ("vercetti", 381 mm): la lama ha tagliato un bordo seghettato. Causa: la
+sagoma si lavora a 900 px sul lato lungo (0,42 mm per pixel a 381 mm) e `contourOne`
+inseguiva i gradini della griglia (826 nodi, 104 "angoli" con bordo piccolo); lo Studio
+poi lisciava con 0,15 mm. Rimedi: in `contourOne` la spezzata di `traceLoops` passa da
+`smoothLoop` (media mobile ±3 px, due passate) prima di rdp/angoli/levigatura; in
+`buildCut` lo scarto `devPx` non scende sotto 0,9 px. Il raggio in mm cresce da solo con la
+misura (0,17 mm a 50 mm, 1,3 mm a 381 mm): sotto i 50 mm il tracciato si sposta meno di
+0,2 mm. `S.noPreSmooth=true` lo spegne per confronto. Nello Studio `fitOpts` scala con il
+lato lungo e `puliziaTracciato` (fit.ts) misura gli zig-zag ogni 10 cm sul tracciato finale.
+
 ## Etichette in fogli: anteprima del foglio (5 settembre 2026)
 
 Con `foglio=1` (URL) o `config.foglio=true` (messaggio dal sito) il motore mostra il
