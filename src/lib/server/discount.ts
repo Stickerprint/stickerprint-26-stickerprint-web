@@ -4,7 +4,7 @@ import { t } from '$lib/traduzioni';
 
 export interface DiscountResult { ok: true; code: string; kind: 'percent' | 'fixed'; value: number; amount: number; description: string | null }
 /** Verifica un codice sconto e calcola l'importo sull'imponibile. I messaggi (e l'importo minimo, nella valuta) sono nella lingua del locale. */
-export async function checkDiscount(supabase: SupabaseClient, code: string, subtotalNet: number, email?: string | null, locale: LocaleCode = 'it'): Promise<DiscountResult | { ok: false; error: string }> {
+export async function checkDiscount(supabase: SupabaseClient, code: string, subtotalNet: number, email?: string | null, locale: LocaleCode = 'it', userId?: string | null): Promise<DiscountResult | { ok: false; error: string }> {
 	const msg = (k: string, params?: Record<string, string | number>) => t(locale, `checkout.codice.${k}`, params);
 	const c = code.trim().toUpperCase();
 	if (!c) return { ok: false, error: msg('inserisci') };
@@ -15,6 +15,12 @@ export async function checkDiscount(supabase: SupabaseClient, code: string, subt
 	if (data.valid_to && new Date(data.valid_to).getTime() < now) return { ok: false, error: msg('scaduto') };
 	if (data.max_uses != null && data.uses >= data.max_uses) return { ok: false, error: msg('esaurito') };
 	if (data.bound_email && email && data.bound_email.toLowerCase() !== email.trim().toLowerCase()) return { ok: false, error: msg('personale') };
+	/* una volta sola per cliente (dal 30/10/2026): se l'account o l'email hanno gia' un ordine con questo codice, niente.
+	   Chi non ha ancora scritto l'email passa il primo controllo del carrello e viene fermato all'invio dell'ordine. */
+	if (data.once_per_customer !== false && (userId || (email && email.trim()))) {
+		const { data: n, error } = await supabase.rpc('discount_code_customer_uses', { p_code: data.code, p_email: email?.trim() || null, p_user: userId ?? null });
+		if (!error && Number(n) > 0) return { ok: false, error: msg('giaUsato') };
+	}
 	if (subtotalNet < Number(data.min_order)) {
 		/* minimo in euro netti: in dollari al cambio del listino (senza IVA), nel formato della lingua */
 		const loc = LOCALES[locale];

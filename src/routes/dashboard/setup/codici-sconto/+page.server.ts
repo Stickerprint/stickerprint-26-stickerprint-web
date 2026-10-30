@@ -17,12 +17,14 @@ export const actions: Actions = {
 		const valid_from = f.get('valid_from') ? new Date(String(f.get('valid_from'))).toISOString() : null;
 		const valid_to = f.get('valid_to') ? new Date(String(f.get('valid_to'))).toISOString() : null;
 		const description = String(f.get('description') ?? '').trim() || null;
+		/* una volta sola per cliente e' la regola (default della colonna, migrazione 0062); 'ripetibile' solo se lo staff lo spunta */
+		const once_per_customer = f.get('ripetibile') !== 'on';
 
 		if (code.length < 3) return fail(400, { error: 'Il codice deve avere almeno 3 caratteri (lettere e numeri).' });
 		if (!(value > 0)) return fail(400, { error: 'Inserisci un valore maggiore di zero.' });
 		if (kind === 'percent' && value > 100) return fail(400, { error: 'La percentuale non può superare 100.' });
 
-		const { error } = await supabase.from('discount_codes').insert({ code, kind, value, min_order, max_uses, valid_from, valid_to, description, created_by: user?.id });
+		const { error } = await supabase.from('discount_codes').insert({ code, kind, value, min_order, max_uses, valid_from, valid_to, description, ...(once_per_customer ? {} : { once_per_customer }), created_by: user?.id });
 		if (error) return fail(400, { error: error.code === '23505' ? 'Esiste già un codice con questo nome.' : error.message });
 		return { ok: true };
 	},
@@ -31,6 +33,14 @@ export const actions: Actions = {
 		const id = String(f.get('id'));
 		const active = f.get('active') === 'true';
 		const { error } = await supabase.from('discount_codes').update({ active }).eq('id', id);
+		if (error) return fail(400, { error: error.message });
+		return { ok: true };
+	},
+	/* una volta per cliente <-> ripetibile */
+	ripetibile: async ({ request, locals: { supabase } }) => {
+		const f = await request.formData();
+		const once_per_customer = f.get('once') === 'true';
+		const { error } = await supabase.from('discount_codes').update({ once_per_customer }).eq('id', String(f.get('id')));
 		if (error) return fail(400, { error: error.message });
 		return { ok: true };
 	},

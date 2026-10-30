@@ -221,6 +221,7 @@ const it = {
 		scaduto: 'Codice scaduto.',
 		esaurito: 'Codice esaurito.',
 		personale: 'Questo codice è personale: usa l’email a cui è stato inviato.',
+		giaUsato: 'Questo codice si può usare una volta sola per cliente: risulta già usato con questo account o con questa email.',
 		minimo: 'Valido per ordini da {importo} (IVA esclusa).',
 		grazieRecensione: 'Grazie per la recensione' },
 	paypal: {
@@ -470,6 +471,7 @@ const en: Checkout = {
 		scaduto: 'This code has expired.',
 		esaurito: 'This code has been used up.',
 		personale: 'This code is personal: use the email address it was sent to.',
+		giaUsato: 'This code can be used once per customer: it has already been used with this account or email address.',
 		minimo: 'Valid for orders from {importo} (excl. tax).',
 		grazieRecensione: 'Thanks for your review' },
 	paypal: {
@@ -718,6 +720,7 @@ const es: Checkout = {
 		scaduto: 'Código caducado.',
 		esaurito: 'Código agotado.',
 		personale: 'Este código es personal: usa el email al que se envió.',
+		giaUsato: 'Este código se puede usar una sola vez por cliente: ya se ha usado con esta cuenta o con este email.',
 		minimo: 'Válido para pedidos desde {importo} (IVA excluido).',
 		grazieRecensione: 'Gracias por tu reseña' },
 	paypal: {
@@ -966,6 +969,7 @@ const fr: Checkout = {
 		scaduto: 'Code expiré.',
 		esaurito: 'Code épuisé.',
 		personale: 'Ce code est personnel : utilisez l’adresse e-mail à laquelle il a été envoyé.',
+		giaUsato: 'Ce code ne peut être utilisé qu’une seule fois par client : il a déjà été utilisé avec ce compte ou cette adresse e-mail.',
 		minimo: 'Valable pour les commandes à partir de {importo} (hors TVA).',
 		grazieRecensione: 'Merci pour votre avis' },
 	paypal: {
@@ -1214,6 +1218,7 @@ const de: Checkout = {
 		scaduto: 'Der Code ist abgelaufen.',
 		esaurito: 'Der Code ist aufgebraucht.',
 		personale: 'Dieser Code ist persönlich: Nutze die E-Mail-Adresse, an die er geschickt wurde.',
+		giaUsato: 'Dieser Code gilt nur einmal pro Kunde: Er wurde mit diesem Konto oder dieser E-Mail-Adresse bereits verwendet.',
 		minimo: 'Gültig für Bestellungen ab {importo} (ohne MwSt.).',
 		grazieRecensione: 'Danke für deine Bewertung' },
 	paypal: {
@@ -1462,6 +1467,7 @@ const nl: Checkout = {
 		scaduto: 'Deze code is verlopen.',
 		esaurito: 'Deze code is op.',
 		personale: 'Deze code is persoonlijk: gebruik het e-mailadres waarnaar hij is gestuurd.',
+		giaUsato: 'Deze code kan maar één keer per klant worden gebruikt: hij is al gebruikt met dit account of dit e-mailadres.',
 		minimo: 'Geldig voor bestellingen vanaf {importo} (excl. btw).',
 		grazieRecensione: 'Bedankt voor je beoordeling' },
 	paypal: {
