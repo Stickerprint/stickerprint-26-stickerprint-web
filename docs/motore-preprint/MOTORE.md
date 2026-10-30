@@ -187,6 +187,9 @@ poi lisciava con 0,15 mm. Rimedi: in `contourOne` la spezzata di `traceLoops` pa
 misura (0,17 mm a 50 mm, 1,3 mm a 381 mm): sotto i 50 mm il tracciato si sposta meno di
 0,2 mm. `S.noPreSmooth=true` lo spegne per confronto. Nello Studio `fitOpts` scala con il
 lato lungo e `puliziaTracciato` (fit.ts) misura gli zig-zag ogni 10 cm sul tracciato finale.
+Dove il disegno ha un lato dritto il taglio deve essere una retta: `trattiDritti()` (fit.ts) le
+riconosce fra due angoli (entro tolleranza dalla corda, almeno 3 mm, svolta totale sotto 3 gradi) e le
+emette come segmenti, con le curve accanto in tangenza.
 
 ## Etichette in fogli: anteprima del foglio (5 settembre 2026)
 
