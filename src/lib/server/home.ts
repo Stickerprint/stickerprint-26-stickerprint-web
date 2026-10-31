@@ -1,11 +1,11 @@
 /**
  * Home della dashboard: il riepilogo che Mattia apre ogni mattina.
- * Tutte letture leggere: fatture degli ultimi 12 mesi (poche colonne), gli ordini con una scadenza entro oggi,
+ * Tutte letture leggere: gli ordini degli ultimi 12 mesi per l'andamento, gli ordini con una scadenza entro oggi,
  * gli ordini creati oggi, i ticket da rispondere e l'ultimo rating dei margini gia' salvato (niente ricalcolo).
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { groupOrders, thumbOf, toShip, ORDER_STATUS, PROD_STAGES, type OrderRow } from '$lib/dashboard/orders';
-import { COLONNE_FATTURATO, fatturatoPerMese, sommaMesi, type FatturaRiga, type MeseFatturato } from '$lib/dashboard/fatturato';
+import { fatturatoOrdiniPerMese, sommaMesi, type MeseFatturato } from '$lib/dashboard/fatturato';
 import { giornoRoma, inizioGiornoRoma, ultimiMesi } from '$lib/dashboard/tempo';
 import { OPEN_TICKET, waitingHours, type Ticket } from '$lib/dashboard/helpdesk';
 import { mesePrima, ultimiRating, type RigaRating } from '$lib/server/margini-rating';
@@ -49,11 +49,14 @@ function daGruppo(g: ReturnType<typeof groupOrders>[number], thumb: string | nul
 	};
 }
 
-/** fatturato netto degli ultimi 12 mesi, e-commerce e manuale, piu' il totale dell'anno in corso */
+/** andamento degli ultimi 12 mesi dagli ordini (e-commerce e manuali, annullati esclusi), piu' il totale dell'anno in corso.
+    E' la stessa cifra della barra dei mesi nella pagina Ordini: cosi' gli ordini manuali e quelli importati contano anche senza una fattura del gestionale. */
 export async function fatturatoHome(db: DB, oggi: string): Promise<{ mesi: MeseFatturato[]; anno: MeseFatturato; meseCorrente: string }> {
 	const mesi = ultimiMesi(oggi.slice(0, 7), 12);
-	const { data } = await db.from('invoices').select(COLONNE_FATTURATO).gte('issued_at', `${mesi[0]}-01`).order('issued_at').limit(5000);
-	const perMese = fatturatoPerMese((data ?? []) as FatturaRiga[], mesi);
+	/* come nella pagina Ordini: gli ordini e-commerce fermi al pagamento (carrelli abbandonati) restano fuori */
+	const { data } = await db.from('orders').select('*').gte('created_at', inizioGiornoRoma(`${mesi[0]}-01`).toISOString()).or('channel.neq.ecommerce,status.neq.attesa_pagamento').order('created_at').limit(5000);
+	const righe = groupOrders((data ?? []) as OrderRow[]).map((g) => ({ mese: giornoRoma(new Date(g.created_at)).slice(0, 7), channel: g.channel, status: g.status, net: g.net }));
+	const perMese = fatturatoOrdiniPerMese(righe, mesi);
 	const anno = sommaMesi(perMese.filter((m) => m.mese.startsWith(oggi.slice(0, 4))));
 	return { mesi: perMese, anno, meseCorrente: oggi.slice(0, 7) };
 }

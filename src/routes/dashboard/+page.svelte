@@ -48,7 +48,7 @@
 			<a class="hm-kpi__box" href="#nuovi"><small>Nuovi ordini oggi</small><b>{data.nuovi.length}</b><span>{data.nuovi.length ? money(nuoviTotale) : 'ancora nessuno'}</span></a>
 			<a class="hm-kpi__box" class:is-hot={inRitardo > 0} href="#partire"><small>Devono partire oggi</small><b>{data.daPartire.length}</b><span>{inRitardo ? `${inRitardo} in ritardo` : data.daPartire.length ? `${data.daPartire.filter((o) => o.pronto).length} pronti da spedire` : 'niente in scadenza'}</span></a>
 			<a class="hm-kpi__box" class:is-warn={data.assistenza.ticket.length > 0} href="#assistenza"><small>Da rispondere</small><b>{data.assistenza.ticket.length}</b><span>{data.assistenza.aperti} richieste aperte</span></a>
-			<a class="hm-kpi__box" href="#fatturato"><small>Fatturato {meseBreve(data.fatturato.meseCorrente)}</small><b>{corto(corrente.totale)}</b><span>netto, {corrente.fatture} fatture</span></a>
+			<a class="hm-kpi__box" href="#fatturato"><small>Fatturato {meseBreve(data.fatturato.meseCorrente)}</small><b>{corto(corrente.totale)}</b><span>netto, {corrente.fatture} {corrente.fatture === 1 ? 'ordine' : 'ordini'}</span></a>
 			<a class="hm-kpi__box" href="#fatturato"><small>Media ordine e-commerce</small><b>{mediaMese == null ? '—' : money(mediaMese)}</b><span>{mediaMese == null ? `nessun ordine dal sito a ${meseBreve(data.fatturato.meseCorrente)}` : `netto, ${corrente.fattureEcommerce} ordini · anno ${mediaAnno == null ? '—' : money(mediaAnno)}`}</span></a>
 		</div>
 	</header>
@@ -56,8 +56,8 @@
 	<!-- Fatturato -->
 	<section class="dcard hm-fatt" id="fatturato">
 		<div class="hm-card__testa">
-			<div><h3>Andamento del fatturato</h3><p class="hm-nota">Netto fatturato (imponibile meno sconti, più express) mese per mese negli ultimi 12 mesi. Clicca un mese per vederne il riepilogo.</p></div>
-			<a class="btn btn--sm btn--ghost" href="/dashboard/fatturazione/fatture">Tutte le fatture →</a>
+			<div><h3>Andamento del fatturato</h3><p class="hm-nota">Netto degli ordini (imponibile meno sconti) mese per mese negli ultimi 12 mesi, e-commerce e manuali, annullati esclusi: le stesse cifre della pagina Ordini. Clicca un mese per vederne il riepilogo.</p></div>
+			<a class="btn btn--sm btn--ghost" href="/dashboard/fatturazione/ordini">Tutti gli ordini →</a>
 		</div>
 		<Linee {punti} serie={SERIE} selezionato={sel.mese} onselect={(id) => (mese = id)} formato={corto} />
 		<div class="hm-riep">
@@ -65,8 +65,8 @@
 				<small>Fatturato netto · <span style="text-transform:capitalize">{meseLungo(sel.mese)}</span>{#if sel.mese === data.fatturato.meseCorrente} (in corso){/if}</small>
 				<b>{money(sel.totale)}</b>
 				<span class="hm-riep__sotto">
-					<span class="hm-riep__riga"><i class="hm-dot" style="background:#0e8bff"></i>E-commerce <strong>{money(sel.ecommerce)}</strong> <em>{quota(sel.ecommerce, sel.totale)} · {sel.fattureEcommerce} fatture{#if mediaSel != null} · media ordine {money(mediaSel)}{/if}</em></span>
-					<span class="hm-riep__riga"><i class="hm-dot" style="background:#050538"></i>Manuali <strong>{money(sel.manuale)}</strong> <em>{quota(sel.manuale, sel.totale)} · {sel.fattureManuali} fatture</em></span>
+					<span class="hm-riep__riga"><i class="hm-dot" style="background:#0e8bff"></i>E-commerce <strong>{money(sel.ecommerce)}</strong> <em>{quota(sel.ecommerce, sel.totale)} · {sel.fattureEcommerce} {sel.fattureEcommerce === 1 ? 'ordine' : 'ordini'}{#if mediaSel != null} · media ordine {money(mediaSel)}{/if}</em></span>
+					<span class="hm-riep__riga"><i class="hm-dot" style="background:#050538"></i>Manuali <strong>{money(sel.manuale)}</strong> <em>{quota(sel.manuale, sel.totale)} · {sel.fattureManuali} {sel.fattureManuali === 1 ? 'ordine' : 'ordini'}</em></span>
 				</span>
 				{#if delta != null}<span class="hm-delta" class:su={delta > 0} class:giu={delta < 0}>{delta > 0 ? '▲' : delta < 0 ? '▼' : '='} {Math.abs(delta)}% rispetto a {meseLungo(mesePrecedente!.mese)}</span>{/if}
 			</div>

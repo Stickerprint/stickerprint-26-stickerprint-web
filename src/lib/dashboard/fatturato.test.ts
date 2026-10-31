@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { canaleFattura, fatturatoPerMese, mediaOrdineEcommerce, nettoFattura, sommaMesi, type FatturaRiga } from './fatturato';
+import { canaleFattura, fatturatoOrdiniPerMese, fatturatoPerMese, mediaOrdineEcommerce, nettoFattura, sommaMesi, type FatturaRiga } from './fatturato';
 import { ultimiMesi, piuGiorni, inizioGiornoRoma, offsetRomaMinuti } from './tempo';
 
 const f = (p: Partial<FatturaRiga>): FatturaRiga => ({ number: 'SPF00001', issued_at: '2026-10-01', subtotal_net: 100, discount_net: 0, express_net: 0, amount_gross: 122, payment_method: 'stripe', ...p });
@@ -58,5 +58,21 @@ describe('mediaOrdineEcommerce', () => {
 	it('senza ordini e-commerce non inventa un numero', () => {
 		const [m] = fatturatoPerMese([f({ payment_method: 'Bonifico' })], ['2026-10']);
 		expect(mediaOrdineEcommerce(m)).toBeNull();
+	});
+});
+
+describe('fatturatoOrdiniPerMese', () => {
+	it('somma il netto degli ordini per mese e canale, gli annullati non contano', () => {
+		const out = fatturatoOrdiniPerMese([
+			{ mese: '2026-01', channel: 'manuale', status: 'consegnato', net: 2135.1 },
+			{ mese: '2026-01', channel: 'manuale', status: 'consegnato', net: 6270 },
+			{ mese: '2026-02', channel: 'ecommerce', status: 'in_produzione', net: 76.23 },
+			{ mese: '2026-02', channel: 'manuale', status: 'annullato', net: 999 },
+			{ mese: '2025-12', channel: 'manuale', status: 'consegnato', net: 5 }
+		], ['2026-01', '2026-02', '2026-03']);
+		expect(out[0]).toMatchObject({ mese: '2026-01', manuale: 8405.1, ecommerce: 0, totale: 8405.1, fatture: 2, fattureManuali: 2 });
+		expect(out[1]).toMatchObject({ mese: '2026-02', ecommerce: 76.23, manuale: 0, fatture: 1, fattureEcommerce: 1 });
+		expect(out[2]).toMatchObject({ mese: '2026-03', totale: 0, fatture: 0 });
+		expect(sommaMesi(out)).toMatchObject({ totale: 8481.33, fatture: 3 });
 	});
 });
