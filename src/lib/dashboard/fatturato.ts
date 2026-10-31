@@ -34,7 +34,22 @@ export function fatturatoPerMese(fatture: FatturaRiga[], mesi: string[]): MeseFa
 	}
 	return mesi.map((x) => m.get(x)!);
 }
-/** media ordine e-commerce (netto): ogni fattura del sito e' un ordine (un checkout = una fattura); null senza ordini */
+/** Ordine (gruppo) ridotto a cio' che serve all'andamento: mese di creazione (yyyy-mm, ora italiana), canale, stato e netto (imponibile meno sconti) */
+export interface OrdineRiga { mese: string; channel: string; status: string; net: number }
+/** somma per mese degli ordini, e-commerce (canale del sito) o manuali: la stessa cifra della pagina Ordini, annullati esclusi; i mesi senza ordini restano a zero */
+export function fatturatoOrdiniPerMese(ordini: OrdineRiga[], mesi: string[]): MeseFatturato[] {
+	const m = new Map(mesi.map((x) => [x, vuoto(x)]));
+	for (const o of ordini) {
+		if (o.status === 'annullato') continue;
+		const r = m.get(o.mese);
+		if (!r) continue;
+		r.fatture++;
+		if (o.channel === 'ecommerce') { r.ecommerce = r2(r.ecommerce + o.net); r.fattureEcommerce++; } else { r.manuale = r2(r.manuale + o.net); r.fattureManuali++; }
+		r.totale = r2(r.ecommerce + r.manuale);
+	}
+	return mesi.map((x) => m.get(x)!);
+}
+/** media ordine e-commerce (netto): ogni voce e-commerce e' un ordine; null senza ordini */
 export const mediaOrdineEcommerce = (m: MeseFatturato): number | null => (m.fattureEcommerce > 0 ? r2(m.ecommerce / m.fattureEcommerce) : null);
 /** totale di piu' mesi (es. l'anno in corso) */
 export function sommaMesi(mesi: MeseFatturato[]): MeseFatturato {

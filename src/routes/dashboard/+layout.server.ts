@@ -1,5 +1,5 @@
 import { redirect } from '@sveltejs/kit';
-import { PUBLIC_VAPID_KEY } from '$env/static/public';
+import { env as pub } from '$env/dynamic/public';
 import type { LayoutServerLoad } from './$types';
 import { aziendeCounts } from '$lib/server/richieste';
 import { supportoCounts } from '$lib/server/helpdesk';
@@ -48,5 +48,5 @@ export const load: LayoutServerLoad = async ({ locals: { supabase, session, user
 		counts = await menuCounts(supabase);
 		countsCache.value = counts; countsCache.at = Date.now();
 	}
-	return { role: profile.role as 'admin' | 'staff', fullName: profile.full_name as string | null, counts, vapid: PUBLIC_VAPID_KEY };
+	return { role: profile.role as 'admin' | 'staff', fullName: profile.full_name as string | null, counts, vapid: pub.PUBLIC_VAPID_KEY ?? '' };
 };
