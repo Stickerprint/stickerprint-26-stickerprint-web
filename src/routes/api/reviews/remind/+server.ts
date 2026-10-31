@@ -21,16 +21,18 @@ export const GET: RequestHandler = async ({ request, url }) => {
 	const db = createClient(PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
 	/* mezz'ora: la consegna delle 11:40 entra nel giro delle 12 */
 	const limit = new Date(Date.now() - 30 * 60 * 1000).toISOString();
-	/* DUE PROTEZIONI (dopo l'errore del 19-20/09/2026, quando il cron appena attivato ha scritto a 176 ordini importati dal vecchio sito):
+	/* TRE PROTEZIONI (dopo l'errore del 19-20/09/2026, quando il cron appena attivato ha scritto a 176 ordini importati dal vecchio sito,
+	   e quello del 31/10/2026, quando ha scritto ai clienti aziendali degli ordini importati da Fatture in Cloud):
 	   1. mai gli ordini importati dal vecchio sito (legacy_id valorizzato): quei clienti hanno gia' avuto la loro richiesta a suo tempo;
-	   2. mai consegne piu' vecchie di 14 giorni: se il cron resta fermo per un periodo, alla ripresa non recupera l'arretrato. */
+	   2. mai consegne piu' vecchie di 14 giorni: se il cron resta fermo per un periodo, alla ripresa non recupera l'arretrato;
+	   3. SOLO ordini e-commerce: ai clienti aziendali (ordini manuali) la recensione non si chiede mai in automatico (Mattia, 31/10/2026). */
 	const oldest = new Date(Date.now() - 14 * 24 * 3600 * 1000).toISOString();
 	/* elenco esplicito (?orders=SPIT00340,SPIT00326): richiesta voluta da Mattia per quegli ordini precisi, anche se importati
 	   o gia' contattati; unica condizione: devono essere consegnati */
 	const explicit = (url.searchParams.get('orders') ?? '').split(',').map((s) => s.trim().toUpperCase()).filter(Boolean);
 	const { data, error } = explicit.length
 		? await db.from('orders').select('id, number, checkout_group, user_id, email, shipping, product_name, qty, delivered_at, preview_url, proof_url, mockup_url').eq('status', 'consegnato').in('number', explicit).not('email', 'is', null)
-		: await db.from('orders').select('id, number, checkout_group, user_id, email, shipping, product_name, qty, delivered_at, preview_url, proof_url, mockup_url').eq('status', 'consegnato').is('review_asked_at', null).is('legacy_id', null).not('email', 'is', null).lte('delivered_at', limit).gte('delivered_at', oldest).limit(100);
+		: await db.from('orders').select('id, number, checkout_group, user_id, email, shipping, product_name, qty, delivered_at, preview_url, proof_url, mockup_url').eq('status', 'consegnato').eq('channel', 'ecommerce').is('review_asked_at', null).is('legacy_id', null).not('email', 'is', null).lte('delivered_at', limit).gte('delivered_at', oldest).limit(100);
 	if (error) return json({ error: error.message }, { status: 500 });
 	const groups = new Map<string, typeof data>();
 	for (const o of data ?? []) { const k = o.checkout_group ?? o.id; if (!groups.has(k)) groups.set(k, []); groups.get(k)!.push(o); }
