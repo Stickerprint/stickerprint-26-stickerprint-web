@@ -61,7 +61,8 @@ export const SHEET_FRAMES = [
 
 /** la pagina con i crocini e' larga quanto l'area di stampa: la bobina "70 cm" e' in realta' 75 cm con 2,5 cm di
  *  margine per lato, quindi i 700 mm sono tutti stampabili e i crocini stanno sul loro bordo (Mattia, 15/10/2026).
- *  Fino ad allora si usavano i 688 di Cutting Master (bobina meno 12). Stessa regola per la bobina da 57. */
+ *  Fino ad allora si usavano i 688 di Cutting Master (bobina meno 12). Stessa regola per la bobina da 57.
+ *  Dal 31/10/2026 la larghezza di stampa della 70 e' 712 mm (STRIP_MATERIALS). */
 export const pageWidthFor = (rollWidth: number) => rollWidth;
 
 /** condizioni del plotter: 1 = mezzo taglio, 3 = passante (come nei lavori di Cutting Master) */

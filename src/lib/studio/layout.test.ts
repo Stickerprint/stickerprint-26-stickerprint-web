@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { layoutSheets, SHEET_RULES, SHEET_AUTO_MAX_H } from './layout';
+import { layoutSheets, SHEET_RULES, SHEET_AUTO_MAX_H, STRIP_MATERIALS } from './layout';
 
 it('la pagina e\' larga quanto la bobina: 700 sulla 70, 570 sulla 57', () => { expect(pageWidthFor(700)).toBe(700); expect(pageWidthFor(570)).toBe(570); });
 import { SHEET_FRAMES, MARKED_MARGIN, pageWidthFor } from './graphtec';
@@ -57,5 +57,18 @@ describe('fogli resinati (testa da 10 aghi)', () => {
 		expect(r.ok).toBe(true);
 		expect(r.sheet!.nearA4).toBe(false);
 		expect(r.warning).toMatch(/Nessun foglio "circa A4" possibile/);
+	});
+});
+
+describe('larghezza di stampa e spazio fra le etichette (31/10/2026)', () => {
+	it('la bobina da 70 stampa su 712 mm (e\' larga 750)', () => { expect(STRIP_MATERIALS[0].width).toBe(712); expect(pageWidthFor(STRIP_MATERIALS[0].width)).toBe(712); });
+	it('con spazio 0 le etichette 50×50 stanno attaccate: piu\' etichette per foglio che con 2 mm', () => {
+		const con2 = layoutSheets(50, 50, SHEET_RULES.etichette, { ...auto, stripW: 712 });
+		const con0 = layoutSheets(50, 50, { ...SHEET_RULES.etichette, gap: 0 }, { ...auto, stripW: 712 });
+		expect(con2.ok && con0.ok).toBe(true);
+		expect(con0.sheet!.grid.n).toBeGreaterThanOrEqual(con2.sheet!.grid.n);
+		/* fra due etichette adiacenti non c'e' spazio */
+		const p = con0.sheet!.pieces;
+		expect(Math.round((p[1].x - p[0].x) * 10) / 10).toBe(50);
 	});
 });

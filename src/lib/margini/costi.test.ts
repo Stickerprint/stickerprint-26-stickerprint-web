@@ -17,7 +17,7 @@ describe('consumo delle righe del sito', () => {
 		expect(k.modo).toBe('sciolti');
 		expect(k.pezziDaFare).toBe(108);
 		expect(k.strisce).toBe(Math.ceil(108 / k.perStriscia));
-		expect(k.bobinaM2).toBeCloseTo((k.bobinaMm * 700) / 1e6, 3);
+		expect(k.bobinaM2).toBeCloseTo((k.bobinaMm * k.bobinaLarghezzaMm) / 1e6, 3); // 712 mm dal 31/10/2026
 		expect(k.stampaM2).toBeCloseTo((50 * 50 * 108) / 1e6, 3);
 		expect(k.utileM2).toBeCloseTo((50 * 50 * 100) / 1e6, 3);
 		expect(k.resaPct).toBeGreaterThan(0);

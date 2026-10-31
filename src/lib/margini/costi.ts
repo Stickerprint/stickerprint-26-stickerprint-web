@@ -3,7 +3,7 @@
  *
  * Lo Studio non salva in database cosa ha stampato (scrive i file nella cartella di rete), quindi il
  * consumo si ricostruisce impaginando la riga ESATTAMENTE come fa lo Studio con le regolazioni di partenza:
- *   - bobina da 70 cm, pagina larga 68,8 cm, crocini e codice a barre Graphtec ai bordi;
+ *   - bobina da 70 cm (larga 750), pagina di stampa 712 mm (STRIP_MATERIALS), crocini e codice a barre Graphtec ai bordi;
  *   - +8% di pezzi per gli scarti di produzione;
  *   - sciolti (personalizzati, rilievo, vetrofanie, kit): 8 mm fra i pezzi, strisce alte al massimo 45 cm;
  *   - fogli (resinati, etichette): fogli circa A4, resinati a multipli dei 10 aghi, strisce alte 36 cm;

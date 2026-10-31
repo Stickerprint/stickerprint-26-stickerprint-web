@@ -30,7 +30,8 @@ export interface StripMaterial {
 }
 
 export const STRIP_MATERIALS: StripMaterial[] = [
-	{ id: 'm70', label: 'Bobina 70 cm', width: 700, maxHSheets: 360, maxHLoose: 450 },
+	/* la bobina "70" e' larga 750 mm: dal 31/10/2026 (Mattia) si stampa su 712 mm, prima 700 */
+	{ id: 'm70', label: 'Bobina 70 cm', width: 712, maxHSheets: 360, maxHLoose: 450 },
 	{ id: 'm57', label: 'Bobina 57 cm', width: 570, maxHSheets: 360, maxHLoose: 450 }
 ];
 

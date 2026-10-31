@@ -798,7 +798,10 @@
 	/* regole del foglio: quelle del prodotto, ma si possono cambiare (un file pronto di etichette puo'
 	   dover seguire le regole dei resinati, e viceversa) */
 	let regoleFoglio = $state<'etichette' | 'resinati'>(P.sheetRules ?? 'etichette');
-	const regole = $derived(SHEET_RULES[regoleFoglio]);
+	/* spazio fra le etichette dentro il foglio: parte da quello del prodotto (2 mm), l'operatore puo' toglierlo
+	   o allargarlo (Mattia, 31/10/2026), come lo spazio fra i pezzi sciolti */
+	let gapFoglio = $state<number | ''>(SHEET_RULES[P.sheetRules ?? 'etichette'].gap);
+	const regole = $derived({ ...SHEET_RULES[regoleFoglio], gap: Math.max(0, typeof gapFoglio === 'number' ? gapFoglio : SHEET_RULES[regoleFoglio].gap) });
 	/* il verso lo decide lo studio, ma l'operatore puo' forzarlo per vedere se guadagna spazio */
 	let versoPezzi = $state<Verso>('auto');
 	let versoFoglio = $state<Verso>('auto');
@@ -807,7 +810,7 @@
 	const SCARTO = 0.08;
 	const qtyDaFare = $derived(typeof qty === 'number' && qty > 0 ? Math.ceil(qty * (1 + SCARTO)) : 0);
 	/* crocini e codice a barre Graphtec, SEMPRE: la pagina e' larga quanto l'area di stampa della bobina
-	   (700 mm sulla 70, che ha 2,5 cm di margine per lato) e i pezzi stanno fuori dai bracci dei crocini e dalle fasce dei codici */
+	   (712 mm sulla 70, che e' larga 750) e i pezzi stanno fuori dai bracci dei crocini e dalle fasce dei codici */
 	const pageW = $derived(pageWidthFor(mat.width));
 	const margin = MARKED_MARGIN.x;
 	const marginY = MARKED_MARGIN.y;
@@ -1395,6 +1398,13 @@
 						<p class="st-note">Il foglio è sempre circa A4. Con i resinati le etichette di una riga si dividono i {SHEET_RULES.resinati.testa} aghi della testa: 1, 2, 5 o {SHEET_RULES.resinati.testa} per riga (Ø80: 2 per riga, 5 aghi ciascuna), righe libere. Bordo {SHEET_RULES.resinati.margin} mm.</p>
 					</div>
 				{/if}
+				{#if MULTI}
+					<label class="st-field"><span>Spazio fra i fogli sulla striscia (mm, minimo {MIN_SHEET_GAP})</span><input class="input" type="number" min={MIN_SHEET_GAP} step="0.5" bind:value={sheetGap} /></label>
+				{:else if P.mode === 'fogli'}
+					<label class="st-field"><span>Spazio fra le etichette nel foglio (mm, da taglio a taglio)</span><input class="input" type="number" min="0" step="0.5" bind:value={gapFoglio} placeholder={String(SHEET_RULES[regoleFoglio].gap)} /><em class="st-hint">0 = etichette attaccate; il prodotto parte da {SHEET_RULES[regoleFoglio].gap} mm</em></label>
+				{:else}
+					<label class="st-field"><span>Spazio fra i pezzi, da taglio a taglio (mm)</span><input class="input" type="number" min="0" step="0.5" bind:value={gap} /><em class="st-hint">0 = pezzi attaccati</em></label>
+				{/if}
 				<div class="st-block">
 					<p class="st-label">Verso sulla striscia</p>
 					<div class="st-chips">
@@ -1418,11 +1428,9 @@
 					<p class="st-note">Crocini e codice a barre Graphtec sempre presenti: pagina {pageW} mm{#if plan?.kind === 'fogli' && plan.r.ok && plan.r.frame}, fogli a {plan.r.frame.margin} mm dai lati e {plan.r.frame.marginY} mm da sopra e sotto ({plan.r.frame.label}){:else}, pezzi a {margin} mm dai lati e {marginY} mm da sopra e sotto{/if}.</p>
 					<label class="st-field"><span>Condizione plotter mezzo taglio</span><input class="input" type="number" min="1" max="8" step="1" bind:value={condHalf} /></label>
 					<label class="st-field"><span>Condizione plotter passante</span><input class="input" type="number" min="1" max="8" step="1" bind:value={condThrough} /></label>
-					{#if P.mode === 'fogli'}
+					{#if P.mode === 'fogli' && !MULTI}
 						<label class="st-field"><span>Spazio fra i fogli (mm, minimo {MIN_SHEET_GAP})</span><input class="input" type="number" min={MIN_SHEET_GAP} step="0.5" bind:value={sheetGap} /></label>
-						<p class="st-note">Foglio: bordo {regole.margin} mm, {regole.gap} mm fra le etichette{regole.testa ? `, colonne che stanno nella testa da ${regole.testa} aghi e totale multiplo di ${regole.testa}` : ''}.</p>
-					{:else}
-						<label class="st-field"><span>Spazio fra i pezzi, da taglio a taglio (mm)</span><input class="input" type="number" min="0" step="0.5" bind:value={gap} /></label>
+						<p class="st-note">Foglio: bordo {regole.margin} mm, {regole.gap} mm fra le etichette{regole.testa ? `, colonne che stanno nella testa da ${regole.testa} aghi` : ''}.</p>
 					{/if}
 				</details>
 
