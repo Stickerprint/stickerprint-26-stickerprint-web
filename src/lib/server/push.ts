@@ -1,11 +1,14 @@
 import webpush from 'web-push';
 import { createClient } from '@supabase/supabase-js';
 import { env } from '$env/dynamic/private';
-import { PUBLIC_SUPABASE_URL, PUBLIC_VAPID_KEY } from '$env/static/public';
+import { env as pub } from '$env/dynamic/public';
+import { PUBLIC_SUPABASE_URL } from '$env/static/public';
 
-/** Notifica push a tutti i dispositivi dello staff (nuovo ordine). Silenziosa se le chiavi mancano. */
+/** Notifica push a tutti i dispositivi dello staff (nuovo ordine). Silenziosa se le chiavi mancano.
+    La chiave pubblica VAPID si legge a runtime (dinamica): su Vercel esiste solo in produzione, e le anteprime delle pull request non devono fallire la build per la sua assenza. */
 export async function pushStaff(payload: { title: string; body: string; url?: string; tag?: string }) {
 	const priv = env.VAPID_PRIVATE_KEY;
+	const PUBLIC_VAPID_KEY = pub.PUBLIC_VAPID_KEY;
 	const service = env.SUPABASE_SERVICE_ROLE_KEY;
 	if (!priv || !PUBLIC_VAPID_KEY || !service) return { sent: 0, skipped: true };
 	webpush.setVapidDetails(env.VAPID_SUBJECT || 'mailto:info@stickerprint.it', PUBLIC_VAPID_KEY, priv);
