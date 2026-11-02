@@ -191,6 +191,16 @@ Dove il disegno ha un lato dritto il taglio deve essere una retta: `trattiDritti
 riconosce fra due angoli (entro tolleranza dalla corda, almeno 3 mm, svolta totale sotto 3 gradi) e le
 emette come segmenti, con le curve accanto in tangenza.
 
+## La scelta dello sfondo viaggia con l'ordine (2 novembre 2026)
+
+`statoMotore()` salva anche `chosen`, `chosenKind` (`intero` = file com'e', altrimenti scontorno),
+`chosenLabel` e `sceltaUtente`; `applicaStato()` li rimette quando `sceltaUtente` e' vero (per
+etichetta della proposta, poi per tipo, poi per indice). Prima lo Studio rifaceva la scelta
+automatica e su SP00500 (foto con scritta rossa in un rettangolo) toglieva lo sfondo che il cliente
+aveva tenuto, riempiendo il rettangolo col colore di tavolozza. Messaggio del ponte `tieni`
+(`on: true` = file com'e', `false` = solo il disegno), usato dai bottoni dello Studio accanto a
+"Rimuovi sfondo".
+
 ## Etichette in fogli: anteprima del foglio (5 settembre 2026)
 
 Con `foglio=1` (URL) o `config.foglio=true` (messaggio dal sito) il motore mostra il

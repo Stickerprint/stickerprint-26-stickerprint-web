@@ -7442,8 +7442,13 @@ function ppGeoUI(){
   function statoMotore(){
     const inp={}; CAMPI.forEach(k=>{const e=$(k); if(e)inp[k]=e.value;});
     let custom=null; try{ if(S.palCustom!=null&&S.palette&&S.palette[S.palCustom]&&S.palIdx===S.palCustom)custom=hexOf(S.palette[S.palCustom]); }catch(e){}
+    /* [2/11/2026] anche la SCELTA DELLO SCONTORNO: "tieni il file com'e'" o "solo il disegno" (bgFixBar) e la
+       proposta scelta fra le alternative. Senza, lo Studio rifaceva la scelta automatica e su SP00500 (foto di
+       pelle con scritta rossa, rettangolo) tirava via lo sfondo che il cliente aveva voluto tenere. */
+    const cand=(S.chosen>=0&&S.cands&&S.cands[S.chosen])?S.cands[S.chosen]:null;
     return {v:1,prod:S.prod,shape:CL.shape,bord:CL.bord,corner:CL.corner,inp,lamina:S.lamina,palIdx:S.palIdx,custom,
       rimuovi:!!S.rimuoviSfondo,senzaResina:!!S.senzaResina,autoBordFrac:S.autoBordFrac||null,
+      chosen:S.chosen,chosenKind:cand?cand.st.kind:null,chosenLabel:cand?cand.label:null,sceltaUtente:!!S.sceltaUtente,
       cutW:S.cutW,cutH:S.cutH,pathD:S.pathD};
   }
   function applicaStato(st){
@@ -7460,6 +7465,15 @@ function ppGeoUI(){
     S.senzaResina=!!st.senzaResina;
     if(st.autoBordFrac)S.autoBordFrac=st.autoBordFrac;
     if(cambiaScontorno){buildWork();autoSegment();}
+    /* la scelta fatta dal cliente (o dall'operatore) sullo scontorno comanda: per etichetta della proposta,
+       altrimenti per tipo (file intero / solo il disegno), altrimenti per posizione */
+    if(st.sceltaUtente&&S.cands&&S.cands.length){
+      let i=-1;
+      if(st.chosenLabel)i=S.cands.findIndex(c=>c.label===st.chosenLabel);
+      if(i<0&&st.chosenKind)i=S.cands.findIndex(c=>st.chosenKind==='intero'?c.st.kind==='intero':c.st.kind!=='intero');
+      if(i<0&&st.chosen!=null&&+st.chosen>=0&&+st.chosen<S.cands.length)i=+st.chosen;
+      if(i>=0){S.chosen=i;S.sceltaUtente=true;S.seeds=[];S.lineSeed=null;}
+    }
     computeMask();
     if(st.custom&&window.__ppColore)window.__ppColore(st.custom);
     else if(st.palIdx!=null&&S.palette&&st.palIdx<S.palette.length){S.palIdx=+st.palIdx;try{paintPalette();paintSwatch();}catch(e){}}
@@ -7522,6 +7536,9 @@ function ppGeoUI(){
     if(d.type==='bg'&&S.src){ const i=Math.max(0,+d.idx||0); S.palIdx=i; try{paintPalette();paintSwatch();}catch(e){}
       busy(true,'Aggiorno…'); setTimeout(()=>{try{buildCut();draw();}catch(e){} window.__busyOff=performance.now(); snapshot(); busy(false);},0); }
     if(d.type==='rimuovi'){ const b=$('ppRimuovi'); if(b)b.click(); }
+    /* [studio] 'tieni': dentro la forma il file com'e', sfondo compreso (on) oppure solo il disegno (off) */
+    if(d.type==='tieni'&&S.src&&S.cands&&S.cands.length){ const i=S.cands.findIndex(c=>d.on?c.st.kind==='intero':c.st.kind!=='intero');
+      if(i>=0){S.chosen=i;S.sceltaUtente=true;S.seeds=[];S.lineSeed=null;busy(true,'Aggiorno…');setTimeout(()=>{try{refresh(true);}catch(e){} window.__busyOff=performance.now(); busy(false);},0);} }
     if(d.type==='bgcol'&&S.src&&d.hex){ try{ if(window.__ppColore)window.__ppColore(String(d.hex)); }catch(e){}
       busy(true,'Aggiorno…'); setTimeout(()=>{try{buildCut();draw();}catch(e){} window.__busyOff=performance.now(); snapshot(); busy(false);},0); }
     if(d.type==='cut'){S.showCut=!!d.on;try{ridipingi();if(window.__anWake)window.__anWake(6000);}catch(e){}}

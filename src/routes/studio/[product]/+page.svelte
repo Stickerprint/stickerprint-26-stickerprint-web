@@ -1279,6 +1279,8 @@
 							<input bind:this={colInput} type="color" class="st-col" value={palette[palIdx]?.hex ?? '#ffffff'} oninput={(e) => engine?.post('bgcol', { hex: (e.currentTarget as HTMLInputElement).value })} />
 						</span>
 						<button type="button" class="st-tool" class:is-on={rimuovi} onclick={() => engine?.post('rimuovi')}>✨ Rimuovi sfondo</button>
+						<button type="button" class="st-tool" title="Dentro la forma il file del cliente com'è, sfondo compreso (come «Rimetti il file com'era» sul sito)" onclick={() => engine?.post('tieni', { on: true })}>🖼 Tieni il file com’è</button>
+						<button type="button" class="st-tool" title="Dentro la forma solo il disegno, senza il suo fondo" onclick={() => engine?.post('tieni', { on: false })}>✂️ Solo il disegno</button>
 					{/if}
 					<button type="button" class="st-tool st-tool--blue" onclick={() => fileInput?.click()} title={file.name}>Cambia file</button>
 					<button type="button" class="st-tool" class:is-on={showCut} onclick={() => (showCut = !showCut)}>{showCut ? 'Nascondi' : 'Mostra'} taglio</button>
