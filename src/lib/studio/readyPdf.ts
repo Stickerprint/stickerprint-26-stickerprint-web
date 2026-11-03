@@ -9,9 +9,13 @@
  *   3. lo si TOGLIE dalla grafica (il tratto non si dipinge piu': operatore di pittura -> "n");
  *   4. lo si restituisce in mm (origine nell'angolo in alto a sinistra del taglio, y verso il basso)
  *      per l'impaginazione, il CutContour e il file di taglio del Graphtec.
- * Le misure sono quelle del file: niente scale, niente ritocchi.
+ * Le misure sono quelle del file: niente scale, niente ritocchi. L'unica cosa che si fa al tracciato
+ * e' togliere i punti INUTILI delle polilinee (semplificaSegmenti, entro 0,03 mm): certi programmi
+ * esportano le curve come migliaia di segmentini da 0,06 mm e il plotter, che rallenta su ogni
+ * vertice, ci metteva 20 secondi per un angolo (MeatCrew, 31/10/2026). La linea resta quella.
  */
 import { PDFDocument, PDFName, PDFArray, PDFDict, PDFRawStream, PDFRef, PDFString, PDFHexString, PDFNumber, PDFBool, decodePDFRawStream, type PDFContext, type PDFObject } from 'pdf-lib';
+import { parsePath, scriviPath, semplificaSegmenti, contaPunti } from './path';
 
 const MM = 25.4 / 72;
 type M6 = [number, number, number, number, number, number];
@@ -287,6 +291,10 @@ export interface ReadyResult {
 	bboxPt: [number, number, number, number];
 	/** quanti tracciati chiusi */
 	paths: number;
+	/** punti di ancoraggio del tracciato come va in macchina */
+	punti: number;
+	/** punti di ancoraggio nel file del cliente (prima di togliere quelli inutili) */
+	puntiFile: number;
 	/** come e' stato riconosciuto */
 	reason: string;
 	pageMm: [number, number];
@@ -356,9 +364,13 @@ export async function analyzeReadyPdf(bytes: Uint8Array, forced?: string): Promi
 	}
 	void PDFString; void PDFHexString;
 	const { width, height } = page.getSize();
+	/* polilinee a puntini: via i punti che non spostano la linea */
+	const segsFile = parsePath(d.trim()), segs = semplificaSegmenti(segsFile);
 	return {
 		cleaned: await doc.save({ useObjectStreams: false }),
-		pathD: d.trim(),
+		pathD: scriviPath(segs),
+		punti: contaPunti(segs),
+		puntiFile: contaPunti(segsFile),
 		cutW: (x1 - x0) * MM,
 		cutH: (y1 - y0) * MM,
 		bboxPt: [x0, y0, x1, y1],

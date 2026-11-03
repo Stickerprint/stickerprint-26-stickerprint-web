@@ -12,6 +12,7 @@
 	import { pickArchivio, savedArchivio, grantArchivio, salvaNellArchivio, type ArchivioDir } from '$lib/studio/archivio';
 	import { pickVersaworks, savedVersaworks, grantVersaworks, stampanti, mappaSalvata, salvaMappa, inviaAStampante, RUOLO_LABEL, type VwDir, type Ruolo as VwRuolo } from '$lib/studio/versaworks';
 	import { SPOTS } from '$lib/studio/spots';
+	import { parsePath, perimetroPath, puntiPer10cm, PUNTI_FITTI } from '$lib/studio/path';
 
 	let { data } = $props();
 	const P = $derived(data.product);
@@ -648,7 +649,7 @@
 		if (fonte === 'pronto') {
 			/* file pronto: grafica vettoriale del cliente 1:1, il suo tracciato diventa la tinta di taglio */
 			if (!ready) throw new Error('Carica prima il PDF pronto.');
-			traceInfo = `Tracciato del cliente: ${ready.paths} ${ready.paths === 1 ? 'tracciato' : 'tracciati'} · grafica vettoriale`;
+			traceInfo = `Tracciato del cliente: ${ready.paths} ${ready.paths === 1 ? 'tracciato' : 'tracciati'} · ${ready.punti} punti${ready.puntiFile > ready.punti ? ` (${ready.puntiFile} nel file)` : ''} · grafica vettoriale`;
 			const dPronto = prontoFinale(ritoccato ? (prontoPath || (await rifinisci(ready.pathD, 1)).d) : ready.pathD);
 			return { pdfPage: { bytes: ready.cleaned, bboxPt: ready.bboxPt }, cutW: ready.cutW, cutH: ready.cutH, bleed: 1, pathD: dPronto };
 		}
@@ -718,6 +719,9 @@
 	const smussoCursore = $derived(vivi.length ? Math.max(SMUSSO_CURSORE, smussoMax) : 0);
 	/** il tracciato del file pronto come va in stampa: ritocco dei selettori + smusso degli spigoli */
 	const prontoFinale = (d: string) => (smusso > 0 && vivi.length ? smussa(d, smusso) : d);
+	/* quanto e' fitto il tracciato del cliente (dopo la pulizia dei punti inutili) */
+	const perimetroPronto = $derived(ready ? perimetroPath(parsePath(ready.pathD)) : 0);
+	const densitaPronto = $derived(ready ? puntiPer10cm(parsePath(ready.pathD)) : 0);
 
 	async function pickReady(f: File | null | undefined) {
 		if (!f) return;
@@ -1154,7 +1158,9 @@
 					<label class="st-field"><span>Nome lavoro / n. ordine</span><input class="input" bind:value={jobName} /></label>
 					<div class="st-block">
 						<p class="st-label">Dal file del cliente</p>
-						<p class="st-note">Taglio <b>{ready.cutW.toFixed(2)} × {ready.cutH.toFixed(2)} mm</b> (1:1) · {ready.paths} {ready.paths === 1 ? 'tracciato' : 'tracciati'}</p>
+						<p class="st-note">Taglio <b>{ready.cutW.toFixed(2)} × {ready.cutH.toFixed(2)} mm</b> (1:1) · {ready.paths} {ready.paths === 1 ? 'tracciato' : 'tracciati'} · <b>{ready.punti}</b> punti</p>
+						{#if ready.puntiFile > ready.punti * 1.5}<p class="st-note">Nel file il tracciato era a puntini: <b>{ready.puntiFile}</b> punti, segmentini da {(perimetroPronto / ready.puntiFile).toFixed(2)} mm. Ho tolto quelli inutili (la linea resta entro 0,03 mm da quella del cliente, meno del passo del plotter): così il Graphtec non rallenta su ogni vertice.</p>{/if}
+						{#if densitaPronto > PUNTI_FITTI}<p class="st-note" style="color:#b3261e;font-weight:700">⚠ Tracciato fitto: {densitaPronto} punti ogni 10 cm di contorno anche dopo la pulizia. Il plotter rallenta: guardalo con la lente prima di stampare.</p>{/if}
 						<p class="st-note">Riconosciuto da: {ready.reason}. Nel file di stampa diventa <b>{P.pieceCut}</b>; il tratto originale è tolto dalla grafica.</p>
 					</div>
 
