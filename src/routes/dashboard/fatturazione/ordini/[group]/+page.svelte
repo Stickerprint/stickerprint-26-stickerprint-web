@@ -158,7 +158,18 @@
 			<div class="sumrow"><span>Metodo</span><b>{g.shipping_method ?? 'Corriere espresso'}</b></div>
 			<div class="sumrow"><span>Spedizione prevista</span><b>{dmy(g.delivery_date)}</b></div>
 			{#if first.courier}<div class="sumrow"><span>Corriere</span><b>{first.courier}{#if first.parcels} · {first.parcels} {first.parcels === 1 ? 'collo' : 'colli'}{/if}</b></div>{/if}
-			<form method="POST" action="?/tracking" use:enhance class="sumrow" style="align-items:center"><span>Tracking</span><span style="display:flex;gap:6px"><input name="tracking" class="sel-sm" style="max-width:220px" placeholder="link tracking" value={first.tracking_url ?? ''} /><button class="ibtn" type="submit" title="Salva">💾</button>{#if first.tracking_url}<a class="link" href={first.tracking_url} target="_blank" rel="noopener">↗</a>{/if}</span></form>
+			<form method="POST" action="?/tracking" use:enhance class="sumrow" style="align-items:flex-start">
+				<span>Tracking</span>
+				<span style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">
+					<span style="display:flex;gap:6px;align-items:center"><input name="tracking" class="sel-sm" style="max-width:220px" placeholder="link o numero FedEx / UPS" value={first.tracking_url ?? ''} /><button class="ibtn" type="submit" title="Salva solo il link, senza email">💾</button>{#if first.tracking_url}<a class="link" href={first.tracking_url} target="_blank" rel="noopener">↗</a>{/if}</span>
+					{#if !['consegnato', 'annullato'].includes(g.status)}
+						<span style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end">
+							<button class="btn btn--ghost btn--xs" type="submit" name="avvisa" value="1" disabled={!g.email} title="Salva il link, mette l'ordine in Spedito e manda al cliente l'email «il tuo ordine è partito»">✉ Salva e avvisa il cliente</button>
+							{#if first.shipping_notified?.includes('spedito')}<span class="pr-chip">già avvisato</span>{/if}
+						</span>
+					{/if}
+				</span>
+			</form>
 			{#if data.ddts.length}<div class="sumrow"><span>DDT</span><b style="text-align:right">{#each data.ddts as d, i (d.id)}{#if i > 0} · {/if}<a class="link" href="/dashboard/fatturazione/ddt/{d.id}/pdf" target="_blank">{d.number}</a>{/each}</b></div>{/if}
 			{#if data.invoices.length}<div class="sumrow"><span>Fatture</span><b style="text-align:right">{#each data.invoices as inv, i (inv.id)}{#if i > 0}<br />{/if}<a class="link" href="/dashboard/fatturazione/fatture/{inv.id}">{inv.number}</a> · {money(Number(inv.amount_gross))}{/each}</b></div>{/if}
 			{#if !['spedito', 'in_consegna', 'consegnato', 'annullato'].includes(g.status)}
