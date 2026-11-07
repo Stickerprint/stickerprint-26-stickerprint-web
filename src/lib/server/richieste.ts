@@ -9,7 +9,7 @@ import { perLingua, t as tradotto } from '$lib/traduzioni';
 import { draftTotals, emptyDraft, type OrderDraft } from '$lib/dashboard/orderDraft';
 import { buildOrderPdf } from './docs';
 import { sendEmail } from './email';
-import { OWNER_EMAIL, ownerNotifyEmail, quoteEmail, quoteReminderEmail, quoteReplyEmail } from './email-templates';
+import { OWNER_EMAIL, ownerNotifyEmail, quoteEmail, quoteReminderEmail, quoteReplyEmail, requestReplyEmail } from './email-templates';
 import { loadEditorData, saveOrderDraft, upsertContact } from './orders';
 import { applyPaymentGate, defaultConfirmEmail, loadGroup, sendAutoConfirmation, sendConfirmation, syncPayments } from './conferme';
 import { pushStaff } from './push';
@@ -38,6 +38,33 @@ export async function setRequestStatus(db: DB, id: string, status: string) {
 	if (!(status in REQUEST_STATUS)) return 'Stato non valido.';
 	const { error } = await db.from('contact_requests').update({ status }).eq('id', id);
 	return error?.message ?? null;
+}
+export interface RequestMessage { id: string; request_id: string; direction: 'out' | 'note'; author: string | null; body: string; created_at: string }
+/** Storico delle risposte scritte dalla dashboard (tabella request_messages, migrazione 0063): se manca, elenco vuoto */
+export async function listRequestMessages(db: DB, id: string): Promise<RequestMessage[]> {
+	const { data, error } = await db.from('request_messages').select('*').eq('request_id', id).order('created_at');
+	return error ? [] : ((data ?? []) as RequestMessage[]);
+}
+/** Risposta al cliente dalla scheda della richiesta (7/11/2026): email con il testo e la firma dell'operatore, Reply-To la
+    nostra casella, cosi' il cliente risponde all'email e la risposta arriva in posta. La richiesta "nuova" passa in lavorazione. */
+export async function replyRequest(db: DB, id: string, body: string, author: string | null): Promise<{ ok: true; email: string } | { ok: false; error: string }> {
+	const text = body.trim();
+	if (!text) return { ok: false, error: 'Scrivi la risposta.' };
+	const r = await getRequest(db, id);
+	if (!r) return { ok: false, error: 'Richiesta non trovata.' };
+	const mail = requestReplyEmail({ name: r.name, body: text, author }, 'it');
+	const sent = await sendEmail({ to: r.email, subject: mail.subject, html: mail.html, tag: mail.tag, replyTo: OWNER_EMAIL, metadata: { request: r.id } });
+	if (!sent.ok) return { ok: false, error: sent.error ?? 'Email non inviata.' };
+	const { error } = await db.from('request_messages').insert({ request_id: id, direction: 'out', author, body: text });
+	/* tabella non ancora creata (migrazione 0063): la risposta resta almeno nelle note interne */
+	if (error) {
+		const riga = `✉ ${new Date().toLocaleString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}${author ? ' · ' + author : ''}: ${text}`;
+		await db.from('contact_requests').update({ notes: [r.notes?.trim(), riga].filter(Boolean).join('\n') }).eq('id', id);
+	}
+	const patch: Record<string, unknown> = { replied_at: new Date().toISOString(), ...(r.status === 'new' ? { status: 'in_progress' } : {}) };
+	const { error: e2 } = await db.from('contact_requests').update(patch).eq('id', id);
+	if (e2 && r.status === 'new') await db.from('contact_requests').update({ status: 'in_progress' }).eq('id', id); // replied_at manca finche' la 0063 non gira
+	return { ok: true, email: r.email };
 }
 export async function setRequestNotes(db: DB, id: string, notes: string) {
 	const { error } = await db.from('contact_requests').update({ notes: notes.trim() || null }).eq('id', id);

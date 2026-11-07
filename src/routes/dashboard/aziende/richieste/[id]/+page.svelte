@@ -5,6 +5,10 @@
 	import { fmtAgo, fmtWhen } from '$lib/dashboard/produzione';
 	let { data, form } = $props();
 	const r = $derived(data.r);
+	/* risposta dal sito: il riquadro si apre col bottone «Rispondi» (o da solo se c'e' gia' una conversazione) */
+	let replyOpen = $state(false);
+	let body = $state('');
+	let sending = $state(false);
 	const st = $derived(REQUEST_STATUS[r.status as RequestStatus]);
 </script>
 
@@ -29,11 +33,33 @@
 			{:else}
 				<form method="POST" action="?/preventivo" use:enhance><button class="btn btn--ghost btn--xs" type="submit">📄 Altro preventivo</button></form>
 			{/if}
-			<a class="btn btn--ghost btn--xs" href="mailto:{r.email}?subject=Richiesta%20a%20Stickerprint">✉ Rispondi via email</a>
+			<button class="btn btn--blue btn--xs" type="button" onclick={() => { replyOpen = !replyOpen; if (replyOpen) setTimeout(() => document.getElementById('rq-reply-body')?.focus(), 50); }}>✉ Rispondi</button>
 			<form method="POST" action="?/stato" use:enhance class="pr-machine" style="margin-left:auto">
 				<label class="osub">Stato <select name="status" value={r.status} onchange={(e) => (e.currentTarget.form as HTMLFormElement).requestSubmit()}>{#each Object.entries(REQUEST_STATUS) as [k, v] (k)}<option value={k}>{v.label}</option>{/each}</select></label>
 			</form>
 		</div>
+
+		{#if data.messages.length}
+			<h4 class="h4" style="margin:16px 0 8px">Conversazione</h4>
+			<div class="hd-thread">
+				{#each data.messages as m (m.id)}
+					<div class="hd-msg hd-msg--{m.direction}">
+						<div class="hd-msg__head"><b>{m.author ?? 'Stickerprint'} · {m.direction === 'note' ? 'nota interna' : 'risposta'}</b><span class="osub">{fmtWhen(m.created_at)} · {fmtAgo(m.created_at)}</span></div>
+						<div class="hd-msg__body">{m.body}</div>
+					</div>
+				{/each}
+			</div>
+		{/if}
+
+		{#if replyOpen || data.messages.length}
+			<form method="POST" action="?/rispondi" use:enhance={() => { sending = true; return async ({ update, result }) => { await update({ reset: false }); sending = false; if (result.type === 'success') body = ''; }; }} style="display:grid;gap:10px;margin-top:14px">
+				<textarea id="rq-reply-body" name="body" bind:value={body} rows="6" required placeholder="Ciao {r.name?.split(' ')[0] ?? ''}, …" style="padding:10px 12px;border:1px solid var(--line);border-radius:10px;font:inherit;font-size:14px"></textarea>
+				<div class="toolbar" style="gap:10px">
+					<button class="btn btn--blue btn--xs" type="submit" disabled={sending || !body.trim()}>✉ Invia</button>
+					<span class="osub">Il cliente riceve il testo via email a {r.email} con la tua firma; se risponde, la risposta arriva nella nostra casella.</span>
+				</div>
+			</form>
+		{/if}
 	</div>
 
 	<aside class="pr-side">
