@@ -3894,13 +3894,19 @@ function buildCut(){
   let maxDevMM=0.04+Math.pow(sem,1.5)*1.9;
   if(S.prod==='resin')maxDevMM=Math.min(maxDevMM,0.12);
   if(sh==='diecut'){
-    const RsafeMM=ensureRsafe(targetW);
+    /* [sito] lati liberi (7/11/2026): larghezza e altezza si scrivono indipendenti. Il disegno non si
+       deforma mai e sta DENTRO la misura scritta: se l'altezza e' piu' stretta della proporzione del
+       disegno, il pezzo si adatta all'altezza e la larghezza reale scende; se e' piu' larga, comanda
+       la larghezza come prima. */
+    let TW=targetW;
+    if(targetH>0&&bb.w>0&&bb.h>0){const wFit=(targetH-2*off)*(bb.w/bb.h)+2*off;if(wFit>0&&wFit<TW)TW=wFit;}
+    const RsafeMM=ensureRsafe(TW);
     /* rientranza: 100 = il minimo che tiene tutto unito; 0 = sagoma piena.
        Il massimo è tarato sul riferimento di settore (≈10% della diagonale). */
-    const diagMM=Math.hypot(bb.w,bb.h)*((targetW-2*off)/bb.w);
+    const diagMM=Math.hypot(bb.w,bb.h)*((TW-2*off)/bb.w);
     const Rmax=Math.max(RsafeMM*1.05,0.10*diagMM);
     const Rmm=RsafeMM+(1-rie)*(Rmax-RsafeMM);
-    const innerW=Math.max(1,targetW-2*off);
+    const innerW=Math.max(1,TW-2*off);
     /* Lavoro il taglio a risoluzione limitata: 900 px sul lato lungo bastano
        ampiamente (0,05 mm/px su uno sticker da 50 mm) e tengono i tempi bassi. */
     const kSub=Math.min(1,900/Math.max(bb.w,bb.h));
@@ -3991,12 +3997,12 @@ function buildCut(){
     if(!parts.length)throw new Error('contorno non ricavabile');
     let fx0=1e9,fy0=1e9,fx1=-1e9,fy1=-1e9;
     parts.forEach(p=>p.flat.forEach(q=>{if(q[0]<fx0)fx0=q[0];if(q[0]>fx1)fx1=q[0];if(q[1]<fy0)fy0=q[1];if(q[1]>fy1)fy1=q[1];}));
-    const sc=(fx1-fx0)>1e-6?targetW/((fx1-fx0)*mmPerPx):1;
+    const sc=(fx1-fx0)>1e-6?TW/((fx1-fx0)*mmPerPx):1;
     const k=mmPerPx*sc,T=q=>[(q[0]-fx0)*k,(q[1]-fy0)*k];
     S.polys=parts.map(p=>p.flat.map(T));
     S.pathD=parts.map(p=>{const P2=p.P.map(T),A=turnAngles(P2,Math.max(2.5,devPx*k*2));
       return pathOf(P2,A,p.sm,p.cr);}).join(' ');
-    S.cutW=targetW;S.cutH=(fy1-fy0)*k;
+    S.cutW=TW;S.cutH=(fy1-fy0)*k;
     const kk=kSub*k;                                   // mm per pixel del disegno
     S.art={x:(pad-bb.x*kSub-fx0)*k,y:(pad-bb.y*kSub-fy0)*k,w:S.mw*kk,h:S.mh*kk};
     /* ---- LO SFONDO TORNA DENTRO ----

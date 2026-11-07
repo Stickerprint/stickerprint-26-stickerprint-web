@@ -26,16 +26,19 @@ export const GET: RequestHandler = async ({ request, url }) => {
 	   2. mai consegne piu' vecchie di 14 giorni: se il cron resta fermo per un periodo, alla ripresa non recupera l'arretrato. */
 	const oldest = new Date(Date.now() - 14 * 24 * 3600 * 1000).toISOString();
 	/* elenco esplicito (?orders=SPIT00340,SPIT00326): richiesta voluta da Mattia per quegli ordini precisi, anche se importati
-	   o gia' contattati; unica condizione: devono essere consegnati */
+	   o gia' contattati. Basta che siano almeno spediti: per le spedizioni fatte fuori da Qapla' (es. FedEx per l'estero,
+	   7/11/2026) la consegna non arriva da sola, e la richiesta stessa vale come conferma: l'ordine passa a Consegnato.
+	   Le colonne portano anche `locale`: l'email esce nella lingua dell'ordine (prima usciva sempre in italiano). */
 	const explicit = (url.searchParams.get('orders') ?? '').split(',').map((s) => s.trim().toUpperCase()).filter(Boolean);
 	const { data, error } = explicit.length
-		? await db.from('orders').select('id, number, checkout_group, user_id, email, shipping, product_name, qty, delivered_at, preview_url, proof_url, mockup_url').eq('status', 'consegnato').in('number', explicit).not('email', 'is', null)
-		: await db.from('orders').select('id, number, checkout_group, user_id, email, shipping, product_name, qty, delivered_at, preview_url, proof_url, mockup_url').eq('status', 'consegnato').is('review_asked_at', null).is('legacy_id', null).not('email', 'is', null).lte('delivered_at', limit).gte('delivered_at', oldest).limit(100);
+		? await db.from('orders').select('id, number, checkout_group, user_id, email, shipping, product_name, qty, delivered_at, preview_url, proof_url, mockup_url, locale, status').in('status', ['spedito', 'in_consegna', 'consegnato']).in('number', explicit).not('email', 'is', null)
+		: await db.from('orders').select('id, number, checkout_group, user_id, email, shipping, product_name, qty, delivered_at, preview_url, proof_url, mockup_url, locale, status').eq('status', 'consegnato').is('review_asked_at', null).is('legacy_id', null).not('email', 'is', null).lte('delivered_at', limit).gte('delivered_at', oldest).limit(100);
 	if (error) return json({ error: error.message }, { status: 500 });
 	const groups = new Map<string, typeof data>();
 	for (const o of data ?? []) { const k = o.checkout_group ?? o.id; if (!groups.has(k)) groups.set(k, []); groups.get(k)!.push(o); }
 	const sent: string[] = [];
-	for (const [, rows] of groups) {
+	for (const [k, rows] of groups) {
+		if (explicit.length && rows.some((o) => o.status !== 'consegnato')) await db.from('orders').update({ status: 'consegnato', prod_stage: null, delivered_at: new Date().toISOString() }).eq(rows[0].checkout_group ? 'checkout_group' : 'id', k).neq('status', 'consegnato');
 		const r = await inviaRichiestaRecensione(db, rows as never, url.origin);
 		if (r.ok) sent.push(rows[0].number);
 	}
