@@ -233,7 +233,7 @@ export const actions: Actions = {
 				device, user_agent: ua.slice(0, 500),
 				file_path: l.filePath?.startsWith('riordino:') || l.filePath === 'campioni' ? null : l.filePath,
 				notes: [l.reorderOf ? `Riordino di ${l.reorderOf}` : '', l.note ?? ''].filter(Boolean).join(' · ') || null,
-				email, shipping: ship, billing: bill,
+				email, shipping: ship, billing: bill, country,
 				payment_method: payment === 'card' ? 'stripe' : payment, payment_status: online ? 'pending' : payment === 'credito' ? 'paid' : 'test',
 				discount_code: discountCode, discount_amount: r2(discount * share),
 				credit_used: r2(creditUsed * share), express, checkout_group: group,
