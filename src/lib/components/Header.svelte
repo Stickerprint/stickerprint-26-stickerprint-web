@@ -9,7 +9,7 @@
 	/* foto profilo illeggibile o rimossa: si mostrano le iniziali invece dell'icona rotta */
 	let avatarKo = $state(false);
 	$effect(() => { avatar; avatarKo = false; });
-	/* logo stagionale (Halloween fino al 31/10): si ricontrolla ogni minuto, così a mezzanotte cambia anche senza ricaricare */
+	/* logo stagionale (elenco e date in $lib/logo): si ricontrolla ogni minuto, così a mezzanotte cambia anche senza ricaricare */
 	let logo = $state(logoSrc());
 	$effect(() => { const t = setInterval(() => (logo = logoSrc()), 60_000); return () => clearInterval(t); });
 	let open = $state(false);
