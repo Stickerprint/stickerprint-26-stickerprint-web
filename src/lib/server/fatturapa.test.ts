@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildFatturaPaXml, spezza200 } from './fatturapa';
+import { buildFatturaPaXml, spezza200, latin, indirizzo60 } from './fatturapa';
 
 const causali = (xml: string) => [...xml.matchAll(/<Causale>(.*?)<\/Causale>/g)].map((m) => m[1]);
 
@@ -64,5 +64,36 @@ describe('clienti esteri (dal 21/10/2026)', () => {
 		expect(xml).toContain('<AliquotaIVA>22.00</AliquotaIVA>');
 		expect(xml).toContain('<Imposta>4.40</Imposta>');
 		expect(xml).toContain('<IdPaese>FR</IdPaese><IdCodice>OO99999999999</IdCodice>');
+	});
+});
+
+describe('scarti SDI dell\'11/11/2026', () => {
+	const cliente = (xml: string) => xml.match(/<CessionarioCommittente>.*?<\/CessionarioCommittente>/)?.[0] ?? '';
+	const fattura = (billing: Record<string, string>) => buildFatturaPaXml({ number: 'SPF00448', issued_at: '2026-10-31', email: null, billing: { country: 'IT', zip: '20100', city: 'Milano', province: 'MI', street: 'Via Roma 1', ...billing }, lines: [{ description: 'Adesivi', qty: 100, unit_net: 0.84, total_net: 84 }], discount_net: 0, express_net: 0, credit_used: 0, vat_amount: 18.48, amount_gross: 102.48, payment_method: 'Bonifico' }, '00448').xml;
+	it('con la partita IVA il codice fiscale non si scrive, nemmeno se è lo stesso numero (Assitex, Lato)', () => {
+		const c = cliente(fattura({ company: 'ASSITEX SRL', vat: '01596730182', fiscal_code: '01596730182' }));
+		expect(c).toContain('<IdFiscaleIVA><IdPaese>IT</IdPaese><IdCodice>01596730182</IdCodice></IdFiscaleIVA>');
+		expect(c).not.toContain('<CodiceFiscale>');
+	});
+	it('il privato tiene il suo codice fiscale, in maiuscolo', () => {
+		expect(cliente(fattura({ first_name: 'Ciro', last_name: 'Di Sarno', fiscal_code: 'Dsrcri80r05f839j' }))).toContain('<CodiceFiscale>DSRCRI80R05F839J</CodiceFiscale>');
+	});
+	it('l\'associazione senza partita IVA tiene il codice fiscale di 11 cifre', () => {
+		expect(cliente(fattura({ company: 'ASD Prova', fiscal_code: '91234560123' }))).toContain('<CodiceFiscale>91234560123</CodiceFiscale>');
+	});
+	it('apostrofo tipografico nel comune (Rizzi): diventa quello semplice', () => {
+		expect(cliente(fattura({ first_name: 'Matteo', last_name: 'Rizzi', fiscal_code: 'RZZMTT01P30B157D', city: 'Palazzolo Sull\u2019oglio' }))).toContain("<Comune>Palazzolo Sull'oglio</Comune>");
+		expect(latin('“Ciao” – caffè… 10 € 😀 мир')).toBe('"Ciao" - caffè... 10 EUR');
+	});
+	it('indirizzo: la seconda riga entra solo se ci sta nei 60 caratteri (Bisi, Cà Nova)', () => {
+		expect(indirizzo60('Via Ugo Foscolo 39', 'In caso di assenza lasciare al vicino Sig. Maccanti')).toBe('Via Ugo Foscolo 39');
+		expect(indirizzo60('c/o RE IMMOBILIARE VIa G. Dagnini 23/abc Bologna', 'Ufficio su strada')).toBe('c/o RE IMMOBILIARE VIa G. Dagnini 23/abc Bologna');
+		expect(indirizzo60('c/o RE IMMOBILIARE VIa G. Dagnini 23/abc Bologna, Ufficio su strada', '')).toBe('c/o RE IMMOBILIARE VIa G. Dagnini 23/abc Bologna');
+		expect(indirizzo60('Via Roma 1', 'Scala B')).toBe('Via Roma 1, Scala B');
+		expect(indirizzo60('', '')).toBe('-');
+		const lungo = indirizzo60('Viadeinomilunghissimisenzaspaziesenzavirgolechenonfinisconomaimaimaimaimai 12');
+		expect(lungo.length).toBeLessThanOrEqual(60);
+		const xml = fattura({ first_name: 'Claudio', last_name: 'Bisi', fiscal_code: 'BSICLD68R18F205Q', street: 'Via Ugo Foscolo 39', street2: 'In caso di assenza lasciare al vicino Sig. Maccanti' });
+		expect(cliente(xml)).toContain('<Indirizzo>Via Ugo Foscolo 39</Indirizzo>');
 	});
 });

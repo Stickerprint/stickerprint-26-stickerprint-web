@@ -14,7 +14,27 @@ const RIFERIMENTO: Record<string, string> = { 'N3.1': 'Non imponibile art. 8 DPR
 /** partita IVA senza il prefisso del paese (il VIES e lo SDI vogliono IdPaese + numero) */
 const senzaPrefisso = (piva: string, paese: string) => piva.replace(/[\s.-]/g, '').toUpperCase().replace(new RegExp(`^${paese === 'GR' ? '(EL|GR)' : paese}`), '');
 const PAY_LABEL: Record<string, string> = { paypal: 'PayPal', stripe: 'carta di credito (Stripe)', test: 'test' };
-const esc = (s: string) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+/* Lo schema ammette solo caratteri Latin-1 (String…LatinType): l'apostrofo tipografico che i telefoni mettono da soli
+   («Palazzolo Sull’oglio») ha fatto scartare la SPF00388 con "Comune non valido" (11/11/2026). Virgolette, trattini e
+   puntini tipografici diventano quelli semplici; quello che resta fuori da Latin-1 (emoji, altri alfabeti) viene tolto. */
+export const latin = (s: string) => String(s ?? '')
+	.replace(/[\u2018\u2019\u201A\u2032\u02BC\u0060\u00B4]/g, "'").replace(/[\u201C\u201D\u201E\u2033]/g, '"')
+	.replace(/[\u2010-\u2015\u2212]/g, '-').replace(/\u2026/g, '...').replace(/\u20AC/g, 'EUR').replace(/[\u00A0\u2000-\u200A\u202F\t\r\n]+/g, ' ')
+	.replace(/[^\u0020-\u007E\u00A1-\u00FF]/g, '').replace(/ {2,}/g, ' ').trim();
+const esc = (s: string) => latin(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+/** Indirizzo del cliente: al massimo 60 caratteri (String60LatinType). La seconda riga (spesso una nota per il corriere:
+ *  «In caso di assenza lasciare al vicino…») entra solo se ci sta; una via troppo lunga si ferma all'ultima virgola o spazio.
+ *  Le SPF00397, SPF00424 e SPF00441 sono state scartate con "Indirizzo non valido" per via + seconda riga oltre i 60 (11/11/2026). */
+export function indirizzo60(street?: string | null, street2?: string | null, max = 60): string {
+	const via = latin(street ?? ''), riga2 = latin(street2 ?? '');
+	const tutto = [via, riga2].filter(Boolean).join(', ');
+	if (tutto.length <= max) return tutto || '-';
+	if (via && via.length <= max) return via;
+	const testo = via || riga2;
+	let cut = testo.lastIndexOf(',', max);
+	if (cut < max / 2) cut = testo.lastIndexOf(' ', max);
+	return (cut >= max / 2 ? testo.slice(0, cut) : testo.slice(0, max)).replace(/[\s,]+$/, '') || '-';
+}
 const n2 = (v: number) => (Math.round(v * 100) / 100).toFixed(2);
 /* da 2 a 8 decimali (lo schema vuole almeno 2: "8.2" viene scartato, "8.20" no) */
 const n8 = (v: number) => { const t = v.toFixed(8).replace(/0+$/, ''); const d = t.split('.')[1]?.length ?? 0; return d >= 2 ? t : v.toFixed(2); };
@@ -37,13 +57,15 @@ export function spezza200(testo: string, max = 200): string[] {
 export function buildFatturaPaXml(inv: FpaInvoice, progressivo: string): { xml: string; filename: string } {
 	const b = inv.billing ?? {};
 	// dati fiscali del cliente: P.IVA senza prefisso IT e solo cifre; codice fiscale pulito (spazi, minuscole, "IT" davanti).
-	// Con la P.IVA il codice fiscale va messo solo se e' quello dell'azienda (11 cifre): il CF personale del titolare
-	// scritto nel campo dell'azienda fa scartare la fattura allo SDI ("P.IVA e CF non coerenti")
+	// Con la P.IVA il codice fiscale NON si scrive mai: allo SDI basta IdFiscaleIVA, e un CF che non e' quello registrato
+	// per quella partita IVA fa scartare la fattura ("P.IVA e CF non coerenti"). Succede col CF personale del titolare, ma
+	// anche con la P.IVA ricopiata nel campo CF quando l'azienda ha un codice fiscale diverso (SPF00448 Assitex e SPF00378
+	// Lato, scartate l'11/11/2026: avevano lo stesso numero di 11 cifre nei due campi)
 	const piva = String(b.vat ?? '').toUpperCase().replace(/^IT/, '').replace(/\D/g, '');
 	/* estero: e' azienda se ha scritto una partita IVA (il numero non ha 11 cifre come quello italiano) */
 	const isCompany = (b.country || 'IT').toUpperCase() !== 'IT' ? !!String(b.vat ?? '').trim() : piva.length === 11;
 	const cfRaw = String(b.fiscal_code ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '').replace(/^IT(?=\d{11}$)/, '');
-	const cf = isCompany ? (/^\d{11}$/.test(cfRaw) ? cfRaw : '') : (/^[A-Z0-9]{16}$|^\d{11}$/.test(cfRaw) ? cfRaw : '');
+	const cf = isCompany ? '' : (/^[A-Z0-9]{16}$|^\d{11}$/.test(cfRaw) ? cfRaw : '');
 	const sdi = (b.sdi ?? '').trim().toUpperCase();
 	const pec = (b.pec ?? '').trim();
 	const paese = (b.country || 'IT').toUpperCase();
@@ -63,7 +85,7 @@ export function buildFatturaPaXml(inv: FpaInvoice, progressivo: string): { xml: 
 	const imposta = imponibile * rate;
 	const totale = imponibile + imposta;
 	const dettaglio = lines.map((l, i) => `<DettaglioLinee><NumeroLinea>${i + 1}</NumeroLinea><Descrizione>${esc(l.d).slice(0, 1000)}</Descrizione><Quantita>${n2(l.q)}</Quantita><PrezzoUnitario>${n8(l.u)}</PrezzoUnitario><PrezzoTotale>${n2(l.t)}</PrezzoTotale><AliquotaIVA>${n2(rate * 100)}</AliquotaIVA>${natura ? `<Natura>${natura}</Natura>` : ''}</DettaglioLinee>`).join('');
-	const anagrafica = isCompany || b.company ? `<Denominazione>${esc(b.company || `${b.first_name ?? ''} ${b.last_name ?? ''}`.trim())}</Denominazione>` : `<Nome>${esc(b.first_name ?? '')}</Nome><Cognome>${esc(b.last_name ?? '')}</Cognome>`;
+	const anagrafica = isCompany || b.company ? `<Denominazione>${esc(latin(b.company || `${b.first_name ?? ''} ${b.last_name ?? ''}`).slice(0, 80))}</Denominazione>` : `<Nome>${esc(latin(b.first_name ?? '').slice(0, 60))}</Nome><Cognome>${esc(latin(b.last_name ?? '').slice(0, 60))}</Cognome>`;
 	/* estero: IdFiscaleIVA con il paese e il numero senza prefisso; privato estero senza partita IVA: codice convenzionale OO99999999999, niente codice fiscale italiano */
 	const fiscal = estero
 		? `<IdFiscaleIVA><IdPaese>${esc(paese)}</IdPaese><IdCodice>${isCompany ? esc(senzaPrefisso(b.vat ?? '', paese)) || 'OO99999999999' : 'OO99999999999'}</IdCodice></IdFiscaleIVA>`
@@ -87,7 +109,7 @@ export function buildFatturaPaXml(inv: FpaInvoice, progressivo: string): { xml: 
 <FatturaElettronicaHeader>
 <DatiTrasmissione><IdTrasmittente><IdPaese>IT</IdPaese><IdCodice>${esc(COMPANY.fiscalCode)}</IdCodice></IdTrasmittente><ProgressivoInvio>${esc(progressivo)}</ProgressivoInvio><FormatoTrasmissione>FPR12</FormatoTrasmissione><CodiceDestinatario>${codiceDest}</CodiceDestinatario>${codiceDest === '0000000' && pec ? `<PECDestinatario>${esc(pec)}</PECDestinatario>` : ''}</DatiTrasmissione>
 <CedentePrestatore><DatiAnagrafici><IdFiscaleIVA><IdPaese>IT</IdPaese><IdCodice>${esc(COMPANY.vat)}</IdCodice></IdFiscaleIVA><CodiceFiscale>${esc(COMPANY.fiscalCode)}</CodiceFiscale><Anagrafica><Denominazione>${esc(COMPANY.name)}</Denominazione></Anagrafica><RegimeFiscale>${COMPANY.regime}</RegimeFiscale></DatiAnagrafici><Sede><Indirizzo>${esc(COMPANY.street)}</Indirizzo><CAP>${COMPANY.zip}</CAP><Comune>${esc(COMPANY.city)}</Comune><Provincia>${COMPANY.province}</Provincia><Nazione>${COMPANY.country}</Nazione></Sede>${COMPANY.email ? `<Contatti><Email>${esc(COMPANY.email)}</Email></Contatti>` : ''}</CedentePrestatore>
-<CessionarioCommittente><DatiAnagrafici>${fiscal}<Anagrafica>${anagrafica}</Anagrafica></DatiAnagrafici><Sede><Indirizzo>${esc([b.street, b.street2].filter(Boolean).join(', ') || '-')}</Indirizzo><CAP>${estero ? '00000' : esc((b.zip ?? '00000').padStart(5, '0'))}</CAP><Comune>${esc(b.city || '-')}</Comune>${!estero && b.province ? `<Provincia>${esc(b.province.toUpperCase().slice(0, 2))}</Provincia>` : ''}<Nazione>${esc(paese)}</Nazione></Sede></CessionarioCommittente>
+<CessionarioCommittente><DatiAnagrafici>${fiscal}<Anagrafica>${anagrafica}</Anagrafica></DatiAnagrafici><Sede><Indirizzo>${esc(indirizzo60(b.street, b.street2))}</Indirizzo><CAP>${estero ? '00000' : esc((b.zip ?? '00000').padStart(5, '0'))}</CAP><Comune>${esc(latin(b.city ?? '').slice(0, 60) || '-')}</Comune>${!estero && b.province ? `<Provincia>${esc(b.province.toUpperCase().slice(0, 2))}</Provincia>` : ''}<Nazione>${esc(paese)}</Nazione></Sede></CessionarioCommittente>
 </FatturaElettronicaHeader>
 <FatturaElettronicaBody>
 <DatiGenerali><DatiGeneraliDocumento><TipoDocumento>TD01</TipoDocumento><Divisa>EUR</Divisa><Data>${inv.issued_at}</Data><Numero>${esc(inv.number)}</Numero><ImportoTotaleDocumento>${n2(totale)}</ImportoTotaleDocumento>${causale}</DatiGeneraliDocumento>${ddt}</DatiGenerali>
