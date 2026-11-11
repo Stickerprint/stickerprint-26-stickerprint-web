@@ -32,6 +32,8 @@
 	</div>
 </div>
 
+{#if page.url.searchParams.get('eliminata')}<p class="ok">Richiesta {page.url.searchParams.get('eliminata')} eliminata.</p>{/if}
+
 <div class="tabs">
 	<a class="tab-link" class:is-active={filter === 'aperti'} href="?stato=aperti&tipo={kind}">Aperti</a>
 	{#each Object.entries(TICKET_STATUS) as [k, v] (k)}<a class="tab-link" class:is-active={filter === k} href="?stato={k}&tipo={kind}">{v.label} ({data.tickets.filter((t) => t.status === k).length})</a>{/each}

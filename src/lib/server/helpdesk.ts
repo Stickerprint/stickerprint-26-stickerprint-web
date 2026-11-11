@@ -112,6 +112,20 @@ export async function replyTicket(db: DB, id: string, body: string, author: stri
 	await db.from('tickets').update({ status: nextStatus, unread: false, last_message_at: new Date().toISOString(), updated_at: new Date().toISOString(), assigned: c.ticket.assigned ?? author, closed_at: nextStatus === 'chiuso' ? new Date().toISOString() : null }).eq('id', id);
 	return null;
 }
+/** Elimina un ticket (Mattia, 11/11/2026): via la conversazione, le note e gli allegati; la pagina del cliente smette di funzionare */
+export async function deleteTicket(db: DB, id: string): Promise<{ ok: true; number: string } | { ok: false; error: string }> {
+	const c = await getTicket(db, id);
+	if (!c) return { ok: false, error: 'Richiesta non trovata.' };
+	const paths = c.messages.flatMap((m) => messageFiles(m).map((f) => f.path));
+	const { data, error } = await db.from('tickets').delete().eq('id', id).select('id');
+	if (error) return { ok: false, error: `Richiesta non eliminata: ${error.message}` };
+	if (!data?.length) return { ok: false, error: 'Richiesta non eliminata.' };
+	/* la riga del vecchio modulo da cui era nato il ticket (migrazione 0034): via anche quella, non si vede da nessuna parte */
+	await db.from('contact_requests').delete().eq('ticket_id', id).neq('kind', 'aziende');
+	const { removeRequestFiles } = await import('./richieste');
+	await removeRequestFiles(db, paths);
+	return { ok: true, number: c.ticket.number };
+}
 export async function noteTicket(db: DB, id: string, body: string, author: string | null): Promise<string | null> {
 	if (!body.trim()) return 'Nota vuota.';
 	const { error } = await db.from('ticket_messages').insert({ ticket_id: id, direction: 'note', author, body: body.trim() });

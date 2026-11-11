@@ -1,5 +1,5 @@
 import { error, fail, redirect } from '@sveltejs/kit';
-import { draftFromRequest, getQuote, getRequest, linkRequestContact, listRequestMessages, markRequestRead, replyRequest, saveQuote, signedRequestFiles, type RequestFile, setRequestNotes, setRequestStatus } from '$lib/server/richieste';
+import { deleteRequest, draftFromRequest, getQuote, getRequest, linkRequestContact, listRequestMessages, markRequestRead, replyRequest, saveQuote, signedRequestFiles, type RequestFile, setRequestNotes, setRequestStatus } from '$lib/server/richieste';
 import { operatorName } from '$lib/server/produzione';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -32,6 +32,12 @@ export const actions: Actions = {
 		} catch { return fail(400, { error: 'Elenco degli allegati non valido.' }); }
 		const res = await replyRequest(locals.supabase, params.id, String(f.get('body') ?? ''), await operatorName(locals.supabase, locals.user), files);
 		return res.ok ? { ok: true, message: `Risposta inviata a ${res.email}${files.length ? ` con ${files.length === 1 ? 'un allegato' : files.length + ' allegati'}` : ''}.` } : fail(400, { error: res.error });
+	},
+	/** Elimina la richiesta (risposte e allegati compresi) e torna all'elenco */
+	elimina: async ({ params, locals: { supabase } }) => {
+		const res = await deleteRequest(supabase, params.id);
+		if (!res.ok) return fail(400, { error: res.error });
+		redirect(303, `/dashboard/aziende/richieste?eliminata=${encodeURIComponent(res.name)}${res.quotes ? `&preventivi=${res.quotes}` : ''}`);
 	},
 	stato: async ({ request, params, locals: { supabase } }) => {
 		const e = await setRequestStatus(supabase, params.id, String((await request.formData()).get('status')));

@@ -74,6 +74,9 @@
 				{#if t.assigned}<dt>Seguito da</dt><dd>{t.assigned}</dd>{/if}
 			</dl>
 			<p class="osub" style="margin-top:8px"><a class="link" href="/assistenza/{t.token}" target="_blank" rel="noopener">Pagina vista dal cliente ›</a></p>
+			<form method="POST" action="?/elimina" use:enhance style="margin-top:12px" onsubmit={(e) => { if (!confirm(`Eliminare la richiesta ${t.number} di ${t.name || t.email}?\n\nSi cancellano la conversazione, le note interne e gli allegati; il link che ha il cliente smette di funzionare.\nNon si può annullare.`)) e.preventDefault(); }}>
+				<button class="btn btn--ghost btn--xs rq-del" type="submit">🗑 Elimina richiesta</button>
+			</form>
 		</div>
 
 		<div class="dcard">
@@ -104,3 +107,8 @@
 		{/if}
 	</aside>
 </div>
+
+<style>
+	.rq-del { color: #c0392b; border-color: #e3b5ae; }
+	.rq-del:hover { background: #fdecea; border-color: #c0392b; }
+</style>

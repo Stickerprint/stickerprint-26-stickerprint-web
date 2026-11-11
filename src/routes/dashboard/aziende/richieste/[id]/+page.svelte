@@ -133,5 +133,13 @@
 				<button class="btn btn--xs" type="submit" style="justify-self:start">Salva note</button>
 			</form>
 		</div>
+		<form method="POST" action="?/elimina" use:enhance onsubmit={(e) => { if (!confirm(`Eliminare la richiesta di ${r.company || r.name || r.email}?\n\nSi cancellano il messaggio, le risposte scritte da qui e gli allegati.${data.quotes.length ? `\nI preventivi già creati (${data.quotes.length}) restano in Preventivi.` : ''}\nNon si può annullare.`)) e.preventDefault(); }}>
+			<button class="btn btn--ghost btn--xs rq-del" type="submit">🗑 Elimina richiesta</button>
+		</form>
 	</aside>
 </div>
+
+<style>
+	.rq-del { color: #c0392b; border-color: #e3b5ae; }
+	.rq-del:hover { background: #fdecea; border-color: #c0392b; }
+</style>

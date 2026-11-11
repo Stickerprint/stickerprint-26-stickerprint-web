@@ -105,6 +105,34 @@ export async function replyRequest(db: DB, id: string, body: string, author: str
 	if (e2 && r.status === 'new') await db.from('contact_requests').update({ status: 'in_progress' }).eq('id', id); // replied_at manca finche' la 0063 non gira
 	return { ok: true, email: r.email };
 }
+/** Toglie dal bucket requests i file che nessun'altra richiesta o ticket usa piu' (serve la chiave di servizio: lo staff non puo' cancellare dallo storage) */
+export async function removeRequestFiles(db: DB, paths: (string | null | undefined)[]) {
+	const admin = adminClient();
+	const uniche = [...new Set(paths.filter((p): p is string => !!p))];
+	if (!admin || !uniche.length) return;
+	const libere: string[] = [];
+	for (const p of uniche) {
+		const [{ count: a }, { count: b }] = await Promise.all([
+			db.from('contact_requests').select('id', { count: 'exact', head: true }).eq('file_path', p),
+			db.from('ticket_messages').select('id', { count: 'exact', head: true }).eq('file_path', p)
+		]);
+		if (!a && !b) libere.push(p);
+	}
+	if (libere.length) await admin.storage.from('requests').remove(libere).catch(() => null);
+}
+/** Elimina una richiesta aziende (Mattia, 11/11/2026): via la richiesta, le risposte scritte e i loro allegati.
+    I preventivi gia' creati restano in Preventivi, solo scollegati dalla richiesta. */
+export async function deleteRequest(db: DB, id: string): Promise<{ ok: true; name: string; quotes: number } | { ok: false; error: string }> {
+	const r = await getRequest(db, id);
+	if (!r || r.kind !== 'aziende') return { ok: false, error: 'Richiesta non trovata.' };
+	const messages = await listRequestMessages(db, id);
+	const { count } = await db.from('quotes').select('id', { count: 'exact', head: true }).eq('request_id', id);
+	const { data, error } = await db.from('contact_requests').delete().eq('id', id).select('id');
+	if (error) return { ok: false, error: `Richiesta non eliminata: ${error.message}` };
+	if (!data?.length) return { ok: false, error: 'Richiesta non eliminata.' };
+	await removeRequestFiles(db, [r.file_path, ...messages.flatMap((m) => (m.files ?? []).map((f) => f.path))]);
+	return { ok: true, name: r.company || r.name || r.email, quotes: count ?? 0 };
+}
 export async function setRequestNotes(db: DB, id: string, notes: string) {
 	const { error } = await db.from('contact_requests').update({ notes: notes.trim() || null }).eq('id', id);
 	return error?.message ?? null;
