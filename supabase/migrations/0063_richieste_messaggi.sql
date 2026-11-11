@@ -13,3 +13,5 @@ alter table public.request_messages enable row level security;
 drop policy if exists "request_messages: staff all" on public.request_messages;
 create policy "request_messages: staff all" on public.request_messages for all using (public.is_staff()) with check (public.is_staff());
 alter table public.contact_requests add column if not exists replied_at timestamptz;
+-- 11/11/2026: allegati delle risposte (elenco {path, name, size, type} nel bucket requests). Tutto il file si puo' rieseguire.
+alter table public.request_messages add column if not exists files jsonb;
