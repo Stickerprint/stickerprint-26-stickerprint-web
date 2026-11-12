@@ -75,6 +75,8 @@ function deviceFrom(ua: string): 'mobile' | 'tablet' | 'desktop' {
 	return 'desktop';
 }
 const r2 = (v: number) => Math.round(v * 100) / 100;
+/** misura in mm per le descrizioni: al decimo (dal sito in pollici arrivano 76.19999999999999 e simili) */
+const mm1 = (v: number | string) => Math.round(Number(v) * 10) / 10;
 
 export const actions: Actions = {
 	order: async ({ request, url, locals: { supabase, user, locale } }) => {
@@ -263,17 +265,19 @@ export const actions: Actions = {
 			}
 			if (error) return fail(400, { error: msg('ordineNonRegistrato', { errore: error.message }) });
 			if (!numbers.includes(row.number)) numbers.push(row.number);
-			invLines.push({ code: CATS[l.product]?.code ?? null, description: l.product === 'campioni' ? `Kit campioni` : l.product === 'kit_adesivi' ? `Kit di adesivi (${kitN(l.forma)} adesivi da ${l.w} mm, ${MATERIAL_LABEL[l.materiale] ?? l.materiale}${l.finitura && l.finitura !== 'nessuna' ? ', lamina ' + l.finitura : ''})` : `${name} ${l.forma} ${MATERIAL_LABEL[l.materiale] ?? l.materiale}${l.finitura && l.finitura !== 'nessuna' ? ' lamina ' + l.finitura : ''} ${l.w}×${l.h} mm`, qty: l.qty, unit_net: r2(l.baseNet / l.qty), total_net: l.baseNet });
+			invLines.push({ code: CATS[l.product]?.code ?? null, description: l.product === 'campioni' ? `Kit campioni` : l.product === 'kit_adesivi' ? `Kit di adesivi (${kitN(l.forma)} adesivi da ${mm1(l.w)} mm, ${MATERIAL_LABEL[l.materiale] ?? l.materiale}${l.finitura && l.finitura !== 'nessuna' ? ', lamina ' + l.finitura : ''})` : `${name} ${l.forma} ${MATERIAL_LABEL[l.materiale] ?? l.materiale}${l.finitura && l.finitura !== 'nessuna' ? ' lamina ' + l.finitura : ''} ${mm1(l.w)}×${mm1(l.h)} mm`, qty: l.qty, unit_net: r2(l.baseNet / l.qty), total_net: l.baseNet });
 			{
 				const lam = nomeLamina(l.finitura);
-				const descr = l.product === 'campioni' ? t(locale, 'checkout.riepilogo.kitCampioni') : l.product === 'kit_adesivi' ? t(locale, 'checkout.carrello.kitRiga', { n: kitN(l.forma), mm: `${l.w} mm`, materiale: materialLabel(l.materiale, lingua), lamina: lam ? `, ${lam}` : '' }) : t(locale, 'checkout.carrello.riga', { prodotto: productFor(l.product, lingua)?.name ?? name, sagoma: nomeSagoma(l.product, l.forma), materiale: materialLabel(l.materiale, lingua), lamina: lam ? ` ${lam}` : '', misura: `${l.w}×${l.h} mm` }); /* descrizione dell'ordine SEMPRE in mm: la legge la produzione */
+				const descr = l.product === 'campioni' ? t(locale, 'checkout.riepilogo.kitCampioni') : l.product === 'kit_adesivi' ? t(locale, 'checkout.carrello.kitRiga', { n: kitN(l.forma), mm: `${mm1(l.w)} mm`, materiale: materialLabel(l.materiale, lingua), lamina: lam ? `, ${lam}` : '' }) : t(locale, 'checkout.carrello.riga', { prodotto: productFor(l.product, lingua)?.name ?? name, sagoma: nomeSagoma(l.product, l.forma), materiale: materialLabel(l.materiale, lingua), lamina: lam ? ` ${lam}` : '', misura: `${mm1(l.w)}×${mm1(l.h)} mm` }); /* descrizione dell'ordine SEMPRE in mm: la legge la produzione */
 				customerLines.push({ code: CATS[l.product]?.code ?? null, description: descr, qty: l.qty, unit_net: r2(l.baseNet / l.qty), total_net: l.baseNet });
+				/* fattura per il cliente estero: la stessa riga nella sua lingua (la descrizione italiana resta quella fiscale) */
+				if (lingua !== 'it') invLines[invLines.length - 1].description_c = descr;
 			}
 			items.push({ product: l.product, productName: name, forma: l.forma, materiale: l.materiale, finitura: l.finitura ?? null, w: l.w, h: l.h, qty: Number(l.qty), gross: l.gross, previewUrl: l.previewUrl ?? null });
 			autoProof.push(auto);
 		}
 		const invoiceLines = normalizeLines(invLines, discount, creditUsed);
-		if (shippingNet > 0) invoiceLines.push({ description: isRemote(ship.province) ? 'Spedizione (isole e zone remote)' : 'Spedizione', qty: 1, unit_net: shippingNet, total_net: shippingNet });
+		if (shippingNet > 0) invoiceLines.push({ description: isRemote(ship.province) ? 'Spedizione (isole e zone remote)' : 'Spedizione', ...(lingua !== 'it' ? { description_c: t(locale, isRemote(ship.province) ? 'documenti.fattura.spedizioneRemota' : 'documenti.fattura.spedizione') } : {}), qty: 1, unit_net: shippingNet, total_net: shippingNet });
 		const payload: CheckoutPayload = { userId: user?.id ?? null, email, firstName: ship.first_name, lastName: ship.last_name, payment: payment === 'card' ? 'stripe' : payment, ship, bill, numbers, invoiceLines, emailLines: invLines, customerLines, items, productsNet, expressNet, discount, discountCode, creditUsed, vatAmount, totalGross, toPay, express, autoProof , locale, currency, fxRate: fx, vatRate, zona, toPayCurrency, vies: vies ? { valido: vies.valido, verificato: vies.verificato, nome: vies.nome ?? null } : null };
 		const fdb = admin ?? db;
 		const se = await savePendingCheckout(fdb, group, payload, viaPayPal ? 'paypal' : online ? 'stripe' : payment === 'credito' ? 'credit' : 'test', { locale, currency });

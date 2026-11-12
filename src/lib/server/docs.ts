@@ -149,12 +149,12 @@ export const DOC_COLS = (font?: PDFFont, lang: Lang = 'it'): TableCol[] => {
 	return [{ label: D('colonne.codice'), width: 58, bold: true }, { label: D('colonne.descrizione'), width: 244, maxLines: 3 }, { label: D('colonne.qta'), width: 50, align: 'right' }, { label: D('colonne.prezzoUnit'), width: 70, align: 'right' }, { label: D('colonne.imponibile'), width: 77, align: 'right', bold: true }];
 };
 /* ---------- lingua del cliente per conferma d'ordine e preventivo: etichette dal catalogo "documenti", numeri col formato della lingua ---------- */
-const docT = (lang: Lang) => (chiave: string, params?: Record<string, string | number>) => tradotto(perLingua(lang), `documenti.${chiave}`, params);
+export const docT = (lang: Lang) => (chiave: string, params?: Record<string, string | number>) => tradotto(perLingua(lang), `documenti.${chiave}`, params);
 /** Helvetica di pdf-lib e' WinAnsi: gli spazi stretti (fr-FR) diventano spazi normali */
-const winAnsi = (s: string) => s.replace(/[\u202F\u2009]/g, ' ');
+export const winAnsi = (s: string) => s.replace(/[\u202F\u2009]/g, ' ');
 /** importi sempre in euro (documento fiscale italiano), ma col formato numerico della lingua: 1.234,50 €, €1,234.50, 1 234,50 € */
-const eurIn = (lang: Lang, v: number, max = 2) => winAnsi(new Intl.NumberFormat(LOCALES[perLingua(lang)].intl, { style: 'currency', currency: 'EUR', useGrouping: 'always', minimumFractionDigits: 2, maximumFractionDigits: max }).format(v));
-const dataBreve = (lang: Lang, d: string) => new Date(d).toLocaleDateString(LOCALES[perLingua(lang)].intl);
+export const eurIn = (lang: Lang, v: number, max = 2) => winAnsi(new Intl.NumberFormat(LOCALES[perLingua(lang)].intl, { style: 'currency', currency: 'EUR', useGrouping: 'always', minimumFractionDigits: 2, maximumFractionDigits: max }).format(v));
+export const dataBreve = (lang: Lang, d: string) => new Date(d).toLocaleDateString(LOCALES[perLingua(lang)].intl);
 
 const DDT_COLS: TableCol[] = [{ label: 'Codice', width: 70, bold: true }, { label: 'Descrizione', width: 369, maxLines: 3 }, { label: 'Q.tà', width: 60, align: 'right', bold: true }];
 
@@ -222,7 +222,7 @@ export async function buildOrderPdf(d: OrderDocData, lang: Lang = 'it'): Promise
 	let yl = drawTable({ page, x: M, y: base - 8, cols: [{ label: D('colScadenza'), width: 70 }, { label: D('colImporto'), width: 70, align: 'right' }, { label: D('colMetodo'), width: 160 }], rows: terms, font, bold, size: 9, headSize: 8, minRowH: 18 });
 	yl -= 12;
 	if (COMPANY.iban) t(`IBAN ${COMPANY.iban} · ${COMPANY.name}`, M, yl, 9, font, gray);
-	drawTotals(page, font, bold, base - 4, [[D('imponibile'), money(d.subtotal_net)], [D('iva'), money(d.vat_amount)], [D('totale'), money(d.total_gross), true]]);
+	drawTotals(page, font, bold, base - 4, [[D('imponibile'), money(d.subtotal_net)], [d.vat_amount === 0 && d.subtotal_net > 0 ? D('fattura.ivaAliquota', { p: 0 }) : D('iva'), money(d.vat_amount)], [d.vat_amount === 0 && d.subtotal_net > 0 ? D('fattura.totale') : D('totale'), money(d.total_gross), true]]);
 	t(D('generato'), M, 40, 8, font, gray);
 	return pdf.save();
 }

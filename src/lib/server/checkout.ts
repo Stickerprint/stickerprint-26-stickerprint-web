@@ -13,7 +13,7 @@ import { orderConfirmationEmail, ownerNotifyEmail, OWNER_EMAIL } from './email-t
 import { estimatedShipDate } from '$lib/utils/shipping';
 import { ensurePlan } from './produzione';
 import type { OrderRow } from '$lib/dashboard/orders';
-import { LOCALES, formatAmount, localizePath, type Currency, type LocaleCode } from '$lib/i18n';
+import { LOCALES, formatAmount, langOf, localizePath, type Currency, type LocaleCode } from '$lib/i18n';
 import { dataIn, t } from '$lib/traduzioni';
 import type { Zona } from '$lib/mercati';
 import { cancelPaymentIntent, expireCheckoutSession } from './stripe';
@@ -105,7 +105,8 @@ export async function finalizeCheckout(db: DB, group: string, o: { provider: str
 	const { data: invNum } = await db.rpc('next_invoice_number');
 	const payTerms = [{ due: paidAt.slice(0, 10), amount: p.toPay, method: PAYMENT_NAME[p.payment] ?? 'Carta di credito (Stripe)', xml_code: 'MP08' }];
 	const naturaInv = p.zona === 'us' ? 'N3.1' : p.zona === 'ue' && p.vatRate === 0 ? 'N3.2' : null;
-	const invoice = { vat_rate: p.vatRate ?? 0.22, natura: naturaInv, number: (invNum as string) ?? `FT-${Date.now()}`, issued_at: paidAt.slice(0, 10), email: p.email, billing: p.bill, lines: p.invoiceLines, payment_terms: payTerms, subtotal_net: p.productsNet, discount_net: p.discount, discount_code: p.discountCode, express_net: p.expressNet, credit_used: p.creditUsed, vat_amount: p.vatAmount, total_gross: p.totalGross, to_pay: p.toPay, payment_method: p.payment, orders: p.numbers };
+	/* PDF nella lingua del cliente (sito da cui ha ordinato); se ha pagato in dollari il documento resta in euro e dice quanto gli e' stato addebitato */
+	const invoice = { lang: langOf(p.locale ?? 'it'), paid_currency: p.currency && p.currency !== 'EUR' && p.toPayCurrency ? { currency: p.currency, amount: p.toPayCurrency } : null, vat_rate: p.vatRate ?? 0.22, natura: naturaInv, number: (invNum as string) ?? `FT-${Date.now()}`, issued_at: paidAt.slice(0, 10), email: p.email, billing: p.bill, lines: p.invoiceLines, payment_terms: payTerms, subtotal_net: p.productsNet, discount_net: p.discount, discount_code: p.discountCode, express_net: p.expressNet, credit_used: p.creditUsed, vat_amount: p.vatAmount, total_gross: p.totalGross, to_pay: p.toPay, payment_method: p.payment, orders: p.numbers };
 	let pdfPath: string | null = null;
 	let pdfB64: string | null = null;
 	try {

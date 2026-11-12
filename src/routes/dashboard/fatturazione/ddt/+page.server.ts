@@ -1,5 +1,6 @@
 import { fail } from '@sveltejs/kit';
 import { buildInvoicePdf, type InvoiceLine } from '$lib/server/invoice';
+import { linguaDaPaese } from '$lib/server/fatture';
 import { computeTerms, type PaymentMethod } from '$lib/dashboard/payments';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -42,7 +43,7 @@ export const actions: Actions = {
 		}
 		const orderNumbers = [...new Set(ddts.flatMap((d) => (d.data as DdtData).order_numbers ?? [d.order_number]))];
 		const ddtNumbers = ddts.map((d) => d.number as string);
-		const inv = { number, issued_at: issued, email: first.email ?? '', billing: fd.customer, lines, subtotal_net: subtotal, discount_net: 0, discount_code: null, express_net: 0, credit_used: 0, vat_amount: vat, total_gross: gross, to_pay: gross, payment_method: fd.payment_method ?? 'Bonifico', orders: orderNumbers, payment_terms: terms, ddt_numbers: ddtNumbers };
+		const inv = { lang: linguaDaPaese(fd.customer?.country), number, issued_at: issued, email: first.email ?? '', billing: fd.customer, lines, subtotal_net: subtotal, discount_net: 0, discount_code: null, express_net: 0, credit_used: 0, vat_amount: vat, total_gross: gross, to_pay: gross, payment_method: fd.payment_method ?? 'Bonifico', orders: orderNumbers, payment_terms: terms, ddt_numbers: ddtNumbers };
 		let pdfPath: string | null = null;
 		try {
 			const bytes = await buildInvoicePdf(inv);

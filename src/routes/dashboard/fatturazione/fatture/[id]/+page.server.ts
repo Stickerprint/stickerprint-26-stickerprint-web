@@ -1,12 +1,11 @@
 import { error, fail, redirect } from '@sveltejs/kit';
-import { buildInvoicePdf, type InvoiceLine } from '$lib/server/invoice';
+import { aliquotaFattura, type InvoiceLine } from '$lib/server/invoice';
 import type { PaymentMethod } from '$lib/dashboard/payments';
-import { getInvoice, loadInvoiceMessages, markInvoiceRead, replyInvoice, sendInvoice, setInvoicePaymentStatus, syncInvoicePayments, type InvoiceRow } from '$lib/server/fatture';
+import { getInvoice, pdfFattura, loadInvoiceMessages, markInvoiceRead, replyInvoice, sendInvoice, setInvoicePaymentStatus, syncInvoicePayments, type InvoiceRow } from '$lib/server/fatture';
 import { operatorName } from '$lib/server/produzione';
 import type { Actions, PageServerLoad } from './$types';
 
 const r2 = (v: number) => Math.round(v * 100) / 100;
-const VAT = 0.22;
 interface Edit { issued_at: string; email: string; billing: Record<string, string>; lines: InvoiceLine[]; terms: { method: string; due: string; amount: number; xml_code: string }[]; notes: string }
 
 export const load: PageServerLoad = async ({ params, url, locals: { supabase, user } }) => {
@@ -32,10 +31,16 @@ export const actions: Actions = {
 		if (inv.xml_generated_at) return fail(400, { error: 'XML già generato: la fattura non si può più modificare.' });
 		let e: Edit;
 		try { e = JSON.parse(String((await request.formData()).get('payload') ?? '')); } catch { return fail(400, { error: 'Dati non leggibili.' }); }
-		const lines = (e.lines ?? []).filter((l) => l.description && Number(l.qty) > 0).map((l) => ({ code: l.code ? String(l.code).trim().toUpperCase().slice(0, 12) : null, description: String(l.description).trim(), qty: Number(l.qty), unit_net: Math.round(Number(l.unit_net) * 10000) / 10000, total_net: r2(Number(l.qty) * Number(l.unit_net)), ddt: l.ddt ?? null, ddt_date: l.ddt_date ?? null }));
+		const lines = (e.lines ?? []).filter((l) => l.description && Number(l.qty) > 0).map((l) => ({ code: l.code ? String(l.code).trim().toUpperCase().slice(0, 12) : null, description: String(l.description).trim(), qty: Number(l.qty), unit_net: Math.round(Number(l.unit_net) * 10000) / 10000, total_net: r2(Number(l.qty) * Number(l.unit_net)), ddt: l.ddt ?? null, ddt_date: l.ddt_date ?? null })) as InvoiceLine[];
+		/* la descrizione nella lingua del cliente resta solo sulle righe che non sono state riscritte */
+		const tradotte = new Map(((inv.lines ?? []) as InvoiceLine[]).filter((l) => l.description_c).map((l) => [l.description, l.description_c as string]));
+		for (const l of lines) { const c = tradotte.get(l.description); if (c) l.description_c = c; }
 		if (!lines.length) return fail(400, { error: 'La fattura deve avere almeno una riga.' });
 		const subtotal = r2(lines.reduce((s, l) => s + l.total_net, 0));
-		const vat = r2(subtotal * VAT);
+		/* IVA con l'aliquota REGISTRATA sulla fattura: 22% in Italia, 0% per l'estero senza IVA (N3.1 / N3.2). Prima era sempre il 22%:
+		   salvando una fattura estera tornava l'IVA. */
+		const rate = aliquotaFattura(inv.vat_rate);
+		const vat = r2(subtotal * rate);
 		const gross = r2(subtotal + vat);
 		let terms = (e.terms ?? []).filter((t) => t.due).map((t) => ({ method: t.method || inv.payment_method || 'Bonifico', due: t.due, amount: r2(Number(t.amount) || 0), xml_code: t.xml_code || 'MP05' }));
 		if (terms.length) { const sum = r2(terms.reduce((s, t) => s + t.amount, 0)); if (Math.abs(sum - gross) > 0.01) terms[terms.length - 1].amount = r2(terms[terms.length - 1].amount + gross - sum); } else terms = inv.payment_terms ?? [];
@@ -43,7 +48,7 @@ export const actions: Actions = {
 		const ddtNumbers: string[] = inv.ddt_numbers?.length ? inv.ddt_numbers : inv.ddt_number ? [inv.ddt_number] : [];
 		const patch = { issued_at: e.issued_at || inv.issued_at, email: (e.email ?? '').trim() || inv.email, billing: e.billing ?? inv.billing, lines, subtotal_net: subtotal, discount_net: 0, express_net: 0, credit_used: 0, vat_amount: vat, amount_gross: gross, payment_terms: terms, payment_method: payment, notes: (e.notes ?? '').trim() || null, updated_at: new Date().toISOString() };
 		try {
-			const bytes = await buildInvoicePdf({ number: inv.number, issued_at: patch.issued_at, email: patch.email ?? '', billing: patch.billing ?? {}, lines, subtotal_net: subtotal, discount_net: 0, express_net: 0, credit_used: 0, vat_amount: vat, total_gross: gross, to_pay: gross, payment_method: payment, orders: inv.order_numbers ?? [], payment_terms: terms, ddt_numbers: ddtNumbers, notes: patch.notes });
+			const { bytes } = await pdfFattura(supabase, inv as InvoiceRow, { issued_at: patch.issued_at, email: patch.email ?? '', billing: patch.billing ?? {}, lines, subtotal_net: subtotal, discount_net: 0, express_net: 0, vat_amount: vat, total_gross: gross, to_pay: gross, payment_method: payment, payment_terms: terms, ddt_numbers: ddtNumbers, notes: patch.notes });
 			const path = inv.pdf_path || `staff/${inv.number}.pdf`;
 			const { error: ue } = await supabase.storage.from('invoices').upload(path, bytes, { contentType: 'application/pdf', upsert: true });
 			if (!ue) Object.assign(patch, { pdf_path: path });

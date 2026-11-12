@@ -4,22 +4,65 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { money } from '$lib/dashboard/orders';
-import type { Lang } from '$lib/i18n';
+import { LOCALES, isLocale, langOf, localizePath, type Lang, type LocaleCode } from '$lib/i18n';
 import { perLingua, t as tradotto } from '$lib/traduzioni';
 import { dueNow, isRiba, type InvoiceMessage, type InvoicePayment } from '$lib/dashboard/fatture';
 import { sendEmail } from './email';
 import { invoiceEmail, invoiceReplyEmail, OWNER_EMAIL, ownerNotifyEmail } from './email-templates';
 import { pushStaff } from './push';
-import { buildInvoicePdf } from './invoice';
+import { buildInvoicePdf, aliquotaFattura, type InvoiceData, type InvoiceLine } from './invoice';
 export * from '$lib/dashboard/fatture';
 
 type DB = SupabaseClient;
-export interface InvoiceRow { id: string; number: string; issued_at: string; email: string | null; billing: Record<string, string> | null; lines: { description: string; qty: number; unit_net: number; total_net: number }[] | null; subtotal_net: number; discount_net: number; express_net: number; vat_amount: number; amount_gross: number; payment_method: string; payment_terms: { method: string; due: string; amount: number; xml_code?: string }[] | null; order_numbers: string[] | null; checkout_group: string | null; user_id: string | null; pdf_path: string | null; paid_at: string | null; sent_at: string | null; token: string; sent_subject: string | null; sent_message: string | null; sender_name: string | null; opened_count: number; opened_at: string | null; pdf_downloaded_at: string | null; unread: boolean; notes: string | null }
+export interface InvoiceRow { id: string; number: string; issued_at: string; email: string | null; billing: Record<string, string> | null; lines: InvoiceLine[] | null; vat_rate?: number | null; natura?: string | null; currency?: string | null; ddt_number?: string | null; ddt_numbers?: string[] | null; subtotal_net: number; discount_net: number; express_net: number; vat_amount: number; amount_gross: number; payment_method: string; payment_terms: { method: string; due: string; amount: number; xml_code?: string }[] | null; order_numbers: string[] | null; checkout_group: string | null; user_id: string | null; pdf_path: string | null; paid_at: string | null; sent_at: string | null; token: string; sent_subject: string | null; sent_message: string | null; sender_name: string | null; opened_count: number; opened_at: string | null; pdf_downloaded_at: string | null; unread: boolean; notes: string | null }
 
 export async function getInvoice(db: DB, id: string): Promise<InvoiceRow | null> {
 	const { data } = await db.from('invoices').select('*').eq('id', id).maybeSingle();
 	return (data as InvoiceRow | null) ?? null;
 }
+/* ---------- lingua del cliente e PDF: UN SOLO punto da cui passano pagina del cliente, invio, reinvio e modifica ---------- */
+/** Lingua dal paese di fatturazione: Italia (e paesi del sito italiano) = italiano; un paese con la sua lingua sul sito = quella; ogni altro paese = inglese */
+export function linguaDaPaese(country?: string | null): Lang {
+	const c = (country || 'IT').trim().toUpperCase();
+	return Object.values(LOCALES).find((l) => l.countries.includes(c))?.lang ?? 'en';
+}
+/** Lingua della fattura per il cliente: quella del sito da cui ha ordinato (orders.locale); senza un ordine del sito (ordini manuali, DDT)
+ *  il paese di fatturazione. Insieme, quanto ha pagato nella sua valuta se non e' l'euro (sito USA). */
+export async function linguaFattura(db: DB, inv: Pick<InvoiceRow, 'order_numbers' | 'billing'>): Promise<{ lang: Lang; locale: LocaleCode; pagato: { currency: string; amount: number } | null }> {
+	let code: LocaleCode | null = null; let pagato: { currency: string; amount: number } | null = null;
+	const nums = (inv.order_numbers ?? []).filter(Boolean);
+	if (nums.length) {
+		const { data, error } = await db.from('orders').select('locale, currency, total_paid_currency').in('number', nums);
+		if (!error && data?.length) {
+			const rows = data as { locale: string | null; currency: string | null; total_paid_currency: number | null }[];
+			const loc = rows.map((r) => r.locale).find((l) => isLocale(l));
+			if (isLocale(loc)) code = loc;
+			const cur = rows.map((r) => r.currency).find((c) => c && c !== 'EUR');
+			if (cur) { const amount = Math.round(rows.filter((r) => r.currency === cur).reduce((s, r) => s + Number(r.total_paid_currency ?? 0), 0) * 100) / 100; if (amount > 0) pagato = { currency: cur, amount }; }
+		}
+	}
+	const lang = code ? langOf(code) : linguaDaPaese(inv.billing?.country);
+	return { lang, locale: code ?? perLingua(lang), pagato };
+}
+/** Dati del PDF a partire dalla fattura registrata: aliquota e natura REGISTRATE (0% per l'estero), lingua del cliente. `over` = valori appena modificati. */
+export async function datiPdfFattura(db: DB, inv: InvoiceRow, over: Partial<InvoiceData> = {}): Promise<InvoiceData> {
+	const l = await linguaFattura(db, { order_numbers: inv.order_numbers, billing: (over.billing as Record<string, string> | undefined) ?? inv.billing });
+	return {
+		number: inv.number, issued_at: inv.issued_at, email: inv.email ?? '', billing: inv.billing ?? {}, lines: inv.lines ?? [],
+		vat_rate: aliquotaFattura(inv.vat_rate), natura: inv.natura ?? null, lang: l.lang, paid_currency: l.pagato,
+		subtotal_net: Number(inv.subtotal_net), discount_net: Number(inv.discount_net), express_net: Number(inv.express_net), credit_used: 0,
+		vat_amount: Number(inv.vat_amount), total_gross: Number(inv.amount_gross), to_pay: Number(inv.amount_gross), payment_method: inv.payment_method,
+		orders: inv.order_numbers ?? [], payment_terms: inv.payment_terms ?? [], ddt_numbers: inv.ddt_numbers?.length ? inv.ddt_numbers : inv.ddt_number ? [inv.ddt_number] : [], notes: inv.notes,
+		...over
+	};
+}
+/** PDF della fattura rigenerato dai dati registrati (sempre l'ultima versione del layout), con il nome del file nella lingua del cliente */
+export async function pdfFattura(db: DB, inv: InvoiceRow, over: Partial<InvoiceData> = {}): Promise<{ bytes: Uint8Array; nome: string; lang: Lang; locale: LocaleCode }> {
+	const dati = await datiPdfFattura(db, inv, over);
+	const lang = dati.lang ?? 'it';
+	return { bytes: await buildInvoicePdf(dati), nome: tradotto(perLingua(lang), 'account.doc.fileFattura', { n: inv.number }), lang, locale: perLingua(lang) };
+}
+
 /** Scadenze della fattura → righe di pagamento (le pagate restano). Fatture e-commerce gia' incassate: una riga pagata. */
 export async function syncInvoicePayments(db: DB, inv: InvoiceRow): Promise<InvoicePayment[]> {
 	const terms = (inv.payment_terms?.length ? inv.payment_terms : [{ method: inv.payment_method || 'Bonifico bancario vista fattura', due: inv.issued_at, amount: Number(inv.amount_gross), xml_code: 'MP05' }])
@@ -51,14 +94,16 @@ export async function sendInvoice(db: DB, id: string, origin: string, o: { to?: 
 	if (!o.subject.trim() || !o.message.trim()) return { ok: false, message: "Oggetto e testo dell'email sono obbligatori." };
 	const payments = await syncInvoicePayments(db, inv);
 	const due = dueNow(payments);
-	const mail = invoiceEmail({ subject: o.subject.trim(), message: o.message.trim(), senderName: o.sender, number: inv.number, href: `${origin}/fattura/${inv.token}`, toPay: due > 0 ? money(due) : null });
+	/* lingua del cliente: cornice dell'email, pagina (link col prefisso della lingua) e PDF allegato */
+	const lingua = await linguaFattura(db, inv);
+	const mail = invoiceEmail({ subject: o.subject.trim(), message: o.message.trim(), senderName: o.sender, number: inv.number, href: `${origin}${localizePath(`/fattura/${inv.token}`, lingua.locale)}`, toPay: due > 0 ? money(due) : null }, lingua.lang);
 	const cc = (o.cc || '').split(/[,;\s]+/).map((x) => x.trim().toLowerCase()).filter((x) => /^[^@]+@[^@]+\.[^@]+$/.test(x));
 	/* il PDF della fattura viaggia sempre in allegato (rigenerato dai dati, cosi' e' sempre l'ultima versione) */
 	let attachments: { name: string; content: string; contentType: string }[] | undefined;
 	try {
-		const bytes = await buildInvoicePdf({ number: inv.number, issued_at: inv.issued_at, email: inv.email ?? '', billing: inv.billing ?? {}, lines: inv.lines ?? [], subtotal_net: Number(inv.subtotal_net), discount_net: Number(inv.discount_net), express_net: Number(inv.express_net), credit_used: 0, vat_amount: Number(inv.vat_amount), total_gross: Number(inv.amount_gross), to_pay: Number(inv.amount_gross), payment_method: inv.payment_method, orders: inv.order_numbers ?? [], payment_terms: inv.payment_terms ?? [], notes: inv.notes });
+		const { bytes, nome } = await pdfFattura(db, inv);
 		let b = ''; for (let i = 0; i < bytes.length; i += 0x8000) b += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
-		attachments = [{ name: `Fattura-${inv.number}.pdf`, content: btoa(b), contentType: 'application/pdf' }];
+		attachments = [{ name: nome, content: btoa(b), contentType: 'application/pdf' }];
 		if (inv.pdf_path) await db.storage.from('invoices').upload(inv.pdf_path, bytes, { contentType: 'application/pdf', upsert: true }).catch(() => {});
 	} catch (e) { console.error('[fattura] pdf allegato', e); }
 	const r = await sendEmail({ to: [email, ...cc], ...mail, attachments, metadata: { invoice: inv.number } });

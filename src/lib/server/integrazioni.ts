@@ -15,7 +15,9 @@ import { loadEngine } from './pricing';
 import { quoteWith, PRODUCT_ENGINES } from '$lib/pricing/engine';
 import { getConfirmation, loadGroup, loadPayments } from './conferme';
 import { blockPhase, unblockPhase, loadJob, recalcAll, ensurePlan, logEvent } from './produzione';
-import { buildInvoicePdf } from './invoice';
+import { buildInvoicePdf, aliquotaFattura } from './invoice';
+import { isLocale, langOf } from '$lib/i18n';
+import { linguaDaPaese } from './fatture';
 import { sendEmail } from './email';
 import { pushStaff } from './push';
 import { integrationRequestEmail, integrationInvoiceEmail, OWNER_EMAIL, ownerNotifyEmail } from './email-templates';
@@ -126,7 +128,10 @@ export async function settleIntegration(db: DB, group: string, payment: OrderPay
 	/* fattura dell'integrazione: solo la differenza, numero progressivo, IVA scorporata dal pagato */
 	const first = g.items[0];
 	const amount = r2(Number(payment.amount));
-	const net = r2(amount / 1.22), vat = r2(amount - net);
+	/* stessa aliquota dell'ordine: 22% in Italia, 0% per l'estero senza IVA (USA N3.1, azienda UE con VIES N3.2) */
+	const rate = aliquotaFattura(first.vat_rate);
+	const natura = rate === 0 ? (first.zona === 'ue' ? 'N3.2' : 'N3.1') : null;
+	const net = r2(amount / (1 + rate)), vat = r2(amount - net);
 	const { data: invNum } = await db.rpc('next_invoice_number');
 	const number = (invNum as string) ?? `SPF-${Date.now()}`;
 	const today = new Date().toISOString().slice(0, 10);
@@ -134,7 +139,7 @@ export async function settleIntegration(db: DB, group: string, payment: OrderPay
 	const lines = [{ code: first.product_code ?? CATS[first.product_slug]?.code ?? null, description: `Integrazione ordine ${g.number}: ${payment.reason ?? 'modifica dell’ordine'}`.slice(0, 200), qty: 1, unit_net: net, total_net: net }];
 	const method = payment.provider === 'paypal' ? 'PayPal' : payment.provider === 'stripe' ? 'Carta di credito (Stripe)' : 'Bonifico bancario';
 	const terms = [{ due: today, amount, method, xml_code: payment.provider === 'stripe' || payment.provider === 'paypal' ? 'MP08' : 'MP05' }];
-	const inv = { number, issued_at: today, email: g.email, billing: bill, lines, subtotal_net: net, discount_net: 0, express_net: 0, credit_used: 0, vat_amount: vat, total_gross: amount, to_pay: amount, payment_method: method, orders: g.numbers, payment_terms: terms, notes: null };
+	const inv = { vat_rate: rate, natura, lang: isLocale(first.locale) ? langOf(first.locale) : linguaDaPaese(bill.country), number, issued_at: today, email: g.email, billing: bill, lines, subtotal_net: net, discount_net: 0, express_net: 0, credit_used: 0, vat_amount: vat, total_gross: amount, to_pay: amount, payment_method: method, orders: g.numbers, payment_terms: terms, notes: null };
 	let pdfPath: string | null = null; let b64: string | null = null;
 	try {
 		const bytes = await buildInvoicePdf(inv);
@@ -142,7 +147,7 @@ export async function settleIntegration(db: DB, group: string, payment: OrderPay
 		const { error } = await db.storage.from('invoices').upload(pdfPath, bytes, { contentType: 'application/pdf', upsert: true });
 		if (error) pdfPath = null; else { let bin = ''; for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000)); b64 = btoa(bin); }
 	} catch (e) { console.error('[integrazione] pdf', e); }
-	const { data: created } = await db.from('invoices').insert({ user_id: first.user_id, order_id: first.id, number, issued_at: today, amount_gross: amount, pdf_path: pdfPath, email: g.email, billing: bill, lines, payment_terms: terms, order_numbers: g.numbers, subtotal_net: net, discount_net: 0, express_net: 0, credit_used: 0, vat_amount: vat, payment_method: payment.provider ?? 'manuale', paid_at: new Date().toISOString(), checkout_group: group, sent_at: g.email ? new Date().toISOString() : null }).select('id').single();
+	const { data: created } = await db.from('invoices').insert({ vat_rate: rate, natura, user_id: first.user_id, order_id: first.id, number, issued_at: today, amount_gross: amount, pdf_path: pdfPath, email: g.email, billing: bill, lines, payment_terms: terms, order_numbers: g.numbers, subtotal_net: net, discount_net: 0, express_net: 0, credit_used: 0, vat_amount: vat, payment_method: payment.provider ?? 'manuale', paid_at: new Date().toISOString(), checkout_group: group, sent_at: g.email ? new Date().toISOString() : null }).select('id').single();
 	if (created?.id) await db.from('order_payments').update({ invoice_id: created.id }).eq('id', payment.id);
 	if (g.email) {
 		const mail = integrationInvoiceEmail({ name: first.shipping?.first_name || g.customer, number: g.number, invoice: number, amount: eur(amount), lines: changes.map((c) => c.label) });
