@@ -4881,8 +4881,8 @@ const RESM={
    (vista dall'alto): 'w' in moltiplica (ombreggiatura verso i bordi), i tre 'b' in scherma
    (riflesso sul bordo in basso a sinistra e luce in alto), il filo di bordo al 46%.
    I livelli sono esportati in /preprint/dome/<forma>/ e stesi sul riquadro del pezzo.
-   Ovali e rettangoli fuori proporzione: gli stessi livelli adattati al riquadro (il riflesso
-   segue comunque il bordo). Sagomato: per ora la cupola calcolata (resinDome sotto).
+   Rettangoli: i livelli si stendono a nove riquadri (domeNove), uguali a ogni proporzione.
+   Ovali: i livelli si adattano al riquadro, a ogni proporzione. Sagomato: la cupola calcolata (resinDomeProc sotto).
    -------------------------------------------------------------------- */
 const DOME_IMG={};
 function domeAssets(shape){
@@ -4893,6 +4893,21 @@ function domeAssets(shape){
     im.onerror=()=>{e.n++;if(e.n>=names.length){e.ok=!!(e.mult&&e.screen);try{if(S.src&&S.bbox){draw();computeLayout();}}catch(x){}}};
     im.src='/preprint/dome/'+shape+'/'+n+'.png';}
   return null;}
+/* [sito] RETTANGOLO DI QUALSIASI PROPORZIONE: i livelli del PSD (1000x600) si stendono a NOVE RIQUADRI.
+   I quattro angoli restano in proporzione (scalati sul lato corto: la mezzaluna in basso a sinistra e i
+   raccordi della luce in alto non si deformano), i lati si allungano solo nel loro verso, il centro in
+   tutti e due. Cosi' un 80x20 o un 30x25 hanno la stessa cupola del 50x30, non quella calcolata.
+   I bordi dei riquadri cadono su pixel interi: niente fessure fra un riquadro e l'altro. */
+function domeNove(o,im,x0,y0,bw,bh){
+  const SW=im.naturalWidth||im.width,SH=im.naturalHeight||im.height;
+  const cs=Math.round(0.4*Math.min(SW,SH));                      // angolo nel livello: 40% del lato corto
+  let c=Math.round(cs*Math.min(bw,bh)/Math.min(SW,SH));           // angolo sul pezzo, in proporzione al lato corto
+  c=Math.max(1,Math.min(c,Math.floor(bw/2),Math.floor(bh/2)));
+  const sx=[0,cs,SW-cs,SW],sy=[0,cs,SH-cs,SH];
+  const dx=[x0,x0+c,x0+bw-c,x0+bw],dy=[y0,y0+c,y0+bh-c,y0+bh];
+  for(let j=0;j<3;j++)for(let i=0;i<3;i++){
+    const sw=sx[i+1]-sx[i],sh=sy[j+1]-sy[j],dw=dx[i+1]-dx[i],dh=dy[j+1]-dy[j];
+    if(sw>0&&sh>0&&dw>0&&dh>0)o.drawImage(im,sx[i],sy[j],sw,sh,dx[i],dy[j],dw,dh);}}
 function resinDomeMockup(core,ppm,shape){
   const W=core.width,H=core.height;
   const gc=core.getContext('2d',{willReadFrequently:true});const d=gc.getImageData(0,0,W,H).data;
@@ -4903,15 +4918,16 @@ function resinDomeMockup(core,ppm,shape){
   const A=domeAssets(shape); if(!A)return null;
   const out=document.createElement('canvas');out.width=W;out.height=H;const o=out.getContext('2d');
   o.drawImage(core,0,0);o.imageSmoothingQuality='high';
-  o.globalCompositeOperation='multiply';o.drawImage(A.mult,x0,y0,bw,bh);
-  o.globalCompositeOperation='screen';o.drawImage(A.screen,x0,y0,bw,bh);
-  if(A.edge){o.globalCompositeOperation='source-over';o.drawImage(A.edge,x0,y0,bw,bh);}
+  const stendi=(shape==='rect')?(im=>domeNove(o,im,x0,y0,bw,bh)):(im=>o.drawImage(im,x0,y0,bw,bh));
+  o.globalCompositeOperation='multiply';stendi(A.mult);
+  o.globalCompositeOperation='screen';stendi(A.screen);
+  if(A.edge){o.globalCompositeOperation='source-over';stendi(A.edge);}
   o.globalCompositeOperation='destination-in';o.drawImage(core,0,0);
   o.globalCompositeOperation='source-over';
   return out;}
 const DOME_SHAPES={circle:'circle',square:'square',ellipse:'ellipse',rect:'rect',rounded:'rect'};
 /* --------------------------------------------------------------------
-   CUPOLA PROCEDURALE CON LA LOGICA DEI PSD (sagomati, ovali e rettangoli fuori proporzione)
+   CUPOLA PROCEDURALE CON LA LOGICA DEI PSD (sagomati)
    Misurato sui livelli del tondo: la moltiplica 'w' e' un velo quasi uniforme (0,88), un po'
    piu' chiaro verso il basso a sinistra e piu' scuro verso destra e in alto; la scherma 'b'
    e' una fascia di riflesso fra il 5% e il 15% della distanza dal bordo, fortissima in basso
@@ -4978,13 +4994,10 @@ function resinDomeProc(core,ppm){
 function resinDome(core,ppm){
   {const shp=$('shp')&&$('shp').value;let ds=DOME_SHAPES[shp];
    if(ds){try{
-     /* ovali e rettangoli: i livelli del PSD valgono fino a +-25% dalla sua proporzione (1,7:1);
-        oltre, la cupola procedurale con la stessa logica */
-     if(ds==='ellipse'||ds==='rect'){const gc=core.getContext('2d',{willReadFrequently:true});const dd=gc.getImageData(0,0,core.width,core.height).data;
-       let x0=core.width,y0=core.height,x1=-1,y1=-1;for(let y=0;y<core.height;y++)for(let x=0;x<core.width;x++){if(dd[(y*core.width+x)*4+3]>10){if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;}}
-       const bw=x1-x0+1,bh=y1-y0+1,ratio=Math.max(bw,bh)/Math.max(1,Math.min(bw,bh));
-       const quadrato=Math.abs(bw-bh)<=0.08*Math.max(bw,bh);
-       if(!quadrato&&(ratio<1.28||ratio>2.15))ds=null;}
+     /* rettangoli e ovali: SEMPRE i livelli del PSD, a qualsiasi proporzione (12/11/2026). Prima, fuori da
+        +-25% dalla proporzione del PSD (1,7:1), si passava alla cupola calcolata: stringendo o allargando
+        la misura l'effetto cambiava di colpo e veniva piu' povero. Il rettangolo si stende a nove riquadri
+        (domeNove), l'ovale si adatta al suo riquadro (un'ellisse resta un'ellisse). */
      if(ds){const r=resinDomeMockup(core,ppm,ds);if(r)return r;
        /* i livelli della cupola stanno ancora arrivando: niente cupola procedurale nel frattempo
           (era il "vecchio effetto" che lampeggiava per un istante). Il pezzo resta piatto e il
