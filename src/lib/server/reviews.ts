@@ -4,7 +4,7 @@ import { productFor } from '$lib/prodotti-testi';
 import type { Lang } from '$lib/i18n';
 import { perLingua, t } from '$lib/traduzioni';
 import { LOCALES } from '$lib/i18n';
-import { traduzioneDi } from './contenuti-tradotti';
+import { recensioneTradotta } from './contenuti-tradotti';
 
 export interface HomeReview {
 	author: string;
@@ -102,7 +102,7 @@ async function loadReviewsFresh(supabase: SupabaseClient, productType?: string, 
 					const type = r.product_slug ?? order?.product_slug ?? productType ?? 'adesivi_personalizzati';
 					const p = PRODUCTS[type] ?? PRODUCTS.adesivi_personalizzati;
 					/* titolo e commento nella lingua del sito (colonna tr o file contenuti.json); senza traduzione resta l'italiano */
-					const tr = lang === 'it' ? null : traduzioneDi('reviews', { id: String(r.id), tr: r.tr }, lang, { ...(r.title ? { title: r.title } : {}), comment: r.comment ?? '' });
+					const tr = recensioneTradotta({ id: String(r.id), tr: r.tr }, lang, { ...(r.title ? { title: r.title } : {}), comment: r.comment ?? '' });
 					const name = r.author || profile?.full_name || [order?.shipping?.first_name, order?.shipping?.last_name].filter(Boolean).join(' ') || t(loc, 'recensioni.cliente');
 					return {
 						author: shortName(name, lang),
