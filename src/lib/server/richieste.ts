@@ -8,8 +8,9 @@ import type { Lang } from '$lib/i18n';
 import { perLingua, t as tradotto } from '$lib/traduzioni';
 import { draftTotals, emptyDraft, type OrderDraft } from '$lib/dashboard/orderDraft';
 import { buildOrderPdf } from './docs';
+import { adminClient } from './admin';
 import { sendEmail } from './email';
-import { OWNER_EMAIL, ownerNotifyEmail, quoteEmail, quoteReminderEmail, quoteReplyEmail } from './email-templates';
+import { OWNER_EMAIL, ownerNotifyEmail, quoteEmail, quoteReminderEmail, quoteReplyEmail, requestReplyEmail } from './email-templates';
 import { loadEditorData, saveOrderDraft, upsertContact } from './orders';
 import { applyPaymentGate, defaultConfirmEmail, loadGroup, sendAutoConfirmation, sendConfirmation, syncPayments } from './conferme';
 import { pushStaff } from './push';
@@ -38,6 +39,99 @@ export async function setRequestStatus(db: DB, id: string, status: string) {
 	if (!(status in REQUEST_STATUS)) return 'Stato non valido.';
 	const { error } = await db.from('contact_requests').update({ status }).eq('id', id);
 	return error?.message ?? null;
+}
+/** Allegato di una risposta: sta nel bucket requests, cartella aziende/out/<id richiesta>/ */
+export interface RequestFile { path: string; name: string; size?: number; type?: string }
+export interface RequestMessage { id: string; request_id: string; direction: 'out' | 'note'; author: string | null; body: string; created_at: string; files?: RequestFile[] | null }
+/** Storico delle risposte scritte dalla dashboard (tabella request_messages, migrazione 0063): se manca, elenco vuoto */
+export async function listRequestMessages(db: DB, id: string): Promise<RequestMessage[]> {
+	const { data, error } = await db.from('request_messages').select('*').eq('request_id', id).order('created_at');
+	return error ? [] : ((data ?? []) as RequestMessage[]);
+}
+/** Link firmati (un'ora) agli allegati delle risposte, per la conversazione in dashboard */
+export async function signedRequestFiles(db: DB, messages: RequestMessage[]): Promise<Record<string, { name: string; href: string }[]>> {
+	const out: Record<string, { name: string; href: string }[]> = {};
+	for (const m of messages) for (const f of m.files ?? []) {
+		if (!f?.path) continue;
+		const { data } = await db.storage.from('requests').createSignedUrl(f.path, 3600, { download: f.name });
+		if (data) (out[m.id] ??= []).push({ name: f.name, href: data.signedUrl });
+	}
+	return out;
+}
+/** Copia nascosta di ogni risposta scritta dalla scheda di una richiesta aziende (Mattia, 11/11/2026) */
+const COPIA_RISPOSTE = 'mattia@stickerprint.it';
+/** Oltre questo peso complessivo i file non viaggiano in allegato (limite di Postmark: 10 MB a messaggio): restano i link */
+const MAX_ALLEGATI = 8 * 1024 * 1024;
+/** Risposta al cliente dalla scheda della richiesta (7/11/2026): email con il testo e la firma dell'operatore, Reply-To la
+    nostra casella, cosi' il cliente risponde all'email e la risposta arriva in posta. La richiesta "nuova" passa in lavorazione.
+    Dall'11/11/2026: allegati (file veri nell'email fino a 8 MB in tutto, e sempre i link validi 30 giorni) e copia nascosta a Mattia. */
+export async function replyRequest(db: DB, id: string, body: string, author: string | null, files: RequestFile[] = []): Promise<{ ok: true; email: string } | { ok: false; error: string }> {
+	const text = body.trim();
+	if (!text) return { ok: false, error: 'Scrivi la risposta.' };
+	const r = await getRequest(db, id);
+	if (!r) return { ok: false, error: 'Richiesta non trovata.' };
+	const store = (adminClient() ?? db).storage.from('requests');
+	const links: { name: string; href: string }[] = [];
+	const attachments: { name: string; content: string; contentType: string }[] = [];
+	let tot = 0;
+	for (const f of files) {
+		const { data: s } = await store.createSignedUrl(f.path, 30 * 24 * 3600, { download: f.name });
+		if (!s) return { ok: false, error: `Allegato non trovato: ${f.name}. Riprova a caricarlo.` };
+		links.push({ name: f.name, href: s.signedUrl });
+		if ((f.size ?? 0) + tot > MAX_ALLEGATI) continue;
+		const { data: blob } = await store.download(f.path);
+		if (!blob) continue;
+		const bytes = new Uint8Array(await blob.arrayBuffer());
+		if (bytes.length + tot > MAX_ALLEGATI) continue;
+		let bin = ''; for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+		attachments.push({ name: f.name, content: btoa(bin), contentType: f.type || blob.type || 'application/octet-stream' });
+		tot += bytes.length;
+	}
+	const mail = requestReplyEmail({ name: r.name, body: text, author, attachments: links }, 'it');
+	const bcc = r.email.trim().toLowerCase() === COPIA_RISPOSTE ? undefined : COPIA_RISPOSTE;
+	const sent = await sendEmail({ to: r.email, subject: mail.subject, html: mail.html, tag: mail.tag, replyTo: OWNER_EMAIL, bcc, attachments: attachments.length ? attachments : undefined, metadata: { request: r.id } });
+	if (!sent.ok) return { ok: false, error: sent.error ?? 'Email non inviata.' };
+	const nomi = files.length ? `\n📎 ${files.map((f) => f.name).join(', ')}` : '';
+	let { error } = await db.from('request_messages').insert({ request_id: id, direction: 'out', author, body: text, ...(files.length ? { files } : {}) });
+	/* colonna files non ancora creata (migrazione 0063 da rieseguire): il messaggio resta, con i nomi dei file nel testo */
+	if (error && files.length) ({ error } = await db.from('request_messages').insert({ request_id: id, direction: 'out', author, body: text + nomi }));
+	/* tabella non ancora creata (migrazione 0063): la risposta resta almeno nelle note interne */
+	if (error) {
+		const riga = `✉ ${new Date().toLocaleString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}${author ? ' · ' + author : ''}: ${text}${nomi}`;
+		await db.from('contact_requests').update({ notes: [r.notes?.trim(), riga].filter(Boolean).join('\n') }).eq('id', id);
+	}
+	const patch: Record<string, unknown> = { replied_at: new Date().toISOString(), ...(r.status === 'new' ? { status: 'in_progress' } : {}) };
+	const { error: e2 } = await db.from('contact_requests').update(patch).eq('id', id);
+	if (e2 && r.status === 'new') await db.from('contact_requests').update({ status: 'in_progress' }).eq('id', id); // replied_at manca finche' la 0063 non gira
+	return { ok: true, email: r.email };
+}
+/** Toglie dal bucket requests i file che nessun'altra richiesta o ticket usa piu' (serve la chiave di servizio: lo staff non puo' cancellare dallo storage) */
+export async function removeRequestFiles(db: DB, paths: (string | null | undefined)[]) {
+	const admin = adminClient();
+	const uniche = [...new Set(paths.filter((p): p is string => !!p))];
+	if (!admin || !uniche.length) return;
+	const libere: string[] = [];
+	for (const p of uniche) {
+		const [{ count: a }, { count: b }] = await Promise.all([
+			db.from('contact_requests').select('id', { count: 'exact', head: true }).eq('file_path', p),
+			db.from('ticket_messages').select('id', { count: 'exact', head: true }).eq('file_path', p)
+		]);
+		if (!a && !b) libere.push(p);
+	}
+	if (libere.length) await admin.storage.from('requests').remove(libere).catch(() => null);
+}
+/** Elimina una richiesta aziende (Mattia, 11/11/2026): via la richiesta, le risposte scritte e i loro allegati.
+    I preventivi gia' creati restano in Preventivi, solo scollegati dalla richiesta. */
+export async function deleteRequest(db: DB, id: string): Promise<{ ok: true; name: string; quotes: number } | { ok: false; error: string }> {
+	const r = await getRequest(db, id);
+	if (!r || r.kind !== 'aziende') return { ok: false, error: 'Richiesta non trovata.' };
+	const messages = await listRequestMessages(db, id);
+	const { count } = await db.from('quotes').select('id', { count: 'exact', head: true }).eq('request_id', id);
+	const { data, error } = await db.from('contact_requests').delete().eq('id', id).select('id');
+	if (error) return { ok: false, error: `Richiesta non eliminata: ${error.message}` };
+	if (!data?.length) return { ok: false, error: 'Richiesta non eliminata.' };
+	await removeRequestFiles(db, [r.file_path, ...messages.flatMap((m) => (m.files ?? []).map((f) => f.path))]);
+	return { ok: true, name: r.company || r.name || r.email, quotes: count ?? 0 };
 }
 export async function setRequestNotes(db: DB, id: string, notes: string) {
 	const { error } = await db.from('contact_requests').update({ notes: notes.trim() || null }).eq('id', id);

@@ -17,9 +17,11 @@
  * File di taglio (.xpf): intestazione con il codice del lavoro, miniatura RGB, comandi GP-GL in
  * decimi di mm con origine sull'angolo (linea centrale) del crocino in BASSO a destra, asse X lungo
  * l'altezza della pagina (verso l'alto) e asse Y lungo la larghezza (verso sinistra).
+ * Prima di scrivere i comandi ogni polilinea perde i punti inutili (semplificaSegmenti, 0,03 mm):
+ * il plotter rallenta su ogni vertice e un tracciato a puntini lo inchioda (MeatCrew, 31/10/2026).
  */
 import type { Placement, Strip } from './layout';
-import { parsePath } from './path';
+import { parsePath, semplificaSegmenti } from './path';
 
 /* ------------------------------------------------------------------ misure */
 
@@ -219,7 +221,7 @@ export function xpfCommands(j: XpfJob): string {
 				first = false;
 				cond = cnd;
 			}
-			const segs = parsePath(g.pathD);
+			const segs = semplificaSegmenti(parsePath(g.pathD));
 			const tf = (p: Placement, x: number, y: number): [number, number] => (p.rot ? [p.x + g.cutH - y, p.y + x] : [p.x + x, p.y + y]);
 			for (const p of g.pieces) {
 				let cur: [number, number] = [0, 0], start: [number, number] = [0, 0];
@@ -240,7 +242,7 @@ export function xpfCommands(j: XpfJob): string {
 		for (const s of j.sheets) {
 			if (s.pathD) {
 				/* bordo del foglio in tracciato (foglio composto sul sito); w/h sono gia' ruotati */
-				const segs = parsePath(s.pathD);
+				const segs = semplificaSegmenti(parsePath(s.pathD));
 				const tf = (x: number, y: number): [number, number] => (s.rot ? [s.x + s.w - y, s.y + x] : [s.x + x, s.y + y]);
 				let cur: [number, number] = [0, 0], start: [number, number] = [0, 0];
 				for (const g of segs) {

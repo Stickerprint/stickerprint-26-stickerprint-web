@@ -7,7 +7,22 @@ import { sendEmail } from '$lib/server/email';
 import { previewIntegration, requestIntegration, cancelIntegration, type ChangeInput } from '$lib/server/integrazioni';
 import { shippingUpdateEmail } from '$lib/server/email-templates';
 import { thumbOf } from '$lib/dashboard/orders';
+import { langOf } from '$lib/i18n';
 import type { Actions, PageServerLoad } from './$types';
+
+/** Nome del corriere dal link di tracking, per l'email e la scheda (solo quando l'ordine non ne ha già uno). */
+function courierFromUrl(link: string): string | null {
+	const h = link.toLowerCase();
+	if (!h) return null;
+	if (h.includes('fedex.')) return 'FedEx';
+	if (h.includes('ups.com')) return 'UPS';
+	if (h.includes('dhl.')) return 'DHL';
+	if (h.includes('gls-')) return 'GLS';
+	if (h.includes('brt.it')) return 'BRT';
+	if (h.includes('tnt.')) return 'TNT';
+	if (h.includes('poste.it')) return 'Poste Italiane';
+	return null;
+}
 
 export const load: PageServerLoad = async ({ params, url, locals: { supabase, user } }) => {
 	let { data } = await supabase.from('orders').select('*').eq('checkout_group', params.group);
@@ -169,11 +184,44 @@ export const actions: Actions = {
 		await ensurePlan(supabase, (rows ?? []) as OrderRow[], await operatorName(supabase, locals.user));
 		return { ok: true, message: 'Stato aggiornato.' };
 	},
-	tracking: async ({ request, params, locals: { supabase } }) => {
+	/** Tracking scritto a mano (spedizione fatta fuori da Qapla', es. dal portale FedEx per l'estero): si accetta il link
+	    completo oppure il solo numero FedEx (12/15 cifre) o UPS (1Z…). Con «avvisa» l'ordine passa a Spedito e al cliente
+	    parte la stessa email «il tuo ordine è partito» che manderebbe il webhook Qapla', nella sua lingua. 5/11/2026 */
+	tracking: async ({ request, params, url, locals }) => {
+		const { supabase } = locals;
 		const f = await request.formData();
-		const { error: e } = await supabase.from('orders').update({ tracking_url: String(f.get('tracking') ?? '').trim() || null }).eq('checkout_group', params.group);
+		let link = String(f.get('tracking') ?? '').trim();
+		const avvisa = f.get('avvisa') === '1';
+		if (link && !/^https?:\/\//i.test(link)) {
+			if (/^\d{12}(\d{3})?$/.test(link)) link = `https://www.fedex.com/fedextrack/?trknbr=${link}`;
+			else if (/^1Z[0-9A-Z]{16}$/i.test(link)) link = `https://www.ups.com/track?tracknum=${link.toUpperCase()}`;
+			else return fail(400, { error: 'Incolla il link completo del tracking (https://…), oppure il solo numero FedEx o UPS.' });
+		}
+		const { data: rows } = await supabase.from('orders').select('*').eq('checkout_group', params.group);
+		if (!rows?.length) return fail(404, { error: 'Ordine non trovato.' });
+		const g = groupOrders(rows as OrderRow[])[0];
+		const first = g.items[0];
+		const courier = courierFromUrl(link) ?? first.courier ?? null;
+		const patch: Record<string, unknown> = { tracking_url: link || null, ...(courier && !first.courier ? { courier } : {}) };
+		if (avvisa) {
+			if (!link) return fail(400, { error: 'Scrivi prima il link del tracking.' });
+			if (!g.email) return fail(400, { error: "L'ordine non ha un'email: il cliente non si può avvisare." });
+			if (!['spedito', 'in_consegna', 'consegnato'].includes(g.status)) { patch.status = 'spedito'; patch.prod_stage = null; patch.shipped_at = new Date().toISOString(); }
+		}
+		const { error: e } = await supabase.from('orders').update(patch).eq('checkout_group', params.group).neq('status', 'annullato');
 		if (e) return fail(400, { error: e.message });
-		return { ok: true, message: 'Tracking salvato.' };
+		if (!avvisa) return { ok: true, message: 'Tracking salvato: il cliente lo vede nel suo ordine, nessuna email inviata.' };
+		if (patch.status) {
+			const { data: upd } = await supabase.from('orders').select('*').eq('checkout_group', params.group);
+			await ensurePlan(supabase, (upd ?? []) as OrderRow[], await operatorName(supabase, locals.user));
+		}
+		const ship = first.shipping ?? {};
+		const mail = shippingUpdateEmail({ kind: 'spedito', name: ship.first_name || first.customer_name || null, number: g.number, trackingUrl: link, courier, shippedAt: new Date().toLocaleDateString('it-IT'), items: g.items.map((i) => ({ name: i.product_name, qty: i.qty, preview: thumbOf(i) })), accountUrl: first.user_id ? `${url.origin}/account/ordini` : null }, langOf(first.locale));
+		const r = await sendEmail({ to: g.email, subject: mail.subject, html: mail.html, tag: mail.tag, metadata: { order: g.number } });
+		if (!r.ok) return fail(400, { error: `Tracking salvato ma l'email non è partita: ${r.error ?? 'errore Postmark'}.` });
+		const sent: string[] = Array.isArray(first.shipping_notified) ? first.shipping_notified : [];
+		if (!sent.includes('spedito')) await supabase.from('orders').update({ shipping_notified: [...sent, 'spedito'] }).eq('checkout_group', params.group);
+		return { ok: true, message: `Tracking salvato${patch.status ? ', ordine in Spedito' : ''} e cliente avvisato: email «${mail.subject}» a ${g.email}.` };
 	},
 	/** Collega l'ordine (tutte le righe del gruppo e la fattura) a un cliente registrato: serve quando un ospite si registra
 	    dopo con un'email diversa da quella scritta nel checkout. L'email dell'ordine diventa quella dell'account. */

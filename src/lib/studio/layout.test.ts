@@ -72,3 +72,43 @@ describe('larghezza di stampa e spazio fra le etichette (31/10/2026)', () => {
 		expect(Math.round((p[1].x - p[0].x) * 10) / 10).toBe(50);
 	});
 });
+
+describe('griglia scritta dall\'operatore (3/11/2026): etichette in orizzontale × in verticale', () => {
+	it('Ø80 resinati, 2 × 4: foglio da 8, non piu\' il 2×3 automatico', () => {
+		const r = layoutSheets(80, 80, SHEET_RULES.resinati, { ...auto, cols: 2, rows: 4 });
+		expect(r.ok).toBe(true);
+		expect(r.sheet!.grid.cols).toBe(2);
+		expect(r.sheet!.grid.rows).toBe(4);
+		expect(r.sheet!.grid.n).toBe(8);
+		/* 351 mm di altezza: fuori dal circa A4, ma e' la griglia scritta, si fa e lo si dice */
+		expect(r.warning).toMatch(/fuori dal "circa A4"/);
+	});
+	it('si puo\' scrivere una sola delle due: 3 in orizzontale, righe libere (e si avvisa sulla testa)', () => {
+		const r = layoutSheets(50, 50, SHEET_RULES.resinati, { ...auto, cols: 3 });
+		expect(r.ok).toBe(true);
+		expect(r.sheet!.grid.cols).toBe(3);
+		expect(r.sheet!.grid.rows).toBeGreaterThanOrEqual(1);
+		expect(r.warning).toMatch(/non dividono i 10 aghi/);
+	});
+	it('fuori dal circa A4 si fa lo stesso e lo si dice', () => {
+		const r = layoutSheets(50, 50, SHEET_RULES.etichette, { ...auto, cols: 2, rows: 2 });
+		expect(r.ok).toBe(true);
+		expect(r.sheet!.grid.n).toBe(4);
+		expect(r.sheet!.nearA4).toBe(false);
+		expect(r.warning).toMatch(/fuori dal "circa A4"/);
+	});
+	it('griglia che non entra nella striscia: errore chiaro con la misura del foglio', () => {
+		const r = layoutSheets(80, 80, SHEET_RULES.etichette, { ...auto, cols: 10, rows: 10 });
+		expect(r.ok).toBe(false);
+		expect(r.error).toMatch(/Con 10 × 10 etichette il foglio verrebbe/);
+	});
+	it('con il verso delle etichette girato la griglia vale sul foglio cosi\' com\'e\' (colonne = in orizzontale)', () => {
+		const r = layoutSheets(90, 60, SHEET_RULES.etichette, { ...auto, cols: 3, rows: 2, versoPezzi: 'girato' });
+		expect(r.ok).toBe(true);
+		expect(r.sheet!.grid.rot).toBe(true);
+		expect(r.sheet!.pw).toBe(60);
+		expect(r.sheet!.grid.cols).toBe(3);
+		expect(r.sheet!.w).toBe(204); // 3 × 60 + 2 spazi da 2 + bordo 10 per lato
+		expect(r.sheet!.h).toBe(202); // 2 × 90 + 1 spazio + bordi
+	});
+});

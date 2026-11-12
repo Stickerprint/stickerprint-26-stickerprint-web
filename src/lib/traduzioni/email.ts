@@ -151,6 +151,11 @@ const it = {
 		titolo: 'Conferma d’ordine {n} {parola} 📦',
 		parola: 'pronta',
 		daPagare: '<b>Da pagare adesso: {importo}</b>. Trovi le istruzioni e i bottoni di pagamento nella pagina della conferma.' },
+	richiestaRisposta: {
+		oggetto: 'Re: la tua richiesta a Stickerprint',
+		titolo: 'Risposta alla tua richiesta 💬',
+		allegati: '📎 <b>Allegati:</b> {lista}<br><span style="color:#6b7280;font-size:13px;">Se non li vedi in allegato, scaricali da questi link: restano validi 30 giorni.</span>',
+		rispondi: '<p>Per continuare basta rispondere a questa email.</p>' },
 	ordineRisposta: {
 		oggetto: 'Re: ordine {n}',
 		titolo: 'Novità sull’ordine {n} 💬' },
@@ -358,6 +363,11 @@ const en: Email = {
 		titolo: 'Order confirmation {n} {parola} 📦',
 		parola: 'ready',
 		daPagare: '<b>Due now: {importo}</b>. You’ll find the instructions and payment buttons on the confirmation page.' },
+	richiestaRisposta: {
+		oggetto: 'Re: your request to Stickerprint',
+		titolo: 'A reply to your request 💬',
+		allegati: '📎 <b>Attachments:</b> {lista}<br><span style="color:#6b7280;font-size:13px;">If you can’t see them attached, download them from these links: they stay valid for 30 days.</span>',
+		rispondi: '<p>To continue, just reply to this email.</p>' },
 	ordineRisposta: {
 		oggetto: 'Re: order {n}',
 		titolo: 'News on order {n} 💬' },
@@ -564,6 +574,11 @@ const es: Email = {
 		titolo: 'Confirmación de pedido {n} {parola} 📦',
 		parola: 'lista',
 		daPagare: '<b>A pagar ahora: {importo}</b>. Encuentras las instrucciones y los botones de pago en la página de la confirmación.' },
+	richiestaRisposta: {
+		oggetto: 'Re: tu solicitud a Stickerprint',
+		titolo: 'Respuesta a tu solicitud 💬',
+		allegati: '📎 <b>Adjuntos:</b> {lista}<br><span style="color:#6b7280;font-size:13px;">Si no los ves adjuntos, descárgalos desde estos enlaces: son válidos durante 30 días.</span>',
+		rispondi: '<p>Para continuar, basta con responder a este correo.</p>' },
 	ordineRisposta: {
 		oggetto: 'Re: pedido {n}',
 		titolo: 'Novedades sobre el pedido {n} 💬' },
@@ -770,6 +785,11 @@ const fr: Email = {
 		titolo: 'Confirmation de commande {n} {parola} 📦',
 		parola: 'prête',
 		daPagare: '<b>À payer maintenant : {importo}</b>. Les instructions et les boutons de paiement sont sur la page de la confirmation.' },
+	richiestaRisposta: {
+		oggetto: 'Re : votre demande à Stickerprint',
+		titolo: 'Réponse à votre demande 💬',
+		allegati: '📎 <b>Pièces jointes :</b> {lista}<br><span style="color:#6b7280;font-size:13px;">Si vous ne les voyez pas en pièce jointe, téléchargez-les depuis ces liens : ils restent valables 30 jours.</span>',
+		rispondi: '<p>Pour continuer, il suffit de répondre à cet e-mail.</p>' },
 	ordineRisposta: {
 		oggetto: 'Re : commande {n}',
 		titolo: 'Du nouveau sur la commande {n} 💬' },
@@ -976,6 +996,11 @@ const de: Email = {
 		titolo: 'Auftragsbestätigung {n} {parola} 📦',
 		parola: 'fertig',
 		daPagare: '<b>Jetzt zu zahlen: {importo}</b>. Anleitung und Zahlungsbuttons findest du auf der Seite der Auftragsbestätigung.' },
+	richiestaRisposta: {
+		oggetto: 'Re: Ihre Anfrage an Stickerprint',
+		titolo: 'Antwort auf Ihre Anfrage 💬',
+		allegati: '📎 <b>Anhänge:</b> {lista}<br><span style="color:#6b7280;font-size:13px;">Falls Sie sie nicht im Anhang sehen, laden Sie sie über diese Links herunter: Sie bleiben 30 Tage gültig.</span>',
+		rispondi: '<p>Um fortzufahren, antworten Sie einfach auf diese E-Mail.</p>' },
 	ordineRisposta: {
 		oggetto: 'Re: Bestellung {n}',
 		titolo: 'Neues zur Bestellung {n} 💬' },
@@ -1182,6 +1207,11 @@ const nl: Email = {
 		titolo: 'Orderbevestiging {n} {parola} 📦',
 		parola: 'klaar',
 		daPagare: '<b>Nu te betalen: {importo}</b>. De instructies en de betaalknoppen vind je op de bevestigingspagina.' },
+	richiestaRisposta: {
+		oggetto: 'Re: je aanvraag bij Stickerprint',
+		titolo: 'Antwoord op je aanvraag 💬',
+		allegati: '📎 <b>Bijlagen:</b> {lista}<br><span style="color:#6b7280;font-size:13px;">Zie je ze niet als bijlage, download ze dan via deze links: ze blijven 30 dagen geldig.</span>',
+		rispondi: '<p>Om verder te gaan, beantwoord je gewoon deze e-mail.</p>' },
 	ordineRisposta: {
 		oggetto: 'Re: bestelling {n}',
 		titolo: 'Nieuws over bestelling {n} 💬' },

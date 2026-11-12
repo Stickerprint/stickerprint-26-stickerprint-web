@@ -1,5 +1,5 @@
-import { error, fail } from '@sveltejs/kit';
-import { getTicket, markTicketRead, noteTicket, replyTicket, signedFiles, ticketContext, updateTicket, uploadStaffFiles, type TicketStatus } from '$lib/server/helpdesk';
+import { error, fail, redirect } from '@sveltejs/kit';
+import { deleteTicket, getTicket, markTicketRead, noteTicket, replyTicket, signedFiles, ticketContext, updateTicket, uploadStaffFiles, type TicketStatus } from '$lib/server/helpdesk';
 import { operatorName } from '$lib/server/produzione';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -21,6 +21,12 @@ export const actions: Actions = {
 		if (!up.ok) return fail(400, { error: up.error });
 		const e = await replyTicket(locals.supabase, params.id, String(f.get('body') ?? ''), op, url.origin, (String(f.get('next') ?? '') || 'attesa_cliente') as TicketStatus, up.files);
 		return e ? fail(400, { error: e }) : { ok: true, message: 'Risposta inviata.' };
+	},
+	/** Elimina il ticket (conversazione e allegati compresi) e torna all'elenco */
+	elimina: async ({ params, locals: { supabase } }) => {
+		const res = await deleteTicket(supabase, params.id);
+		if (!res.ok) return fail(400, { error: res.error });
+		redirect(303, `/dashboard/supporto/ticket?eliminata=${encodeURIComponent(res.number)}`);
 	},
 	nota: async ({ request, params, locals }) => {
 		const op = await operatorName(locals.supabase, locals.user);

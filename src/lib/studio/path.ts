@@ -139,3 +139,90 @@ export function rettangoloArrotondato(w: number, h: number, raggio: number): str
 		['L', 0, r], ['C', 0, r - k, r - k, 0, r, 0], ['Z']
 	]);
 }
+
+/* ------------------------------------------------------------ polilinee a puntini */
+
+/**
+ * Tolleranza della semplificazione delle polilinee (mm). Il Graphtec lavora in decimi di millimetro
+ * e la lama ha un gioco di 0,25 mm: uno scostamento di tre centesimi non esiste sul materiale.
+ */
+export const TOL_LINEE = 0.03;
+
+type Pt = [number, number];
+
+/** Douglas-Peucker su una spezzata aperta: restano solo i punti ORIGINALI che servono a stare entro `tol` */
+function douglasPeucker(pts: Pt[], tol: number): Pt[] {
+	if (pts.length < 3) return pts;
+	const keep = new Uint8Array(pts.length);
+	keep[0] = keep[pts.length - 1] = 1;
+	const stack: [number, number][] = [[0, pts.length - 1]];
+	while (stack.length) {
+		const [a, b] = stack.pop()!;
+		const [ax, ay] = pts[a], [bx, by] = pts[b];
+		const dx = bx - ax, dy = by - ay, n = Math.hypot(dx, dy);
+		let best = -1, bi = -1;
+		for (let i = a + 1; i < b; i++) {
+			const [px, py] = pts[i];
+			const d = n > 1e-9 ? Math.abs(dx * (py - ay) - dy * (px - ax)) / n : Math.hypot(px - ax, py - ay);
+			if (d > best) { best = d; bi = i; }
+		}
+		if (best > tol) { keep[bi] = 1; stack.push([a, bi], [bi, b]); }
+	}
+	return pts.filter((_, i) => keep[i]);
+}
+
+/**
+ * Toglie i punti inutili dalle polilinee di un tracciato SENZA spostare la linea: ogni punto tolto
+ * sta a meno di `tol` mm dal tratto che lo sostituisce e i punti che restano sono quelli del file.
+ * Le curve (C) non si toccano. Nasce dal lavoro MeatCrew del 31/10/2026: il cliente aveva esportato
+ * il taglio come 5.270 segmentini da 0,06 mm, il plotter rallenta su ogni vertice e ci metteva
+ * 20 secondi per un angolo (3 ore a striscia). Con 0,03 mm restano 1 punto su 15, stessa linea.
+ */
+export function semplificaSegmenti(segs: Seg[], tol = TOL_LINEE): Seg[] {
+	const out: Seg[] = [];
+	let run: Pt[] = [];
+	const flush = () => {
+		if (run.length >= 2) for (const [x, y] of douglasPeucker(run, tol).slice(1)) out.push(['L', x, y]);
+		run = [];
+	};
+	for (const s of segs) {
+		if (s[0] === 'L') { run.push([s[1], s[2]]); continue; }
+		flush();
+		out.push(s);
+		if (s[0] === 'M') run = [[s[1], s[2]]];
+		else if (s[0] === 'C') run = [[s[5], s[6]]];
+	}
+	flush();
+	return out;
+}
+
+/** come `semplificaSegmenti`, sul `d` di un tracciato */
+export function semplificaLinee(d: string, tol = TOL_LINEE): string {
+	return scriviPath(semplificaSegmenti(parsePath(d), tol));
+}
+
+/** punti di ancoraggio di un tracciato (vertici delle linee e fine delle curve) */
+export const contaPunti = (segs: Seg[]) => segs.reduce((n, s) => n + (s[0] === 'L' || s[0] === 'C' ? 1 : 0), 0);
+
+/** lunghezza del tracciato (mm); le curve si misurano a campioni */
+export function perimetroPath(segs: Seg[]): number {
+	let tot = 0, cur: Pt = [0, 0], start: Pt = [0, 0];
+	for (const s of segs) {
+		if (s[0] === 'M') { cur = start = [s[1], s[2]]; }
+		else if (s[0] === 'L') { tot += Math.hypot(s[1] - cur[0], s[2] - cur[1]); cur = [s[1], s[2]]; }
+		else if (s[0] === 'C') {
+			let prev = cur;
+			for (let k = 1; k <= 8; k++) {
+				const t = k / 8, u = 1 - t;
+				const q: Pt = [u * u * u * cur[0] + 3 * u * u * t * s[1] + 3 * u * t * t * s[3] + t * t * t * s[5], u * u * u * cur[1] + 3 * u * u * t * s[2] + 3 * u * t * t * s[4] + t * t * t * s[6]];
+				tot += Math.hypot(q[0] - prev[0], q[1] - prev[1]); prev = q;
+			}
+			cur = [s[5], s[6]];
+		} else { tot += Math.hypot(start[0] - cur[0], start[1] - cur[1]); cur = start; }
+	}
+	return tot;
+}
+
+/** punti ogni 10 cm di contorno: sopra `PUNTI_FITTI` il plotter rallenta visibilmente */
+export const puntiPer10cm = (segs: Seg[]) => { const p = perimetroPath(segs); return p > 0 ? Math.round((contaPunti(segs) / p) * 100) : 0; };
+export const PUNTI_FITTI = 200;

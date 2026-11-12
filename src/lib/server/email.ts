@@ -12,6 +12,8 @@ export interface SendEmailInput {
 	text?: string;
 	tag?: string;
 	replyTo?: string;
+	/** Copia nascosta (es. una copia a noi delle risposte scritte dalla dashboard) */
+	bcc?: string | string[];
 	/** Metadati liberi visibili nel pannello Postmark */
 	metadata?: Record<string, string>;
 	/** Allegati (es. fattura PDF), contenuto in base64 */
@@ -56,6 +58,7 @@ export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult>
 			TextBody: input.text ?? htmlToText(input.html),
 			Tag: input.tag,
 			ReplyTo: input.replyTo,
+			Bcc: input.bcc ? (Array.isArray(input.bcc) ? input.bcc.join(',') : input.bcc) : undefined,
 			MessageStream: stream,
 			Metadata: input.metadata,
 			Attachments: input.attachments?.map((a) => ({ Name: a.name, Content: a.content, ContentType: a.contentType })),

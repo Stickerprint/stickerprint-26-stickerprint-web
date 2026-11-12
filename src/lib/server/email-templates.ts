@@ -325,6 +325,13 @@ export function orderReplyEmail(o: { name?: string | null; number: string; body:
 	const n = esc(o.number);
 	return { subject: T('ordineRisposta.oggetto', { n: o.number }), tag: 'order-reply', html: layoutHtml(T('ordineRisposta.titolo', { n }), replyBody(T, o.name, o.body, o.author), { label: T('comune.apriConferma'), href: o.href }, lang) };
 }
+/** Risposta dello staff a una richiesta aziende dalla dashboard (7/11/2026): nessun bottone, il cliente risponde all'email */
+export function requestReplyEmail(o: { name?: string | null; body: string; author?: string | null; attachments?: { name: string; href: string }[] }, lang: Lang = 'it') {
+	const T = tt(lang);
+	const lista = (o.attachments ?? []).map((a) => `<a href="${a.href}" style="color:#1d6bf3;font-weight:700;">${esc(a.name)}</a>`).join(', ');
+	const att = o.attachments?.length ? `<p style="margin-top:12px;">${T('richiestaRisposta.allegati', { lista })}</p>` : '';
+	return { subject: T('richiestaRisposta.oggetto'), tag: 'request-reply', html: layoutHtml(T('richiestaRisposta.titolo'), replyBody(T, o.name, o.body, o.author) + att + T('richiestaRisposta.rispondi'), null, lang) };
+}
 export function orderPaymentReminderEmail(o: { name?: string | null; number: string; amount: string; href: string; senderName?: string | null }, lang: Lang = 'it') {
 	const T = tt(lang);
 	const n = esc(o.number);

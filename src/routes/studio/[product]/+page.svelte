@@ -12,6 +12,7 @@
 	import { pickArchivio, savedArchivio, grantArchivio, salvaNellArchivio, type ArchivioDir } from '$lib/studio/archivio';
 	import { pickVersaworks, savedVersaworks, grantVersaworks, stampanti, mappaSalvata, salvaMappa, inviaAStampante, RUOLO_LABEL, type VwDir, type Ruolo as VwRuolo } from '$lib/studio/versaworks';
 	import { SPOTS } from '$lib/studio/spots';
+	import { parsePath, perimetroPath, puntiPer10cm, PUNTI_FITTI } from '$lib/studio/path';
 
 	let { data } = $props();
 	const P = $derived(data.product);
@@ -648,7 +649,7 @@
 		if (fonte === 'pronto') {
 			/* file pronto: grafica vettoriale del cliente 1:1, il suo tracciato diventa la tinta di taglio */
 			if (!ready) throw new Error('Carica prima il PDF pronto.');
-			traceInfo = `Tracciato del cliente: ${ready.paths} ${ready.paths === 1 ? 'tracciato' : 'tracciati'} · grafica vettoriale`;
+			traceInfo = `Tracciato del cliente: ${ready.paths} ${ready.paths === 1 ? 'tracciato' : 'tracciati'} · ${ready.punti} punti${ready.puntiFile > ready.punti ? ` (${ready.puntiFile} nel file)` : ''} · grafica vettoriale`;
 			const dPronto = prontoFinale(ritoccato ? (prontoPath || (await rifinisci(ready.pathD, 1)).d) : ready.pathD);
 			return { pdfPage: { bytes: ready.cleaned, bboxPt: ready.bboxPt }, cutW: ready.cutW, cutH: ready.cutH, bleed: 1, pathD: dPronto };
 		}
@@ -718,6 +719,9 @@
 	const smussoCursore = $derived(vivi.length ? Math.max(SMUSSO_CURSORE, smussoMax) : 0);
 	/** il tracciato del file pronto come va in stampa: ritocco dei selettori + smusso degli spigoli */
 	const prontoFinale = (d: string) => (smusso > 0 && vivi.length ? smussa(d, smusso) : d);
+	/* quanto e' fitto il tracciato del cliente (dopo la pulizia dei punti inutili) */
+	const perimetroPronto = $derived(ready ? perimetroPath(parsePath(ready.pathD)) : 0);
+	const densitaPronto = $derived(ready ? puntiPer10cm(parsePath(ready.pathD)) : 0);
 
 	async function pickReady(f: File | null | undefined) {
 		if (!f) return;
@@ -805,6 +809,12 @@
 	/* il verso lo decide lo studio, ma l'operatore puo' forzarlo per vedere se guadagna spazio */
 	let versoPezzi = $state<Verso>('auto');
 	let versoFoglio = $state<Verso>('auto');
+	/* griglia del foglio scritta dall'operatore (3/11/2026): quante etichette in orizzontale e quante in verticale.
+	   Vuoto = la sceglie lo studio. Si puo' scrivere anche una sola delle due. */
+	let fogliCols = $state<number | ''>('');
+	let fogliRows = $state<number | ''>('');
+	const nCols = $derived(typeof fogliCols === 'number' && fogliCols > 0 ? Math.floor(fogliCols) : 0);
+	const nRows = $derived(typeof fogliRows === 'number' && fogliRows > 0 ? Math.floor(fogliRows) : 0);
 	let qty = $state<number | ''>('');
 	/* sugli ordini si stampa l'8% in piu' dei pezzi chiesti, per coprire gli scarti di produzione */
 	const SCARTO = 0.08;
@@ -822,7 +832,7 @@
 	/* altezza vuota = automatica: i fogli restano entro l'altezza consigliata, ma la striscia puo' alzarsi fino a
 	   SHEET_AUTO_MAX_H quando cosi' ci stanno piu' fogli affiancati (Ø80: 3 fogli in 473 mm invece di 1 in 227).
 	   Se l'operatore scrive un'altezza, quella comanda, anche oltre il consigliato. */
-	const fogliOpz = $derived(P.mode === 'fogli' && !MULTI ? { autoMaxH: hScritta ? undefined : SHEET_AUTO_MAX_H, frames: SHEET_FRAMES } : {});
+	const fogliOpz = $derived(P.mode === 'fogli' && !MULTI ? { autoMaxH: hScritta ? undefined : SHEET_AUTO_MAX_H, frames: SHEET_FRAMES, cols: nCols || undefined, rows: nRows || undefined } : {});
 
 	const cutW = $derived(engCut?.w ?? (cavallotto ? KIT_CAVALLOTTO.w : w));
 	const cutH = $derived(engCut?.h ?? (cavallotto ? KIT_CAVALLOTTO.h : h));
@@ -1154,7 +1164,9 @@
 					<label class="st-field"><span>Nome lavoro / n. ordine</span><input class="input" bind:value={jobName} /></label>
 					<div class="st-block">
 						<p class="st-label">Dal file del cliente</p>
-						<p class="st-note">Taglio <b>{ready.cutW.toFixed(2)} × {ready.cutH.toFixed(2)} mm</b> (1:1) · {ready.paths} {ready.paths === 1 ? 'tracciato' : 'tracciati'}</p>
+						<p class="st-note">Taglio <b>{ready.cutW.toFixed(2)} × {ready.cutH.toFixed(2)} mm</b> (1:1) · {ready.paths} {ready.paths === 1 ? 'tracciato' : 'tracciati'} · <b>{ready.punti}</b> punti</p>
+						{#if ready.puntiFile > ready.punti * 1.5}<p class="st-note">Nel file il tracciato era a puntini: <b>{ready.puntiFile}</b> punti, segmentini da {(perimetroPronto / ready.puntiFile).toFixed(2)} mm. Ho tolto quelli inutili (la linea resta entro 0,03 mm da quella del cliente, meno del passo del plotter): così il Graphtec non rallenta su ogni vertice.</p>{/if}
+						{#if densitaPronto > PUNTI_FITTI}<p class="st-note" style="color:#b3261e;font-weight:700">⚠ Tracciato fitto: {densitaPronto} punti ogni 10 cm di contorno anche dopo la pulizia. Il plotter rallenta: guardalo con la lente prima di stampare.</p>{/if}
 						<p class="st-note">Riconosciuto da: {ready.reason}. Nel file di stampa diventa <b>{P.pieceCut}</b>; il tratto originale è tolto dalla grafica.</p>
 					</div>
 
@@ -1279,6 +1291,8 @@
 							<input bind:this={colInput} type="color" class="st-col" value={palette[palIdx]?.hex ?? '#ffffff'} oninput={(e) => engine?.post('bgcol', { hex: (e.currentTarget as HTMLInputElement).value })} />
 						</span>
 						<button type="button" class="st-tool" class:is-on={rimuovi} onclick={() => engine?.post('rimuovi')}>✨ Rimuovi sfondo</button>
+						<button type="button" class="st-tool" title="Dentro la forma il file del cliente com'è, sfondo compreso (come «Rimetti il file com'era» sul sito)" onclick={() => engine?.post('tieni', { on: true })}>🖼 Tieni il file com’è</button>
+						<button type="button" class="st-tool" title="Dentro la forma solo il disegno, senza il suo fondo" onclick={() => engine?.post('tieni', { on: false })}>✂️ Solo il disegno</button>
 					{/if}
 					<button type="button" class="st-tool st-tool--blue" onclick={() => fileInput?.click()} title={file.name}>Cambia file</button>
 					<button type="button" class="st-tool" class:is-on={showCut} onclick={() => (showCut = !showCut)}>{showCut ? 'Nascondi' : 'Mostra'} taglio</button>
@@ -1406,22 +1420,68 @@
 					<label class="st-field"><span>Spazio fra i pezzi, da taglio a taglio (mm)</span><input class="input" type="number" min="0" step="0.5" bind:value={gap} /><em class="st-hint">0 = pezzi attaccati</em></label>
 				{/if}
 				<div class="st-block">
-					<p class="st-label">Verso sulla striscia</p>
-					<div class="st-chips">
-						<span class="st-note" style="width:100%">{P.mode === 'fogli' && !MULTI ? 'Etichette dentro il foglio' : MULTI ? 'Fogli sulla striscia' : 'Pezzi sulla striscia'}</span>
-						{#each [['auto', 'Automatico'], ['dritto', 'Dritti'], ['girato', 'Girati 90°']] as [v, lab] (v)}
-							<button type="button" class="st-chip" class:is-on={(MULTI ? versoFoglio : versoPezzi) === v} onclick={() => (MULTI ? (versoFoglio = v as Verso) : (versoPezzi = v as Verso))}>{lab}</button>
-						{/each}
+					<p class="st-label">{P.mode === 'fogli' && !MULTI ? 'Foglio e striscia' : 'Verso sulla striscia'}</p>
+					<div class="st-verso">
+						{#if P.mode === 'fogli' && !MULTI}
+							<div class="st-verso__row">
+								<div class="st-verso__head">
+									<svg viewBox="0 0 28 28" aria-hidden="true"><rect x="3" y="2" width="22" height="24" rx="2" /><rect x="7" y="6" width="6" height="6" rx="1" class="f" /><rect x="15" y="6" width="6" height="6" rx="1" class="f" /><rect x="7" y="14" width="6" height="6" rx="1" class="f" /><rect x="15" y="14" width="6" height="6" rx="1" class="f" /></svg>
+									<span>Etichette nel foglio</span>
+								</div>
+								<div class="st-verso__ctl">
+									<div class="st-grid">
+										<label><span>in orizzontale</span><input class="input" type="number" min="1" step="1" inputmode="numeric" bind:value={fogliCols} placeholder="auto" /></label>
+										<span class="st-grid__x">×</span>
+										<label><span>in verticale</span><input class="input" type="number" min="1" step="1" inputmode="numeric" bind:value={fogliRows} placeholder="auto" /></label>
+										{#if nCols || nRows}<button type="button" class="st-link st-grid__reset" onclick={() => { fogliCols = ''; fogliRows = ''; }}>lascia fare allo studio</button>{/if}
+									</div>
+									<div class="st-chips">
+										{#each [['auto', 'Automatico'], ['dritto', 'Dritte'], ['girato', 'Girate 90°']] as [v, lab] (v)}
+											<button type="button" class="st-chip" class:is-on={versoPezzi === v} onclick={() => (versoPezzi = v as Verso)}>{lab}</button>
+										{/each}
+									</div>
+								</div>
+								{#if plan?.kind === 'fogli' && plan.r.ok && plan.r.sheet}
+									<p class="st-verso__res">Foglio <b>{plan.r.sheet.grid.cols} × {plan.r.sheet.grid.rows} = {plan.r.sheet.grid.n} etichette</b> · {plan.r.sheet.w} × {plan.r.sheet.h} mm{plan.r.sheet.grid.rot ? ' · etichette girate di 90°' : ''}</p>
+								{/if}
+							</div>
+							<div class="st-verso__row">
+								<div class="st-verso__head">
+									<svg viewBox="0 0 28 28" aria-hidden="true"><rect x="1" y="5" width="26" height="18" rx="2" /><rect x="4" y="8" width="6" height="12" rx="1" class="f" /><rect x="11" y="8" width="6" height="12" rx="1" class="f" /><rect x="18" y="8" width="6" height="12" rx="1" class="f" /></svg>
+									<span>Foglio sulla striscia</span>
+								</div>
+								<div class="st-verso__ctl">
+									<div class="st-chips">
+										{#each [['auto', 'Automatico'], ['dritto', 'Dritto'], ['girato', 'Girato 90°']] as [v, lab] (v)}
+											<button type="button" class="st-chip" class:is-on={versoFoglio === v} onclick={() => (versoFoglio = v as Verso)}>{lab}</button>
+										{/each}
+									</div>
+								</div>
+								{#if plan?.kind === 'fogli' && plan.r.ok && plan.r.sheet}
+									<p class="st-verso__res">Striscia <b>{plan.r.across} × {plan.r.down} fogli = {plan.r.piecesPerStrip} etichette</b>{plan.r.sheetRot ? ' · foglio girato di 90°' : ''}</p>
+								{/if}
+							</div>
+							<p class="st-note">Vuoto e Automatico = decide lo studio, che prende il foglio circa A4 che rende di più. Scrivi quante etichette vuoi in orizzontale e in verticale per avere proprio quel foglio: lo studio ti dice se esce dall’A4 o dalla testa della resinatrice, ma lo fa.</p>
+						{:else}
+							<div class="st-verso__row">
+								<div class="st-verso__head">
+									<svg viewBox="0 0 28 28" aria-hidden="true"><rect x="1" y="5" width="26" height="18" rx="2" /><rect x="4" y="8" width="6" height="12" rx="1" class="f" /><rect x="11" y="8" width="6" height="12" rx="1" class="f" /><rect x="18" y="8" width="6" height="12" rx="1" class="f" /></svg>
+									<span>{MULTI ? 'Fogli sulla striscia' : 'Pezzi sulla striscia'}</span>
+								</div>
+								<div class="st-verso__ctl">
+									<div class="st-chips">
+										{#each [['auto', 'Automatico'], ['dritto', 'Dritti'], ['girato', 'Girati 90°']] as [v, lab] (v)}
+											<button type="button" class="st-chip" class:is-on={(MULTI ? versoFoglio : versoPezzi) === v} onclick={() => (MULTI ? (versoFoglio = v as Verso) : (versoPezzi = v as Verso))}>{lab}</button>
+										{/each}
+									</div>
+								</div>
+								{#if plan && plan.kind !== 'fogli' && plan.r.ok}
+									<p class="st-verso__res">Striscia <b>{plan.r.grid.cols} × {plan.r.grid.rows} = {plan.r.perStrip} {MULTI ? 'fogli' : 'pezzi'}</b>{plan.r.grid.rot ? ' · girati di 90°' : ''}</p>
+								{/if}
+							</div>
+							<p class="st-note">Automatico sceglie il verso che rende di più; prova gli altri e guarda quante strisce servono.</p>
+						{/if}
 					</div>
-					{#if P.mode === 'fogli' && !MULTI}
-						<div class="st-chips" style="margin-top:6px">
-							<span class="st-note" style="width:100%">Foglio sulla striscia</span>
-							{#each [['auto', 'Automatico'], ['dritto', 'Dritto'], ['girato', 'Girato 90°']] as [v, lab] (v)}
-								<button type="button" class="st-chip" class:is-on={versoFoglio === v} onclick={() => (versoFoglio = v as Verso)}>{lab}</button>
-							{/each}
-						</div>
-					{/if}
-					<p class="st-note">Automatico sceglie il verso che rende di più; prova gli altri e guarda qui sotto quante strisce servono.</p>
 				</div>
 				<details class="st-adv">
 					<summary>Margini e spazi</summary>

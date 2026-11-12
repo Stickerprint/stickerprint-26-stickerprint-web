@@ -204,6 +204,11 @@ export interface SheetStripOptions {
 	autoMaxH?: number;
 	/** cornici fra cui scegliere (la prima e' quella di margin/marginY): es. quella a tutta larghezza fra i crocini */
 	frames?: Frame[];
+	/** griglia scritta dall'operatore (3/11/2026): etichette in orizzontale (colonne) e in verticale (righe) nel foglio.
+	 *  Mancante o 0 = la sceglie lo studio. Si possono dare anche una sola delle due. Con la griglia scritta il foglio e'
+	 *  quello, anche fuori dal "circa A4" e dalla testa della resinatrice: si avvisa, non si cambia. */
+	cols?: number;
+	rows?: number;
 }
 
 export interface SheetResult {
@@ -253,6 +258,8 @@ function a4Near(w: number, h: number, tol: number) {
 export function layoutSheets(cutW: number, cutH: number, rules: SheetRules, o: SheetStripOptions): SheetResult {
 	const frames: Frame[] = o.frames?.length ? o.frames : [{ margin: o.margin, marginY: o.marginY ?? o.margin }];
 	const hMax = o.autoMaxH && o.autoMaxH > o.stripH ? o.autoMaxH : o.stripH;
+	const fCols = o.cols && o.cols > 0 ? Math.floor(o.cols) : 0, fRows = o.rows && o.rows > 0 ? Math.floor(o.rows) : 0;
+	const forzata = fCols > 0 || fRows > 0;
 	const cands: Cand[] = [];
 	for (const f of frames) {
 		const aw = o.stripW - 2 * f.margin, ah = hMax - 2 * f.marginY;
@@ -261,8 +268,9 @@ export function layoutSheets(cutW: number, cutH: number, rules: SheetRules, o: S
 			const pw = rot ? cutH : cutW, ph = rot ? cutW : cutH;
 			const lato = Math.max(aw, ah) - 2 * rules.margin;
 			const maxC = fit(lato, pw, rules.gap), maxR = fit(lato, ph, rules.gap);
-			for (let c = 1; c <= maxC; c++)
-				for (let r = 1; r <= maxR; r++) {
+			for (let c = fCols || 1; c <= (fCols || maxC); c++)
+				for (let r = fRows || 1; r <= (fRows || maxR); r++) {
+					if (c > maxC || r > maxR) continue;
 					const n = c * r;
 					const testaOk = !rules.testa || rules.testa % c === 0;
 					const g = grid(pw, ph, c, r, rules.gap, rot);
@@ -282,6 +290,11 @@ export function layoutSheets(cutW: number, cutH: number, rules: SheetRules, o: S
 	}
 	const empty: SheetResult = { ok: false, sheet: null, across: 0, down: 0, sheetsPerStrip: 0, piecesPerStrip: 0, sheetRot: false, strips: [] };
 	if (!cands.length) {
+		if (forzata) {
+			const c = fCols || 1, r = fRows || 1;
+			const sw = Math.round((c * cutW + (c - 1) * rules.gap + 2 * rules.margin) * 10) / 10, sh = Math.round((r * cutH + (r - 1) * rules.gap + 2 * rules.margin) * 10) / 10;
+			return { ...empty, error: `Con ${c} × ${r} etichette il foglio verrebbe ${sw} × ${sh} mm e non entra nella striscia ${o.stripW} × ${hMax} mm: togli etichette in orizzontale o in verticale.` };
+		}
 		return { ...empty, error: `L'etichetta (${cutW.toFixed(1)}×${cutH.toFixed(1)} mm) non entra in un foglio sulla striscia ${o.stripW}×${o.stripH} mm.` };
 	}
 	const areaA4 = A4[0] * A4[1];
@@ -289,9 +302,10 @@ export function layoutSheets(cutW: number, cutH: number, rules: SheetRules, o: S
 	// niente fogli alti 43 cm). Poi la testa della resinatrice (colonne 1, 2, 5, 10: Ø80 = 2×3, 5 aghi a etichetta);
 	// se nessun foglio A4 la rispetta si prende un foglio A4 con altre colonne e lo si scrive.
 	// Solo senza alcun foglio A4 possibile (etichette oltre l'A4) si guarda il resto.
-	const near = cands.filter((c) => c.sheet.nearA4);
+	// Griglia scritta dall'operatore: il foglio e' deciso, resta da scegliere solo verso e disposizione sulla striscia.
+	const near = forzata ? cands : cands.filter((c) => c.sheet.nearA4);
 	const nearTesta = near.filter((c) => c.testaOk);
-	const pool = nearTesta.length ? nearTesta : near.length ? near : cands.filter((c) => c.testaOk).length ? cands.filter((c) => c.testaOk) : cands;
+	const pool = forzata ? cands : nearTesta.length ? nearTesta : near.length ? near : cands.filter((c) => c.testaOk).length ? cands.filter((c) => c.testaOk) : cands;
 	pool.sort(
 		(a, b) =>
 			b.density - a.density ||
@@ -328,11 +342,16 @@ export function layoutSheets(cutW: number, cutH: number, rules: SheetRules, o: S
 		const usedH = down * H + (down - 1) * o.sheetGap + 2 * my;
 		strips.push({ w: o.stripW, h: Math.round(usedH * 10) / 10, pieces, sheets });
 	}
+	const warning = forzata
+		? !best.testaOk
+			? `${best.sheet.grid.cols} etichette in orizzontale non dividono i ${rules.testa} aghi della testa (vanno 1, 2, 5 o ${rules.testa}): la resinatrice non le fa in un passaggio.`
+			: !best.sheet.nearA4 ? `Foglio ${best.sheet.w} × ${best.sheet.h} mm, fuori dal "circa A4": è la griglia che hai scritto.` : undefined
+		: !best.sheet.nearA4
+			? `Nessun foglio "circa A4" possibile con questa misura: uso un foglio ${best.sheet.w}×${best.sheet.h} mm.`
+			: !best.testaOk ? `Nessun foglio "circa A4" sta nella testa da ${rules.testa} aghi con questa misura: foglio con ${best.sheet.grid.cols} colonne (gli aghi si dividono in 1, 2, 5 o ${rules.testa}).` : undefined;
 	return {
 		ok: true,
-		warning: !best.sheet.nearA4
-			? `Nessun foglio "circa A4" possibile con questa misura: uso un foglio ${best.sheet.w}×${best.sheet.h} mm.`
-			: !best.testaOk ? `Nessun foglio "circa A4" sta nella testa da ${rules.testa} aghi con questa misura: foglio con ${best.sheet.grid.cols} colonne (gli aghi si dividono in 1, 2, 5 o ${rules.testa}).` : undefined,
+		warning,
 		sheet: best.sheet,
 		across: best.across,
 		down: best.down,

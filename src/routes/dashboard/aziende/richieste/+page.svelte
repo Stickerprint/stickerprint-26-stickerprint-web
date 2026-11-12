@@ -17,6 +17,8 @@
 	<a class="btn btn--xs" href="/dashboard/aziende/preventivi/nuovo">＋ Preventivo senza richiesta</a>
 </div>
 
+{#if page.url.searchParams.get('eliminata')}<p class="ok">Richiesta di {page.url.searchParams.get('eliminata')} eliminata.{#if page.url.searchParams.get('preventivi')} I preventivi collegati restano in Preventivi.{/if}</p>{/if}
+
 <div class="tabs">
 	<a class="tab-link" class:is-active={filter === 'aperte'} href="?stato=aperte">Aperte ({data.requests.filter((r) => OPEN.has(r.status)).length})</a>
 	{#each Object.entries(REQUEST_STATUS) as [k, v] (k)}<a class="tab-link" class:is-active={filter === k} href="?stato={k}">{v.label} ({counts[k]})</a>{/each}

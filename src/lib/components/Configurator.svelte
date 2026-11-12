@@ -132,8 +132,11 @@
 	const finish = $derived(FINISHES.find((f) => f.id === finitura));
 	const fin = $derived(promoOnly ? finitura : showFinish ? finitura : 'nessuna');
 	const ratio = $derived(shape?.equal ? 1 : (shape?.ratio ?? cutRatio ?? fileRatio ?? 1));
-	// rettangolo e ovale: le misure sono solo proposte, il cliente puo' scrivere la sua (lati indipendenti)
-	const freeSize = $derived(forma === 'rettangolare' || forma === 'ovale');
+	/* sagomato, rettangolo e ovale: le misure sono solo proposte, il cliente scrive la sua con i due lati
+	   indipendenti (Mattia, 7/11/2026: sul sagomato 40 scritto da una parte non deve diventare 40 anche
+	   dall'altra; un preventivo 40×60 si deve poter fare anche senza file). Restano in proporzione solo
+	   le sagome a lati uguali (tondo, quadrato) e quelle con proporzione fissa (fogli). */
+	const freeSize = $derived(!shape?.equal && !shape?.ratio);
 	const qListino = $derived(quoteWith(cfg, { w, h, forma, materiale, finitura: fin, qty, vatIncluded }));
 	/* offerta: il prezzo promo vale finché quantità e misura restano quelle dell'offerta;
 	   cambiandole si torna al listino (e il checkout ricontrolla comunque sul server) */
@@ -260,8 +263,8 @@
 		fileUrl = URL.createObjectURL(f);
 		saveDraft({ product, forma, materiale, file: f, savedAt: Date.now() }).catch(() => {});
 	}
-	/* rettangolo e ovale: lati liberi (ognuno fra minimo e massimo); le altre sagome restano in
-	   proporzione col disegno e nessun lato scende mai sotto il minimo (vedi proportionalSize) */
+	/* sagomato, rettangolo e ovale: lati liberi (ognuno fra minimo e massimo); tondo, quadrato e fogli
+	   restano in proporzione e nessun lato scende mai sotto il minimo (vedi proportionalSize) */
 	function setW(v: number) {
 		if (freeSize) { w = clamp(v); return; }
 		[w, h] = proportionalSize(cfg, forma, v, ratio);

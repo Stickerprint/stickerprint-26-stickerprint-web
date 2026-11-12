@@ -251,6 +251,15 @@ html,body{height:100%;overflow:hidden}
       </div>
     </div>
 
+    <!-- [sito] resinati rettangolari e quadrati: il cliente sceglie il raggio degli angoli, fra 1,5 e 4 mm -->
+    <div class="pp-sec" id="ppRagSec" style="display:none">
+      <div class="pp-h">Raggio degli angoli</div>
+      <div class="lvwrap">
+        <input type="range" class="lv" id="lvRag" min="1.5" max="4" step="0.5" value="2" aria-label="Raggio degli angoli">
+        <div class="ticks"><span id="ragMin">1,5 mm</span><span id="ragV" class="on">2 mm</span><span id="ragMax">4 mm</span></div>
+      </div>
+    </div>
+
     <div class="pp-sec" id="ppMatSec">
       <div class="pp-h">Materiale</div>
       <div id="ppMatHost"></div>
@@ -666,6 +675,7 @@ const TR={
     "Il tuo file dentro la sagoma":"Your file inside the shape",
     "◎ Centra nella sagoma":"◎ Center in the shape",
     "Angoli arrotondati":"Rounded corners",
+    "Raggio degli angoli":"Corner radius",
     "Poco":"Slight",
     "Medio":"Medium",
     "Tanto":"Strong",
@@ -956,6 +966,7 @@ const TR={
     "Il tuo file dentro la sagoma":"Tu archivo dentro de la forma",
     "◎ Centra nella sagoma":"◎ Centrar en la forma",
     "Angoli arrotondati":"Esquinas redondeadas",
+    "Raggio degli angoli":"Radio de las esquinas",
     "Poco":"Poco",
     "Medio":"Medio",
     "Tanto":"Mucho",
@@ -1246,6 +1257,7 @@ const TR={
     "Il tuo file dentro la sagoma":"Votre fichier dans la forme",
     "◎ Centra nella sagoma":"◎ Centrer dans la forme",
     "Angoli arrotondati":"Angles arrondis",
+    "Raggio degli angoli":"Rayon des angles",
     "Poco":"Léger",
     "Medio":"Moyen",
     "Tanto":"Fort",
@@ -1536,6 +1548,7 @@ const TR={
     "Il tuo file dentro la sagoma":"Deine Datei in der Form",
     "◎ Centra nella sagoma":"◎ In der Form zentrieren",
     "Angoli arrotondati":"Abgerundete Ecken",
+    "Raggio degli angoli":"Eckenradius",
     "Poco":"Leicht",
     "Medio":"Mittel",
     "Tanto":"Stark",
@@ -1826,6 +1839,7 @@ const TR={
     "Il tuo file dentro la sagoma":"Je bestand binnen de vorm",
     "◎ Centra nella sagoma":"◎ Centreren in de vorm",
     "Angoli arrotondati":"Afgeronde hoeken",
+    "Raggio degli angoli":"Hoekradius",
     "Poco":"Licht",
     "Medio":"Gemiddeld",
     "Tanto":"Sterk",
@@ -3894,13 +3908,19 @@ function buildCut(){
   let maxDevMM=0.04+Math.pow(sem,1.5)*1.9;
   if(S.prod==='resin')maxDevMM=Math.min(maxDevMM,0.12);
   if(sh==='diecut'){
-    const RsafeMM=ensureRsafe(targetW);
+    /* [sito] lati liberi (7/11/2026): larghezza e altezza si scrivono indipendenti. Il disegno non si
+       deforma mai e sta DENTRO la misura scritta: se l'altezza e' piu' stretta della proporzione del
+       disegno, il pezzo si adatta all'altezza e la larghezza reale scende; se e' piu' larga, comanda
+       la larghezza come prima. */
+    let TW=targetW;
+    if(targetH>0&&bb.w>0&&bb.h>0){const wFit=(targetH-2*off)*(bb.w/bb.h)+2*off;if(wFit>0&&wFit<TW)TW=wFit;}
+    const RsafeMM=ensureRsafe(TW);
     /* rientranza: 100 = il minimo che tiene tutto unito; 0 = sagoma piena.
        Il massimo è tarato sul riferimento di settore (≈10% della diagonale). */
-    const diagMM=Math.hypot(bb.w,bb.h)*((targetW-2*off)/bb.w);
+    const diagMM=Math.hypot(bb.w,bb.h)*((TW-2*off)/bb.w);
     const Rmax=Math.max(RsafeMM*1.05,0.10*diagMM);
     const Rmm=RsafeMM+(1-rie)*(Rmax-RsafeMM);
-    const innerW=Math.max(1,targetW-2*off);
+    const innerW=Math.max(1,TW-2*off);
     /* Lavoro il taglio a risoluzione limitata: 900 px sul lato lungo bastano
        ampiamente (0,05 mm/px su uno sticker da 50 mm) e tengono i tempi bassi. */
     const kSub=Math.min(1,900/Math.max(bb.w,bb.h));
@@ -3991,12 +4011,12 @@ function buildCut(){
     if(!parts.length)throw new Error('contorno non ricavabile');
     let fx0=1e9,fy0=1e9,fx1=-1e9,fy1=-1e9;
     parts.forEach(p=>p.flat.forEach(q=>{if(q[0]<fx0)fx0=q[0];if(q[0]>fx1)fx1=q[0];if(q[1]<fy0)fy0=q[1];if(q[1]>fy1)fy1=q[1];}));
-    const sc=(fx1-fx0)>1e-6?targetW/((fx1-fx0)*mmPerPx):1;
+    const sc=(fx1-fx0)>1e-6?TW/((fx1-fx0)*mmPerPx):1;
     const k=mmPerPx*sc,T=q=>[(q[0]-fx0)*k,(q[1]-fy0)*k];
     S.polys=parts.map(p=>p.flat.map(T));
     S.pathD=parts.map(p=>{const P2=p.P.map(T),A=turnAngles(P2,Math.max(2.5,devPx*k*2));
       return pathOf(P2,A,p.sm,p.cr);}).join(' ');
-    S.cutW=targetW;S.cutH=(fy1-fy0)*k;
+    S.cutW=TW;S.cutH=(fy1-fy0)*k;
     const kk=kSub*k;                                   // mm per pixel del disegno
     S.art={x:(pad-bb.x*kSub-fx0)*k,y:(pad-bb.y*kSub-fy0)*k,w:S.mw*kk,h:S.mh*kk};
     /* ---- LO SFONDO TORNA DENTRO ----
@@ -6287,7 +6307,10 @@ const P_COMPL=[                              // [rientranza, semplicità, leviga
   [45,40,50],                                // medio
   [85,14,26]];                               // tanto: segue i dettagli
 const P_CORNER=[0,2,4];                      // vivi / leggeri / stondati, in mm
-const CL={shape:'diecut',corner:0,bord:1,compl:1};
+const CL={shape:'diecut',corner:0,bord:1,compl:1,rrad:2};
+/* [sito] resinati rettangolari/quadrati: raggio degli angoli scelto dal cliente (CL.rrad), mai sotto 1,5 mm ne' sopra 4 mm */
+const RESIN_RAD_MIN=1.5, RESIN_RAD_MAX=4;
+const resinRad=()=>Math.max(RESIN_RAD_MIN,Math.min(RESIN_RAD_MAX,+CL.rrad||RESIN_R));
 
 function applyBorderLevel(){
   if(!S.autoBordFrac)return;
@@ -6310,9 +6333,9 @@ function applyPreset(recalc){
   $('sem').value=c[1];$('semV').textContent=c[1];
   $('lev').value=c[2];$('levV').textContent=c[2];
   $('shp').value=CL.shape;
-  /* [sito] sul resinato gli angoli non si scelgono: restano fissi su 'medio' */
+  /* [sito] sul resinato niente livelli Poco/Medio/Tanto: il raggio lo sceglie il cliente col selettore (1,5-4 mm) */
   let rad=P_CORNER[S.prod==='resin'?1:CL.corner];
-  if(S.prod==='resin')rad=Math.max(RESIN_R,rad);   // resinato: mai spigolo vivo
+  if(S.prod==='resin')rad=resinRad();   // resinato: mai spigolo vivo, mai sotto 1,5 mm
   if(NOANG)rad=0;   // [sito] cavallotto del kit: rettangolo a spigoli vivi, si chiude con la pinzatrice
   $('rad').value=rad;
   if(CL.shape==='square'||CL.shape==='rect')$('shp').value='rounded';
@@ -6375,6 +6398,12 @@ function levelSlider(id,tickId,cb){
   s.addEventListener('input',()=>{mark();cb(+s.value);});
   mark();}
 levelSlider('lvCorner','tkCorner',v=>{CL.corner=v;applyPreset();});
+/* [sito] selettore del raggio sui resinati: il valore e' sempre riportato dentro 1,5-4 mm */
+const ragTxt=x=>{const t=String(Math.round(x*10)/10);return (LANG==='en'?t:t.replace('.',','))+' mm';};
+function syncRag(){const s=$('lvRag');if(!s)return;const r=resinRad();CL.rrad=r;s.value=String(r);
+  if($('ragV'))$('ragV').textContent=ragTxt(r);if($('ragMin'))$('ragMin').textContent=ragTxt(RESIN_RAD_MIN);if($('ragMax'))$('ragMax').textContent=ragTxt(RESIN_RAD_MAX);}
+if($('lvRag'))$('lvRag').addEventListener('input',()=>{CL.rrad=+$('lvRag').value;syncRag();applyPreset();});
+syncRag();
 chipGroup('cBord',el=>{CL.bord=+el.dataset.b;applyPreset();});
 function syncBordChips(){document.querySelectorAll('#cBord .chip').forEach(e=>
   e.classList.toggle('on',+e.dataset.b===CL.bord));}
@@ -7254,6 +7283,7 @@ function ppGeoUI(){
   /* [sito] zoom e centratura su tutte le sagome, sagomato compreso: li' il disegno
      si ingrandisce o rimpicciolisce dentro il tracciato ricavato a misura piena */
   const gs=$('ppGeoSec'); if(gs)gs.style.display='';
+  const rs=$('ppRagSec'); if(rs){rs.style.display=((f==='rect'||f==='square')&&S.prod==='resin'&&!NOANG)?'':'none';try{syncRag();}catch(e){}}
   const as=$('ppAngSec'); if(as)as.style.display=((f==='rect'||f==='square')&&S.prod!=='resin'&&!NOANG)?'':'none';   /* noang=1: rettangolo standard, niente angoli (cavallotto del kit) */
 }
 (function profilo(){
@@ -7442,8 +7472,13 @@ function ppGeoUI(){
   function statoMotore(){
     const inp={}; CAMPI.forEach(k=>{const e=$(k); if(e)inp[k]=e.value;});
     let custom=null; try{ if(S.palCustom!=null&&S.palette&&S.palette[S.palCustom]&&S.palIdx===S.palCustom)custom=hexOf(S.palette[S.palCustom]); }catch(e){}
-    return {v:1,prod:S.prod,shape:CL.shape,bord:CL.bord,corner:CL.corner,inp,lamina:S.lamina,palIdx:S.palIdx,custom,
+    /* [2/11/2026] anche la SCELTA DELLO SCONTORNO: "tieni il file com'e'" o "solo il disegno" (bgFixBar) e la
+       proposta scelta fra le alternative. Senza, lo Studio rifaceva la scelta automatica e su SP00500 (foto di
+       pelle con scritta rossa, rettangolo) tirava via lo sfondo che il cliente aveva voluto tenere. */
+    const cand=(S.chosen>=0&&S.cands&&S.cands[S.chosen])?S.cands[S.chosen]:null;
+    return {v:1,prod:S.prod,shape:CL.shape,bord:CL.bord,corner:CL.corner,rrad:CL.rrad,inp,lamina:S.lamina,palIdx:S.palIdx,custom,
       rimuovi:!!S.rimuoviSfondo,senzaResina:!!S.senzaResina,autoBordFrac:S.autoBordFrac||null,
+      chosen:S.chosen,chosenKind:cand?cand.st.kind:null,chosenLabel:cand?cand.label:null,sceltaUtente:!!S.sceltaUtente,
       cutW:S.cutW,cutH:S.cutH,pathD:S.pathD};
   }
   function applicaStato(st){
@@ -7451,6 +7486,7 @@ function ppGeoUI(){
     const rimuovi=!!st.rimuovi, cambiaScontorno=rimuovi!==!!S.rimuoviSfondo;
     S.rimuoviSfondo=rimuovi; const rb=$('ppRimuovi'); if(rb)rb.classList.toggle('on',rimuovi);
     if(st.shape)CL.shape=st.shape; if(st.bord!=null)CL.bord=+st.bord; if(st.corner!=null)CL.corner=+st.corner;
+    CL.rrad=(st.rrad!=null)?+st.rrad:2; try{syncRag();}catch(e){}   /* ordini di prima del selettore: 2 mm, com'era fisso */
     document.querySelectorAll('#cShape .chip').forEach(e=>e.classList.toggle('on',e.dataset.s===CL.shape));
     try{syncBordChips();}catch(e){}
     for(const k in st.inp){const e=$(k); if(e&&st.inp[k]!=null)e.value=st.inp[k];}
@@ -7460,6 +7496,15 @@ function ppGeoUI(){
     S.senzaResina=!!st.senzaResina;
     if(st.autoBordFrac)S.autoBordFrac=st.autoBordFrac;
     if(cambiaScontorno){buildWork();autoSegment();}
+    /* la scelta fatta dal cliente (o dall'operatore) sullo scontorno comanda: per etichetta della proposta,
+       altrimenti per tipo (file intero / solo il disegno), altrimenti per posizione */
+    if(st.sceltaUtente&&S.cands&&S.cands.length){
+      let i=-1;
+      if(st.chosenLabel)i=S.cands.findIndex(c=>c.label===st.chosenLabel);
+      if(i<0&&st.chosenKind)i=S.cands.findIndex(c=>st.chosenKind==='intero'?c.st.kind==='intero':c.st.kind!=='intero');
+      if(i<0&&st.chosen!=null&&+st.chosen>=0&&+st.chosen<S.cands.length)i=+st.chosen;
+      if(i>=0){S.chosen=i;S.sceltaUtente=true;S.seeds=[];S.lineSeed=null;}
+    }
     computeMask();
     if(st.custom&&window.__ppColore)window.__ppColore(st.custom);
     else if(st.palIdx!=null&&S.palette&&st.palIdx<S.palette.length){S.palIdx=+st.palIdx;try{paintPalette();paintSwatch();}catch(e){}}
@@ -7522,6 +7567,9 @@ function ppGeoUI(){
     if(d.type==='bg'&&S.src){ const i=Math.max(0,+d.idx||0); S.palIdx=i; try{paintPalette();paintSwatch();}catch(e){}
       busy(true,'Aggiorno…'); setTimeout(()=>{try{buildCut();draw();}catch(e){} window.__busyOff=performance.now(); snapshot(); busy(false);},0); }
     if(d.type==='rimuovi'){ const b=$('ppRimuovi'); if(b)b.click(); }
+    /* [studio] 'tieni': dentro la forma il file com'e', sfondo compreso (on) oppure solo il disegno (off) */
+    if(d.type==='tieni'&&S.src&&S.cands&&S.cands.length){ const i=S.cands.findIndex(c=>d.on?c.st.kind==='intero':c.st.kind!=='intero');
+      if(i>=0){S.chosen=i;S.sceltaUtente=true;S.seeds=[];S.lineSeed=null;busy(true,'Aggiorno…');setTimeout(()=>{try{refresh(true);}catch(e){} window.__busyOff=performance.now(); busy(false);},0);} }
     if(d.type==='bgcol'&&S.src&&d.hex){ try{ if(window.__ppColore)window.__ppColore(String(d.hex)); }catch(e){}
       busy(true,'Aggiorno…'); setTimeout(()=>{try{buildCut();draw();}catch(e){} window.__busyOff=performance.now(); snapshot(); busy(false);},0); }
     if(d.type==='cut'){S.showCut=!!d.on;try{ridipingi();if(window.__anWake)window.__anWake(6000);}catch(e){}}

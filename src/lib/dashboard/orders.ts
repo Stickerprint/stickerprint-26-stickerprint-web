@@ -131,8 +131,9 @@ export function groupOrders(rows: OrderRow[]): OrderGroup[] {
 		// totali: il listino degli articoli meno il codice sconto usato al checkout (es. STICKER10): e' quello che il cliente paga e che va in fattura
 		const listNet = r2(items.reduce((s, i) => s + Number(i.total_net), 0)), listGross = r2(items.reduce((s, i) => s + Number(i.total_gross), 0));
 		const discount = r2(items.reduce((s, i) => s + Number(i.discount_amount ?? 0), 0)), credit = r2(items.reduce((s, i) => s + Number(i.credit_used ?? 0), 0));
+		/* paese: dall'indirizzo di spedizione; la colonna `country` restava 'IT' per gli ordini e-commerce fino al 9/11/2026 (bandierina sbagliata sugli ordini USA) */
 		return {
-			key, number: f.number, numbers: [...new Set(items.map((i) => i.number))], channel: f.channel, country: f.country ?? 'IT', customer, email: f.email ?? '',
+			key, number: f.number, numbers: [...new Set(items.map((i) => i.number))], channel: f.channel, country: (f.shipping?.country || f.country || 'IT').toUpperCase(), customer, email: f.email ?? '',
 			created_at: f.created_at, delivery_date: f.delivery_date, status, starred: items.some((i) => i.starred), items, device: f.device,
 			review_asked_at: f.review_asked_at ?? null, delivered_at: f.delivered_at ?? null,
 			shipBy: items.map((i) => i.ship_by).filter(Boolean).sort()[0] ?? null,
