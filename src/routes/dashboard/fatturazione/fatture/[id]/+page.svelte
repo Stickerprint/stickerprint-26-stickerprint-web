@@ -11,13 +11,17 @@
 	interface Term { method: string; due: string; amount: number; xml_code: string }
 	let e = $state({ issued_at: '', email: '', billing: {} as Record<string, string>, lines: [] as Line[], terms: [] as Term[], notes: '' });
 	function startEdit() {
-		e = { issued_at: inv.issued_at, email: inv.email ?? '', billing: { company: '', first_name: '', last_name: '', street: '', zip: '', city: '', province: '', country: 'IT', vat: '', fiscal_code: '', sdi: '', pec: '', ...(inv.billing ?? {}) }, lines: (inv.lines ?? []).map((l: Line) => ({ description: l.description, qty: Number(l.qty), unit_net: Number(l.unit_net), ddt: l.ddt ?? null, ddt_date: l.ddt_date ?? null })), terms: (inv.payment_terms ?? []).map((t: Term) => ({ method: t.method, due: t.due, amount: Number(t.amount), xml_code: t.xml_code ?? 'MP05' })), notes: inv.notes ?? '' };
+		e = { issued_at: inv.issued_at, email: inv.email ?? '', billing: { company: '', first_name: '', last_name: '', street: '', zip: '', city: '', province: '', country: 'IT', vat: '', fiscal_code: '', sdi: '', pec: '', ...(inv.billing ?? {}) }, lines: (inv.lines ?? []).map((l: Line) => ({ code: l.code ?? null, description: l.description, qty: Number(l.qty), unit_net: Number(l.unit_net), ddt: l.ddt ?? null, ddt_date: l.ddt_date ?? null })), terms: (inv.payment_terms ?? []).map((t: Term) => ({ method: t.method, due: t.due, amount: Number(t.amount), xml_code: t.xml_code ?? 'MP05' })), notes: inv.notes ?? '' };
 		if (Number(inv.express_net) > 0) e.lines.push({ description: 'Produzione express (+30%)', qty: 1, unit_net: Number(inv.express_net) });
 		editing = true;
 	}
 	const r2 = (v: number) => Math.round(v * 100) / 100;
 	const sub = $derived(r2(e.lines.reduce((s, l) => s + Number(l.qty || 0) * Number(l.unit_net || 0), 0)));
-	const vat = $derived(r2(sub * 0.22));
+	/* aliquota registrata sulla fattura: 22% in Italia, 0% per l'estero senza IVA (natura N3.1 esportazione, N3.2 cessione UE) */
+	const rate = $derived(inv.vat_rate != null && Number.isFinite(Number(inv.vat_rate)) ? Number(inv.vat_rate) : 0.22);
+	const ivaLabel = $derived(rate === 0 ? `IVA 0% (${inv.natura ?? 'N3.1'}, non imponibile)` : `IVA ${Math.round(rate * 100)}%`);
+	const totLabel = $derived(rate === 0 ? 'Totale (senza IVA)' : 'Totale IVA inclusa');
+	const vat = $derived(r2(sub * rate));
 	const gross = $derived(r2(sub + vat));
 	const ddtNumbers = $derived((inv.ddt_numbers?.length ? inv.ddt_numbers : inv.ddt_number ? [inv.ddt_number] : []) as string[]);
 	const b = $derived(inv.billing ?? {});
@@ -133,8 +137,8 @@
 				</div>
 				<div class="tot-box">
 					<div class="sumrow"><span>Imponibile</span><b>{money(sub)}</b></div>
-					<div class="sumrow"><span>IVA 22%</span><b>{money(vat)}</b></div>
-					<div class="sumrow sumrow--tot"><span>Totale IVA inclusa</span><b>{money(gross)}</b></div>
+					<div class="sumrow"><span>{ivaLabel}</span><b>{money(vat)}</b></div>
+					<div class="sumrow sumrow--tot"><span>{totLabel}</span><b>{money(gross)}</b></div>
 				</div>
 			</div>
 		</div>
@@ -184,8 +188,8 @@
 			</div>
 			<div class="tot-box">
 				<div class="sumrow"><span>Imponibile</span><b>{money(imponibile)}</b></div>
-				<div class="sumrow"><span>IVA 22%</span><b>{money(Number(inv.vat_amount))}</b></div>
-				<div class="sumrow sumrow--tot"><span>Totale IVA inclusa</span><b>{money(Number(inv.amount_gross))}</b></div>
+				<div class="sumrow"><span>{ivaLabel}</span><b>{money(Number(inv.vat_amount))}</b></div>
+				<div class="sumrow sumrow--tot"><span>{totLabel}</span><b>{money(Number(inv.amount_gross))}</b></div>
 			</div>
 		</div>
 	</div>

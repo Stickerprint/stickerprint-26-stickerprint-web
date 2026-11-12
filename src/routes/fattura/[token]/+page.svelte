@@ -82,8 +82,9 @@
 			<div class="qp__sum">
 				<h2 class="qp__h2">{t('account.fattura.totali')}</h2>
 				<div class="qp__row"><span>{t('account.doc.imponibile')}</span><b>{money(inv.net)}</b></div>
-				<div class="qp__row"><span>{t('account.doc.iva')}</span><b>{money(inv.vat)}</b></div>
+				<div class="qp__row"><span>{inv.ivaLabel}</span><b>{money(inv.vat)}</b></div>
 				<div class="qp__row qp__row--tot"><span>{t('account.doc.totale')}</span><b>{money(inv.gross)}</b></div>
+				{#if inv.ivaNota}<p class="qp__terms" style="margin-top:12px">{inv.ivaNota}</p>{/if}
 				{#if inv.notes}<p class="qp__terms" style="margin-top:12px">{inv.notes}</p>{/if}
 			</div>
 			<aside class="qp__why">

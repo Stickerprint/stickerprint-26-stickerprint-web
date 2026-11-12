@@ -2,6 +2,8 @@ import { error, fail, redirect } from '@sveltejs/kit';
 import { adminClient } from '$lib/server/admin';
 import { getInvoiceByToken, invoiceQuestion, setInvoicePaymentStatus, trackInvoiceOpen } from '$lib/server/fatture';
 import { COMPANY } from '$lib/server/company';
+import { aliquotaFattura } from '$lib/server/invoice';
+import { docT } from '$lib/server/docs';
 import { onlinePaymentsOn, retrieveSession, stripeConfigured } from '$lib/server/stripe';
 import { paypalConfigured, settlePayPalReturn } from '$lib/server/paypal';
 import { t } from '$lib/traduzioni';
@@ -26,10 +28,15 @@ export const load: PageServerLoad = async ({ params, url, request, locals: { loc
 	if (paid) c = (await getInvoiceByToken(db, params.token)) ?? c;
 	const b = c.inv.billing ?? {};
 	const addr = [b.company, [b.first_name, b.last_name].filter(Boolean).join(' '), [b.street, b.street2].filter(Boolean).join(', '), [b.zip, b.city, b.province ? `(${b.province})` : ''].filter(Boolean).join(' '), b.vat ? t(locale, 'account.doc.piva', { n: b.vat }) : '', b.fiscal_code ? t(locale, 'account.doc.cf', { n: b.fiscal_code }) : '', b.sdi ? t(locale, 'account.doc.sdi', { n: b.sdi }) : ''].filter(Boolean);
-	const lines = [...(c.inv.lines ?? [])];
+	/* nella lingua di chi guarda: la descrizione tradotta della riga, se c'e' (ordini esteri) */
+	const lines = (c.inv.lines ?? []).map((l) => ({ ...l, description: (langOf(locale) !== 'it' && l.description_c) || l.description }));
+	/* IVA con l'aliquota registrata: 0% e natura per l'estero, non "IVA 22%" fisso */
+	const D = docT(langOf(locale));
+	const rate = aliquotaFattura(c.inv.vat_rate);
+	const natura = c.inv.natura ?? 'N3.1';
 	if (Number(c.inv.express_net) > 0) lines.push({ description: t(locale, 'account.doc.express'), qty: 1, unit_net: Number(c.inv.express_net), total_net: Number(c.inv.express_net) });
 	return {
-		inv: { number: c.inv.number, issued_at: c.inv.issued_at, orders: c.inv.order_numbers ?? [], net: Number(c.inv.subtotal_net) - Number(c.inv.discount_net) + Number(c.inv.express_net), vat: Number(c.inv.vat_amount), gross: Number(c.inv.amount_gross), first_name: b.first_name || b.company || '', sender: c.inv.sender_name, notes: c.inv.notes },
+		inv: { number: c.inv.number, issued_at: c.inv.issued_at, orders: c.inv.order_numbers ?? [], net: Number(c.inv.subtotal_net) - Number(c.inv.discount_net) + Number(c.inv.express_net), vat: Number(c.inv.vat_amount), ivaLabel: rate === 0 ? D('fattura.ivaZero', { natura }) : D('fattura.ivaAliquota', { p: Math.round(rate * 100) }), ivaNota: rate === 0 ? (natura === 'N3.2' ? D('fattura.n32') : natura === 'N3.1' ? D('fattura.n31') : D('fattura.nonImponibile')) : null, gross: Number(c.inv.amount_gross), first_name: b.first_name || b.company || '', sender: c.inv.sender_name, notes: c.inv.notes },
 		addr, lines,
 		payments: c.payments.map((p) => ({ seq: p.seq, method: p.method, due: p.due, amount: Number(p.amount), payable: p.payable, status: p.status, paid_at: p.paid_at })),
 		messages: c.messages.map((m) => ({ id: m.id, direction: m.direction, author: m.author, body: m.body, created_at: m.created_at })),
