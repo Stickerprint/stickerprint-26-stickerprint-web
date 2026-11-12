@@ -18,6 +18,8 @@ import contenuti from '$lib/contenuti-tradotti/contenuti.json';
 
 /** lingue da tradurre: tutte quelle definite in LOCALES tranne l'italiano (una lingua nuova entra da sola, senza altro lavoro) */
 export const LINGUE_ESTERE: Exclude<Lang, 'it'>[] = [...new Set(Object.values(LOCALES).map((l) => l.lang))].filter((l): l is Exclude<Lang, 'it'> => l !== 'it');
+/** lingue in cui si scrive una recensione: TUTTE quelle del sito, italiano compreso (una recensione puo' arrivare in un'altra lingua) */
+export const LINGUE_RECENSIONI: Lang[] = ['it', ...LINGUE_ESTERE];
 type Riga = { id: string; tr?: Record<string, unknown> | null };
 type File = Record<string, Record<string, { _hash?: string } & Record<string, Record<string, unknown>>>>;
 const FILE = contenuti as unknown as File;
@@ -35,6 +37,19 @@ export function traduzioneDi(tabella: string, riga: Riga, lang: Lang, italiano: 
 	const f = FILE[tabella]?.[riga.id];
 	if (f && f[lang] && (!f._hash || f._hash === h)) return f[lang];
 	return null;
+}
+
+/** titolo e commento di una recensione nella lingua del sito. Nella lingua in cui e' stata scritta (`tr._orig`) resta il testo
+ *  del cliente; nelle altre la traduzione salvata (colonna tr o file); sul sito italiano la versione italiana solo se la
+ *  recensione e' arrivata in un'altra lingua. Senza una traduzione valida torna null: si mostra l'originale. */
+export function recensioneTradotta(riga: Riga, lang: Lang, originale: Record<string, unknown>): Record<string, unknown> | null {
+	const tr = riga.tr ?? {};
+	if (tr._orig === lang) return null;
+	if (lang === 'it') {
+		const it = tr.it;
+		return typeof tr._orig === 'string' && tr._hash === impronta(originale) && it && typeof it === 'object' ? (it as Record<string, unknown>) : null;
+	}
+	return traduzioneDi('reviews', riga, lang, originale);
 }
 
 /* FAQ statiche: domanda+risposta italiana → traduzioni (stesso ordine nei cinque file) */
