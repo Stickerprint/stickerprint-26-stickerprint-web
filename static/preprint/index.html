@@ -4882,7 +4882,7 @@ const RESM={
    (riflesso sul bordo in basso a sinistra e luce in alto), il filo di bordo al 46%.
    I livelli sono esportati in /preprint/dome/<forma>/ e stesi sul riquadro del pezzo.
    Rettangoli: i livelli si stendono a nove riquadri (domeNove), uguali a ogni proporzione.
-   Ovali: i livelli si adattano al riquadro, a ogni proporzione. Sagomato: la cupola calcolata (resinDomeProc sotto).
+   Ovali: i livelli si adattano al riquadro, a ogni proporzione. Sagomato: le sfumature del tondo lungo il contorno (resinDomeSagoma sotto).
    -------------------------------------------------------------------- */
 const DOME_IMG={};
 function domeAssets(shape){
@@ -4991,6 +4991,92 @@ function resinDomeProc(core,ppm){
     o[p+3]=d[p+3];}
   go.putImageData(oid,0,0);
   return out;}
+/* --------------------------------------------------------------------
+   [sito] SAGOMATO CON LE STESSE SFUMATURE DEL TONDO (12/11/2026, richiesta di Mattia)
+   Il sagomato usa i livelli del PSD del TONDO, riletti "in polare": per ogni direzione dal centro
+   (passi di 1 grado) e per ogni distanza dal bordo (passi dello 0,5% del raggio) si tiene quanto
+   scurisce la moltiplica, quanta luce da' la scherma e quanto pesa il filo di bordo. Su una sagoma
+   qualsiasi la 'direzione' e' la normale al bordo e la 'distanza' e' la distanza dal bordo divisa
+   per il raggio inscritto massimo: la fascia di luce gira tutto intorno al contorno, la mezzaluna
+   forte cade dove il bordo guarda in basso a sinistra e la luce media dove guarda in alto, come
+   sul tondo. Dove la normale non e' affidabile (creste della distanza: centro del pezzo, mezzeria
+   dei bracci stretti) si usa la media su tutte le direzioni, cosi' non escono righe.
+   -------------------------------------------------------------------- */
+const DP_NA=360,DP_NT=200;
+let DOME_POLAR=null;
+function domePolar(){
+  if(DOME_POLAR)return DOME_POLAR;
+  const A=domeAssets('circle'); if(!A)return null;
+  const leggi=im=>{if(!im)return null;const c=document.createElement('canvas');c.width=im.naturalWidth||im.width;c.height=im.naturalHeight||im.height;
+    const g=c.getContext('2d',{willReadFrequently:true});g.drawImage(im,0,0);return {d:g.getImageData(0,0,c.width,c.height).data,w:c.width,h:c.height};};
+  const M=leggi(A.mult),Sc=leggi(A.screen),E=leggi(A.edge);
+  const T=(DP_NA+1)*(DP_NT+1);
+  const mult=new Float32Array(T),scr=new Float32Array(T),edge=new Float32Array(T);
+  const multM=new Float32Array(DP_NT+1),scrM=new Float32Array(DP_NT+1),edgeM=new Float32Array(DP_NT+1);
+  /* un punto del livello, bilineare: [grigio, alfa] (i livelli sono neutri: basta un canale) */
+  const pt=(L,x,y)=>{x=Math.max(0,Math.min(L.w-1.001,x));y=Math.max(0,Math.min(L.h-1.001,y));
+    const x0=Math.floor(x),y0=Math.floor(y),fx=x-x0,fy=y-y0,w=L.w,d=L.d;let v=0,a=0;
+    for(let k=0;k<4;k++){const xx=x0+(k&1),yy=y0+(k>>1),q=(yy*w+xx)*4,wt=((k&1)?fx:1-fx)*((k>>1)?fy:1-fy);v+=wt*d[q];a+=wt*d[q+3];}
+    return [v/255,a/255];};
+  /* ogni casella e' la media di 3x3 punti presi dentro la casella: toglie la grana del dipinto */
+  const casella=(L,ia,it,f)=>{if(!L)return 0;const cx=(L.w-1)/2,cy=(L.h-1)/2,rx=L.w/2,ry=L.h/2;let s=0;
+    for(let j=-1;j<=1;j++)for(let i=-1;i<=1;i++){const an=(ia+i/3)*2*Math.PI/DP_NA,t=Math.max(0,Math.min(1,(it+j/3)/DP_NT));
+      const p=pt(L,cx+(1-t)*rx*Math.cos(an),cy+(1-t)*ry*Math.sin(an));s+=f(p);}
+    return s/9;};
+  for(let it=0;it<=DP_NT;it++){let sm=0,ss=0,se=0;
+    for(let ia=0;ia<=DP_NA;ia++){const q=ia*(DP_NT+1)+it;
+      mult[q]=casella(M,ia,it,p=>1-p[1]+p[1]*p[0]);   /* moltiplica: fattore sul colore */
+      scr[q]=casella(Sc,ia,it,p=>p[1]*p[0]);          /* scherma: quota di bianco */
+      edge[q]=casella(E,ia,it,p=>p[1]);               /* filo di bordo: quota di nero */
+      if(ia<DP_NA){sm+=mult[q];ss+=scr[q];se+=edge[q];}}
+    multM[it]=sm/DP_NA;scrM[it]=ss/DP_NA;edgeM[it]=se/DP_NA;}
+  /* lisciatura lungo la direzione (circa 4 gradi): nelle rientranze della sagoma tante direzioni si
+     aprono a ventaglio da un punto solo, e le piccole differenze di pennellata del PSD uscirebbero a raggi */
+  const SG=4,RK=12,ker=[];let kt=0;for(let k=-RK;k<=RK;k++){const v=Math.exp(-k*k/(2*SG*SG));ker.push(v);kt+=v;}
+  const liscia=Tb=>{const tmp=new Float32Array(DP_NA);
+    for(let it=0;it<=DP_NT;it++){
+      for(let ia=0;ia<DP_NA;ia++){let v=0;for(let k=-RK;k<=RK;k++)v+=ker[k+RK]*Tb[(((ia+k)%DP_NA)+DP_NA)%DP_NA*(DP_NT+1)+it];tmp[ia]=v/kt;}
+      for(let ia=0;ia<DP_NA;ia++)Tb[ia*(DP_NT+1)+it]=tmp[ia];
+      Tb[DP_NA*(DP_NT+1)+it]=tmp[0];}};
+  liscia(mult);liscia(scr);liscia(edge);
+  DOME_POLAR={mult,scr,edge,multM,scrM,edgeM};
+  return DOME_POLAR;}
+function resinDomeSagoma(core,ppm){
+  const P=domePolar(); if(!P)return null;
+  const W=core.width,H=core.height,N=W*H;
+  const gc=core.getContext('2d',{willReadFrequently:true});const id=gc.getImageData(0,0,W,H),d=id.data;
+  const inv=new Uint8Array(N);let any=0;for(let i=0;i<N;i++){inv[i]=d[i*4+3]>10?0:1;if(!inv[i])any++;}
+  if(!any)return core;
+  const d2=edt2d(inv,W,H);const dist=new Float32Array(N);let dmax=0;
+  for(let i=0;i<N;i++){if(inv[i])continue;const v=Math.sqrt(d2[i]);dist[i]=v;if(v>dmax)dmax=v;}
+  if(dmax<4)return core;
+  /* normale al bordo: dal gradiente della distanza LISCIATA, preso su un passo largo, cosi' la
+     direzione cambia piano lungo il contorno (il taglio ondeggia) e la luce non esce a chiazze */
+  const sm=gaussRid(dist,W,H,Math.max(2,0.08*dmax));
+  /* passo del gradiente = multipli di 4 px: la distanza lisciata e' ricampionata a blocchi di 4, con un
+     passo piu' corto la normale cambierebbe a scalini */
+  const hs=4*Math.max(1,Math.round(0.03*dmax/4));
+  const out=document.createElement('canvas');out.width=W;out.height=H;const go=out.getContext('2d');
+  const oid=go.createImageData(W,H),o=oid.data;
+  const NT1=DP_NT+1;
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++){const i=y*W+x,p=i*4;
+    if(inv[i]){o[p+3]=0;continue;}
+    const gx=(sm[Math.min(W-1,x+hs)+y*W]-sm[Math.max(0,x-hs)+y*W])/(2*hs), gy=(sm[x+Math.min(H-1,y+hs)*W]-sm[x+Math.max(0,y-hs)*W])/(2*hs);
+    const gm=Math.hypot(gx,gy);
+    /* peso della direzione: pieno dove il gradiente e' netto, nullo sulle creste (li' la normale si ribalta) */
+    let wd=(gm-0.10)/0.22; wd=wd<0?0:wd>1?1:wd; wd=wd*wd*(3-2*wd);
+    const fa=((Math.atan2(-gy,-gx)/(2*Math.PI)*DP_NA)%DP_NA+DP_NA)%DP_NA;   /* normale uscente: 0 destra, 90 basso */
+    const ft=Math.min(DP_NT-0.001,Math.max(0,(dist[i]-0.5)/dmax)*DP_NT);
+    const a0=Math.floor(fa),ka=fa-a0,t0=Math.floor(ft),kt=ft-t0;
+    const q00=a0*NT1+t0,q10=(a0+1)*NT1+t0;
+    const bil=T=>(T[q00]*(1-ka)+T[q10]*ka)*(1-kt)+(T[q00+1]*(1-ka)+T[q10+1]*ka)*kt;
+    const med=T=>T[t0]*(1-kt)+T[t0+1]*kt;
+    const mM=med(P.multM),sM=med(P.scrM),eM=med(P.edgeM);
+    const mult=mM+wd*(bil(P.mult)-mM), scr=sM+wd*(bil(P.scr)-sM), edg=eM+wd*(bil(P.edge)-eM);
+    for(let c=0;c<3;c++){let v=d[p+c]/255;v*=mult;v=v+scr*(1-v);v*=1-edg;o[p+c]=Math.round(Math.max(0,Math.min(1,v))*255);}
+    o[p+3]=d[p+3];}
+  go.putImageData(oid,0,0);
+  return out;}
 function resinDome(core,ppm){
   {const shp=$('shp')&&$('shp').value;let ds=DOME_SHAPES[shp];
    if(ds){try{
@@ -5004,6 +5090,12 @@ function resinDome(core,ppm){
           disegno si rifa' da solo appena i livelli sono pronti (vedi domeAssets). */
        if(DOME_IMG[ds==='rect'?'rect':ds]&&!DOME_IMG[ds==='rect'?'rect':ds].ok)return core;}
    }catch(e){console.error('[cupola]',e);}}
+   /* sagomato: le sfumature del tondo lungo il contorno (resinDomeSagoma). Finche' i livelli del tondo
+      stanno arrivando il pezzo resta piatto e si ridisegna da solo; la vecchia cupola calcolata
+      (resinDomeProc) resta solo se i livelli non si riescono a caricare. */
+   try{const r=resinDomeSagoma(core,ppm);if(r)return r;
+     if(DOME_IMG.circle&&!DOME_IMG.circle.ok&&DOME_IMG.circle.n<3)return core;
+   }catch(e){console.error('[cupola sagoma]',e);}
    try{return resinDomeProc(core,ppm);}catch(e){console.error('[cupola proc]',e);}}
   const W=core.width,H=core.height,N=W*H;
   const gc=core.getContext('2d',{willReadFrequently:true});
