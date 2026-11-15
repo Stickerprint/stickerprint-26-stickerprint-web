@@ -9,6 +9,7 @@ import { fatturatoOrdiniPerMese, sommaMesi, type MeseFatturato } from '$lib/dash
 import { giornoRoma, inizioGiornoRoma, ultimiMesi } from '$lib/dashboard/tempo';
 import { OPEN_TICKET, waitingHours, type Ticket } from '$lib/dashboard/helpdesk';
 import { mesePrima, ultimiRating, type RigaRating } from '$lib/server/margini-rating';
+import { leggiTutto } from '$lib/server/leggi-tutto';
 
 type DB = SupabaseClient;
 
@@ -54,8 +55,10 @@ function daGruppo(g: ReturnType<typeof groupOrders>[number], thumb: string | nul
 export async function fatturatoHome(db: DB, oggi: string): Promise<{ mesi: MeseFatturato[]; anno: MeseFatturato; meseCorrente: string }> {
 	const mesi = ultimiMesi(oggi.slice(0, 7), 12);
 	/* come nella pagina Ordini: gli ordini e-commerce fermi al pagamento (carrelli abbandonati) restano fuori */
-	const { data } = await db.from('orders').select('*').gte('created_at', inizioGiornoRoma(`${mesi[0]}-01`).toISOString()).or('channel.neq.ecommerce,status.neq.attesa_pagamento').order('created_at').limit(5000);
-	const righe = groupOrders((data ?? []) as OrderRow[]).map((g) => ({ mese: giornoRoma(new Date(g.created_at)).slice(0, 7), channel: g.channel, status: g.status, net: g.net }));
+	/* a pagine: in 12 mesi gli ordini superano le 1.000 righe che Supabase da' in una lettura, e a restare fuori erano gli ultimi del mese in corso */
+	const da = inizioGiornoRoma(`${mesi[0]}-01`).toISOString();
+	const { data } = await leggiTutto<OrderRow>((i, f) => db.from('orders').select('*', { count: 'exact' }).gte('created_at', da).or('channel.neq.ecommerce,status.neq.attesa_pagamento').order('created_at').order('id').range(i, f));
+	const righe = groupOrders(data).map((g) => ({ mese: giornoRoma(new Date(g.created_at)).slice(0, 7), channel: g.channel, status: g.status, net: g.net }));
 	const perMese = fatturatoOrdiniPerMese(righe, mesi);
 	const anno = sommaMesi(perMese.filter((m) => m.mese.startsWith(oggi.slice(0, 4))));
 	return { mesi: perMese, anno, meseCorrente: oggi.slice(0, 7) };
