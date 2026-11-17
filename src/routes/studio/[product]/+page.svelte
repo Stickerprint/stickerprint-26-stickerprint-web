@@ -1429,11 +1429,11 @@
 									<span>Etichette nel foglio</span>
 								</div>
 								<div class="st-verso__ctl">
-									<div class="st-grid">
+									<div class="st-griglia">
 										<label><span>in orizzontale</span><input class="input" type="number" min="1" step="1" inputmode="numeric" bind:value={fogliCols} placeholder="auto" /></label>
-										<span class="st-grid__x">×</span>
+										<span class="st-griglia__x">×</span>
 										<label><span>in verticale</span><input class="input" type="number" min="1" step="1" inputmode="numeric" bind:value={fogliRows} placeholder="auto" /></label>
-										{#if nCols || nRows}<button type="button" class="st-link st-grid__reset" onclick={() => { fogliCols = ''; fogliRows = ''; }}>lascia fare allo studio</button>{/if}
+										{#if nCols || nRows}<button type="button" class="st-link st-griglia__reset" onclick={() => { fogliCols = ''; fogliRows = ''; }}>lascia fare allo studio</button>{/if}
 									</div>
 									<div class="st-chips">
 										{#each [['auto', 'Automatico'], ['dritto', 'Dritte'], ['girato', 'Girate 90°']] as [v, lab] (v)}

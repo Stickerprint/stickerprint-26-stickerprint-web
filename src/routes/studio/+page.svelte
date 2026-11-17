@@ -31,7 +31,7 @@
 </section>
 
 <style>
-	.st-monta { display: flex; gap: 14px; align-items: center; margin-top: 18px; padding: 16px 18px; border: 1px solid var(--line); border-radius: 14px; background: #fff; text-decoration: none; color: inherit; }
+	.st-monta { display: flex; gap: 14px; align-items: center; margin-top: 18px; text-align: left; padding: 16px 18px; border: 1px solid var(--line); border-radius: 14px; background: #fff; text-decoration: none; color: inherit; }
 	.st-monta:hover { border-color: var(--blue); }
 	.st-monta__i { flex: none; display: flex; }
 	.st-monta b { display: block; font-size: 15px; }
