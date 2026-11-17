@@ -5910,13 +5910,27 @@ function matRingColor(){
   return hexOf([r/576,gg/576,b/576]);}
 /* ==========================================================================
    ABBONDANZA
-   Procedura: dalla sagoma di taglio ricavo una seconda traccia più larga di
-   N mm; dentro quella ci sta il design; nella corona fra le due tracce
-   continuo i colori veri del bordo del disegno, propagandoli verso l'esterno.
-   Così l'abbondanza non è una tinta approssimata ma esattamente il colore che
-   il disegno ha in quel punto — anche se il fondo è sfumato o multicolore.
+   Serve a una cosa sola: se il taglio cade un filo fuori posto non si deve
+   vedere. Quindi tutto attorno alla sagoma, per N mm, continua il colore di
+   cui e' fatto il contorno (o lo sfondo) del pezzo in quel punto.
+
+   Procedura: dalla sagoma di taglio ricavo una seconda traccia piu' larga di
+   N mm; nella corona fra le due ogni punto prende il colore del punto del
+   pezzo che gli sta piu' vicino IN LINEA D'ARIA, cosi' il colore prosegue
+   dritto verso l'esterno anche sugli angoli e sulle curve (prima si allargava
+   a passi di pixel e sugli angoli uscivano gradini e cunei).
+
+   Il colore NON si prende dall'ultimo pixel del bordo: li' c'e' la sfumatura
+   del file del cliente contro il suo sfondo, o il filo di fondo che resta fra
+   il disegno e il taglio quando il tracciato passa a pelo. Prolungare quello
+   da' un'abbondanza bianca attorno a una cornice colorata (ordine SP00659).
+   Si prende ABBONDANZA_DENTRO mm piu' all'interno, dove il colore e' pieno.
+   Un bordo bianco voluto e' piu' largo di cosi' e resta bianco.
+   Dentro il taglio la grafica del cliente resta com'e'; cambia solo il filo di fondo
+   sul taglio (vedi piu' sotto).
    Il colore del corpo resta come tappo dove il disegno non arriva.
    ========================================================================== */
+const ABBONDANZA_DENTRO=0.35;   /* mm */
 function renderTile(ppm,withMat,bleedMM){
   const core=renderCore(ppm,withMat),b=(bleedMM===undefined?S.bleed:bleedMM);
   if(b<=0.001)return core;
@@ -5933,30 +5947,88 @@ function renderTile(ppm,withMat,bleedMM){
   const g=edt2d(bin,W,H),r2=(bp+1)*(bp+1);
   const col=hex2rgb(withMat?matRingColor():contourColor());
   const clear=withMat&&matKind()==='clear';
-  /* 2. propagazione dei colori del bordo verso l'esterno, dentro la corona */
-  const seen=new Uint8Array(N);
-  let q=[],q2=[];
+  /* 2. da dove si prende il colore: la fascia di pixel pieni a `dentro` px dal bordo.
+        Si scende dal bordo un passo alla volta (passi dritti e in diagonale alternati, cosi'
+        la fascia e' larga uguale in tutte le direzioni); nei punti stretti, dove il pezzo
+        finisce prima, fa da sorgente la sua linea di mezzo. */
+  let dentro=Math.max(3,Math.round(ABBONDANZA_DENTRO*ppm));
+  {const art=S.artHi||S.artCanvas||(S.work&&S.work.canvas),A=artRect();   /* file a bassa risoluzione: la sfumatura del bordo e' piu' larga */
+   if(art&&A&&art.width>0)dentro=Math.max(dentro,Math.ceil(1.5*A.w/art.width*ppm));}
+  dentro=Math.min(dentro,Math.max(3,Math.round(0.8*ppm)),250);
+  /* con un bordo attorno al disegno il colore si prende DENTRO il bordo: resta del suo colore */
+  {const bm=borderMM();if(bm>0.05)dentro=Math.max(3,Math.min(dentro,Math.floor(bm*ppm/2)));}
+  const prof=new Uint8Array(N);              /* 0 = non raggiunto, k = k-esimo strato dal bordo */
+  const pieno=i=>d[i*4+3]>=250;
+  let q=[];
   for(let i=0;i<N;i++){
-    if(d[i*4+3]<250)continue;
+    if(!pieno(i))continue;
     const x=i%W,y=(i/W)|0;
-    if((x>0&&d[(i-1)*4+3]<250)||(x<W-1&&d[(i+1)*4+3]<250)||
-       (y>0&&d[(i-W)*4+3]<250)||(y<H-1&&d[(i+W)*4+3]<250)){seen[i]=1;q.push(i);}}
-  for(let step=0;step<bp+2&&q.length;step++){
-    q2.length=0;
-    for(const i of q){const x=i%W,y=(i/W)|0,p=i*4;
-      const nb=[];
-      if(x>0)nb.push(i-1);if(x<W-1)nb.push(i+1);
-      if(y>0)nb.push(i-W);if(y<H-1)nb.push(i+W);
-      for(const j of nb){
-        if(seen[j]||g[j]>r2||bin[j])continue;   // mai dentro il disegno
-        const pj=j*4;
-        if(d[pj+3]>=250)continue;
-        seen[j]=1;
-        d[pj]=d[p];d[pj+1]=d[p+1];d[pj+2]=d[p+2];
-        q2.push(j);}}
-    const t=q;q=q2;q2=t;}
-  /* 3. composito finale: tappo col colore del corpo dove non è arrivato niente,
-        e fusione corretta dei pixel di bordo semitrasparenti */
+    if(x===0||x===W-1||y===0||y===H-1||!pieno(i-1)||!pieno(i+1)||!pieno(i-W)||!pieno(i+W)){prof[i]=1;q.push(i);}}
+  const sx=new Int16Array(N).fill(-1),sy=new Int16Array(N);
+  const semina=i=>{sx[i]=i%W;sy[i]=(i/W)|0;};
+  if(!S.vetro)for(let k=1;q.length;k++){
+    if(k>=dentro){for(const i of q)semina(i);break;}
+    const diag=(k%2===0),q2=[];
+    for(const i of q){const x=i%W,y=(i/W)|0;
+      for(let dy=-1;dy<=1;dy++){const yy=y+dy;if(yy<0||yy>=H)continue;
+        for(let dx=-1;dx<=1;dx++){if(!dx&&!dy)continue;if(dx&&dy&&!diag)continue;
+          const xx=x+dx;if(xx<0||xx>=W)continue;const j=yy*W+xx;
+          if(prof[j]||!pieno(j))continue;
+          prof[j]=k+1;q2.push(j);}}}
+    /* punto stretto: attorno non c'e' niente di piu' interno, da qui non si scende piu' */
+    for(const i of q){const x=i%W,y=(i/W)|0;let avanti=false;
+      for(let dy=-1;dy<=1&&!avanti;dy++){const yy=y+dy;if(yy<0||yy>=H)continue;
+        for(let dx=-1;dx<=1;dx++){const xx=x+dx;if(xx<0||xx>=W)continue;const j=yy*W+xx;
+          if(prof[j]>k||(!prof[j]&&pieno(j))){avanti=true;break;}}}
+      if(!avanti)semina(i);}
+    q=q2;}
+  /* 3. per ogni punto della corona, la sorgente piu' vicina in linea d'aria (due giri di
+        passate avanti e indietro, in cui i vicini si passano la sorgente). Le sorgenti dei
+        punti stretti sono meno interne del dovuto e quindi meno affidabili: pagano una
+        distanza in piu', cosi' vincono solo dove non c'e' di meglio nei paraggi.
+        Si lavora solo sulla corona e sulla fascia di bordo che la separa dalle sorgenti. */
+  const rr=(bp+2)*(bp+2);
+  const attivo=i=>bin[i]?(prof[i]>0||!pieno(i)):g[i]<=rr;
+  const costo=(x,y,ax,ay)=>Math.sqrt((ax-x)*(ax-x)+(ay-y)*(ay-y))+3*(dentro-prof[ay*W+ax]);
+  const prova=(i,x,y,j)=>{const ax=sx[j];if(ax<0)return;const ay=sy[j],bx=sx[i];
+    if(bx===ax&&sy[i]===ay)return;
+    if(bx<0||costo(x,y,ax,ay)<costo(x,y,bx,sy[i])){sx[i]=ax;sy[i]=ay;}};
+  const fissa=new Uint8Array(N);for(let i=0;i<N;i++)if(sx[i]>=0)fissa[i]=1;
+  if(!S.vetro)for(let giro=0;giro<2;giro++){
+    for(let y=0,i=0;y<H;y++)for(let x=0;x<W;x++,i++){
+      if(fissa[i]||!attivo(i))continue;
+      if(x>0)prova(i,x,y,i-1);
+      if(y>0){prova(i,x,y,i-W);if(x>0)prova(i,x,y,i-W-1);if(x<W-1)prova(i,x,y,i-W+1);}}
+    for(let y=H-1,i=N-1;y>=0;y--)for(let x=W-1;x>=0;x--,i--){
+      if(fissa[i]||!attivo(i))continue;
+      if(x<W-1)prova(i,x,y,i+1);
+      if(y<H-1){prova(i,x,y,i+W);if(x<W-1)prova(i,x,y,i+W+1);if(x>0)prova(i,x,y,i+W-1);}}}
+  /* 4. composito finale: nella corona il colore della sorgente (tappo col colore del corpo
+        dove non e' arrivato niente) e fusione corretta dei pixel di bordo semitrasparenti.
+        */
+  /* Il filo sul taglio: quando il tracciato passa a pelo del disegno, fra i due resta un
+     filo di fondo largo due o tre pixel (o la sfumatura del file contro il suo sfondo). Fra
+     il disegno e la sua abbondanza sarebbe una riga chiara: prende anche lui il colore della
+     sorgente. Vale SOLO per i pixel piu' esterni (meta' fascia) che sono una miscela fra quel
+     colore e il fondo, e solo se subito dietro il colore e' gia' pieno: una sfumatura voluta,
+     un filetto o un bordo vero non si toccano. */
+  const fondo=hex2rgb(inkBase()),sottile=Math.max(2,dentro>>1);
+  if(!withMat&&!S.vetro)for(let i=0,p=0;i<N;i++,p+=4){
+    const k=prof[i];
+    if(!k||k>sottile||fissa[i]||sx[i]<0||d[p+3]<250)continue;
+    const s=(sy[i]*W+sx[i])*4,cr=d[s],cg=d[s+1],cb=d[s+2];
+    const vr=fondo[0]-cr,vg=fondo[1]-cg,vb=fondo[2]-cb,vv=vr*vr+vg*vg+vb*vb;
+    if(vv<1600)continue;                               /* il disegno li' ha gia' il colore del fondo */
+    const pr=d[p]-cr,pg=d[p+1]-cg,pb=d[p+2]-cb,t=(pr*vr+pg*vg+pb*vb)/vv;
+    if(t<0.12||t>1.1)continue;                         /* gia' del colore giusto, o tutt'altro colore */
+    const er=pr-t*vr,eg=pg-t*vg,eb=pb-t*vb;
+    if(er*er+eg*eg+eb*eb>576)continue;                 /* non e' una miscela dei due */
+    /* a tre quarti della strada verso la sorgente il colore deve essere gia' pieno: in una
+       sfumatura voluta li' manca ancora un quarto del cammino, in un filo quasi niente */
+    const x=i%W,y=(i/W)|0,mp=((y+Math.round(0.75*(sy[i]-y)))*W+x+Math.round(0.75*(sx[i]-x)))*4;
+    const dq=Math.abs(d[mp]-cr)+Math.abs(d[mp+1]-cg)+Math.abs(d[mp+2]-cb),dp=Math.abs(pr)+Math.abs(pg)+Math.abs(pb);
+    if(dp<48||dq>36||dq>0.12*dp)continue;              /* un filo e' un salto netto, non un tono in piu' */
+    d[p]=cr;d[p+1]=cg;d[p+2]=cb;}
   for(let i=0,p=0;i<N;i++,p+=4){
     if(g[i]>=r2)continue;
     if(d[p+3]>=250)continue;
@@ -5964,7 +6036,23 @@ function renderTile(ppm,withMat,bleedMM){
     if(cov<=0)continue;
     if(S.vetro){ if(d[p+3]<8){d[p]=255;d[p+1]=255;d[p+2]=255;d[p+3]=34;} continue; }
     const a=d[p+3]/255;
-    const br=seen[i]?d[p]:col[0], bg2=seen[i]?d[p+1]:col[1], bb2=seen[i]?d[p+2]:col[2];
+    const ha=sx[i]>=0;let s=ha?(sy[i]*W+sx[i])*4:0;
+    /* La sorgente sta un po' dentro il pezzo. Se da li' al bordo il disegno cambia poco e
+       con regolarita' (una sfumatura, una foto) il colore giusto e' quello proprio sul bordo:
+       lo si va a prendere lungo la stessa linea, cosi' l'abbondanza prosegue senza scalino.
+       Se invece sul bordo c'e' un salto (il filo di fondo, la sfumatura del file) resta la sorgente. */
+    if(ha&&prof[s>>2]>=dentro){
+      const x=i%W,y=(i/W)|0,ux=x-sx[i],uy=y-sy[i],L=Math.sqrt(ux*ux+uy*uy);
+      if(L>0.5)for(let k=dentro-3;k>=1&&k>=dentro-5;k--){
+        const qi=(sy[i]+Math.round(uy/L*k))*W+sx[i]+Math.round(ux/L*k);
+        if(!prof[qi]||d[qi*4+3]<250)continue;                /* fuori dal pezzo: un passo indietro */
+        const q4=qi*4,d1=Math.abs(d[q4]-d[s])+Math.abs(d[q4+1]-d[s+1])+Math.abs(d[q4+2]-d[s+2]);
+        if(d1>90)break;
+        const m4=((sy[i]+Math.round(uy/L*k/2))*W+sx[i]+Math.round(ux/L*k/2))*4;
+        const lin=Math.abs(d[m4]-(d[q4]+d[s])/2)+Math.abs(d[m4+1]-(d[q4+1]+d[s+1])/2)+Math.abs(d[m4+2]-(d[q4+2]+d[s+2])/2);
+        if(lin<=0.25*d1+6)s=q4;
+        break;}}
+    const br=ha?d[s]:col[0], bg2=ha?d[s+1]:col[1], bb2=ha?d[s+2]:col[2];
     d[p]  = a>0 ? d[p]  *a+br *(1-a) : br;
     d[p+1]= a>0 ? d[p+1]*a+bg2*(1-a) : bg2;
     d[p+2]= a>0 ? d[p+2]*a+bb2*(1-a) : bb2;
