@@ -1,5 +1,5 @@
-/* Stickerprint Studio — app interna (prefisso st-) */
-.st { min-height: 100vh; background: #f4f5fb; color: var(--ink, #0b0b3b); font-family: Montserrat, system-ui, sans-serif; }
+/* Stickerprint Studio — app interna (prefisso st-). Il contenitore e' .st-app: .st da solo e' l'etichetta di stato di dashboard e account */
+.st-app { min-height: 100vh; background: #f4f5fb; color: var(--ink, #0b0b3b); font-family: Montserrat, system-ui, sans-serif; }
 .st-top { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 10px 24px; background: var(--navy); color: #fff; }
 .st-brand { display: flex; align-items: center; gap: 10px; color: #fff; text-decoration: none; font-weight: 500; font-size: 17px; }
 .st-brand img { border-radius: 50%; background: #fff; transform: rotate(-8deg); }

@@ -6,7 +6,7 @@
 
 <svelte:head><meta name="robots" content="noindex, nofollow" /></svelte:head>
 
-<div class="st">
+<div class="st-app">
 	<header class="st-top">
 		<a class="st-brand" href="/studio">
 			<img src="/images/splogo-400.png" alt="" width="34" height="34" />
