@@ -38,44 +38,13 @@ export const MARK = {
 	blockW: 50,
 	/** spazio fra barra nera e codice */
 	blockGap: 7,
-	/* Il codice "normale" di Cutting Master: barra stretta 0,4 e larga 1,0. Altezza, barra nera e stacco
-	   non cambiano mai. Il codice piu' lungo esiste ed e' quello di BARCODE_LENGTHS qui sotto: la prova
-	   del 5/10/2026 (0.5 / 1.25 con l'altezza portata a 11) non era leggibile, ma l'altezza l'avevamo
-	   inventata noi e la stampa era quella della Roland UV col nero sbagliato. */
+	/* ATTENZIONE: queste tre misure sono quelle di Cutting Master e non si toccano.
+	   Il 5/10/2026 le abbiamo ingrossate (0.5 / 1.25 / 11) per provare a far leggere i codici sulle
+	   strisce stampate con la Roland UV: il plotter ha smesso di leggerli del tutto. Il lettore del
+	   Graphtec non decodifica il Code 39 sulle sole proporzioni, si aspetta proprio queste misure. */
 	narrow: 0.4,
 	wide: 1.0
 };
-
-/** "Lunghezza del codice a barre" di Cutting Master 5: e' la larghezza in mm della barra stretta.
- *  Misurato il 18/11/2026 sui crocini che Cutting Master 5 disegna in Illustrator (0,4 - 0,8 - 2,0):
- *  la barra larga e' sempre 2,5 volte la stretta, il codice si allunga in proporzione (75 - 150 - 375 mm)
- *  e tutto il resto resta uguale (altezza 9, barra nera 50, stacco 7, crocini).
- *  Graphtec chiede il codice da 0,8 a 2,0 sui materiali molto riflettenti, letti con MARK SCAN MODE 4
- *  (quello da 2,0 vuole il firmware 1.20 o successivo). */
-export const BARCODE_LENGTHS = [0.4, 0.5, 0.6, 0.8, 1.0, 1.2, 1.5, 2.0] as const;
-/** barra larga = stretta x 2,5 (1,0 sul codice normale) */
-const BARCODE_RATIO = 2.5;
-/** lunghezza del codice in barre strette: 13 caratteri (start, 10 di dati, controllo, stop) da 13,5 e 12 spazi */
-const BARCODE_MODULES = 13 * (6 + 3 * BARCODE_RATIO) + 12;
-/** materiali su cui il sensore non legge il codice normale: glitterato, argento cromo, oro cromo.
- *  (l'olografico si legge gia' col codice normale) */
-export const REFLECTIVE_MATERIALS = ['glitterato', 'argento', 'oro'];
-/** il codice che si mette da soli sui materiali riflettenti: il piu' lungo, come chiede Graphtec */
-export const BARCODE_REFLECTIVE = 2.0;
-
-/** quanto bordo occupa un codice: barra nera, stacco, barre e i 7 mm di bianco che Cutting Master lascia in coda */
-export const barcodeSpan = (narrow: number = MARK.narrow) => MARK.blockW + MARK.blockGap * 2 + BARCODE_MODULES * narrow;
-/** il codice piu' lungo, fino a `max`, che sta in una pagina larga `pageW` (il normale sta sempre) */
-export function barcodeFitting(pageW: number, max: number = BARCODE_REFLECTIVE): number {
-	let best: number = MARK.narrow;
-	for (const n of BARCODE_LENGTHS) if (n <= max + 1e-9 && barcodeSpan(n) <= pageW + 1e-6) best = n;
-	return best;
-}
-/** la lunghezza del codice per il materiale (o i materiali) della striscia: lungo sui riflettenti, normale sugli altri */
-export function barcodeLengthFor(materiale: string | string[] | null | undefined, pageW: number): number {
-	const ids = Array.isArray(materiale) ? materiale : materiale ? [materiale] : [];
-	return ids.some((m) => REFLECTIVE_MATERIALS.includes(m)) ? barcodeFitting(pageW) : MARK.narrow;
-}
 
 /** colore di crocini e codici: il nero ricco usato da Cutting Master negli EPS */
 export const MARK_BLACK = [0.91, 0.79, 0.62, 0.97] as const;
@@ -119,22 +88,20 @@ export function code39Check(s: string): string {
 	return C39_VAL[sum % 43];
 }
 
-/** barre del codice (x e larghezza in mm dall'inizio), con start/stop e cifra di controllo.
- *  `narrow` e' la barra stretta: 0,4 il codice normale, fino a 2,0 quello lungo (BARCODE_LENGTHS) */
-export function code39Bars(data: string, narrow: number = MARK.narrow): { bars: { x: number; w: number }[]; length: number } {
+/** barre del codice (x e larghezza in mm dall'inizio), con start/stop e cifra di controllo */
+export function code39Bars(data: string): { bars: { x: number; w: number }[]; length: number } {
 	const full = `*${data}${code39Check(data)}*`;
-	const wide = narrow === MARK.narrow ? MARK.wide : Math.round(narrow * BARCODE_RATIO * 1000) / 1000;
 	const bars: { x: number; w: number }[] = [];
 	let x = 0;
 	for (let c = 0; c < full.length; c++) {
 		const pat = C39[full[c]];
 		if (!pat) throw new Error(`Carattere non valido nel codice a barre: ${full[c]}`);
 		for (let i = 0; i < 9; i++) {
-			const w = pat[i] === 'w' ? wide : narrow;
+			const w = pat[i] === 'w' ? MARK.wide : MARK.narrow;
 			if (i % 2 === 0) bars.push({ x, w });
 			x += w;
 		}
-		if (c < full.length - 1) x += narrow; // spazio fra i caratteri
+		if (c < full.length - 1) x += MARK.narrow; // spazio fra i caratteri
 	}
 	return { bars, length: x };
 }
@@ -169,19 +136,17 @@ export function markRects(W: number, H: number): Rect[] {
 	];
 }
 
-/** codici a barre e barre nere; il testo leggibile accanto a ognuno.
- *  `narrow`: la barra stretta, 0,4 il codice normale e fino a 2,0 quello lungo per i materiali riflettenti */
-export function barcodeRects(W: number, H: number, id: string, narrow: number = MARK.narrow): { rects: Rect[]; labels: { text: string; x: number; y: number; rot180: boolean }[] } {
+/** codici a barre e barre nere; il testo leggibile accanto a ognuno */
+export function barcodeRects(W: number, H: number, id: string): { rects: Rect[]; labels: { text: string; x: number; y: number; rot180: boolean }[] } {
 	const rects: Rect[] = [];
 	const hB = MARK.barH;
 	// in basso a destra: "F", dritto, barra nera sul bordo destro (il lettore parte da qui)
-	const f = code39Bars(`${id}F`, narrow);
+	const f = code39Bars(`${id}F`);
 	const fx0 = W - MARK.blockW - MARK.blockGap - f.length;
-	if (fx0 < -1e-6) throw new Error(`Il codice a barre da ${String(narrow).replace('.', ',')} mm non sta in una pagina larga ${W} mm`);
 	for (const b of f.bars) rects.push({ x: fx0 + b.x, y: H - hB, w: b.w, h: hB });
 	rects.push({ x: W - MARK.blockW, y: H - hB, w: MARK.blockW, h: hB });
 	// in alto a sinistra: "R", girato di 180 gradi, barra nera sul bordo sinistro (bobina al contrario)
-	const r = code39Bars(`${id}R`, narrow);
+	const r = code39Bars(`${id}R`);
 	const rx1 = MARK.blockW + MARK.blockGap + r.length; // girato: si legge da destra verso sinistra
 	for (const b of r.bars) rects.push({ x: rx1 - b.x - b.w, y: 0, w: b.w, h: hB });
 	rects.push({ x: 0, y: 0, w: MARK.blockW, h: hB });

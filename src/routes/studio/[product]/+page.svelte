@@ -7,7 +7,7 @@
 	import { KIT_CAVALLOTTO } from '$lib/studio/products';
 	import { STRIP_MATERIALS, SHEET_RULES, SHEET_AUTO_MAX_H, layoutLoose, layoutSheets, type Strip, type Verso } from '$lib/studio/layout';
 	import { angoliVivi, smussa } from '$lib/studio/smussa';
-	import { MARK, MARKED_MARGIN, SHEET_FRAMES, pageWidthFor, DEFAULT_COND, markRects, barcodeRects, BARCODE_LENGTHS, barcodeLengthFor, barcodeFitting, barcodeSpan } from '$lib/studio/graphtec';
+	import { MARKED_MARGIN, SHEET_FRAMES, pageWidthFor, DEFAULT_COND, markRects, barcodeRects } from '$lib/studio/graphtec';
 	import { pickDataLink, savedDataLink, grantDataLink, takenJobIds, writeXpf, type DataLinkDir } from '$lib/studio/datalink';
 	import { pickArchivio, savedArchivio, grantArchivio, salvaNellArchivio, type ArchivioDir } from '$lib/studio/archivio';
 	import { pickVersaworks, savedVersaworks, grantVersaworks, stampanti, mappaSalvata, salvaMappa, inviaAStampante, RUOLO_LABEL, type VwDir, type Ruolo as VwRuolo } from '$lib/studio/versaworks';
@@ -822,12 +822,6 @@
 	/* crocini e codice a barre Graphtec, SEMPRE: la pagina e' larga quanto l'area di stampa della bobina
 	   (712 mm sulla 70, che e' larga 750) e i pezzi stanno fuori dai bracci dei crocini e dalle fasce dei codici */
 	const pageW = $derived(pageWidthFor(mat.width));
-	/* codice a barre: il normale (0,4) ovunque, quello lungo sui materiali che il sensore non legge
-	   (glitterato, argento, oro). "auto" segue il materiale, altrimenti vale la lunghezza scelta a mano */
-	let codice = $state<number | 'auto'>('auto');
-	const codiceAuto = $derived(barcodeLengthFor(materiale, pageW));
-	const barcodeN = $derived(codice === 'auto' ? codiceAuto : barcodeFitting(pageW, codice));
-	const mmIt = (n: number) => n.toFixed(1).replace('.', ',');
 	const margin = MARKED_MARGIN.x;
 	const marginY = MARKED_MARGIN.y;
 	let gap = $state(8);
@@ -860,7 +854,7 @@
 	});
 	const strips = $derived<Strip[]>(plan?.r.ok ? plan.r.strips : []);
 	const preview = $derived(strips[0] ?? null);
-	const previewMarks = $derived(preview ? [...markRects(preview.w, preview.h), ...barcodeRects(preview.w, preview.h, 'G1200PROV', barcodeFitting(preview.w, barcodeN)).rects] : []);
+	const previewMarks = $derived(preview ? [...markRects(preview.w, preview.h), ...barcodeRects(preview.w, preview.h, 'G1200PROV').rects] : []);
 
 	/* la striscia nasce insieme al suo taglio: PDF da stampare scaricato e file .xpf scritto nella
 	   cartella di Data Link Server (condivisa in rete, cut_jobs) nello stesso clic */
@@ -897,7 +891,7 @@
 			if (!id) { id = newJobId(taken); taken.add(id); bySig.set(sig, id); }
 			return id;
 		});
-		const bytes = await buildPdf({ title: `${jobName} — ${mat.label}`, arts: [art], pages, pieceCut: P.pieceCut, sheetCut: P.mode === 'fogli' ? P.sheetCut : undefined, graphtecIds: ids, graphtecBarcode: barcodeN });
+		const bytes = await buildPdf({ title: `${jobName} — ${mat.label}`, arts: [art], pages, pieceCut: P.pieceCut, sheetCut: P.mode === 'fogli' ? P.sheetCut : undefined, graphtecIds: ids });
 		const n = pages.reduce((a, s) => a + s.pieces.length, 0);
 		lastJob = { ids, pages, art: { pathD: art.pathD, cutW: art.cutW, cutH: art.cutH }, name: baseName() };
 		sent = '';
@@ -1407,12 +1401,6 @@
 					{#if hScritta > maxH}<em class="st-hint st-hint--warn">oltre i {maxH} mm consigliati per {P.mode === 'fogli' ? 'i fogli' : 'gli adesivi'}: decidi tu fin dove spingerti</em>
 					{:else if P.mode === 'fogli' && !MULTI && !hScritta}<em class="st-hint">vuoto = automatica: resta entro {maxH} mm, sale fino a {SHEET_AUTO_MAX_H} solo se così entrano più fogli affiancati{#if plan?.kind === 'fogli' && plan.r.ok && plan.r.stripH && plan.r.stripH > maxH} · <b>alzata a {plan.r.stripH} mm per {plan.r.across} fogli affiancati</b>{/if}</em>
 					{:else}<em class="st-hint">vuoto = {maxH} mm, il consigliato; puoi alzarla quanto vuoi</em>{/if}</label>
-				<label class="st-field"><span>Codice a barre Graphtec</span>
-					<select class="input" bind:value={codice}>
-						<option value="auto">Automatico: {codiceAuto > MARK.narrow ? `lungo ${mmIt(codiceAuto)} mm, materiale riflettente` : `normale ${mmIt(codiceAuto)} mm`}</option>
-						{#each BARCODE_LENGTHS as n (n)}<option value={n} disabled={barcodeSpan(n) > pageW}>{n === MARK.narrow ? 'Normale' : 'Lungo'} {mmIt(n)} mm</option>{/each}
-					</select>
-					{#if barcodeN > MARK.narrow}<em class="st-hint st-hint--warn">codice lungo {mmIt(barcodeN)} mm per i materiali riflettenti: sul Graphtec la lettura va messa su MODE 4 (ARMS, SCAN MODE)</em>{/if}</label>
 				<label class="st-field"><span>{MULTI ? 'Fogli da stampare' : P.mode === 'fogli' ? 'Etichette da stampare' : 'Pezzi da stampare'} <em>(vuoto = una striscia piena)</em></span><input class="input" type="number" min="1" step="1" bind:value={qty} placeholder="riempi la striscia" />{#if qtyDaFare}<em class="st-hint">ne preparo {qtyDaFare}: l’8% in piu&#39; per gli scarti</em>{/if}</label>
 				{#if P.mode === 'fogli' && !MULTI}
 					<div class="st-block">
