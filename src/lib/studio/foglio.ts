@@ -65,9 +65,34 @@ function ellisse(w: number, h: number): string {
 	]);
 }
 
+/**
+ * Il tracciato approvato dal cliente, riportato alla misura che l'adesivo ha SUL FOGLIO.
+ *
+ * Il sito salva il tracciato quando il cliente conferma il design (`cut.w` × `cut.h`); se poi sul
+ * foglio lo ingrandisce o lo riduce con + e −, `w` e `h` dell'adesivo cambiano e il tracciato resta
+ * quello della misura di prima. Usato cosi' com'era, il motore stampava la grafica alla misura nuova
+ * dentro un taglio piu' piccolo appoggiato all'angolo: grafiche tagliate e fuori centro (SP00663,
+ * 18/11/2026, dodici adesivi tutti ingranditi). Qui il tracciato segue la misura dell'adesivo, e il
+ * bordo con lui.
+ *
+ * Torna `null` se il tracciato manca, o se le proporzioni non sono piu' quelle dell'adesivo (oltre il
+ * 3%): non e' piu' lo stesso pezzo, il tracciato si rifa' dal motore.
+ */
+export function tracciatoApprovato(s: FoglioAdesivo): { d: string; border: number; scala: number } | null {
+	const c = s.cut;
+	if (!c?.pathD) return null;
+	const border = c.border ?? 1;
+	if (!(c.w > 0 && c.h > 0 && s.w > 0 && s.h > 0)) return { d: c.pathD, border, scala: 1 };
+	const kx = s.w / c.w, ky = s.h / c.h;
+	if (Math.abs(kx / ky - 1) > 0.03) return null;
+	if (Math.abs(kx - 1) < 0.004 && Math.abs(ky - 1) < 0.004) return { d: c.pathD, border, scala: 1 };
+	return { d: trasformaPath(c.pathD, [kx, 0, 0, ky, 0, 0]), border: border * kx, scala: kx };
+}
+
 /** tracciato di un adesivo nel suo riquadro: quello salvato dal sito; negli ordini vecchi la forma geometrica (stimata) */
 export function tracciatoAdesivo(s: FoglioAdesivo): { d: string; stimato: boolean } {
-	if (s.cut?.pathD) return { d: s.cut.pathD, stimato: false };
+	const ap = tracciatoApprovato(s);
+	if (ap) return { d: ap.d, stimato: false };
 	if (s.forma === 'tondo' || s.forma === 'ovale') return { d: ellisse(s.w, s.h), stimato: true };
 	/* quadrato, rettangolare e sagomato senza tracciato: il riquadro (angoli vivi come il motore) */
 	return { d: rettangoloArrotondato(s.w, s.h, 0), stimato: s.forma === 'sagomato' };
@@ -83,8 +108,9 @@ export function soggettiDelFoglio(l: FoglioLayout, rifinisci?: (d: string, borde
 	return l.stickers.map((s) => {
 		const t = tracciatoAdesivo(s);
 		let d = t.d;
-		if (!t.stimato && rifinisci && (s.cut?.shape ?? 'diecut') === 'diecut') d = rifinisci(d, s.cut?.border ?? 1) || d;
-		const w = s.cut?.w ?? s.w, h = s.cut?.h ?? s.h;
+		if (!t.stimato && rifinisci && (s.cut?.shape ?? 'diecut') === 'diecut') d = rifinisci(d, tracciatoApprovato(s)?.border ?? 1) || d;
+		/* il tracciato e' gia' alla misura dell'adesivo sul foglio */
+		const w = s.w, h = s.h;
 		const abs = trasformaPath(d, matriceAdesivo(a + s.x, a + s.y, w, h, s.rot || 0));
 		return { pathD: abs, x: 0, y: 0, w, h, nodi: nodi(abs), stimato: t.stimato };
 	});

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { contornoAlpha } from './contorno';
-import { bordoFoglio, misureFoglio, soggettiDelFoglio, tracciatoAdesivo, type FoglioLayout } from './foglio';
+import { bordoFoglio, misureFoglio, soggettiDelFoglio, tracciatoAdesivo, tracciatoApprovato, type FoglioAdesivo, type FoglioLayout } from './foglio';
 import { matriceAdesivo, parsePath, rettangoloArrotondato, trasformaPath } from './path';
 import { samplePath } from './fit';
 
@@ -31,6 +31,25 @@ describe('tracciati del foglio composto', () => {
 		expect(senza.stimato).toBe(true);
 		const b = bbox(senza.d);
 		expect(b.x1 - b.x0).toBeCloseTo(30, 1); expect(b.y1 - b.y0).toBeCloseTo(30, 1);
+	});
+	it('il tracciato approvato segue la misura dell’adesivo sul foglio (ingrandito dopo l’approvazione)', () => {
+		/* SP00663: approvato a 45,5 × 49,93, poi portato a 54,5 × 59,8 con il + del foglio */
+		const s: FoglioAdesivo = { n: 1, forma: 'sagomato', w: 54.5, h: 59.8, x: 100, y: 100, rot: 0, cut: { pathD: 'M0 0 L45.5 0 L45.5 49.928 L0 49.928 Z', w: 45.5, h: 49.928, border: 1.2 } };
+		const ap = tracciatoApprovato(s)!;
+		const b = bbox(ap.d);
+		expect(b.x1 - b.x0).toBeCloseTo(54.5, 2); expect(b.y1 - b.y0).toBeCloseTo(59.8, 2);
+		expect(ap.border).toBeCloseTo(1.2 * 54.5 / 45.5, 3);
+		/* sul foglio il taglio e' centrato sull'adesivo e grande come lui */
+		const [sog] = soggettiDelFoglio({ sheet: { w: 213, h: 275, orientamento: 'verticale', formato: 'L', sagomato: false, bgColor: '#ffffff', bgImage: false, materiale: 'bianco', finitura: 'nessuna' }, stickers: [s] });
+		const a = bbox(sog.pathD);
+		expect((a.x0 + a.x1) / 2).toBeCloseTo(100, 2); expect((a.y0 + a.y1) / 2).toBeCloseTo(100, 2);
+		expect(a.x1 - a.x0).toBeCloseTo(54.5, 2);
+	});
+	it('misura uguale: il tracciato approvato resta identico; proporzioni diverse: si rifa’', () => {
+		const d = 'M0 0 L30 0 L30 20 L0 20 Z';
+		expect(tracciatoApprovato({ n: 1, forma: 'sagomato', w: 30, h: 20, x: 0, y: 0, rot: 0, cut: { pathD: d, w: 30, h: 20 } })).toEqual({ d, border: 1, scala: 1 });
+		expect(tracciatoApprovato({ n: 1, forma: 'sagomato', w: 30, h: 30, x: 0, y: 0, rot: 0, cut: { pathD: d, w: 30, h: 20 } })).toBeNull();
+		expect(tracciatoApprovato({ n: 1, forma: 'sagomato', w: 30, h: 20, x: 0, y: 0, rot: 0 })).toBeNull();
 	});
 	it('nel foglio sagomato gli adesivi si spostano dell’aria attorno', () => {
 		const lay: FoglioLayout = {

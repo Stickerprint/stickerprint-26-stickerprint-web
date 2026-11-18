@@ -3,7 +3,7 @@
 	import EnginePreview from '$lib/components/EnginePreview.svelte';
 	import StudioLente from '$lib/components/StudioLente.svelte';
 	import { showFinishStep, showMaterialStep, minForShape, startSize, sizeProposals, roundHalf, proportionalSize, sizeRule } from '$lib/pricing/engine';
-	import { FOGLIO_PPM, ariaFoglio, bordoFoglio, descriviFoglio, misureFoglio, type FoglioAdesivo, type FoglioLayout, type SoggettoFoglio } from '$lib/studio/foglio';
+	import { FOGLIO_PPM, ariaFoglio, bordoFoglio, descriviFoglio, misureFoglio, tracciatoApprovato, type FoglioAdesivo, type FoglioLayout, type SoggettoFoglio } from '$lib/studio/foglio';
 	import { KIT_CAVALLOTTO } from '$lib/studio/products';
 	import { STRIP_MATERIALS, SHEET_RULES, SHEET_AUTO_MAX_H, layoutLoose, layoutSheets, type Strip, type Verso } from '$lib/studio/layout';
 	import { angoliVivi, smussa } from '$lib/studio/smussa';
@@ -348,7 +348,7 @@
 			if (o.materiale && MATERIALS.some((x) => x.id === o.materiale)) materiale = o.materiale;
 			if (o.finitura && FINISHES.some((x) => x.id === o.finitura)) finitura = o.finitura;
 			/* 1. ogni design stampato dal motore (stessa sagoma e misura del sito, tracciato approvato se c'e') */
-			const stampe: { s: FoglioAdesivo; st: Stampa; img: HTMLImageElement; ricostruito: boolean }[] = [];
+			const stampe: { s: FoglioAdesivo; st: Stampa; img: HTMLImageElement; ricostruito: boolean; approvato: string }[] = [];
 			let ricostruiti = 0, stimati = 0;
 			for (const st of lay.stickers) {
 				const d = fg.designs?.[String(st.n)];
@@ -357,12 +357,15 @@
 				const r = await fetch(d.url);
 				if (!r.ok) { stimati++; continue; }
 				const b = await r.blob();
-				const approvato = st.cut?.pathD && (st.cut.shape ?? 'diecut') === 'diecut' ? rifinisci(st.cut.pathD, st.cut.border ?? 1, Math.max(st.w, st.h)) : st.cut?.pathD;
+				/* il tracciato approvato alla misura che l'adesivo ha sul foglio: il cliente puo' averlo
+				   ingrandito o ridotto dopo l'approvazione (SP00663) */
+				const ap = tracciatoApprovato(st);
+				const approvato = ap ? ((st.cut?.shape ?? 'diecut') === 'diecut' ? rifinisci(ap.d, ap.border, Math.max(st.w, st.h)) || ap.d : ap.d) : '';
 				const out = await stampaDaMotore(new File([b], d.name, { type: b.type }), st.forma, st.w, st.h, approvato || undefined);
 				if (!out) { stimati++; continue; }
 				const img = await caricaImg(URL.createObjectURL(out.blob));
-				if (!st.cut?.pathD) ricostruiti++;
-				stampe.push({ s: st, st: out, img, ricostruito: !st.cut?.pathD });
+				if (!ap) ricostruiti++;
+				stampe.push({ s: st, st: out, img, ricostruito: !ap, approvato });
 			}
 			recuperoN = 0;
 			if (!stampe.length) throw new Error('Nessun design dell’ordine si può stampare: mancano i file.');
@@ -394,9 +397,9 @@
 			   La misura e' quella ORDINATA (layout): se il motore ha fatto il pezzo un po' diverso, si riporta
 			   in scala (grafica e tracciato insieme), cosi' il foglio e' quello che il cliente ha visto */
 			const posiziona = (ctx: CanvasRenderingContext2D, s: FoglioAdesivo) => { ctx.translate((a + s.x) * ppm, (a + s.y) * ppm); ctx.rotate(((s.rot || 0) * Math.PI) / 180); };
-			const pezzi = stampe.map(({ s, st, img, ricostruito }) => {
+			const pezzi = stampe.map(({ s, st, img, ricostruito, approvato }) => {
 				const z = s.w > 0 && st.cutW > 0 ? s.w / st.cutW : 1;
-				const stampa = { img, cutW: st.cutW, cutH: st.cutH, bleed: st.bleed, pathD: st.pathD || s.cut?.pathD || '' };
+				const stampa = { img, cutW: st.cutW, cutH: st.cutH, bleed: st.bleed, pathD: st.pathD || approvato };
 				return { s, st, z, stampa, pulita: graficaConAbbondanza(stampa), ricostruito };
 			});
 			for (const p of pezzi) {
@@ -407,7 +410,7 @@
 			for (const { s, st, z, stampa, ricostruito } of pezzi) {
 				g.save(); posiziona(g, s); disegnaDesign(g, stampa.img, stampa, z, ppm, 'dentro'); g.restore();
 				const W1 = st.cutW * z, H1 = st.cutH * z;
-				const d = trasformaPath(st.pathD || s.cut?.pathD || '', [z, 0, 0, z, 0, 0]);
+				const d = trasformaPath(stampa.pathD, [z, 0, 0, z, 0, 0]);
 				const abs = trasformaPath(d, matriceAdesivo(a + s.x, a + s.y, W1, H1, s.rot || 0));
 				list.push({ pathD: abs, x: 0, y: 0, w: W1, h: H1, nodi: (abs.match(/[MLCmlc]/g) ?? []).length, stimato: ricostruito });
 			}
