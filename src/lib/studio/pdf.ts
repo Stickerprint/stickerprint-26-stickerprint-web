@@ -83,6 +83,9 @@ export interface PdfJob {
 	sheetCut?: CutSpot;
 	/** crocini e codice a barre Graphtec: il codice del lavoro per ogni pagina */
 	graphtecIds?: string[];
+	/** barra stretta del codice a barre in mm: 0,4 se manca, fino a 2,0 sui materiali riflettenti
+	    (BARCODE_LENGTHS in graphtec.ts) */
+	graphtecBarcode?: number;
 }
 
 interface Res {
@@ -193,7 +196,7 @@ function drawPage(page: PDFPage, job: PdfJob, strip: Strip, res: Res, pageIndex:
 	const gid = job.graphtecIds?.[pageIndex];
 	let nMarks: PDFName | null = null;
 	if (gid) {
-		const bc = barcodeRects(strip.w, strip.h, gid);
+		const bc = barcodeRects(strip.w, strip.h, gid, job.graphtecBarcode);
 		/* stesso nero ricco dei file di Cutting Master (C91 M79 Y62 K97): col grigio 0 VersaWorks
 		   stampava un nero che il sensore del Graphtec non leggeva */
 		const mOps: PDFOperator[] = [mm(), op(Op.NonStrokingColorCmyk, ...MARK_BLACK)];

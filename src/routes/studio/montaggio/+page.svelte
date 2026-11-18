@@ -15,7 +15,7 @@
 	import { STUDIO_PRODUCTS, studioProduct } from '$lib/studio/products';
 	import { SHEET_RULES, STRIP_MATERIALS, type Placement, type Strip } from '$lib/studio/layout';
 	import { montaStriscia, type Blocco, type Soggetto } from '$lib/studio/montaggio';
-	import { MARKED_MARGIN, pageWidthFor, newJobId, buildXpf, DEFAULT_COND, type XpfGroup, type XpfJob } from '$lib/studio/graphtec';
+	import { MARK, MARKED_MARGIN, pageWidthFor, newJobId, buildXpf, DEFAULT_COND, BARCODE_LENGTHS, barcodeLengthFor, barcodeFitting, barcodeSpan, type XpfGroup, type XpfJob } from '$lib/studio/graphtec';
 	import { SPOTS } from '$lib/studio/spots';
 	import { savedDataLink, grantDataLink, pickDataLink, writeXpf, type DataLinkDir } from '$lib/studio/datalink';
 
@@ -156,6 +156,14 @@
 			: null
 	);
 
+	/* codice a barre: lungo se sulla striscia c'e' un materiale che il sensore non legge (glitterato, argento, oro),
+	   normale altrimenti; si puo' scegliere a mano */
+	let codice = $state<number | 'auto'>('auto');
+	const larghezzaPagina = $derived(monta?.ok && monta.strips[0] ? monta.strips[0].w : Math.min(PAGINA_MAX, +pageW || pageWidthFor(mat.width)));
+	const codiceAuto = $derived(barcodeLengthFor(pronte.map((r) => r.materiale), larghezzaPagina));
+	const barcodeN = $derived(codice === 'auto' ? codiceAuto : barcodeFitting(larghezzaPagina, codice));
+	const mmIt = (n: number) => n.toFixed(1).replace('.', ',');
+
 	/* ---------------------------------------------------------------- generazione */
 	let busy = $state('');
 	let esito = $state('');
@@ -186,7 +194,7 @@
 			const ids = pages.map(() => newJobId());
 			const bytes = await buildPdf({
 				title: `${jobName || 'montaggio'} — ${mat.label}`, arts, pages,
-				pieceCut: arts[0].pieceCut, sheetCut: 'Passante', graphtecIds: ids
+				pieceCut: arts[0].pieceCut, sheetCut: 'Passante', graphtecIds: ids, graphtecBarcode: barcodeN
 			});
 			download(new Blob([bytes as BlobPart], { type: 'application/pdf' }), `${safe(jobName)}_montaggio.pdf`);
 
@@ -316,6 +324,12 @@
 			<label class="mo-f"><span>Regole del foglio</span>
 				<select class="input" bind:value={regole}><option value="resinati">Resinati (bordo 12,5 · testa 10 aghi)</option><option value="etichette">Etichette (bordo 10)</option></select></label>
 			<p class="mo-note">Vale per i prodotti a fogli che non hanno regole proprie.</p>
+			<label class="mo-f"><span>Codice a barre Graphtec</span>
+				<select class="input" bind:value={codice}>
+					<option value="auto">Automatico: {codiceAuto > MARK.narrow ? `lungo ${mmIt(codiceAuto)} mm, materiale riflettente` : `normale ${mmIt(codiceAuto)} mm`}</option>
+					{#each BARCODE_LENGTHS as n (n)}<option value={n} disabled={barcodeSpan(n) > larghezzaPagina}>{n === MARK.narrow ? 'Normale' : 'Lungo'} {mmIt(n)} mm</option>{/each}
+				</select></label>
+			{#if barcodeN > MARK.narrow}<p class="mo-note">Codice lungo {mmIt(barcodeN)} mm per i materiali riflettenti: sul Graphtec la lettura va messa su MODE 4 (ARMS, SCAN MODE).</p>{/if}
 		</div>
 
 		<div class="dcard">
