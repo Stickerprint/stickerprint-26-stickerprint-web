@@ -7,7 +7,7 @@
 	import { KIT_CAVALLOTTO } from '$lib/studio/products';
 	import { STRIP_MATERIALS, SHEET_RULES, SHEET_AUTO_MAX_H, layoutLoose, layoutSheets, type Strip, type Verso } from '$lib/studio/layout';
 	import { angoliVivi, smussa } from '$lib/studio/smussa';
-	import { MARKED_MARGIN, SHEET_FRAMES, pageWidthFor, DEFAULT_COND, markRects, barcodeRects } from '$lib/studio/graphtec';
+	import { MARK_MASK, maskFor, markedMargin, sheetFrames, pageWidthFor, DEFAULT_COND, markRects, maskRects, barcodeRects } from '$lib/studio/graphtec';
 	import { pickDataLink, savedDataLink, grantDataLink, takenJobIds, writeXpf, type DataLinkDir } from '$lib/studio/datalink';
 	import { pickArchivio, savedArchivio, grantArchivio, salvaNellArchivio, type ArchivioDir } from '$lib/studio/archivio';
 	import { pickVersaworks, savedVersaworks, grantVersaworks, stampanti, mappaSalvata, salvaMappa, inviaAStampante, RUOLO_LABEL, type VwDir, type Ruolo as VwRuolo } from '$lib/studio/versaworks';
@@ -822,8 +822,13 @@
 	/* crocini e codice a barre Graphtec, SEMPRE: la pagina e' larga quanto l'area di stampa della bobina
 	   (712 mm sulla 70, che e' larga 750) e i pezzi stanno fuori dai bracci dei crocini e dalle fasce dei codici */
 	const pageW = $derived(pageWidthFor(mat.width));
-	const margin = MARKED_MARGIN.x;
-	const marginY = MARKED_MARGIN.y;
+	/* materiali riflettenti (glitterato, argento, oro): crocini su riquadro nero, lasciati del colore del supporto.
+	   Parte da solo dal materiale; l'operatore puo' accenderlo o spegnerlo, e la scelta vale finche' non cambia materiale */
+	let riquadroScelto = $state<boolean | null>(null);
+	$effect(() => { void materiale; riquadroScelto = null; });
+	const mask = $derived((riquadroScelto ?? maskFor(materiale) > 0) ? MARK_MASK : 0);
+	const margin = $derived(markedMargin(mask).x);
+	const marginY = $derived(markedMargin(mask).y);
 	let gap = $state(8);
 	/* fra un foglio e l'altro almeno 1 cm (resinati, etichette, fogli di adesivi) */
 	const MIN_SHEET_GAP = 10;
@@ -832,7 +837,7 @@
 	/* altezza vuota = automatica: i fogli restano entro l'altezza consigliata, ma la striscia puo' alzarsi fino a
 	   SHEET_AUTO_MAX_H quando cosi' ci stanno piu' fogli affiancati (Ø80: 3 fogli in 473 mm invece di 1 in 227).
 	   Se l'operatore scrive un'altezza, quella comanda, anche oltre il consigliato. */
-	const fogliOpz = $derived(P.mode === 'fogli' && !MULTI ? { autoMaxH: hScritta ? undefined : SHEET_AUTO_MAX_H, frames: SHEET_FRAMES, cols: nCols || undefined, rows: nRows || undefined } : {});
+	const fogliOpz = $derived(P.mode === 'fogli' && !MULTI ? { autoMaxH: hScritta ? undefined : SHEET_AUTO_MAX_H, frames: sheetFrames(mask), cols: nCols || undefined, rows: nRows || undefined } : {});
 
 	const cutW = $derived(engCut?.w ?? (cavallotto ? KIT_CAVALLOTTO.w : w));
 	const cutH = $derived(engCut?.h ?? (cavallotto ? KIT_CAVALLOTTO.h : h));
@@ -854,7 +859,8 @@
 	});
 	const strips = $derived<Strip[]>(plan?.r.ok ? plan.r.strips : []);
 	const preview = $derived(strips[0] ?? null);
-	const previewMarks = $derived(preview ? [...markRects(preview.w, preview.h), ...barcodeRects(preview.w, preview.h, 'G1200PROV').rects] : []);
+	const previewMarks = $derived(preview ? [...(mask ? [] : markRects(preview.w, preview.h)), ...barcodeRects(preview.w, preview.h, 'G1200PROV', mask).rects] : []);
+	const previewMask = $derived(preview && mask ? maskRects(preview.w, preview.h, mask) : []);
 
 	/* la striscia nasce insieme al suo taglio: PDF da stampare scaricato e file .xpf scritto nella
 	   cartella di Data Link Server (condivisa in rete, cut_jobs) nello stesso clic */
@@ -891,9 +897,9 @@
 			if (!id) { id = newJobId(taken); taken.add(id); bySig.set(sig, id); }
 			return id;
 		});
-		const bytes = await buildPdf({ title: `${jobName} — ${mat.label}`, arts: [art], pages, pieceCut: P.pieceCut, sheetCut: P.mode === 'fogli' ? P.sheetCut : undefined, graphtecIds: ids });
+		const bytes = await buildPdf({ title: `${jobName} — ${mat.label}`, arts: [art], pages, pieceCut: P.pieceCut, sheetCut: P.mode === 'fogli' ? P.sheetCut : undefined, graphtecIds: ids, graphtecMask: mask });
 		const n = pages.reduce((a, s) => a + s.pieces.length, 0);
-		lastJob = { ids, pages, art: { pathD: art.pathD, cutW: art.cutW, cutH: art.cutH }, name: baseName() };
+		lastJob = { ids, pages, art: { pathD: art.pathD, cutW: art.cutW, cutH: art.cutH }, name: baseName(), mask };
 		sent = '';
 		const nomePdf = numeroOrdine
 			? `${baseName()}.pdf`
@@ -970,7 +976,7 @@
 
 	/* ------------------------------------------------------------ Data Link Server */
 	/* l'ultimo PDF generato: il taglio da mandare al plotter deve essere ESATTAMENTE quello */
-	let lastJob = $state<{ ids: string[]; pages: Strip[]; art: { pathD: string; cutW: number; cutH: number }; name: string } | null>(null);
+	let lastJob = $state<{ ids: string[]; pages: Strip[]; art: { pathD: string; cutW: number; cutH: number }; name: string; mask: number } | null>(null);
 	let dlDir = $state<DataLinkDir | null>(null);
 	let dlName = $state('');
 	let cutMode = $state<'tutto' | 'passante'>('tutto');
@@ -994,7 +1000,7 @@
 			if (seen.has(id)) return [];
 			seen.add(id);
 			const onlyThrough = P.mode === 'fogli' && cutMode === 'passante';
-			return [{ id, W: pg.w, H: pg.h, pathD: lastJob!.art.pathD, cutW: lastJob!.art.cutW, cutH: lastJob!.art.cutH, pieces: pg.pieces, sheets: pg.sheets, pieceCond: onlyThrough ? null : cond(P.pieceCut), sheetCond: P.mode === 'fogli' && P.sheetCut ? cond(P.sheetCut) : null }];
+			return [{ id, W: pg.w, H: pg.h, pathD: lastJob!.art.pathD, cutW: lastJob!.art.cutW, cutH: lastJob!.art.cutH, pieces: pg.pieces, sheets: pg.sheets, pieceCond: onlyThrough ? null : cond(P.pieceCut), sheetCond: P.mode === 'fogli' && P.sheetCut ? cond(P.sheetCut) : null, mask: lastJob!.mask }];
 		});
 	}
 	let sentErr = $state('');
@@ -1401,6 +1407,9 @@
 					{#if hScritta > maxH}<em class="st-hint st-hint--warn">oltre i {maxH} mm consigliati per {P.mode === 'fogli' ? 'i fogli' : 'gli adesivi'}: decidi tu fin dove spingerti</em>
 					{:else if P.mode === 'fogli' && !MULTI && !hScritta}<em class="st-hint">vuoto = automatica: resta entro {maxH} mm, sale fino a {SHEET_AUTO_MAX_H} solo se così entrano più fogli affiancati{#if plan?.kind === 'fogli' && plan.r.ok && plan.r.stripH && plan.r.stripH > maxH} · <b>alzata a {plan.r.stripH} mm per {plan.r.across} fogli affiancati</b>{/if}</em>
 					{:else}<em class="st-hint">vuoto = {maxH} mm, il consigliato; puoi alzarla quanto vuoi</em>{/if}</label>
+				<label class="st-field st-field--check"><span><input type="checkbox" checked={mask > 0} onchange={(e) => (riquadroScelto = (e.currentTarget as HTMLInputElement).checked)} /> Crocini su riquadro nero</span>
+					{#if mask}<em class="st-hint">per i materiali riflettenti: riquadro nero e crocino del colore del supporto. Sul Graphtec: modalità scansione 1, regolazione livello −5</em>
+					{:else}<em class="st-hint">si accende da solo su glitterato, argento e oro</em>{/if}</label>
 				<label class="st-field"><span>{MULTI ? 'Fogli da stampare' : P.mode === 'fogli' ? 'Etichette da stampare' : 'Pezzi da stampare'} <em>(vuoto = una striscia piena)</em></span><input class="input" type="number" min="1" step="1" bind:value={qty} placeholder="riempi la striscia" />{#if qtyDaFare}<em class="st-hint">ne preparo {qtyDaFare}: l’8% in piu&#39; per gli scarti</em>{/if}</label>
 				{#if P.mode === 'fogli' && !MULTI}
 					<div class="st-block">
@@ -1565,6 +1574,7 @@
 					<svg viewBox="-2 -2 {preview.w + 4} {preview.h + 4}" preserveAspectRatio="xMidYMin meet">
 						<rect x="0" y="0" width={preview.w} height={preview.h} fill="#fff" stroke="#c7cbe0" stroke-width="1" />
 						{#each previewMarks as r, i (i)}<rect x={r.x} y={r.y} width={r.w} height={r.h} fill="#111" />{/each}
+						{#each previewMask as q, i (i)}<rect x={q.fuori.x} y={q.fuori.y} width={q.fuori.w} height={q.fuori.h} fill="#111" />{#each q.fori as r, k (k)}<rect x={r.x} y={r.y} width={r.w} height={r.h} fill="#fff" />{/each}{/each}
 						{#if MULTI}
 							<!-- foglio di adesivi: ogni copia porta il suo passante attorno e il mezzo taglio su ogni adesivo -->
 							{#each preview.pieces as p, i (i)}

@@ -10,7 +10,7 @@
  * (valori presi dai file di produzione Roland dell'azienda)
  */
 import { PDFDocument, PDFName, PDFNumber, PDFOperator, PDFOperatorNames as Op, StandardFonts, degrees, type PDFFont, type PDFPage, type PDFRef, type PDFDict } from 'pdf-lib';
-import { markRects, barcodeRects, MARK_BLACK } from './graphtec';
+import { markRects, maskRects, barcodeRects, MARK_BLACK } from './graphtec';
 import type { Placement, Strip } from './layout';
 
 import { SPOTS, GLOSS, type CutSpot } from './spots';
@@ -83,6 +83,8 @@ export interface PdfJob {
 	sheetCut?: CutSpot;
 	/** crocini e codice a barre Graphtec: il codice del lavoro per ogni pagina */
 	graphtecIds?: string[];
+	/** crocini su riquadro nero per i materiali riflettenti (mm di nero attorno al crocino, 0 o assente = crocini neri normali) */
+	graphtecMask?: number;
 }
 
 interface Res {
@@ -193,12 +195,19 @@ function drawPage(page: PDFPage, job: PdfJob, strip: Strip, res: Res, pageIndex:
 	const gid = job.graphtecIds?.[pageIndex];
 	let nMarks: PDFName | null = null;
 	if (gid) {
-		const bc = barcodeRects(strip.w, strip.h, gid);
+		const mask = job.graphtecMask && job.graphtecMask > 0 ? job.graphtecMask : 0;
+		const bc = barcodeRects(strip.w, strip.h, gid, mask);
 		/* stesso nero ricco dei file di Cutting Master (C91 M79 Y62 K97): col grigio 0 VersaWorks
 		   stampava un nero che il sensore del Graphtec non leggeva */
 		const mOps: PDFOperator[] = [mm(), op(Op.NonStrokingColorCmyk, ...MARK_BLACK)];
-		for (const r of [...markRects(strip.w, strip.h), ...bc.rects]) mOps.push(op(Op.AppendRectangle, r.x, r.y, r.w, r.h));
+		for (const r of [...(mask ? [] : markRects(strip.w, strip.h)), ...bc.rects]) mOps.push(op(Op.AppendRectangle, r.x, r.y, r.w, r.h));
 		mOps.push(op(Op.FillNonZero));
+		/* materiali riflettenti: riquadro nero con il crocino lasciato del colore del supporto (pari-dispari) */
+		for (const q of maskRects(strip.w, strip.h, mask)) {
+			mOps.push(op(Op.AppendRectangle, q.fuori.x, q.fuori.y, q.fuori.w, q.fuori.h));
+			for (const r of q.fori) mOps.push(op(Op.AppendRectangle, r.x, r.y, r.w, r.h));
+			mOps.push(op(Op.FillEvenOdd));
+		}
 		const marksForm = ctx.register(ctx.formXObject(mOps, { BBox: [0, 0, W, H], Resources: {} }));
 		nMarks = node.newXObject('Crocini', marksForm);
 		/* niente scritte accanto ai codici: il Code 39 vuole almeno 10 moduli (4 mm) di bianco ai lati,
