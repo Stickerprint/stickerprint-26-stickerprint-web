@@ -147,6 +147,14 @@
 		if (pop && pop.key === e.key) { popRender(r); return; }
 		const s = slots[e.index]; if (!s || s.file !== e.file) return;
 		cropCut(r.png, r.cut ?? null).then((png) => { if (slots[e.index]?.file === e.file) { slots[e.index].png = png; slots[e.index].w = r.w; slots[e.index].h = r.h; slots[e.index].busy = false; } });
+		/* il motore ha ridisegnato l'adesivo gia' confermato (misura cambiata con + e −): anche il tracciato dell'ordine
+		   passa alla misura nuova, altrimenti in layout.json restano w/h nuovi con il taglio di prima (SP00663).
+		   Se la richiesta fallisce resta il tracciato precedente: lo studio lo riporta in scala */
+		const file = e.file;
+		engRefs[e.key]?.studio('geom').then((g) => {
+			if (!g.pathD || slots[e.index]?.file !== file) return;
+			slots[e.index].cut = { pathD: g.pathD, w: g.cutW || r.w, h: g.cutH || r.h, shape: g.shape ?? null, border: g.border ?? null };
+		}).catch(() => { /* resta il tracciato di prima */ });
 	}
 	function popRender(r: R) {
 		if (!pop || !r.png) return;
