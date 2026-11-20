@@ -11,6 +11,7 @@ import { env } from '$env/dynamic/private';
 import { CATS, groupOrders, type OrderRow } from '$lib/dashboard/orders';
 import { contestoMargini, indiceFatture, margineOrdine, COLONNE_FATTURA, type FatturaMargine } from '$lib/server/margini';
 import { spesaAnno } from '$lib/server/ads/spesa';
+import { leggiTutto } from '$lib/server/leggi-tutto';
 import { conDato, type SpesaAds } from '$lib/margini/ads';
 import { materiali, perProdotto, totali } from '$lib/margini/aggrega';
 import { calcolaRating, commentoRegole, type InputRating, type Rating } from '$lib/margini/rating';
@@ -45,15 +46,15 @@ async function numeri(db: DB, mese: string, definitivo: boolean) {
 	const prima = mesePrima(mese);
 	const [py, pm] = prima.split('-').map(Number);
 	const [{ data: righe, error }, { data: fatture }, ctx, adsAnno, adsPrimaAnno] = await Promise.all([
-		db.from('orders').select('*').gte('created_at', `${prima}-01`).lt('created_at', `${meseDopo(mese)}-01`).or('channel.neq.ecommerce,status.neq.attesa_pagamento').neq('status', 'annullato').limit(5000),
-		db.from('invoices').select(COLONNE_FATTURA).gte('issued_at', `${mesePrima(prima)}-01`).lt('issued_at', `${meseDopo(meseDopo(mese))}-01`).limit(5000),
+		leggiTutto<OrderRow>((i, f) => db.from('orders').select('*', { count: 'exact' }).gte('created_at', `${prima}-01`).lt('created_at', `${meseDopo(mese)}-01`).or('channel.neq.ecommerce,status.neq.attesa_pagamento').neq('status', 'annullato').order('created_at').order('id').range(i, f)),
+		leggiTutto<FatturaMargine>((i, f) => db.from('invoices').select(COLONNE_FATTURA, { count: 'exact' }).gte('issued_at', `${mesePrima(prima)}-01`).lt('issued_at', `${meseDopo(meseDopo(mese))}-01`).order('issued_at').order('number').range(i, f) as never),
 		contestoMargini(db),
 		spesaAnno(db, y).catch(() => null),
 		py !== y ? spesaAnno(db, py).catch(() => null) : Promise.resolve(null)
 	]);
 	if (error) throw new Error(error.message);
-	const fatturaDi = indiceFatture((fatture ?? []) as FatturaMargine[]);
-	const tutti = groupOrders((righe ?? []) as OrderRow[]).map((g) => margineOrdine(g, ctx, fatturaDi(g)));
+	const fatturaDi = indiceFatture(fatture);
+	const tutti = groupOrders(righe).map((g) => margineOrdine(g, ctx, fatturaDi(g)));
 	const delMese = (k: string) => tutti.filter((o) => o.created_at.slice(0, 7) === k);
 	const cur = delMese(mese), prev = delMese(prima);
 	const t = totali(cur), tp = totali(prev);
