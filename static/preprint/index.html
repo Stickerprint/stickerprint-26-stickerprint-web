@@ -4080,7 +4080,8 @@ function buildCut(){
     } else fit=Math.min(aw/bb.w,ah/bb.h);
     const k=fit*(+$('gsc').value/100);
     const cw=bb.w*k,ch=bb.h*k;
-    const dx=+$('gdx').value||0, dy=+$('gdy').value||0;
+    /* [sito] il centro del disegno non esce dalla forma (vedi limiteSposta) */
+    const sp=spostaDisegno({x:Math.max(W,cw)/2,y:Math.max(H,ch)/2}), dx=sp.dx, dy=sp.dy;
     S.art={x:(W-cw)/2-bb.x*k+dx,y:(H-ch)/2-bb.y*k+dy,w:S.mw*k,h:S.mh*k};}
 }
 
@@ -5727,10 +5728,32 @@ function rilievoVettoriale(){
   return {glossD:d, zone:parts.length, nodi:parts.reduce((a,p)=>a+p.nodes,0), frac:m.frac};}
 
 /* posizione del disegno dentro il pezzo, in mm (con zoom e spostamento del sagomato) */
+/* [sito] QUANTO SI PUO' SPOSTARE IL DISEGNO.
+   Sagomato: il taglio segue il disegno, quindi al 100% il disegno e' gia' al suo posto e non si
+   sposta; rimpicciolito o ingrandito si muove solo nello spazio che lo zoom gli da' (il bordo scelto
+   resta e il disegno non esce mai dalla sagoma). Forme geometriche: il centro del disegno non esce
+   dalla forma. Prima non c'era nessun limite: dal telefono bastava scorrere la pagina col dito
+   sull'anteprima per portare il disegno fuori, e nel pezzo restava solo il colore del contorno
+   (ordine SP00690: scritta bianca su nero, adesivo tutto nero). */
+function limiteSposta(){
+  const A=S.art, bb=S.bbox; if(!A||!bb||!S.mw||!S.mh)return {x:0,y:0};
+  const cw=bb.w*A.w/S.mw, ch=bb.h*A.h/S.mh;          // il disegno, in mm
+  if($('shp').value==='diecut'){
+    const g=Math.abs((((+$('gsc').value)||100)/100)-1)/2;
+    return {x:g*cw,y:g*ch};}
+  return {x:Math.max(S.cutW||0,cw)/2,y:Math.max(S.cutH||0,ch)/2};}
+/* spostamento valido: quello scritto nei campi, riportato dentro il limite (e i campi con lui) */
+function spostaDisegno(L){
+  L=L||limiteSposta();
+  const cl=(v,m)=>(Math.max(-m,Math.min(m,v))||0);
+  const dx=+$('gdx').value||0, dy=+$('gdy').value||0, x=cl(dx,L.x), y=cl(dy,L.y);
+  if(x!==dx)$('gdx').value=x.toFixed(2);
+  if(y!==dy)$('gdy').value=y.toFixed(2);
+  return {dx:x,dy:y};}
 function artRect(){
   let A=S.art; if(!A)return null;
   if($('shp').value==='diecut'){
-    const z=((+$('gsc').value)||100)/100, ddx=+$('gdx').value||0, ddy=+$('gdy').value||0;
+    const z=((+$('gsc').value)||100)/100, sp=spostaDisegno(), ddx=sp.dx, ddy=sp.dy;
     if(z!==1||ddx||ddy){const cx=S.cutW/2, cy=S.cutH/2;
       A={x:cx-(cx-A.x)*z+ddx, y:cy-(cy-A.y)*z+ddy, w:A.w*z, h:A.h*z};}
   }
@@ -6621,6 +6644,8 @@ $('gCenter2').onclick=()=>{$('lvZoom').value=100;$('zoomV').textContent='100%';
   const geo=()=>S.src&&S.bbox&&!S.wand;   // [sito] si trascina anche dentro il sagomato
   const pt=e=>e.touches?{x:e.touches[0].clientX,y:e.touches[0].clientY}:{x:e.clientX,y:e.clientY};
   function down(e){ if(!geo())return;
+    /* [sito] sagomato al 100%: non c'e' niente da spostare, il dito deve scorrere la pagina */
+    if($('shp').value==='diecut'&&!(S.lente&&!S.foglio)){const L=limiteSposta(); if(L.x<0.05&&L.y<0.05)return;}
     const p=pt(e);drag={x:p.x,y:p.y,dx:+$('gdx').value||0,dy:+$('gdy').value||0};
     if(S.lente&&!S.foglio){const pn=S.lentePan||{x:0,y:0};drag.pan={x:pn.x,y:pn.y};}
     cv.classList.add('grabbing');e.preventDefault();}
