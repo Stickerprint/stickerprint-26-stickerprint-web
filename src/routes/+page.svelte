@@ -131,15 +131,7 @@
 		<h2 style="margin-top:14px">{t('home.anteprima.titolo')} <span class="hl hl--blue">{t('home.anteprima.evidenza')}</span></h2>
 		<p class="lead" style="margin-top:14px;max-width:640px;margin-inline:auto">{@html t('home.anteprima.testo')}</p>
 	</div>
-	<div class="up-card">
-		<UploadPreview />
-	</div>
-	<div class="up-strip">
-		<div><b>{t('home.anteprima.passo1')}</b><span>{t('home.anteprima.passo1Nota')}</span></div>
-		<div><b>{t('home.anteprima.passo2')}</b><span>{t('home.anteprima.passo2Nota')}</span></div>
-		<div><b>{t('home.anteprima.passo3')}</b><span>{t('home.anteprima.passo3Nota')}</span></div>
-		<div><b>{t('home.anteprima.passo4')}</b><span>{t('home.anteprima.passo4Nota')}</span></div>
-	</div>
+	<UploadPreview />
 </section>
 
 <!-- SOCIAL PROOF -->
