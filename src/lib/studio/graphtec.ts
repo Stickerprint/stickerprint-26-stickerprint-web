@@ -83,13 +83,13 @@ export function maskFor(materiale: string | (string | null | undefined)[] | null
 /** margini del contenuto "dentro i crocini", con o senza riquadro nero; `bianco` = maschera di bianco, che sotto
  *  i codici a barre scende piu' del riquadro */
 export const markedMargin = (mask = 0, bianco = false) =>
-	mask > 0 ? { x: mask + MARK.arm + mask + 3, y: Math.max(MARK.edge + mask + MARK.thick / 2 + 5, bianco ? WHITE_MARGIN_Y : 0) } : MARKED_MARGIN;
+	mask > 0 ? { x: mask + MARK.arm + mask + 3, y: bianco ? WHITE_MARGIN_Y : MARK.edge + mask + MARK.thick / 2 + 5 } : MARKED_MARGIN;
 /** margini della cornice a tutta larghezza, con o senza riquadro nero */
-export const markedMarginWide = (mask = 0) => (mask > 0 ? { x: mask + 4, y: MARK.edge + mask + MARK.arm + mask + 3 } : MARKED_MARGIN_WIDE);
+export const markedMarginWide = (mask = 0, bianco = false) => (mask > 0 ? { x: mask + 4, y: (bianco ? WHITE_PAD : 0) + MARK.edge + mask + MARK.arm + mask + 3 } : MARKED_MARGIN_WIDE);
 /** le due cornici dei fogli, con o senza riquadro nero */
 export const sheetFrames = (mask = 0, bianco = false) => {
 	if (!(mask > 0)) return SHEET_FRAMES;
-	const a = markedMargin(mask, bianco), b = markedMarginWide(mask);
+	const a = markedMargin(mask, bianco), b = markedMarginWide(mask, bianco);
 	return [
 		{ margin: a.x, marginY: a.y, label: 'dentro i crocini' },
 		{ margin: b.x, marginY: b.y, label: 'a tutta larghezza fra i crocini' }
@@ -156,8 +156,9 @@ export function newJobId(taken: Set<string> = new Set()): string {
 export interface Rect { x: number; y: number; w: number; h: number }
 
 /** crocini (4 L, ognuna come due rettangoli pieni), in coordinate pagina (mm, y verso il basso) */
-export function markRects(W: number, H: number, mask = 0): Rect[] {
-	const t = MARK.thick, a = MARK.arm, e = MARK.edge + mask;
+export function markRects(W: number, H: number, mask = 0, padY = 0): Rect[] {
+	/* `padY`: fascia in piu' in alto e in basso (maschera di bianco): crocini e codici scendono di tanto */
+	const t = MARK.thick, a = MARK.arm, e = MARK.edge + mask + padY;
 	const top = e, bottom = H - e, l = mask, r = W - mask;
 	return [
 		// in alto a sinistra
@@ -173,9 +174,9 @@ export function markRects(W: number, H: number, mask = 0): Rect[] {
 
 /** Crocini su riquadro nero: per ogni crocino il riquadro (`fuori`, il crocino piu' `mask` mm su ogni lato)
  *  e i due bracci da lasciare del colore del supporto (`fori`, senza la parte in comune: si riempie a pari-dispari). */
-export function maskRects(W: number, H: number, mask: number): { fuori: Rect; fori: Rect[] }[] {
+export function maskRects(W: number, H: number, mask: number, padY = 0): { fuori: Rect; fori: Rect[] }[] {
 	if (!(mask > 0)) return [];
-	const m = markRects(W, H, mask), t = MARK.thick, out: { fuori: Rect; fori: Rect[] }[] = [];
+	const m = markRects(W, H, mask, padY), t = MARK.thick, out: { fuori: Rect; fori: Rect[] }[] = [];
 	for (let i = 0; i < m.length; i += 2) {
 		const o = m[i], v = m[i + 1];
 		/* il braccio verticale perde il quadratino che ha in comune con quello orizzontale */
@@ -192,49 +193,51 @@ export function maskRects(W: number, H: number, mask: number): { fuori: Rect; fo
  *  una maschera di bianco (Mattia, 24/11/2026): lo stesso riquadro del crocino, ma in RDG_WHITE (la Roland ci
  *  stampa il bianco) con il crocino nero sopra, e un rettangolo di bianco sotto ogni codice a barre, che resta nero. */
 export type MarkStyle = 'normali' | 'nero' | 'bianco';
-/** bianco attorno al codice a barre: 1,5 cm per lato (Mattia, 24/11/2026), fin dove c'e' pagina. Il codice sta sul
- *  bordo alto o basso e la barra nera a 6 mm dal bordo laterale: da quelle parti il bianco arriva al bordo.
- *  Verso l'interno la fascia e' alta 24 mm e si unisce al riquadro del crocino li' accanto (bianco su bianco). */
+/** bianco attorno al codice a barre: 1,5 cm su tutti e quattro i lati (Mattia, 24/11/2026). Per averlo anche
+ *  verso il bordo della pagina la striscia si allunga di 15 mm in alto e in basso: codici e crocini scendono
+ *  insieme di 15 mm (fra loro tutto resta com'era, e il file di taglio, che parte dai crocini, non cambia).
+ *  Di lato la pagina e' gia' larga quanto l'area di stampa: dalla parte della barra nera, che sta a 6 mm dal
+ *  bordo, il bianco arriva al bordo. La fascia e' alta 39 mm e si unisce al riquadro del crocino li' accanto. */
 export const WHITE_PAD = 15;
-/** con la maschera di bianco il contenuto parte piu' in basso: 5 mm sotto la fascia bianca del codice a barre */
-export const WHITE_MARGIN_Y = MARK.barH + WHITE_PAD + 5;
+/** con la maschera di bianco il contenuto parte 5 mm sotto la fascia bianca del codice a barre */
+export const WHITE_MARGIN_Y = WHITE_PAD + MARK.barH + WHITE_PAD + 5;
 /** Maschera di bianco: i riquadri dei crocini (gli stessi del riquadro nero) e un rettangolo sotto ogni codice
- *  a barre, barra nera compresa. Tutto dentro la pagina. */
+ *  a barre, barra nera compresa. Vale per la pagina gia' allungata di WHITE_PAD in alto e in basso. */
 export function whiteRects(W: number, H: number, id: string, mask: number): { crocini: Rect[]; codici: Rect[] } {
 	if (!(mask > 0)) return { crocini: [], codici: [] };
-	const hB = MARK.barH, l = mask, r0 = W - mask;
+	const hB = MARK.barH, l = mask, r0 = W - mask, p = WHITE_PAD;
 	const fx0 = r0 - MARK.blockW - MARK.blockGap - code39Bars(`${id}F`).length;
 	const rx1 = l + MARK.blockW + MARK.blockGap + code39Bars(`${id}R`).length;
 	const fra = (x0: number, x1: number, y: number, h: number): Rect => { const a = Math.max(0, x0), b = Math.min(W, x1); return { x: a, y, w: b - a, h }; };
 	return {
-		crocini: maskRects(W, H, mask).map((q) => q.fuori),
+		crocini: maskRects(W, H, mask, p).map((q) => q.fuori),
 		codici: [
-			fra(fx0 - WHITE_PAD, r0 + WHITE_PAD, H - hB - WHITE_PAD, hB + WHITE_PAD),
-			fra(l - WHITE_PAD, rx1 + WHITE_PAD, 0, hB + WHITE_PAD)
+			fra(fx0 - p, r0 + p, H - p - hB - p, hB + 2 * p),
+			fra(l - p, rx1 + p, 0, hB + 2 * p)
 		]
 	};
 }
 
 /** codici a barre e barre nere; il testo leggibile accanto a ognuno.
  *  `mask`: con i crocini su riquadro nero i codici rientrano di lato insieme ai crocini e restano sul bordo alto e basso */
-export function barcodeRects(W: number, H: number, id: string, mask = 0): { rects: Rect[]; labels: { text: string; x: number; y: number; rot180: boolean }[] } {
+export function barcodeRects(W: number, H: number, id: string, mask = 0, padY = 0): { rects: Rect[]; labels: { text: string; x: number; y: number; rot180: boolean }[] } {
 	const rects: Rect[] = [];
 	const hB = MARK.barH, l = mask, r0 = W - mask;
 	// in basso a destra: "F", dritto, barra nera sul bordo destro (il lettore parte da qui)
 	const f = code39Bars(`${id}F`);
 	const fx0 = r0 - MARK.blockW - MARK.blockGap - f.length;
-	for (const b of f.bars) rects.push({ x: fx0 + b.x, y: H - hB, w: b.w, h: hB });
-	rects.push({ x: r0 - MARK.blockW, y: H - hB, w: MARK.blockW, h: hB });
+	for (const b of f.bars) rects.push({ x: fx0 + b.x, y: H - padY - hB, w: b.w, h: hB });
+	rects.push({ x: r0 - MARK.blockW, y: H - padY - hB, w: MARK.blockW, h: hB });
 	// in alto a sinistra: "R", girato di 180 gradi, barra nera sul bordo sinistro (bobina al contrario)
 	const r = code39Bars(`${id}R`);
 	const rx1 = l + MARK.blockW + MARK.blockGap + r.length; // girato: si legge da destra verso sinistra
-	for (const b of r.bars) rects.push({ x: rx1 - b.x - b.w, y: 0, w: b.w, h: hB });
-	rects.push({ x: l, y: 0, w: MARK.blockW, h: hB });
+	for (const b of r.bars) rects.push({ x: rx1 - b.x - b.w, y: padY, w: b.w, h: hB });
+	rects.push({ x: l, y: padY, w: MARK.blockW, h: hB });
 	return {
 		rects,
 		labels: [
-			{ text: `${id}-F`, x: fx0 - 3, y: H - hB / 2, rot180: false },
-			{ text: `${id}-R`, x: rx1 + 3, y: hB / 2, rot180: true }
+			{ text: `${id}-F`, x: fx0 - 3, y: H - padY - hB / 2, rot180: false },
+			{ text: `${id}-R`, x: rx1 + 3, y: padY + hB / 2, rot180: true }
 		]
 	};
 }
@@ -275,6 +278,8 @@ export interface XpfJob {
 	groups?: XpfGroup[];
 	/** crocini su riquadro nero (MARK_MASK mm): i crocini sono rientrati di tanto su tutti i lati */
 	mask?: number;
+	/** maschera di bianco: fascia in piu' in alto e in basso (WHITE_PAD mm), i crocini sono scesi di tanto */
+	padY?: number;
 }
 
 /** i gruppi del lavoro: quelli espliciti, oppure l'unico gruppo dei campi storici */
@@ -286,7 +291,7 @@ const enc = new TextEncoder();
 /** comandi GP-GL, ognuno chiuso da ETX (0x03) */
 export function xpfCommands(j: XpfJob): string {
 	const mk = j.mask && j.mask > 0 ? j.mask : 0;
-	const e = MARK.edge + mk + MARK.thick / 2, cx = mk + MARK.thick / 2;
+	const e = MARK.edge + mk + (j.padY && j.padY > 0 ? j.padY : 0) + MARK.thick / 2, cx = mk + MARK.thick / 2;
 	// dalla pagina (mm, y verso il basso) al plotter (0,1 mm): origine sul crocino in BASSO a DESTRA
 	// (dove c'e' il codice F e parte il lettore), X verso l'alto e Y verso sinistra. Verificato sul lavoro
 	// LORENCIC di Cutting Master (cm523 contro il suo EPS): i punti coincidono entro 0,1 mm.

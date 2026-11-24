@@ -15,7 +15,7 @@
 	import { STUDIO_PRODUCTS, studioProduct } from '$lib/studio/products';
 	import { SHEET_RULES, STRIP_MATERIALS, type Placement, type Strip } from '$lib/studio/layout';
 	import { montaStriscia, type Blocco, type Soggetto } from '$lib/studio/montaggio';
-	import { MARK_MASK, maskFor, markedMargin, markRects, maskRects, whiteRects, pageWidthFor, newJobId, buildXpf, DEFAULT_COND, type MarkStyle, type XpfGroup, type XpfJob } from '$lib/studio/graphtec';
+	import { MARK_MASK, WHITE_PAD, maskFor, markedMargin, markRects, maskRects, whiteRects, pageWidthFor, newJobId, buildXpf, DEFAULT_COND, type MarkStyle, type XpfGroup, type XpfJob } from '$lib/studio/graphtec';
 	import { SPOTS, WHITE } from '$lib/studio/spots';
 	import { savedDataLink, grantDataLink, pickDataLink, writeXpf, type DataLinkDir } from '$lib/studio/datalink';
 
@@ -212,7 +212,7 @@
 				const job: XpfJob = {
 					id: ids[i], W: s.w, H: s.h, pathD: groups[0].pathD, cutW: groups[0].cutW, cutH: groups[0].cutH,
 					pieces: groups[0].pieces, groups, sheets: pages[i].sheets,
-					pieceCond: groups[0].cond ?? DEFAULT_COND.half, sheetCond: pages[i].sheets?.length ? DEFAULT_COND.through : null, mask
+					pieceCond: groups[0].cond ?? DEFAULT_COND.half, sheetCond: pages[i].sheets?.length ? DEFAULT_COND.through : null, mask, padY: bianco ? WHITE_PAD : 0
 				};
 				const x = buildXpf(job);
 				const nome = `${safe(jobName)}${monta.strips.length > 1 ? `-${i + 1}` : ''}_${ids[i]}.xpf`;
@@ -330,7 +330,7 @@
 					<option value="nero">Crocini su riquadro nero</option>
 					<option value="bianco">Neri su maschera di bianco (RDG_WHITE)</option>
 				</select></label>
-			<p class="mo-note">{crocini === 'nero' ? 'Per i materiali riflettenti: riquadro nero e crocino del colore del supporto. Sul Graphtec: modalità scansione 1, regolazione livello −5.' : bianco ? 'Riquadro in RDG_WHITE con il crocino nero sopra, e un rettangolo di RDG_WHITE sotto ogni codice a barre, 1,5 cm più largo per lato. In VersaWorks serve una modalità che stampa il bianco sotto il colore.' : 'Il riquadro nero si accende da solo se una riga è su glitterato, argento o oro.'}</p>
+			<p class="mo-note">{crocini === 'nero' ? 'Per i materiali riflettenti: riquadro nero e crocino del colore del supporto. Sul Graphtec: modalità scansione 1, regolazione livello −5.' : bianco ? 'Riquadro in RDG_WHITE con il crocino nero sopra, e un rettangolo di RDG_WHITE sotto ogni codice a barre, 1,5 cm più largo per lato: la striscia è 3 cm più alta. In VersaWorks serve una modalità che stampa il bianco sotto il colore.' : 'Il riquadro nero si accende da solo se una riga è su glitterato, argento o oro.'}</p>
 		</div>
 
 		<div class="dcard">
@@ -347,7 +347,7 @@
 						{#if bianco}
 							{@const wr = whiteRects(s.w, s.h, 'G1200PROV', mask)}
 							{#each [...wr.crocini, ...wr.codici] as c, i (i)}<rect x={c.x} y={c.y} width={c.w} height={c.h} fill={WHITE.rgb} />{/each}
-							{#each markRects(s.w, s.h, mask) as c, i (i)}<rect x={c.x} y={c.y} width={c.w} height={c.h} fill="#111" />{/each}
+							{#each markRects(s.w, s.h, mask, WHITE_PAD) as c, i (i)}<rect x={c.x} y={c.y} width={c.w} height={c.h} fill="#111" />{/each}
 						{:else}
 							{#each maskRects(s.w, s.h, mask) as q, i (i)}<rect x={q.fuori.x} y={q.fuori.y} width={q.fuori.w} height={q.fuori.h} fill="#111" />{#each q.fori as c, k (k)}<rect x={c.x} y={c.y} width={c.w} height={c.h} fill="#fff" />{/each}{/each}
 						{/if}

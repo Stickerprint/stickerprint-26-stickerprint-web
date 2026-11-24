@@ -10,7 +10,7 @@
  * (valori presi dai file di produzione Roland dell'azienda)
  */
 import { PDFDocument, PDFName, PDFNumber, PDFOperator, PDFOperatorNames as Op, StandardFonts, degrees, type PDFFont, type PDFPage, type PDFRef, type PDFDict } from 'pdf-lib';
-import { markRects, maskRects, barcodeRects, whiteRects, MARK_BLACK } from './graphtec';
+import { markRects, maskRects, barcodeRects, whiteRects, MARK_BLACK, WHITE_PAD } from './graphtec';
 import type { Placement, Strip } from './layout';
 
 import { SPOTS, GLOSS, WHITE, type CutSpot } from './spots';
@@ -208,7 +208,8 @@ function drawPage(page: PDFPage, job: PdfJob, strip: Strip, res: Res, pageIndex:
 	if (gid) {
 		const mask = job.graphtecMask && job.graphtecMask > 0 ? job.graphtecMask : 0;
 		const bianco = !!job.graphtecWhite && mask > 0 && !!res.white;
-		const bc = barcodeRects(strip.w, strip.h, gid, mask);
+		const padY = bianco ? WHITE_PAD : 0;
+		const bc = barcodeRects(strip.w, strip.h, gid, mask, padY);
 		const mOps: PDFOperator[] = [mm()];
 		/* maschera di bianco: prima il bianco (riquadri dei crocini e fondo dei codici a barre, tinta piatta RDG_WHITE),
 		   poi il nero sopra IN SOVRASTAMPA, cosi' il nero non buca il bianco che ha sotto */
@@ -222,7 +223,7 @@ function drawPage(page: PDFPage, job: PdfJob, strip: Strip, res: Res, pageIndex:
 		   stampava un nero che il sensore del Graphtec non leggeva */
 		mOps.push(op(Op.NonStrokingColorCmyk, ...MARK_BLACK));
 		/* crocini neri: normali, oppure rientrati sul loro riquadro di bianco */
-		const neri = mask && !bianco ? [] : markRects(strip.w, strip.h, bianco ? mask : 0);
+		const neri = mask && !bianco ? [] : markRects(strip.w, strip.h, bianco ? mask : 0, padY);
 		for (const r of [...neri, ...bc.rects]) mOps.push(op(Op.AppendRectangle, r.x, r.y, r.w, r.h));
 		mOps.push(op(Op.FillNonZero));
 		/* materiali riflettenti: riquadro nero con il crocino lasciato del colore del supporto (pari-dispari) */

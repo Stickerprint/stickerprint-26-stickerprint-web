@@ -7,7 +7,7 @@
 	import { KIT_CAVALLOTTO } from '$lib/studio/products';
 	import { STRIP_MATERIALS, SHEET_RULES, SHEET_AUTO_MAX_H, layoutLoose, layoutSheets, type Strip, type Verso } from '$lib/studio/layout';
 	import { angoliVivi, smussa } from '$lib/studio/smussa';
-	import { MARK_MASK, maskFor, markedMargin, sheetFrames, pageWidthFor, DEFAULT_COND, markRects, maskRects, barcodeRects, whiteRects, type MarkStyle } from '$lib/studio/graphtec';
+	import { MARK_MASK, maskFor, markedMargin, sheetFrames, pageWidthFor, DEFAULT_COND, WHITE_PAD, markRects, maskRects, barcodeRects, whiteRects, type MarkStyle } from '$lib/studio/graphtec';
 	import { pickDataLink, savedDataLink, grantDataLink, takenJobIds, writeXpf, type DataLinkDir } from '$lib/studio/datalink';
 	import { pickArchivio, savedArchivio, grantArchivio, salvaNellArchivio, type ArchivioDir } from '$lib/studio/archivio';
 	import { pickVersaworks, savedVersaworks, grantVersaworks, stampanti, mappaSalvata, salvaMappa, inviaAStampante, RUOLO_LABEL, type VwDir, type Ruolo as VwRuolo } from '$lib/studio/versaworks';
@@ -834,6 +834,8 @@
 	   Non parte mai da sola: la sceglie l'operatore */
 	const bianco = $derived(crocini === 'bianco');
 	const mask = $derived(crocini === 'normali' ? 0 : MARK_MASK);
+	/* col bianco la striscia ha 15 mm in piu' in alto e in basso, per il bianco oltre il codice a barre */
+	const padY = $derived(bianco ? WHITE_PAD : 0);
 	const margin = $derived(markedMargin(mask, bianco).x);
 	const marginY = $derived(markedMargin(mask, bianco).y);
 	let gap = $state(8);
@@ -866,7 +868,7 @@
 	});
 	const strips = $derived<Strip[]>(plan?.r.ok ? plan.r.strips : []);
 	const preview = $derived(strips[0] ?? null);
-	const previewMarks = $derived(preview ? [...(mask && !bianco ? [] : markRects(preview.w, preview.h, mask)), ...barcodeRects(preview.w, preview.h, 'G1200PROV', mask).rects] : []);
+	const previewMarks = $derived(preview ? [...(mask && !bianco ? [] : markRects(preview.w, preview.h, mask, padY)), ...barcodeRects(preview.w, preview.h, 'G1200PROV', mask, padY).rects] : []);
 	const previewMask = $derived(preview && mask && !bianco ? maskRects(preview.w, preview.h, mask) : []);
 	const previewWhite = $derived.by(() => { if (!preview || !bianco) return []; const w = whiteRects(preview.w, preview.h, 'G1200PROV', mask); return [...w.crocini, ...w.codici]; });
 
@@ -907,7 +909,7 @@
 		});
 		const bytes = await buildPdf({ title: `${jobName} — ${mat.label}`, arts: [art], pages, pieceCut: P.pieceCut, sheetCut: P.mode === 'fogli' ? P.sheetCut : undefined, graphtecIds: ids, graphtecMask: mask, graphtecWhite: bianco });
 		const n = pages.reduce((a, s) => a + s.pieces.length, 0);
-		lastJob = { ids, pages, art: { pathD: art.pathD, cutW: art.cutW, cutH: art.cutH }, name: baseName(), mask };
+		lastJob = { ids, pages, art: { pathD: art.pathD, cutW: art.cutW, cutH: art.cutH }, name: baseName(), mask, padY };
 		sent = '';
 		const nomePdf = numeroOrdine
 			? `${baseName()}.pdf`
@@ -984,7 +986,7 @@
 
 	/* ------------------------------------------------------------ Data Link Server */
 	/* l'ultimo PDF generato: il taglio da mandare al plotter deve essere ESATTAMENTE quello */
-	let lastJob = $state<{ ids: string[]; pages: Strip[]; art: { pathD: string; cutW: number; cutH: number }; name: string; mask: number } | null>(null);
+	let lastJob = $state<{ ids: string[]; pages: Strip[]; art: { pathD: string; cutW: number; cutH: number }; name: string; mask: number; padY: number } | null>(null);
 	let dlDir = $state<DataLinkDir | null>(null);
 	let dlName = $state('');
 	let cutMode = $state<'tutto' | 'passante'>('tutto');
@@ -1008,7 +1010,7 @@
 			if (seen.has(id)) return [];
 			seen.add(id);
 			const onlyThrough = P.mode === 'fogli' && cutMode === 'passante';
-			return [{ id, W: pg.w, H: pg.h, pathD: lastJob!.art.pathD, cutW: lastJob!.art.cutW, cutH: lastJob!.art.cutH, pieces: pg.pieces, sheets: pg.sheets, pieceCond: onlyThrough ? null : cond(P.pieceCut), sheetCond: P.mode === 'fogli' && P.sheetCut ? cond(P.sheetCut) : null, mask: lastJob!.mask }];
+			return [{ id, W: pg.w, H: pg.h, pathD: lastJob!.art.pathD, cutW: lastJob!.art.cutW, cutH: lastJob!.art.cutH, pieces: pg.pieces, sheets: pg.sheets, pieceCond: onlyThrough ? null : cond(P.pieceCut), sheetCond: P.mode === 'fogli' && P.sheetCut ? cond(P.sheetCut) : null, mask: lastJob!.mask, padY: lastJob!.padY }];
 		});
 	}
 	let sentErr = $state('');
@@ -1422,7 +1424,7 @@
 						<option value="bianco">Neri su maschera di bianco (RDG_WHITE)</option>
 					</select>
 					{#if crocini === 'nero'}<em class="st-hint">per i materiali riflettenti: riquadro nero e crocino del colore del supporto. Sul Graphtec: modalità scansione 1, regolazione livello −5</em>
-					{:else if bianco}<em class="st-hint">riquadro in RDG_WHITE con il crocino nero sopra, e un rettangolo di RDG_WHITE sotto ogni codice a barre, 1,5 cm più largo per lato. In VersaWorks serve una modalità che stampa il bianco sotto il colore</em>
+					{:else if bianco}<em class="st-hint">riquadro in RDG_WHITE con il crocino nero sopra, e un rettangolo di RDG_WHITE sotto ogni codice a barre, 1,5 cm più largo per lato: la striscia è 3 cm più alta. In VersaWorks serve una modalità che stampa il bianco sotto il colore</em>
 					{:else}<em class="st-hint">il riquadro nero si accende da solo su glitterato, argento e oro</em>{/if}</label>
 				<label class="st-field"><span>{MULTI ? 'Fogli da stampare' : P.mode === 'fogli' ? 'Etichette da stampare' : 'Pezzi da stampare'} <em>(vuoto = una striscia piena)</em></span><input class="input" type="number" min="1" step="1" bind:value={qty} placeholder="riempi la striscia" />{#if qtyDaFare}<em class="st-hint">ne preparo {qtyDaFare}: l’8% in piu&#39; per gli scarti</em>{/if}</label>
 				{#if P.mode === 'fogli' && !MULTI}
