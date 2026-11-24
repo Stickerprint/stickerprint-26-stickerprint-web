@@ -7,11 +7,11 @@
 	import { KIT_CAVALLOTTO } from '$lib/studio/products';
 	import { STRIP_MATERIALS, SHEET_RULES, SHEET_AUTO_MAX_H, layoutLoose, layoutSheets, type Strip, type Verso } from '$lib/studio/layout';
 	import { angoliVivi, smussa } from '$lib/studio/smussa';
-	import { MARK_MASK, maskFor, markedMargin, sheetFrames, pageWidthFor, DEFAULT_COND, markRects, maskRects, barcodeRects } from '$lib/studio/graphtec';
+	import { MARK_MASK, maskFor, markedMargin, sheetFrames, pageWidthFor, DEFAULT_COND, markRects, maskRects, barcodeRects, whiteRects, type MarkStyle } from '$lib/studio/graphtec';
 	import { pickDataLink, savedDataLink, grantDataLink, takenJobIds, writeXpf, type DataLinkDir } from '$lib/studio/datalink';
 	import { pickArchivio, savedArchivio, grantArchivio, salvaNellArchivio, type ArchivioDir } from '$lib/studio/archivio';
 	import { pickVersaworks, savedVersaworks, grantVersaworks, stampanti, mappaSalvata, salvaMappa, inviaAStampante, RUOLO_LABEL, type VwDir, type Ruolo as VwRuolo } from '$lib/studio/versaworks';
-	import { SPOTS } from '$lib/studio/spots';
+	import { SPOTS, WHITE } from '$lib/studio/spots';
 	import { parsePath, perimetroPath, puntiPer10cm, PUNTI_FITTI } from '$lib/studio/path';
 
 	let { data } = $props();
@@ -827,9 +827,13 @@
 	const pageW = $derived(pageWidthFor(mat.width));
 	/* materiali riflettenti (glitterato, argento, oro): crocini su riquadro nero, lasciati del colore del supporto.
 	   Parte da solo dal materiale; l'operatore puo' accenderlo o spegnerlo, e la scelta vale finche' non cambia materiale */
-	let riquadroScelto = $state<boolean | null>(null);
-	$effect(() => { void materiale; riquadroScelto = null; });
-	const mask = $derived((riquadroScelto ?? maskFor(materiale) > 0) ? MARK_MASK : 0);
+	let crociniScelti = $state<MarkStyle | null>(null);
+	$effect(() => { void materiale; crociniScelti = null; });
+	const crocini = $derived<MarkStyle>(crociniScelti ?? (maskFor(materiale) > 0 ? 'nero' : 'normali'));
+	/* maschera di bianco (24/11/2026): stesso riquadro, ma in RDG_WHITE con il crocino nero sopra, e bianco sotto i codici a barre.
+	   Non parte mai da sola: la sceglie l'operatore */
+	const bianco = $derived(crocini === 'bianco');
+	const mask = $derived(crocini === 'normali' ? 0 : MARK_MASK);
 	const margin = $derived(markedMargin(mask).x);
 	const marginY = $derived(markedMargin(mask).y);
 	let gap = $state(8);
@@ -862,8 +866,9 @@
 	});
 	const strips = $derived<Strip[]>(plan?.r.ok ? plan.r.strips : []);
 	const preview = $derived(strips[0] ?? null);
-	const previewMarks = $derived(preview ? [...(mask ? [] : markRects(preview.w, preview.h)), ...barcodeRects(preview.w, preview.h, 'G1200PROV', mask).rects] : []);
-	const previewMask = $derived(preview && mask ? maskRects(preview.w, preview.h, mask) : []);
+	const previewMarks = $derived(preview ? [...(mask && !bianco ? [] : markRects(preview.w, preview.h, mask)), ...barcodeRects(preview.w, preview.h, 'G1200PROV', mask).rects] : []);
+	const previewMask = $derived(preview && mask && !bianco ? maskRects(preview.w, preview.h, mask) : []);
+	const previewWhite = $derived.by(() => { if (!preview || !bianco) return []; const w = whiteRects(preview.w, preview.h, 'G1200PROV', mask); return [...w.crocini, ...w.codici]; });
 
 	/* la striscia nasce insieme al suo taglio: PDF da stampare scaricato e file .xpf scritto nella
 	   cartella di Data Link Server (condivisa in rete, cut_jobs) nello stesso clic */
@@ -900,7 +905,7 @@
 			if (!id) { id = newJobId(taken); taken.add(id); bySig.set(sig, id); }
 			return id;
 		});
-		const bytes = await buildPdf({ title: `${jobName} — ${mat.label}`, arts: [art], pages, pieceCut: P.pieceCut, sheetCut: P.mode === 'fogli' ? P.sheetCut : undefined, graphtecIds: ids, graphtecMask: mask });
+		const bytes = await buildPdf({ title: `${jobName} — ${mat.label}`, arts: [art], pages, pieceCut: P.pieceCut, sheetCut: P.mode === 'fogli' ? P.sheetCut : undefined, graphtecIds: ids, graphtecMask: mask, graphtecWhite: bianco });
 		const n = pages.reduce((a, s) => a + s.pieces.length, 0);
 		lastJob = { ids, pages, art: { pathD: art.pathD, cutW: art.cutW, cutH: art.cutH }, name: baseName(), mask };
 		sent = '';
@@ -1410,9 +1415,15 @@
 					{#if hScritta > maxH}<em class="st-hint st-hint--warn">oltre i {maxH} mm consigliati per {P.mode === 'fogli' ? 'i fogli' : 'gli adesivi'}: decidi tu fin dove spingerti</em>
 					{:else if P.mode === 'fogli' && !MULTI && !hScritta}<em class="st-hint">vuoto = automatica: resta entro {maxH} mm, sale fino a {SHEET_AUTO_MAX_H} solo se così entrano più fogli affiancati{#if plan?.kind === 'fogli' && plan.r.ok && plan.r.stripH && plan.r.stripH > maxH} · <b>alzata a {plan.r.stripH} mm per {plan.r.across} fogli affiancati</b>{/if}</em>
 					{:else}<em class="st-hint">vuoto = {maxH} mm, il consigliato; puoi alzarla quanto vuoi</em>{/if}</label>
-				<label class="st-field st-field--check"><span><input type="checkbox" checked={mask > 0} onchange={(e) => (riquadroScelto = (e.currentTarget as HTMLInputElement).checked)} /> Crocini su riquadro nero</span>
-					{#if mask}<em class="st-hint">per i materiali riflettenti: riquadro nero e crocino del colore del supporto. Sul Graphtec: modalità scansione 1, regolazione livello −5</em>
-					{:else}<em class="st-hint">si accende da solo su glitterato, argento e oro</em>{/if}</label>
+				<label class="st-field"><span>Crocini e codice a barre</span>
+					<select class="input" value={crocini} onchange={(e) => (crociniScelti = (e.currentTarget as HTMLSelectElement).value as MarkStyle)}>
+						<option value="normali">Neri, normali</option>
+						<option value="nero">Crocini su riquadro nero</option>
+						<option value="bianco">Neri su maschera di bianco (RDG_WHITE)</option>
+					</select>
+					{#if crocini === 'nero'}<em class="st-hint">per i materiali riflettenti: riquadro nero e crocino del colore del supporto. Sul Graphtec: modalità scansione 1, regolazione livello −5</em>
+					{:else if bianco}<em class="st-hint">riquadro in RDG_WHITE con il crocino nero sopra, e un rettangolo di RDG_WHITE sotto ogni codice a barre. In VersaWorks serve una modalità che stampa il bianco sotto il colore</em>
+					{:else}<em class="st-hint">il riquadro nero si accende da solo su glitterato, argento e oro</em>{/if}</label>
 				<label class="st-field"><span>{MULTI ? 'Fogli da stampare' : P.mode === 'fogli' ? 'Etichette da stampare' : 'Pezzi da stampare'} <em>(vuoto = una striscia piena)</em></span><input class="input" type="number" min="1" step="1" bind:value={qty} placeholder="riempi la striscia" />{#if qtyDaFare}<em class="st-hint">ne preparo {qtyDaFare}: l’8% in piu&#39; per gli scarti</em>{/if}</label>
 				{#if P.mode === 'fogli' && !MULTI}
 					<div class="st-block">
@@ -1576,6 +1587,7 @@
 				<div class="st-strip__view">
 					<svg viewBox="-2 -2 {preview.w + 4} {preview.h + 4}" preserveAspectRatio="xMidYMin meet">
 						<rect x="0" y="0" width={preview.w} height={preview.h} fill="#fff" stroke="#c7cbe0" stroke-width="1" />
+						{#each previewWhite as r, i (i)}<rect x={r.x} y={r.y} width={r.w} height={r.h} fill={WHITE.rgb} />{/each}
 						{#each previewMarks as r, i (i)}<rect x={r.x} y={r.y} width={r.w} height={r.h} fill="#111" />{/each}
 						{#each previewMask as q, i (i)}<rect x={q.fuori.x} y={q.fuori.y} width={q.fuori.w} height={q.fuori.h} fill="#111" />{#each q.fori as r, k (k)}<rect x={r.x} y={r.y} width={r.w} height={r.h} fill="#fff" />{/each}{/each}
 						{#if MULTI}

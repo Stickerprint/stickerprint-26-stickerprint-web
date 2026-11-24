@@ -15,8 +15,8 @@
 	import { STUDIO_PRODUCTS, studioProduct } from '$lib/studio/products';
 	import { SHEET_RULES, STRIP_MATERIALS, type Placement, type Strip } from '$lib/studio/layout';
 	import { montaStriscia, type Blocco, type Soggetto } from '$lib/studio/montaggio';
-	import { MARK_MASK, maskFor, markedMargin, maskRects, pageWidthFor, newJobId, buildXpf, DEFAULT_COND, type XpfGroup, type XpfJob } from '$lib/studio/graphtec';
-	import { SPOTS } from '$lib/studio/spots';
+	import { MARK_MASK, maskFor, markedMargin, markRects, maskRects, whiteRects, pageWidthFor, newJobId, buildXpf, DEFAULT_COND, type MarkStyle, type XpfGroup, type XpfJob } from '$lib/studio/graphtec';
+	import { SPOTS, WHITE } from '$lib/studio/spots';
 	import { savedDataLink, grantDataLink, pickDataLink, writeXpf, type DataLinkDir } from '$lib/studio/datalink';
 
 	const cutColor = (t: 'Passante' | 'CutContour') => SPOTS[t].rgb;
@@ -152,8 +152,12 @@
 	);
 	/* materiali riflettenti (glitterato, argento, oro): crocini su riquadro nero, lasciati del colore del supporto.
 	   Parte da solo se una riga e' su uno di quei materiali; l'operatore puo' accenderlo o spegnerlo */
-	let riquadroScelto = $state<boolean | null>(null);
-	const mask = $derived((riquadroScelto ?? maskFor(pronte.map((r) => r.materiale)) > 0) ? MARK_MASK : 0);
+	let crociniScelti = $state<MarkStyle | null>(null);
+	const crocini = $derived<MarkStyle>(crociniScelti ?? (maskFor(pronte.map((r) => r.materiale)) > 0 ? 'nero' : 'normali'));
+	/* maschera di bianco (24/11/2026): stesso riquadro, ma in RDG_WHITE con il crocino nero sopra, e bianco sotto i codici a barre.
+	   Non parte mai da sola: la sceglie l'operatore */
+	const bianco = $derived(crocini === 'bianco');
+	const mask = $derived(crocini === 'normali' ? 0 : MARK_MASK);
 	const monta = $derived(
 		soggetti.length
 			? montaStriscia(soggetti, { pageW: Math.min(PAGINA_MAX, +pageW || pageWidthFor(mat.width)), maxH: +maxH || 1000, margin: markedMargin(mask).x, marginY: markedMargin(mask).y, gapBlocchi: Math.max(5, +gapBlocchi || 10) })
@@ -190,7 +194,7 @@
 			const ids = pages.map(() => newJobId());
 			const bytes = await buildPdf({
 				title: `${jobName || 'montaggio'} — ${mat.label}`, arts, pages,
-				pieceCut: arts[0].pieceCut, sheetCut: 'Passante', graphtecIds: ids, graphtecMask: mask
+				pieceCut: arts[0].pieceCut, sheetCut: 'Passante', graphtecIds: ids, graphtecMask: mask, graphtecWhite: bianco
 			});
 			download(new Blob([bytes as BlobPart], { type: 'application/pdf' }), `${safe(jobName)}_montaggio.pdf`);
 
@@ -320,8 +324,13 @@
 			<label class="mo-f"><span>Regole del foglio</span>
 				<select class="input" bind:value={regole}><option value="resinati">Resinati (bordo 12,5 · testa 10 aghi)</option><option value="etichette">Etichette (bordo 10)</option></select></label>
 			<p class="mo-note">Vale per i prodotti a fogli che non hanno regole proprie.</p>
-			<label class="mo-check"><input type="checkbox" checked={mask > 0} onchange={(e) => (riquadroScelto = (e.currentTarget as HTMLInputElement).checked)} /> Crocini su riquadro nero</label>
-			<p class="mo-note">{mask ? 'Per i materiali riflettenti: riquadro nero e crocino del colore del supporto. Sul Graphtec: modalità scansione 1, regolazione livello −5.' : 'Si accende da solo se una riga è su glitterato, argento o oro.'}</p>
+			<label class="mo-f mo-f--crocini"><span>Crocini e codice a barre</span>
+				<select class="input" value={crocini} onchange={(e) => (crociniScelti = (e.currentTarget as HTMLSelectElement).value as MarkStyle)}>
+					<option value="normali">Neri, normali</option>
+					<option value="nero">Crocini su riquadro nero</option>
+					<option value="bianco">Neri su maschera di bianco (RDG_WHITE)</option>
+				</select></label>
+			<p class="mo-note">{crocini === 'nero' ? 'Per i materiali riflettenti: riquadro nero e crocino del colore del supporto. Sul Graphtec: modalità scansione 1, regolazione livello −5.' : bianco ? 'Riquadro in RDG_WHITE con il crocino nero sopra, e un rettangolo di RDG_WHITE sotto ogni codice a barre. In VersaWorks serve una modalità che stampa il bianco sotto il colore.' : 'Il riquadro nero si accende da solo se una riga è su glitterato, argento o oro.'}</p>
 		</div>
 
 		<div class="dcard">
@@ -335,7 +344,13 @@
 					<p class="mo-label">Striscia {si + 1}: <b>{s.w} × {s.h} mm</b></p>
 					<svg class="mo-prev" viewBox="0 0 {s.w} {s.h}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Anteprima della striscia">
 						<rect x="0" y="0" width={s.w} height={s.h} fill="#fff" stroke="#c9d2dd" stroke-width="1" />
-						{#each maskRects(s.w, s.h, mask) as q, i (i)}<rect x={q.fuori.x} y={q.fuori.y} width={q.fuori.w} height={q.fuori.h} fill="#111" />{#each q.fori as c, k (k)}<rect x={c.x} y={c.y} width={c.w} height={c.h} fill="#fff" />{/each}{/each}
+						{#if bianco}
+							{@const wr = whiteRects(s.w, s.h, 'G1200PROV', mask)}
+							{#each [...wr.crocini, ...wr.codici] as c, i (i)}<rect x={c.x} y={c.y} width={c.w} height={c.h} fill={WHITE.rgb} />{/each}
+							{#each markRects(s.w, s.h, mask) as c, i (i)}<rect x={c.x} y={c.y} width={c.w} height={c.h} fill="#111" />{/each}
+						{:else}
+							{#each maskRects(s.w, s.h, mask) as q, i (i)}<rect x={q.fuori.x} y={q.fuori.y} width={q.fuori.w} height={q.fuori.h} fill="#111" />{#each q.fori as c, k (k)}<rect x={c.x} y={c.y} width={c.w} height={c.h} fill="#fff" />{/each}{/each}
+						{/if}
 						{#each s.blocchi as b (b.x + '-' + b.y + '-' + b.soggetto)}
 							{#if b.foglio}
 								<rect x={b.foglio.x} y={b.foglio.y} width={b.foglio.w} height={b.foglio.h} fill="none" stroke={cutColor('Passante')} stroke-width="1.2" />
@@ -412,7 +427,7 @@
 	.mo-prep { flex: none; }
 	.mo-thumb { width: 54px; height: 54px; object-fit: contain; border: 1px solid var(--line); border-radius: 8px; background: #fff; flex: none; }
 	.mo-note { margin: 8px 0 0; color: var(--muted); font-size: 12px; }
-	.mo-check { display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: 13px; font-weight: 600; }
+	.mo-f--crocini { margin-top: 12px; }
 	.mo-ok { color: #15803d; font-size: 12px; font-weight: 700; }
 	.mo-wait { color: var(--muted); font-size: 12px; }
 	.mo-err { color: #b91c1c; font-size: 12.5px; }

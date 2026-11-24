@@ -10,10 +10,10 @@
  * (valori presi dai file di produzione Roland dell'azienda)
  */
 import { PDFDocument, PDFName, PDFNumber, PDFOperator, PDFOperatorNames as Op, StandardFonts, degrees, type PDFFont, type PDFPage, type PDFRef, type PDFDict } from 'pdf-lib';
-import { markRects, maskRects, barcodeRects, MARK_BLACK } from './graphtec';
+import { markRects, maskRects, barcodeRects, whiteRects, MARK_BLACK } from './graphtec';
 import type { Placement, Strip } from './layout';
 
-import { SPOTS, GLOSS, type CutSpot } from './spots';
+import { SPOTS, GLOSS, WHITE, type CutSpot } from './spots';
 export { SPOTS, type CutSpot };
 
 const PT = 72 / 25.4;
@@ -85,6 +85,9 @@ export interface PdfJob {
 	graphtecIds?: string[];
 	/** crocini su riquadro nero per i materiali riflettenti (mm di nero attorno al crocino, 0 o assente = crocini neri normali) */
 	graphtecMask?: number;
+	/** maschera di bianco: con `graphtecMask` il riquadro del crocino e' in RDG_WHITE (non nero) con il crocino nero
+	    sopra, e sotto ogni codice a barre c'e' un rettangolo di RDG_WHITE */
+	graphtecWhite?: boolean;
 }
 
 interface Res {
@@ -94,10 +97,12 @@ interface Res {
 	vector: boolean[];
 	cs: Record<CutSpot, PDFRef>;
 	gloss: PDFRef;
+	/** solo se il lavoro chiede la maschera di bianco: negli altri file la tinta RDG_WHITE non compare proprio */
+	white: PDFRef | null;
 	gs: PDFRef;
 }
 
-function setupResources(pdf: PDFDocument, imgs: PDFRef[], vector: boolean[]): Res {
+function setupResources(pdf: PDFDocument, imgs: PDFRef[], vector: boolean[], conBianco: boolean): Res {
 	const ctx = pdf.context;
 	const cs = {} as Record<CutSpot, PDFRef>;
 	for (const name of Object.keys(SPOTS) as CutSpot[]) {
@@ -107,9 +112,15 @@ function setupResources(pdf: PDFDocument, imgs: PDFRef[], vector: boolean[]): Re
 	// rilievo UV: stessa costruzione, tinta piatta RDG_GLOSS
 	const fnG = ctx.register(ctx.obj({ FunctionType: 2, Domain: [0, 1], C0: [0, 0, 0, 0], C1: GLOSS.cmyk, N: 1 }));
 	const gloss = ctx.register(ctx.obj([PDFName.of('Separation'), PDFName.of(GLOSS.name), PDFName.of('DeviceCMYK'), fnG]));
+	// bianco sotto crocini e codici a barre: tinta piatta RDG_WHITE
+	let white: PDFRef | null = null;
+	if (conBianco) {
+		const fnW = ctx.register(ctx.obj({ FunctionType: 2, Domain: [0, 1], C0: [0, 0, 0, 0], C1: WHITE.cmyk, N: 1 }));
+		white = ctx.register(ctx.obj([PDFName.of('Separation'), PDFName.of(WHITE.name), PDFName.of('DeviceCMYK'), fnW]));
+	}
 	// sovrastampa: il tracciato non buca la grafica sotto
 	const gs = ctx.register(ctx.obj({ Type: 'ExtGState', OP: true, op: true, OPM: 1 }));
-	return { imgs, vector, cs, gloss, gs };
+	return { imgs, vector, cs, gloss, white, gs };
 }
 
 /*
@@ -196,19 +207,31 @@ function drawPage(page: PDFPage, job: PdfJob, strip: Strip, res: Res, pageIndex:
 	let nMarks: PDFName | null = null;
 	if (gid) {
 		const mask = job.graphtecMask && job.graphtecMask > 0 ? job.graphtecMask : 0;
+		const bianco = !!job.graphtecWhite && mask > 0 && !!res.white;
 		const bc = barcodeRects(strip.w, strip.h, gid, mask);
+		const mOps: PDFOperator[] = [mm()];
+		/* maschera di bianco: prima il bianco (riquadri dei crocini e fondo dei codici a barre, tinta piatta RDG_WHITE),
+		   poi il nero sopra IN SOVRASTAMPA, cosi' il nero non buca il bianco che ha sotto */
+		if (bianco) {
+			const wr = whiteRects(strip.w, strip.h, gid, mask);
+			mOps.push(op(Op.NonStrokingColorspace, PDFName.of(WHITE.name)), op(Op.NonStrokingColorN, 1));
+			for (const r of [...wr.crocini, ...wr.codici]) mOps.push(op(Op.AppendRectangle, r.x, r.y, r.w, r.h));
+			mOps.push(op(Op.FillNonZero), op(Op.SetGraphicsStateParams, PDFName.of('GS')));
+		}
 		/* stesso nero ricco dei file di Cutting Master (C91 M79 Y62 K97): col grigio 0 VersaWorks
 		   stampava un nero che il sensore del Graphtec non leggeva */
-		const mOps: PDFOperator[] = [mm(), op(Op.NonStrokingColorCmyk, ...MARK_BLACK)];
-		for (const r of [...(mask ? [] : markRects(strip.w, strip.h)), ...bc.rects]) mOps.push(op(Op.AppendRectangle, r.x, r.y, r.w, r.h));
+		mOps.push(op(Op.NonStrokingColorCmyk, ...MARK_BLACK));
+		/* crocini neri: normali, oppure rientrati sul loro riquadro di bianco */
+		const neri = mask && !bianco ? [] : markRects(strip.w, strip.h, bianco ? mask : 0);
+		for (const r of [...neri, ...bc.rects]) mOps.push(op(Op.AppendRectangle, r.x, r.y, r.w, r.h));
 		mOps.push(op(Op.FillNonZero));
 		/* materiali riflettenti: riquadro nero con il crocino lasciato del colore del supporto (pari-dispari) */
-		for (const q of maskRects(strip.w, strip.h, mask)) {
+		for (const q of bianco ? [] : maskRects(strip.w, strip.h, mask)) {
 			mOps.push(op(Op.AppendRectangle, q.fuori.x, q.fuori.y, q.fuori.w, q.fuori.h));
 			for (const r of q.fori) mOps.push(op(Op.AppendRectangle, r.x, r.y, r.w, r.h));
 			mOps.push(op(Op.FillEvenOdd));
 		}
-		const marksForm = ctx.register(ctx.formXObject(mOps, { BBox: [0, 0, W, H], Resources: {} }));
+		const marksForm = ctx.register(ctx.formXObject(mOps, { BBox: [0, 0, W, H], Resources: bianco && res.white ? { ColorSpace: { [WHITE.name]: res.white }, ExtGState: { GS: res.gs } } : {} }));
 		nMarks = node.newXObject('Crocini', marksForm);
 		/* niente scritte accanto ai codici: il Code 39 vuole almeno 10 moduli (4 mm) di bianco ai lati,
 		   una scritta a 3 mm ne impediva la lettura. Cutting Master non ne mette. */
@@ -244,7 +267,7 @@ export async function buildPdf(job: PdfJob): Promise<Uint8Array> {
 			imgs.push(img.ref); vector.push(false);
 		}
 	}
-	const res = setupResources(pdf, imgs, vector);
+	const res = setupResources(pdf, imgs, vector, !!job.graphtecWhite && !!job.graphtecIds?.length && (job.graphtecMask ?? 0) > 0);
 	const font = await pdf.embedFont(StandardFonts.Helvetica);
 	job.pages.forEach((strip, i) => {
 		const page = pdf.addPage([strip.w * PT, strip.h * PT]);

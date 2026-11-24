@@ -184,6 +184,32 @@ export function maskRects(W: number, H: number, mask: number): { fuori: Rect; fo
 	return out;
 }
 
+/* ------------------------------------------------------------------ maschera di bianco */
+
+/** Crocini da mettere sulla striscia: neri normali, su riquadro nero (materiali riflettenti), oppure neri su
+ *  una maschera di bianco (Mattia, 24/11/2026): lo stesso riquadro del crocino, ma in RDG_WHITE (la Roland ci
+ *  stampa il bianco) con il crocino nero sopra, e un rettangolo di bianco sotto ogni codice a barre, che resta nero. */
+export type MarkStyle = 'normali' | 'nero' | 'bianco';
+/** bianco attorno al codice a barre (mm): ai lati la zona di quiete del Code 39 (10 moduli), verso l'interno 3 mm.
+ *  Fra la fascia del codice e il riquadro del crocino restano 5,5 mm: i due bianchi non si toccano. */
+export const WHITE_PAD = { x: 4, y: 3 };
+/** Maschera di bianco: i riquadri dei crocini (gli stessi del riquadro nero) e un rettangolo sotto ogni codice
+ *  a barre, barra nera compresa. Tutto dentro la pagina. */
+export function whiteRects(W: number, H: number, id: string, mask: number): { crocini: Rect[]; codici: Rect[] } {
+	if (!(mask > 0)) return { crocini: [], codici: [] };
+	const hB = MARK.barH, l = mask, r0 = W - mask;
+	const fx0 = r0 - MARK.blockW - MARK.blockGap - code39Bars(`${id}F`).length;
+	const rx1 = l + MARK.blockW + MARK.blockGap + code39Bars(`${id}R`).length;
+	const fra = (x0: number, x1: number, y: number, h: number): Rect => { const a = Math.max(0, x0), b = Math.min(W, x1); return { x: a, y, w: b - a, h }; };
+	return {
+		crocini: maskRects(W, H, mask).map((q) => q.fuori),
+		codici: [
+			fra(fx0 - WHITE_PAD.x, r0 + WHITE_PAD.x, H - hB - WHITE_PAD.y, hB + WHITE_PAD.y),
+			fra(l - WHITE_PAD.x, rx1 + WHITE_PAD.x, 0, hB + WHITE_PAD.y)
+		]
+	};
+}
+
 /** codici a barre e barre nere; il testo leggibile accanto a ognuno.
  *  `mask`: con i crocini su riquadro nero i codici rientrano di lato insieme ai crocini e restano sul bordo alto e basso */
 export function barcodeRects(W: number, H: number, id: string, mask = 0): { rects: Rect[]; labels: { text: string; x: number; y: number; rot180: boolean }[] } {

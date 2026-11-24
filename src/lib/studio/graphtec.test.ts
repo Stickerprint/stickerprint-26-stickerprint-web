@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MARK, MARK_MASK, MARKED_MARGIN, SHEET_FRAMES, barcodeRects, markRects, maskFor, maskRects, markedMargin, markedMarginWide, sheetFrames, xpfCommands, type XpfJob } from './graphtec';
+import { MARK, MARK_MASK, MARKED_MARGIN, SHEET_FRAMES, barcodeRects, markRects, maskFor, maskRects, markedMargin, markedMarginWide, sheetFrames, whiteRects, WHITE_PAD, xpfCommands, type XpfJob } from './graphtec';
 
 const W = 712, H = 300;
 
@@ -66,5 +66,42 @@ describe('crocini su riquadro nero (materiali riflettenti)', () => {
 		const senza: XpfJob = { ...con, W: W - 12, H: H - 12, pieces: con.pieces.map((p) => ({ ...p, x: p.x - 6, y: p.y - 6 })), mask: 0 };
 		expect(xpfCommands(con)).toBe(xpfCommands(senza));
 		expect(xpfCommands(con)).toContain(`TB24,${(H - 12 - 30) * 10},${(W - 12 - 1) * 10}`);
+	});
+});
+
+describe('maschera di bianco sotto crocini e codici a barre', () => {
+	const W = 712, H = 400, id = 'G12003EF4';
+	const dentro = (a: { x: number; y: number; w: number; h: number }, b: { x: number; y: number; w: number; h: number }, aria = 0) =>
+		a.x >= b.x + aria - 1e-9 && a.y >= b.y - 1e-9 && a.x + a.w <= b.x + b.w - aria + 1e-9 && a.y + a.h <= b.y + b.h + 1e-9;
+
+	it('senza riquadro non c\'e\' bianco', () => {
+		expect(whiteRects(W, H, id, 0)).toEqual({ crocini: [], codici: [] });
+	});
+
+	it('i riquadri dei crocini sono quelli del riquadro nero, con il crocino nero tutto dentro', () => {
+		const w = whiteRects(W, H, id, MARK_MASK), neri = markRects(W, H, MARK_MASK);
+		expect(w.crocini).toEqual(maskRects(W, H, MARK_MASK).map((q) => q.fuori));
+		expect(w.crocini).toHaveLength(4);
+		w.crocini.forEach((q, i) => { for (const r of [neri[2 * i], neri[2 * i + 1]]) expect(dentro(r, q)).toBe(true); });
+	});
+
+	it('il bianco copre tutto il codice a barre, barra nera compresa, con la zona di quiete ai lati', () => {
+		const w = whiteRects(W, H, id, MARK_MASK), b = barcodeRects(W, H, id, MARK_MASK).rects;
+		expect(w.codici).toHaveLength(2);
+		const [sotto, sopra] = w.codici;
+		const basso = b.filter((r) => r.y > H / 2), alto = b.filter((r) => r.y < H / 2);
+		expect(basso.length).toBeGreaterThan(10); expect(alto.length).toBeGreaterThan(10);
+		for (const r of basso) expect(dentro(r, sotto, WHITE_PAD.x)).toBe(true);
+		for (const r of alto) expect(dentro(r, sopra, WHITE_PAD.x)).toBe(true);
+		/* verso l'interno sporge di 3 mm, e resta dentro la pagina */
+		expect(sotto.y).toBeCloseTo(H - MARK.barH - WHITE_PAD.y, 6); expect(sotto.y + sotto.h).toBeCloseTo(H, 6);
+		expect(sopra.y).toBe(0); expect(sopra.h).toBeCloseTo(MARK.barH + WHITE_PAD.y, 6);
+		for (const r of w.codici) { expect(r.x).toBeGreaterThanOrEqual(0); expect(r.x + r.w).toBeLessThanOrEqual(W); }
+	});
+
+	it('il contenuto resta fuori dal bianco', () => {
+		const w = whiteRects(W, H, id, MARK_MASK), m = markedMargin(MARK_MASK);
+		for (const r of w.codici) expect(Math.min(r.y + r.h, H - r.y)).toBeLessThan(m.y);
+		for (const q of w.crocini) expect(q.x < W / 2 ? q.x + q.w : W - q.x).toBeLessThan(m.x);
 	});
 });
