@@ -2163,6 +2163,10 @@ const RESIN_R=2.0;          // raggio minimo obbligatorio sugli angoli, in mm
 const RESIN_NECK=5.0;       // collo minimo per il resinato, in mm
 const RESIN_BORDER=2.5;     // bordo minimo, così l'arrotondamento non mangia il disegno
 const EMBED=(new URLSearchParams(location.search)).get('embed')==='1';
+/* [sito] nuova grafica del preventivatore: cambia SOLO come si mostra l'anteprima (palco grigio, tratteggio piu' spesso
+   e sempre in movimento, targhetta della misura). Il disegno generato resta identico. */
+const NUOVO=EMBED&&(new URLSearchParams(location.search)).get('nuovo')==='1';
+const TAGLIO_N='#39ff14';   /* verde fluo della linea di taglio nella nuova grafica */
 let NOANG=(new URLSearchParams(location.search)).get('noang')==='1';
 let NOOMBRA=(new URLSearchParams(location.search)).get('noombra')==='1'; /* [sito] fogli: niente ombra portata sotto l'adesivo (pesa e sporca il foglio) */
 const S={prod:'sticker',foglio:false,lente:false,artClip:null,palette:null,palIdx:0,bgOpaque:true,viewTotW:50,resinR:0,src:null,artCanvas:null,name:'',srcW:0,srcH:0,srcMM:null,work:null,mask:null,mw:0,mh:0,bbox:null,
@@ -7126,7 +7130,7 @@ function ridipingi(){
     g.drawImage(a.base,0,0);
     if(!S.showCut)return;
     const p=new Path2D(a.path);
-    g.lineWidth=Math.max(.12,0.9/ppm);g.strokeStyle='#ff2d95';g.lineCap='butt';
+    g.lineWidth=Math.max(.12,(NUOVO?2.2:0.9)/ppm);g.strokeStyle=NUOVO?TAGLIO_N:'#ff2d95';g.lineCap='butt';
     for(let r=0;r<L.rows;r++)for(let c=0;c<L.cols;c++){
       g.setTransform(ppm,0,0,ppm,(pad+L.x0+c*(L.w+L.G))*ppm,(pad+L.y0+r*(L.h+L.G))*ppm);
       g.setLineDash([dash,dash*0.75]);g.lineDashOffset=-anT;g.stroke(p);}
@@ -7185,6 +7189,14 @@ function ridipingi(){
   /* [sito] vetrofanie: sulla vetrina il fucsia si perde; il taglio e' verde acceso e un po' piu' spesso */
   if(S.vetro){g.lineWidth=Math.max(.25,2.4/(ppm*(a.vk||1)));g.strokeStyle='#39ff5a';}
   else{g.lineWidth=Math.max(.12,0.9/ppm);g.strokeStyle='#ff2d95';}
+  if(NUOVO){
+    /* [sito] nuova grafica: tratteggio verde fluo, spesso, a tratti lunghi; sotto, un filo scuro lo stacca anche dal bianco */
+    const kd=1.7, kk=(S.vetro&&a.vk)?ppm*a.vk:ppm, lw=Math.max(.3,3.4/kk);
+    g.lineCap='butt';g.setLineDash([dash*kd,dash*kd*0.75]);g.lineDashOffset=-anT*kd;
+    g.lineWidth=lw*1.5;g.strokeStyle='rgba(6,60,10,.55)';g.stroke(p);
+    g.lineWidth=lw;g.strokeStyle=TAGLIO_N;g.stroke(p);
+    g.setLineDash([]);g.lineDashOffset=0;return;
+  }
   g.setLineDash([dash,dash*0.75]);g.lineDashOffset=-anT;g.lineCap='butt';
   g.stroke(p);g.setLineDash([]);g.lineDashOffset=0;
 }
@@ -7192,13 +7204,17 @@ function ridipingi(){
    e mai con la scheda nascosta: prima girava a 60 fps per sempre (un ridisegno intero della tela a ogni
    fotogramma, per ogni motore aperto) e dopo qualche minuto la pagina rispondeva a fatica. */
 let anUntil=0, anLast=0;
+/* [sito] nuova grafica: il tratteggio gira sempre, ma solo finche' l'anteprima e' sullo schermo (e mai se il
+   cliente ha chiesto meno animazioni): fuori schermo si ferma, cosi' non pesa sulla pagina */
+let anVista=true; const anFermo=!!(window.matchMedia&&matchMedia('(prefers-reduced-motion:reduce)').matches);
+if(NUOVO){try{new IntersectionObserver(es=>{anVista=es.some(e=>e.isIntersecting);if(anVista)anWake(2000);}).observe(document.documentElement);}catch(e){}}
 function anWake(ms){ anUntil=performance.now()+(ms||8000); if(!anRAF)anLoop(); }
 function anLoop(){
   anRAF=0;
   if(!S._an||S.wand||!S.showCut)return;
   if(document.hidden){ setTimeout(()=>{ if(!anRAF)anLoop(); },800); return; }
   const now=performance.now();
-  if(now>anUntil)return;               /* fermo: l'ultimo fotogramma resta disegnato */
+  if(now>anUntil&&!(NUOVO&&anVista&&!anFermo))return;               /* fermo: l'ultimo fotogramma resta disegnato */
   anRAF=requestAnimationFrame(anLoop);
   if(now-anLast<33)return; anLast=now;
   anT=(anT+S._an.dash*0.11)%(S._an.dash*1.75);
@@ -7566,7 +7582,10 @@ function ppGeoUI(){
       '.pp-sec{padding:12px 0;border-bottom:1px solid #e6e7f0}.pp-sec:last-of-type{border-bottom:0}'+
       /* bordo: tre bottoni più compatti */
       '#ppBordHost .chips{gap:8px!important}#ppBordHost .chip{padding:7px 6px!important;font-size:11.5px!important;border-radius:10px!important}'+
-      '#ppBordHost .chip svg,#ppBordHost .chip img{width:22px!important;height:22px!important;margin-bottom:2px!important}';
+      '#ppBordHost .chip svg,#ppBordHost .chip img{width:22px!important;height:22px!important;margin-bottom:2px!important}'+
+      (NUOVO?/* comandi compatti: tutto lo spazio risparmiato va all'anteprima */'.pp-h{font-size:11.5px!important;margin-bottom:5px!important}.pp-sec{padding:8px 0!important}#ppBordoSec{padding-top:4px!important}.pp-right>.pp-sec:last-of-type:not([id]){padding:0!important;border:0!important}'+'#ppBordHost .chip{flex-direction:row!important;align-items:center!important;justify-content:center!important;gap:6px!important;padding:6px 6px!important;min-height:0!important}#ppBordHost .chip svg,#ppBordHost .chip img{width:16px!important;height:16px!important;margin:0!important}'+'.lvwrap{padding-top:0!important}#lvZoom{margin:6px 0 4px!important}#ppCentra{padding:7px 10px!important;margin-top:6px!important;font-size:13px!important}'+'.pp-left{background:#eef0f6!important;border-radius:22px!important;overflow:hidden!important}'+
+        '#ppMisura{position:absolute;left:12px;top:12px;z-index:5;background:#050538;color:#fff;border-radius:999px;padding:7px 16px;font:800 15px Rubik,Montserrat,system-ui,sans-serif;letter-spacing:-.01em;white-space:nowrap;box-shadow:0 0 0 3px #fff,0 6px 16px rgba(5,5,56,.28);pointer-events:none}'+
+        '#ppMisura.giu{top:auto;bottom:12px;left:50%;transform:translateX(-50%)}@media (max-width:520px){#ppMisura{font-size:13.5px;padding:6px 13px;left:10px;top:10px}}':'');
   } else
   st.textContent='.pp-top,#ppOk,#ppNo,#ppDropHost,#ppMatSec,#ppLamSec,.pp-badge,.pp-info,.pp-right,#ppFoot,#ppNota{display:none!important}'+
     'html,body{background:transparent!important;overflow:hidden!important}'+
@@ -7798,6 +7817,8 @@ function ppGeoUI(){
       if(i>=0){S.chosen=i;S.sceltaUtente=true;S.seeds=[];S.lineSeed=null;busy(true,'Aggiorno…');setTimeout(()=>{try{refresh(true);}catch(e){} window.__busyOff=performance.now(); busy(false);},0);} }
     if(d.type==='bgcol'&&S.src&&d.hex){ try{ if(window.__ppColore)window.__ppColore(String(d.hex)); }catch(e){}
       busy(true,'Aggiorno…'); setTimeout(()=>{try{buildCut();draw();}catch(e){} window.__busyOff=performance.now(); snapshot(); busy(false);},0); }
+    /* [sito] nuova grafica: la targhetta con la misura, scritta dal sito (nella lingua e nell'unita' giuste) */
+    if(d.type==='misura'&&NUOVO){ try{ const st=document.getElementById('ppStage'); if(st){ let m=document.getElementById('ppMisura'); if(!m){m=document.createElement('div');m.id='ppMisura';st.style.position='relative';st.appendChild(m);} m.textContent=String(d.text||''); m.style.display=d.text?'':'none'; m.className=(S.rilievo&&!S.foglio)?'giu':''; /* rilievo: in alto a sinistra c'e' gia' il suo bottone */ } }catch(e){} }
     if(d.type==='cut'){S.showCut=!!d.on;try{ridipingi();if(window.__anWake)window.__anWake(6000);}catch(e){}}
     /* [sito] zoom del disegno dentro la sagoma (il kit: il cavallotto va riempito tutto) */
     if(d.type==='zoom'&&S.src){ const z=$('lvZoom'); if(z){ z.value=String(Math.max(+z.min,Math.min(+z.max,Math.round(+d.value||100)))); z.dispatchEvent(new Event('input')); } }

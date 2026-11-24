@@ -1,0 +1,456 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Listino 2027 · Preventivatore</title>
+<style>
+:root{--bg:#F4F4F1;--card:#fff;--ink:#1A1A19;--mute:#5F5E5A;--line:#E4E3DE;--line2:#CFCEC8;--blue:#1D4ED8;--blue-bg:#EAF0FD;--ok:#1E5B2C;--ok-bg:#E3F1E6;--bad:#8F1D12;--bad-bg:#FCE4E1;--warn:#7A4B00;--warn-bg:#FDF0D8}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif}
+button,input,select{font:inherit;color:inherit}
+header.top{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;padding:14px 24px;background:var(--card);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+header.top h1{margin:0;font-size:20px}
+.badge{display:inline-block;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600}
+.b-warn{background:var(--warn-bg);color:var(--warn)}.b-ok{background:var(--ok-bg);color:var(--ok)}.b-bad{background:var(--bad-bg);color:var(--bad)}.b-blue{background:var(--blue-bg);color:var(--blue)}
+.btn{height:38px;padding:0 14px;border:1px solid var(--line2);background:#fff;border-radius:9px;font-weight:600;cursor:pointer}
+.btn:hover{border-color:var(--ink)}.btn.small{height:30px;padding:0 10px;font-size:13px}.btn.ghost{border-color:transparent;color:var(--mute)}
+.btn.x{width:30px;height:30px;padding:0;flex:none;font-size:16px;line-height:1}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.wrap{max-width:1500px;margin:0 auto;padding:8px 24px 60px}
+.sec{margin:22px 0 10px;display:flex;flex-wrap:wrap;gap:4px 12px;align-items:baseline}
+.sec h2{margin:0;font-size:18px}.sec span{color:var(--mute);font-size:13px}
+.cols3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;align-items:start}
+.cols2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:16px;align-items:start}
+.stack{display:flex;flex-direction:column;gap:16px;min-width:0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;min-width:0}
+.card h2{margin:0 0 4px;font-size:17px}.card h3{margin:16px 0 6px;font-size:14px}
+.card p.sub{margin:0 0 12px;color:var(--mute);font-size:13px}
+.kicker{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--mute);margin-bottom:4px}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--mute);min-width:0}
+input[type=number],input[type=text],select{height:38px;padding:0 10px;border:1px solid var(--line2);border-radius:8px;background:#fff;font-size:14px;color:var(--ink);width:100%}
+input.num{width:78px;text-align:right;flex:none}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px}
+.row{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid #EEEDE8}
+.row:last-of-type{border-bottom:0}
+.row .grow{flex:1;min-width:0}
+.item{padding:8px 0;border-bottom:1px solid #EEEDE8}
+.item .row{padding:0 0 6px;border:0}
+.item .line2{display:flex;align-items:center;gap:8px;padding-left:24px;flex-wrap:wrap}
+.unit{color:var(--mute);font-size:13px;white-space:nowrap}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:8px 10px;text-align:right;border-top:1px solid #EEEDE8;white-space:nowrap}
+th{background:var(--bg);font-weight:600;border-top:0}th:first-child,td:first-child{text-align:left}
+.scroll{overflow-x:auto;border:1px solid var(--line);border-radius:10px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{display:flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid var(--line2);border-radius:999px;cursor:pointer;font-size:13px;background:#fff}
+.chip.on{background:var(--blue-bg);border-color:var(--blue);color:var(--blue);font-weight:600}
+.chip input{margin:0}
+.tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.tabs button{border:1px solid var(--line2);background:#fff;border-radius:8px;padding:7px 12px;cursor:pointer;font-weight:500}
+.tabs button.on{background:var(--blue);border-color:var(--blue);color:#fff}
+.out{background:var(--bg);border-radius:10px;padding:12px;margin-top:12px}
+.kv{display:flex;justify-content:space-between;gap:8px;padding:3px 0;font-size:13px}
+.kv b{font-weight:600}.kv.tot{border-top:1px solid var(--line2);margin-top:4px;padding-top:7px;font-size:15px}
+.price{font-size:26px;font-weight:700}.diff{font-size:30px;font-weight:700}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.box{border-radius:10px;padding:12px}.box.old{background:var(--bg)}.box.new{background:var(--blue-bg)}
+.pos{color:var(--ok)}.neg{color:var(--bad)}.mute{color:var(--mute)}
+details summary{cursor:pointer;font-weight:600;padding:4px 0}
+.note{font-size:12px;color:var(--mute);margin-top:8px}
+.adv{margin-top:16px;border-top:1px solid var(--line);padding-top:10px}.adv>summary{cursor:pointer;color:var(--mute);font-size:13px;font-weight:600}.adv[open]>summary{margin-bottom:6px}
+.guida{margin:0 auto 14px;width:calc(100% - 48px);max-width:1752px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px 16px;max-height:36vh;overflow:auto}.guida>summary{cursor:pointer;font-weight:700}.guida .cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:6px 28px;margin-top:8px;font-size:13px}.guida .f0{font-size:13px;margin:8px 0 0}.guida b{white-space:nowrap}.guida ul{margin:0;padding-left:18px}.guida li{margin:3px 0}
+.live{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+@media (max-width:1100px){.cols3,.cols2{grid-template-columns:1fr}}
+html,body{height:100%}
+body{display:flex;flex-direction:column}
+header.top{position:static;padding:10px 24px;flex:none}
+.main{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr);gap:16px;padding:14px 24px 16px;width:100%;max-width:1800px;margin:0 auto}
+.block{background:var(--card);border:1px solid var(--line);border-radius:14px;display:flex;flex-direction:column;min-height:0;min-width:0;overflow:hidden}
+.bhead{flex:none;padding:12px 16px 0;border-bottom:1px solid var(--line)}
+.bhead .tabs{margin:4px 0 0;gap:0 2px;flex-wrap:wrap}
+.bhead .tabs button{border:0;border-bottom:3px solid transparent;border-radius:8px 8px 0 0;background:none;padding:7px 9px;font-size:13px;font-weight:600;color:var(--mute);white-space:nowrap}
+.bhead .tabs button:hover{background:var(--bg);color:var(--ink)}
+.bhead .tabs button.on{background:none;color:var(--blue);border-bottom-color:var(--blue)}
+.bhead .tabs button.add{color:var(--mute);font-weight:500}
+.seg{display:inline-flex;border:1px solid var(--line2);border-radius:9px;overflow:hidden;margin:10px 0}
+.seg button{border:0;background:#fff;padding:6px 12px;font-weight:600;font-size:13px;cursor:pointer;color:var(--mute)}
+.seg button+button{border-left:1px solid var(--line2)}
+.seg button.on{background:var(--ink);color:#fff}
+.block .body{flex:1;min-height:0;overflow:auto;padding:14px 16px 16px}
+.block h3{margin:14px 0 6px;font-size:14px}
+.block p.sub{margin:0 0 10px;color:var(--mute);font-size:13px}
+.pgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:8px 24px;align-items:start}
+.pc{min-width:74px;text-align:right}
+@media (max-width:1000px){html,body{height:auto}body{display:block}.main{grid-template-columns:1fr}.block{overflow:visible}.block .body{overflow:visible}.row{flex-wrap:wrap}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div>
+    <h1>Listino prezzi 2027</h1>
+    <div class="live">
+      <span class="badge b-warn" id="modo">Simulazione locale · non pubblica nulla</span>
+      <span class="badge b-blue" id="hAum"></span>
+      <span class="badge b-blue" id="hMix"></span>
+      <span class="badge b-warn" id="dirty" hidden>Modificato rispetto alla proposta</span>
+    </div>
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <button class="btn" id="btnReset">Torna alla proposta</button>
+    <button class="btn" id="btnExport">Scarica configurazione</button>
+    <button class="btn" disabled title="Solo simulazione">Pubblica listino</button>
+  </div>
+</header>
+<div class="main">
+  <section class="block" id="left" aria-label="Valgono per tutti i prodotti"></section>
+  <section class="block" id="right" aria-label="Schede prodotto"></section>
+</div>
+<details class="guida" open>
+  <summary>Come funziona il listino e cosa modificare</summary>
+  <p class="f0"><b>Prezzo</b> = avvio produzione + (materiale + stampa + lamina) × ricarico + resina + lavoro. Poi si aggiungono l'aumento generale e l'IVA, e si arrotonda.</p>
+  <div class="cols">
+    <ul>
+      <li>Il fornitore cambia prezzo → <b>2 · Materiali</b> o <b>3 · Finiture</b>: aggiorna il costo.</li>
+      <li>Alzare o abbassare tutto il listino → <b>1 · Spese</b>: Aumento base (%).</li>
+      <li>Alzare o abbassare un solo prodotto → scheda del prodotto: Correttivo (%).</li>
+    </ul>
+    <ul>
+      <li>Alzare o abbassare una sola quantità (per esempio i 100 pezzi) → <b>4 · Prezzi</b>: Correttivo per scaglione.</li>
+      <li>Più o meno margine sul materiale → <b>4 · Prezzi</b>: Ricarico.</li>
+      <li>Ordini piccoli troppo cari o troppo economici → <b>4 · Prezzi</b>: Avvio produzione.</li>
+    </ul>
+    <ul>
+      <li>Lavoro → scheda del prodotto: secondi a pezzo. Per i resinati: minuti per un carrello pieno.</li>
+      <li>Nuova rata o nuovo costo fisso → <b>1 · Spese</b>: aggiungi la spesa e metti la spunta.</li>
+      <li>Dopo ogni modifica guarda <b>Verifiche</b>: i controlli devono restare verdi.</li>
+    </ul>
+  </div>
+</details>
+<script>
+"use strict";
+/* ---------- Listino di oggi (fisso, letto dai preventivatori il 19/11/2026) ---------- */
+const OLD = {
+  fs:[[0,1.15],[3,1],[5,.9],[10,.8],[20,.75],[50,.7],[70,.65],[100,.6]],
+  fq:[[1,1.3],[50,1.25],[100,1.2],[500,1.15],[1000,1.1],[1500,1],[2000,.95],[5000,.85],[7500,.8],[10000,.75],[12500,.7],[15000,.65],[20000,.6]],
+  mat:{bianco:4,super:6.7,olografico:13.9,glitterato:14.5,trasparente:4.3,argento:13.9,oro:11.3}, ink:4, lam:4, resKg:10.9, resG:.15, resRic:2.5,
+  inkMult:{adesivi_rilievo:2}, resin:{adesivi_resinati:true}, lamSempre:{adesivi_rilievo:true}
+};
+/* ---------- Proposta 2027 ---------- */
+function proposta(){
+  const tuttiM={bianco:1,super:1,olografico:1,glitterato:1,trasparente:1,argento:1,oro:1};
+  const P=(id,nome,o)=>Object.assign({id,nome,mats:Object.assign({},tuttiM),fins:{nessuna:1,opaca:1,lucida:1},stampa:4,sec:2.9,minCarrello:0,m2Carrello:0,orario:'',corr:0,qty:'15, 50, 100, 200, 300, 500, 1000, 2000, 3000'},o||{});
+  return {
+    comune:{
+      iva:22, aumentoBase:5, fatturato:182000, costoOrario:25, arrot:.5, express:30,
+      spese:[{nome:'Esempio: leasing nuova macchina',mese:400,on:false},{nome:'Esempio: nuovo dipendente',mese:2200,on:false}],
+      prevSoglia:5000, prevScontoSotto:0, prevScontoSopra:10,
+      /* regola: avvio + ricarico unico × sconto volume + correttivo per scaglione */
+      avvio:[[15,20],[50,33],[100,50]],
+      ricarico:4.7,
+      vol:[[0.3,0],[1,5],[3,13],[10,24],[30,30],[100,36]],
+      scagl:[[15,0],[50,0],[100,0],[200,0],[500,0],[1000,0],[5000,0]]
+    },
+    materiali:[{id:'bianco',nome:'Bianco',costo:4},{id:'super',nome:'Bianco super adesivo',costo:6.7},{id:'trasparente',nome:'Trasparente',costo:4.3},{id:'oro',nome:'Oro',costo:11.3},{id:'argento',nome:'Argento',costo:13.9},{id:'olografico',nome:'Olografico',costo:13.9},{id:'glitterato',nome:'Glitterato',costo:14.5}],
+    finiture:[{id:'nessuna',nome:'Nessuna',tipo:'m2',costo:0},{id:'opaca',nome:'Lamina opaca',tipo:'m2',costo:4},{id:'lucida',nome:'Lamina lucida',tipo:'m2',costo:4},{id:'resina',nome:'Resinatura',tipo:'resina',kg:10.9,g:.15,ric:5.3}],
+    prodotti:[
+      P('adesivi_personalizzati','Adesivi personalizzati',{qty:'15, 50, 100, 200, 300, 500, 1000, 2000, 3000, 5000'}),
+      P('adesivi_resinati','Adesivi resinati',{fins:{resina:1},sec:0,minCarrello:170,m2Carrello:9.2,qty:'50, 100, 200, 300, 500, 1000, 2000, 3000, 5000'}),
+      P('adesivi_rilievo','Adesivi in rilievo',{fins:{opaca:1,lucida:1},stampa:8}),
+      P('etichette','Etichette in fogli'),
+      P('fogli_adesivi','Fogli di adesivi'),
+      P('vetrofanie','Vetrofanie',{mats:{trasparente:1},fins:{nessuna:1}})
+    ]
+  };
+}
+/*ENGINE-START*/
+/* Regola 2027: usata sia da questo simulatore sia dalla copia locale del preventivatore.
+   Prezzo = avvio + materiale × ricarico × (1 − sconto volume sui m²) + resina × ricarico + lavoro, con correttivo per scaglione. */
+const ENG=(()=>{
+  const num=v=>{const n=parseFloat(String(v??'').replace(',','.'));return isNaN(n)?0:n;};
+  function interp(t,x){t=(t||[]).filter(r=>num(r[0])>0).map(r=>[num(r[0]),num(r[1])]).sort((a,b)=>a[0]-b[0]);if(!t.length)return 0;if(x<=t[0][0])return t[0][1];for(let i=0;i<t.length-1;i++){const a=t[i],b=t[i+1];if(x<=b[0])return a[1]+(Math.log(x)-Math.log(a[0]))/(Math.log(b[0])-Math.log(a[0]))*(b[1]-a[1]);}return t[t.length-1][1];}
+  const aumentoExtra=L=>{const c=L.comune,f=num(c.fatturato);return f>0?c.spese.filter(s=>s.on).reduce((a,s)=>a+num(s.mese),0)*12/f*100:0;};
+  const aumentoTot=L=>num(L.comune.aumentoBase)+aumentoExtra(L);
+  const orario=(L,p)=>{const o=num(p.orario);return o>0?o:num(L.comune.costoOrario);};
+  const costoPezzo=(L,p)=>num(p.sec)*orario(L,p)/3600;
+  /* lavoro legato alla superficie: minuti per un carrello pieno ÷ m² di adesivi che il carrello contiene */
+  const secCm2=p=>num(p.m2Carrello)>0?num(p.minCarrello)*60/(num(p.m2Carrello)*10000):0;
+  const costoCm2=(L,p)=>secCm2(p)*orario(L,p)/3600;
+  const mat=(L,id)=>L.materiali.find(m=>m.id===id);
+  const fin=(L,id)=>L.finiture.find(f=>f.id===id);
+  const resM2=f=>num(f.kg)/1000*num(f.g)*num(f.ric)*10000;
+  /* o: {mat | supCosto, fin | finM2 + res, w, h, q, ex(0..1)} */
+  function prezzo(L,p,o){
+    const c=L.comune,q=o.q,m2=o.w*o.h/1e6*q,cm2=o.w*o.h/100*q,f=fin(L,o.fin);
+    const sconto=interp(c.vol,m2)/100;
+    const fq=1-sconto,fs=num(c.ricarico);
+    const sup=o.supCosto!=null?o.supCosto:num((mat(L,o.mat)||{}).costo);
+    const finM2=o.finM2!=null?o.finM2:(f&&f.tipo!=='resina'?num(f.costo):0);
+    const res=o.res!==undefined?o.res:(f&&f.tipo==='resina'?f:null);
+    const st=num(p.stampa);
+    const supporto=sup*m2*fs*fq,stampa=st*m2*fs*fq,finitura=finM2*m2*fs*fq;
+    const resina=res?num(res.kg)/1000*num(res.g)*num(res.ric)*cm2:0;
+    const fisso=interp(c.avvio,q),base=supporto+stampa+finitura+resina+fisso;
+    const corrQ=interp(c.scagl,q);
+    const k=(1+aumentoTot(L)/100)*(1+num(p.corr)/100)*(1+corrQ/100),aumento=base*(k-1);
+    const lavSup=cm2*costoCm2(L,p),pezzi=q*costoPezzo(L,p)+lavSup,netto0=base+aumento+pezzi;
+    const iva=1+num(c.iva)/100,ar=num(c.arrot)||.01,rnd=x=>Math.round(Math.ceil(x/ar-1e-9)*ar*100)/100;
+    const lordoBase=rnd(netto0*iva),lordoEx=rnd(lordoBase*(1+num(c.express)/100));
+    const lordo=lordoBase+(lordoEx-lordoBase)*(o.ex||0);
+    return {supporto,stampa,finitura,resina,fisso,aumento,pezzi,netto0,lordo,netto:lordo/iva,k,m2,fs,fq,ar,sconto,corrQ,lavSup,
+      costoVivo:(sup+st+finM2)*m2+(res?num(res.kg)/1000*num(res.g)*cm2:0)};
+  }
+  return {num,interp,aumentoExtra,aumentoTot,orario,costoPezzo,secCm2,costoCm2,mat,fin,resM2,prezzo};
+})();
+/*ENGINE-END*/
+const num=ENG.num;
+/* Mix ordini e-commerce 2026 dal gestionale: prodotto|pezzi|righe|area media cm²|costo medio supporto|quota con lamina|quota espressa */
+const MIX="pe|50|47|55.1|5.85|0.60|0.09;pe|15|40|101.2|5.53|0.75|0.17;pe|1000|9|25.2|5.20|0.22|0.00;ri|50|9|60.4|5.17|1.00|0.11;re|50|60|26.6|4.88|0.00|0.07;pe|200|29|34.3|4.69|0.41|0.03;ri|200|4|19.1|4.08|1.00|0.00;ri|100|12|36.2|6.50|1.00|0.08;re|200|24|15.9|5.15|0.00|0.04;ve|50|1|64.0|4.30|0.00|0.00;pe|100|38|37.8|5.91|0.61|0.16;ve|15|3|33.0|4.30|0.00|0.33;re|500|12|11.6|4.83|0.00|0.17;fo|15|5|365.8|5.98|0.20|0.00;ri|15|5|48.6|4.00|1.00|0.20;re|100|36|26.5|4.68|0.00|0.11;fo|100|1|310.8|4.00|0.00|0.00;pe|500|12|20.8|5.65|0.42|0.00;et|15|5|12.5|4.00|1.00|0.00;ve|500|1|23.6|4.30|0.00|0.00;pe|2000|2|15.3|4.00|0.00|0.00;et|100|6|42.6|5.70|0.33|0.00;et|50|4|42.2|4.08|0.75|0.00;ri|30|1|16.6|4.00|1.00|0.00;et|30|2|52.1|4.00|1.00|0.00;pe|300|7|23.9|5.63|0.57|0.14;ri|10|23|64.2|8.16|1.00|0.09;et|1000|1|4.0|4.00|0.00|1.00;ri|20|1|96.0|13.90|1.00|0.00;et|10|3|83.3|4.00|0.67|0.00;pe|30|4|34.8|4.08|0.50|0.00;fo|500|1|150.0|4.00|0.00|0.00;re|1000|2|7.0|10.30|0.00|0.50;ri|300|2|25.0|4.00|1.00|0.00;ri|500|5|25.0|4.18|1.00|0.00;fo|10|5|529.0|8.02|0.40|0.20;pe|10|44|418.0|4.76|0.55|0.11;ve|10|1|234.0|4.30|0.00|0.00;fo|50|1|150.0|4.00|0.00|0.00;et|200|2|31.3|4.00|0.00|0.00;re|20|2|35.1|4.00|0.00|0.00;re|300|6|29.0|4.45|0.00|0.17;et|300|2|16.3|4.00|0.50|0.00;re|10|2|153.0|4.30|0.00|0.50;pe|20|8|152.6|5.39|0.88|0.13;et|2000|1|10.0|4.00|0.00|0.00"
+  .split(';').map(s=>{const a=s.split('|');return {p:{pe:'adesivi_personalizzati',re:'adesivi_resinati',ri:'adesivi_rilievo',et:'etichette',fo:'fogli_adesivi',ve:'vetrofanie'}[a[0]],q:+a[1],n:+a[2],cm2:+a[3],sup:+a[4],lam:+a[5],ex:+a[6]};});
+
+/* ---------- Stato ---------- */
+const KEY='stickerprint-listino-2027-sim-v2';
+let S=proposta(), prodSel='adesivi_personalizzati', fmtSel=50, advOpen=false;
+const num0=v=>parseFloat(String(v).replace(',','.'))||0;
+/* Dentro la dashboard il listino arriva dal sito (riga sotto, riempita dal server) e torna al sito con postMessage:
+   niente localStorage, le modifiche vanno online solo con il bottone Salva della pagina. */
+const SALVATO=/*__LISTINO__*/undefined;
+const IN_DASH=SALVATO!==undefined;
+if(IN_DASH){if(SALVATO)S=SALVATO;}
+else try{const s=localStorage.getItem(KEY);if(s){const o=JSON.parse(s);if(o&&o.comune&&Array.isArray(o.materiali)&&Array.isArray(o.finiture)&&o.prodotti){const d=proposta().comune;for(const k of ['avvio','ricarico','vol','scagl'])if(o.comune[k]===undefined)o.comune[k]=d[k];for(const k of ['regola','fee','fq','fs'])delete o.comune[k];o.finiture.forEach(f=>{if(f.tipo==='resina'){if(!o.comune.vReg)f.ric=f.ricN!==undefined&&f.ricN!==''?f.ricN:5.3;delete f.ricN;}});o.comune.vReg=1;o.prodotti.forEach(p=>{if(p.minCarrello===undefined){const r=p.id==='adesivi_resinati';p.minCarrello=r?170:0;p.m2Carrello=r?9.2:0;}delete p.secFoglio;delete p.secCm2;delete p.foglioCm2;});S=o;}}}catch(e){}
+const T={prod:'adesivi_personalizzati',mat:'bianco',fin:'lucida',w:50,h:50,q:500,ex:'0'};
+const M={prod:'adesivi_resinati',mat:'bianco',fin:'resina',w:50,h:50,q:3000,prezzo:500};
+const INIZIO=JSON.stringify(S);
+function save(){
+  if(IN_DASH){const d=document.getElementById('dirty');d.textContent='Modifiche non ancora salvate';d.hidden=JSON.stringify(S)===INIZIO;try{parent.postMessage({type:'listino-2027',listino:JSON.parse(JSON.stringify(S))},location.origin);}catch(e){}return;}
+  try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){} document.getElementById('dirty').hidden=JSON.stringify(S)===JSON.stringify(proposta());}
+if(IN_DASH)addEventListener('DOMContentLoaded',()=>{document.getElementById('modo').textContent='Le modifiche vanno online solo con Salva';const alt=()=>{try{parent.postMessage({type:'listino-2027-altezza',h:document.documentElement.scrollHeight},location.origin);}catch(e){}};new ResizeObserver(alt).observe(document.body);alt();});
+
+/* ---------- Motore: aiuti ---------- */
+function step(t,x){let f=t[0][1];for(const r of t)if(x>=r[0])f=r[1];return f;}
+const prodById=id=>S.prodotti.find(p=>p.id===id)||S.prodotti[0];
+const matsOf=p=>S.materiali.filter(m=>p.mats[m.id]);
+const finsOf=p=>S.finiture.filter(f=>p.fins[f.id]);
+const firstMat=p=>(matsOf(p)[0]||S.materiali[0]||{}).id;
+const firstFin=p=>(finsOf(p)[0]||{}).id;
+const isLam=f=>!!f&&f.tipo!=='resina'&&num(f.costo)>0;
+const prezzoNuovo=(p,o)=>ENG.prezzo(S,p,o);
+/* o: {supOld, lamOld(0..1), w,h,q,ex} */
+function prezzoOggi(pid,o){
+  const q=o.q,m2=o.w*o.h/1e6*q,cm2=o.w*o.h/100*q,fq=1+step(OLD.fq,q),fs=1+step(OLD.fs,m2);
+  const costoM2=o.supOld+OLD.ink*(OLD.inkMult[pid]||1)+o.lamOld*OLD.lam;
+  const res=OLD.resin[pid]?OLD.resKg/1000*OLD.resG*OLD.resRic*cm2*fq:0;
+  const su=q<=20?20:q<=50?30:50;
+  const netto=Math.round((costoM2*m2*fs*fq+res+su)*100)/100*(1+.3*(o.ex||0));
+  return {netto,lordo:netto*1.22};
+}
+/* argomenti per una configurazione scelta a mano: {n: nuovo, o: oggi, noto} */
+function args(p,matId,finId,w,h,q,ex){
+  const m=ENG.mat(S,matId),f=ENG.fin(S,finId),old=OLD.mat[matId];
+  return {n:{mat:matId,fin:finId,w,h,q,ex},o:{supOld:old!=null?old:num((m||{}).costo),lamOld:OLD.lamSempre[p.id]||isLam(f)?1:0,w,h,q,ex},noto:old!=null};
+}
+function controlli(p){
+  const mat=firstMat(p),fin=firstFin(p);let okT=true,okU=true,dove='';
+  for(const s of [25,50,100,200]){let prev=null;for(let q=15;q<=20000;q+=(q<2000?1:10)){const n=prezzoNuovo(p,{mat,fin,w:s,h:s,q,ex:0}).netto0;if(prev){if(n<prev.n-1e-9){okT=false;dove=dove||(s/10+' cm, '+q+' pz');}if(n/q>prev.n/prev.q+1e-12){okU=false;dove=dove||(s/10+' cm, '+q+' pz');}}prev={n,q};}}
+  return {okT,okU,dove};
+}
+function effettoMix(){
+  const per={};let o=0,n=0;const b0=4,bNow=num((ENG.mat(S,'bianco')||{}).costo)||b0;
+  for(const c of MIX){const p=prodById(c.p);if(p.id!==c.p)continue;const side=Math.sqrt(c.cm2)*10;
+    const lamCost=Math.max(0,...finsOf(p).filter(f=>f.tipo!=='resina').map(f=>num(f.costo)));
+    const res=finsOf(p).find(f=>f.tipo==='resina')||null;
+    const vo=prezzoOggi(c.p,{supOld:c.sup,lamOld:OLD.lamSempre[c.p]?1:c.lam,w:side,h:side,q:c.q,ex:c.ex}).netto*c.n;
+    const vn=prezzoNuovo(p,{supCosto:c.sup*bNow/b0,finM2:c.lam*lamCost,res,w:side,h:side,q:c.q,ex:c.ex}).netto*c.n;
+    per[c.p]=per[c.p]||{o:0,n:0,r:0};per[c.p].o+=vo;per[c.p].n+=vn;per[c.p].r+=c.n;o+=vo;n+=vn;}
+  return {per,o,n};
+}
+
+/* ---------- Formati ---------- */
+const eur=(n,d=2)=>n.toLocaleString('it-IT',{minimumFractionDigits:d,maximumFractionDigits:d})+' €';
+const dec=(n,d=1)=>n.toLocaleString('it-IT',{maximumFractionDigits:d});
+const pct=(r,d=0)=>(r>=0?'+':'−')+Math.abs(r*100).toLocaleString('it-IT',{minimumFractionDigits:d,maximumFractionDigits:d})+'%';
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const cls=r=>r<-.005?'neg':r>.005?'pos':'';
+function get(path){return path.split('.').reduce((a,k)=>a==null?a:a[k],S);}
+function set(path,v){const ks=path.split('.');const last=ks.pop();const o=ks.reduce((a,k)=>a[k],S);o[last]=v;}
+const inp=(path,o={})=>`<input type="${o.text?'text':'number'}" step="any" class="${o.cls||'num'}" data-path="${path}" value="${esc(get(path))}" ${o.ph?`placeholder="${esc(o.ph)}"`:''} ${o.id?`id="${o.id}"`:''} ${o.aria?`aria-label="${esc(o.aria)}"`:''}>`;
+let ADV={};const adv=(k,html,t)=>`<details class="adv" data-adv="${k}" ${ADV[k]?'open':''}><summary>${t||'Valori che cambi di rado'}</summary>${html}</details>`;
+const del=(path,what)=>`<button class="btn x ghost" data-del="${path}" aria-label="Togli ${esc(what)}" title="Togli">×</button>`;
+
+/* ---------- Blocco di sinistra: valgono per tutti i prodotti ---------- */
+let leftTab='spese', rightView='scheda';
+const LTABS=[['spese','1 · Spese'],['materiali','2 · Materiali adesivi'],['finiture','3 · Finiture'],['regole','4 · Prezzi'],['verifiche','Verifiche']];
+function tabella(path,h1,h2,u1,u2){const t=get(path);return `<div class="scroll"><table><thead><tr><th>${h1}</th><th>${h2}</th><th></th></tr></thead><tbody>${t.map((r,i)=>`<tr><td>${inp(path+'.'+i+'.0',{aria:h1})} <span class="unit">${u1}</span></td><td>${inp(path+'.'+i+'.1',{aria:h2})} <span class="unit">${u2}</span></td><td>${del(path+'.'+i,'riga')}</td></tr>`).join('')}</tbody></table></div><button class="btn small" style="margin-top:8px" data-add="${path}">Aggiungi punto</button>`;}
+function pSpese(){const c=S.comune;return `
+  <p class="sub">Il fatturato è il riferimento: ogni nuova spesa fissa diventa un aumento in percentuale su tutti i prezzi.</p>
+  <div class="grid">
+    <label class="f">Fatturato ultimi 12 mesi, IVA esclusa (€)${inp('comune.fatturato',{cls:'w'})}</label>
+    <label class="f">Aumento base (%)${inp('comune.aumentoBase',{cls:'w'})}</label>
+    <label class="f">Costo orario del lavoro (€/ora)${inp('comune.costoOrario',{cls:'w'})}</label>
+  </div>
+  <h3>Spese fisse e rate (leasing, finanziamenti, affitti, dipendenti)</h3>
+  ${c.spese.map((s,i)=>`<div class="row"><input type="checkbox" data-check="comune.spese.${i}.on" ${s.on?'checked':''} aria-label="Spesa attiva"><span class="grow">${inp('comune.spese.'+i+'.nome',{text:1,cls:'w',aria:'Nome spesa'})}</span>${inp('comune.spese.'+i+'.mese',{aria:'Euro al mese'})}<span class="unit">€/mese</span><span class="unit pc" id="oSp${i}"></span>${del('comune.spese.'+i,'spesa')}</div>`).join('')}
+  <button class="btn small" style="margin-top:10px" data-add="comune.spese">Aggiungi spesa o rata</button>
+  <div class="out"><div class="kv"><span>Aumento base</span><b id="oBase"></b></div><div class="kv"><span>Da spese e rate attive</span><b id="oExtra"></b></div><div class="kv tot"><span>Aumento generale applicato</span><b id="oTot"></b></div></div>
+  <div class="note">Aumento da una spesa = importo mensile × 12 ÷ fatturato. Conta solo se la spunta è attiva. Il costo orario serve a calcolare il lavoro manuale di ogni prodotto.</div>`;}
+function pMateriali(){return `
+  <p class="sub">Costo d'acquisto al metro quadro. Si aggiorna quando cambia il prezzo del fornitore. Quali materiali offre ogni prodotto si sceglie nella sua scheda.</p>
+  ${S.materiali.map((m,i)=>`<div class="row"><span class="grow">${inp('materiali.'+i+'.nome',{text:1,cls:'w',aria:'Nome materiale'})}</span>${inp('materiali.'+i+'.costo',{aria:'Costo al metro quadro'})}<span class="unit">€/m²</span>${del('materiali.'+i,'materiale')}</div>`).join('')}
+  <button class="btn small" style="margin-top:10px" data-add="materiali">Aggiungi materiale</button>`;}
+function pFiniture(){return `
+  <p class="sub">Lamine al metro quadro; la resinatura si calcola dal peso della resina. Quali finiture offre ogni prodotto si sceglie nella sua scheda.</p>
+  ${S.finiture.map((f,i)=>f.tipo==='resina'
+    ?`<div class="item"><div class="row"><span class="grow">${inp('finiture.'+i+'.nome',{text:1,cls:'w',aria:'Nome finitura'})}</span>${del('finiture.'+i,'finitura')}</div><div class="grid"><label class="f">Resina €/kg${inp('finiture.'+i+'.kg',{cls:'w'})}</label></div><div class="note" id="oFin${i}"></div>${adv('fin'+i,`<div class="grid"><label class="f">Grammi di resina per cm²${inp('finiture.'+i+'.g',{cls:'w'})}</label><label class="f">Ricarico sulla resina (×)${inp('finiture.'+i+'.ric',{cls:'w'})}</label></div>`)}</div>`
+    :`<div class="row"><span class="grow">${inp('finiture.'+i+'.nome',{text:1,cls:'w',aria:'Nome finitura'})}</span>${inp('finiture.'+i+'.costo',{aria:'Costo al metro quadro'})}<span class="unit">€/m²</span>${del('finiture.'+i,'finitura')}</div>`).join('')}
+  <button class="btn small" style="margin-top:10px" data-add="finiture">Aggiungi finitura</button>`;}
+function pRegole(){return `
+  <p class="sub">Le tre leve che decidono il prezzo. Per ritoccare un prezzo di solito basta il correttivo.</p>
+  <h3 style="margin-top:0">Ricarico sul materiale</h3><p class="sub">Moltiplica il costo di supporto, stampa e lamina. Più alto = più margine.</p><div class="grid"><label class="f">Ricarico (×)${inp('comune.ricarico',{cls:'w'})}</label></div>
+  <h3>Avvio produzione</h3><p class="sub">Importo fisso per ordine. Pesa sugli ordini piccoli.</p>${tabella('comune.avvio','Pezzi','Avvio','pz','€')}
+  <h3>Correttivo per scaglione</h3><p class="sub">Alza o abbassa una sola quantità: +5 = +5% sul prezzo di quei pezzi.</p>${tabella('comune.scagl','Pezzi','Correttivo','pz','%')}
+  ${adv('regole',`<h3>Sconto volume</h3><p class="sub">Sconto sul materiale in base ai metri quadri totali dell'ordine. Non si applica a resina e avvio.</p>${tabella('comune.vol','m² totali','Sconto','m²','%')}
+  <h3>IVA, arrotondamento, espressa</h3><div class="grid"><label class="f">IVA (%)${inp('comune.iva',{cls:'w'})}</label><label class="f">Arrotondamento prezzo IVA incl. (€)${inp('comune.arrot',{cls:'w'})}</label><label class="f">Spedizione espressa (+%)${inp('comune.express',{cls:'w'})}</label></div>
+  <h3>Preventivi manuali</h3><div class="grid"><label class="f">Soglia pezzi per riga${inp('comune.prevSoglia',{cls:'w'})}</label><label class="f">Sconto massimo sotto soglia (%)${inp('comune.prevScontoSotto',{cls:'w'})}</label><label class="f">Sconto massimo sopra soglia (%)${inp('comune.prevScontoSopra',{cls:'w'})}</label></div>`)}`;}
+function pVerifiche(){
+  const pm=prodById(M.prod);M.prod=pm.id;if(!matsOf(pm).find(m=>m.id===M.mat))M.mat=firstMat(pm);if(!finsOf(pm).find(f=>f.id===M.fin))M.fin=firstFin(pm);
+  return `
+  <h3 style="margin-top:0">Effetto sul fatturato e-commerce</h3><div id="mixOut"></div>
+  <h3>Controlli su tutti i prodotti</h3><p class="sub">Il totale deve salire sempre con la quantità e il prezzo a pezzo deve scendere sempre. Provato su ogni quantità da 15 a 20.000.</p><div class="scroll" id="oAll"></div>
+  <h3>Confronto con il listino di oggi</h3><p class="sub">Formato 5 × 5 cm, primo materiale e prima finitura di ogni prodotto. Variazione del prezzo IVA inclusa.</p><div class="scroll" id="oCmp"></div>
+  <h3>Preventivo manuale</h3><p class="sub">Inserisci il prezzo che vuoi proporre: vedi quanto si scosta dal listino e se rispetta la regola.</p>
+  <div class="grid">
+    <label class="f">Prodotto<select data-m="prod">${S.prodotti.map(p=>`<option value="${p.id}" ${M.prod===p.id?'selected':''}>${esc(p.nome)}</option>`).join('')}</select></label>
+    <label class="f">Materiale<select data-m="mat">${matsOf(pm).map(s=>`<option value="${s.id}" ${M.mat===s.id?'selected':''}>${esc(s.nome)}</option>`).join('')}</select></label>
+    <label class="f">Finitura<select data-m="fin">${finsOf(pm).map(s=>`<option value="${s.id}" ${M.fin===s.id?'selected':''}>${esc(s.nome)}</option>`).join('')}</select></label>
+    <label class="f">Larghezza mm<input type="number" data-m="w" value="${M.w}"></label>
+    <label class="f">Altezza mm<input type="number" data-m="h" value="${M.h}"></label>
+    <label class="f">Pezzi<input type="number" data-m="q" value="${M.q}"></label>
+    <label class="f">Prezzo proposto (IVA esclusa)<input type="number" data-m="prezzo" value="${M.prezzo}"></label>
+  </div><div id="oMan" style="margin-top:14px"></div>`;}
+function keepScroll(id,html){const box=document.getElementById(id),b=box.querySelector('.body'),k=box.dataset.k,y=b?b.scrollTop:0;box.innerHTML=html;const k2=box.dataset.k=box.querySelector('.body').dataset.k;if(k===k2)box.querySelector('.body').scrollTop=y;}
+function renderLeft(){
+  keepScroll('left',`<div class="bhead"><div class="kicker">Valgono per tutti i prodotti</div><div class="tabs" role="tablist">${LTABS.map(([id,l])=>`<button role="tab" aria-selected="${leftTab===id}" data-ltab="${id}" class="${leftTab===id?'on':''}">${l}</button>`).join('')}</div></div><div class="body" data-k="${leftTab}">${({spese:pSpese,materiali:pMateriali,finiture:pFiniture,regole:pRegole,verifiche:pVerifiche})[leftTab]()}</div>`);
+}
+
+/* ---------- Blocco di destra: schede prodotto ---------- */
+function vScheda(p,b,i){return `
+  <div class="pgrid">
+    <div>
+      <label class="f">Nome${inp(b+'.nome',{text:1,cls:'w'})}</label>
+      <h3>Quali materiali adesivi servono?</h3><div class="chips">${S.materiali.map(m=>`<label class="chip ${p.mats[m.id]?'on':''}"><input type="checkbox" data-check="${b}.mats.${m.id}" ${p.mats[m.id]?'checked':''}>${esc(m.nome)} · ${eur(num(m.costo))}/m²</label>`).join('')}</div>
+      <h3>Quali finiture?</h3><div class="chips">${S.finiture.map(f=>`<label class="chip ${p.fins[f.id]?'on':''}"><input type="checkbox" data-check="${b}.fins.${f.id}" ${p.fins[f.id]?'checked':''}>${esc(f.nome)} · ${eur(f.tipo==='resina'?ENG.resM2(f,S):num(f.costo))}/m²</label>`).join('')}</div>
+    </div>
+    <div>
+      <label class="f">Costo stampa di questo prodotto (€/m²)${inp(b+'.stampa',{cls:'w'})}</label>
+      <h3>Lavoro</h3>
+      ${num(p.minCarrello)>0?`<label class="f">Minuti di lavoro per un carrello pieno${inp(b+'.minCarrello',{cls:'w'})}</label>`:`<label class="f">Secondi di lavoro a pezzo${inp(b+'.sec',{cls:'w'})}</label>`}
+      <div class="out" style="margin-top:8px"><div class="kv"><span id="oOra"></span><b id="oSec"></b></div></div>
+      <div class="note">${num(p.minCarrello)>0?'Cronometra un carrello pieno: resinatura, svuotamento e imbustamento. Il costo si divide sulla superficie: un adesivo grande paga più di uno piccolo.':'Secondi = tempo impiegato ÷ pezzi lavorati (8 min 30 s per 200 adesivi = 2,55).'}</div>
+      <h3>Correttivo e quantità</h3>
+      <div class="grid" style="grid-template-columns:1fr 2fr">
+        <label class="f">Correttivo (%)${inp(b+'.corr',{cls:'w'})}</label>
+        <label class="f">Quantità proposte sul sito${inp(b+'.qty',{text:1,cls:'w'})}</label>
+      </div>
+      ${adv('prod',`<div class="grid"><label class="f">Costo orario solo di questo prodotto (€/ora)${inp(b+'.orario',{cls:'w',id:'pOrario'})}</label>${num(p.minCarrello)>0?`<label class="f">Secondi di lavoro a pezzo, in più${inp(b+'.sec',{cls:'w'})}</label>`:`<label class="f">Minuti di lavoro per un carrello pieno${inp(b+'.minCarrello',{cls:'w'})}</label>`}<label class="f">m² di adesivi in un carrello pieno${inp(b+'.m2Carrello',{cls:'w'})}</label></div><div class="note">Costo orario vuoto = quello generale della scheda Spese. Il carrello serve solo ai prodotti resinati.</div>`)}
+      ${S.prodotti.length>1?`<button class="btn small ghost" style="margin-top:10px" data-del="prodotti.${i}">Elimina questo prodotto</button>`:''}
+    </div>
+  </div>`;}
+function vScaglioni(){return `
+  <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap"><div><p class="sub" style="margin:0" id="oTiersSub"></p><div id="oChecks" style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap"></div></div>
+    <label class="f">Formato<select id="fmtSel">${[30,50,70,100,150].map(f=>`<option value="${f}" ${fmtSel==f?'selected':''}>${f/10} × ${f/10} cm</option>`).join('')}</select></label></div>
+  <div class="scroll" id="oTiers" style="margin-top:12px"></div>`;}
+function vProva(p){
+  T.prod=p.id;if(!matsOf(p).find(s=>s.id===T.mat))T.mat=firstMat(p);if(!finsOf(p).find(s=>s.id===T.fin))T.fin=firstFin(p);
+  return `<div class="pgrid">
+    <div class="grid" style="grid-template-columns:1fr 1fr;align-content:start">
+      <label class="f">Materiale<select id="tMat">${matsOf(p).map(s=>`<option value="${s.id}" ${s.id===T.mat?'selected':''}>${esc(s.nome)}</option>`).join('')}</select></label>
+      <label class="f">Finitura<select id="tFin">${finsOf(p).map(s=>`<option value="${s.id}" ${s.id===T.fin?'selected':''}>${esc(s.nome)}</option>`).join('')}</select></label>
+      <label class="f">Larghezza mm<input type="number" id="tW" min="10" value="${esc(T.w)}"></label>
+      <label class="f">Altezza mm<input type="number" id="tH" min="10" value="${esc(T.h)}"></label>
+      <label class="f">Pezzi<input type="number" id="tQ" min="1" value="${esc(T.q)}"></label>
+      <label class="f">Spedizione<select id="tEx"><option value="0" ${T.ex==='0'?'selected':''}>Normale</option><option value="1" ${T.ex==='1'?'selected':''}>Espressa</option></select></label>
+    </div>
+    <div id="tOut"></div>
+  </div>`;}
+function renderRight(){const i=Math.max(0,S.prodotti.findIndex(p=>p.id===prodSel)),p=S.prodotti[i],b='prodotti.'+i;prodSel=p.id;
+  const V=[['scheda','Scheda prodotto'],['scaglioni','Scaglioni'],['prova','Prova un preventivo']];
+  keepScroll('right',`<div class="bhead"><div class="kicker">Schede prodotto</div><div class="tabs" role="tablist">${S.prodotti.map(x=>`<button role="tab" aria-selected="${x.id===p.id}" data-prod="${x.id}" class="${x.id===p.id?'on':''}">${esc(x.nome)}</button>`).join('')}<button data-newprod="1" class="add">+ Nuovo</button></div>
+    <div class="seg">${V.map(([id,l])=>`<button data-rview="${id}" class="${rightView===id?'on':''}">${l}</button>`).join('')}</div></div>
+    <div class="body" data-k="${p.id+rightView}">${rightView==='scheda'?vScheda(p,b,i):rightView==='scaglioni'?vScaglioni():vProva(p)}</div>`);
+}
+const dims=t=>[Math.max(1,num(t.w)),Math.max(1,num(t.h)),Math.max(1,Math.round(num(t.q)))];
+
+function updateOutputs(){
+  const has=id=>document.getElementById(id),el=id=>has(id)||{},c=S.comune;
+  const ex=ENG.aumentoExtra(S),tot=ENG.aumentoTot(S);
+  el('oBase').textContent='+'+dec(num(c.aumentoBase))+'%';el('oExtra').textContent='+'+dec(ex)+'%';el('oTot').textContent='+'+dec(tot)+'%';
+  c.spese.forEach((s,i)=>{el('oSp'+i).textContent='+'+dec(num(c.fatturato)>0?num(s.mese)*12/num(c.fatturato)*100:0,2)+'%'+(s.on?'':' se attiva');});
+  S.finiture.forEach((f,i)=>{el('oFin'+i).textContent='Equivale a '+eur(ENG.resM2(f,S))+' al m², ricarico incluso.';});
+  /* effetto sul mix: sempre nell'intestazione */
+  const mx=effettoMix(),dm=mx.o>0?mx.n/mx.o-1:0;
+  el('hAum').textContent='Aumento generale +'+dec(tot)+'%';el('hMix').textContent='Effetto sul fatturato '+pct(dm,1);
+  el('mixOut').innerHTML=`<div class="diff ${cls(dm)}">${pct(dm,1)}</div><div class="mute" style="font-size:12px;margin-bottom:8px">Stima sul mix reale di ${MIX.reduce((s,r)=>s+r.n,0)} righe e-commerce del 2026, a parità di ordini.</div>`+Object.entries(mx.per).map(([id,v])=>`<div class="kv"><span>${esc(prodById(id).nome)} <span class="mute">(${v.r})</span></span><b class="${cls(v.n/v.o-1)}">${pct(v.n/v.o-1,1)}</b></div>`).join('');
+  const pp=prodById(prodSel);
+  /* prova */
+  if(has('tOut')){const [w,h,q]=dims(T),a=args(pp,T.mat,T.fin,w,h,q,T.ex==='1'?1:0),n=prezzoNuovo(pp,a.n),o=prezzoOggi(pp.id,a.o),d=o.lordo>0?n.lordo/o.lordo-1:0;
+    el('tOut').innerHTML=`<div class="two"><div class="box old"><div class="mute" style="font-size:12px;font-weight:600">Oggi sul sito</div><div class="price">${a.noto?eur(o.lordo):'n/d'}</div><div class="mute" style="font-size:12px">${a.noto?eur(o.netto)+' + IVA':'materiale nuovo'}</div></div>
+    <div class="box new"><div style="font-size:12px;font-weight:600;color:var(--blue)">Listino 2027</div><div class="price">${eur(n.lordo)}</div><div style="font-size:12px">${eur(n.netto)} + IVA</div></div></div>
+    <div style="display:flex;justify-content:space-between;align-items:baseline;margin:8px 0"><span class="mute">Differenza</span><span class="diff ${cls(d)}">${a.noto?pct(d):'—'}</span></div>
+    <div class="out" style="margin-top:0"><div class="kv"><span>Materiale adesivo</span><b>${eur(n.supporto)}</b></div><div class="kv"><span>Stampa</span><b>${eur(n.stampa)}</b></div>${n.finitura?`<div class="kv"><span>Finitura</span><b>${eur(n.finitura)}</b></div>`:''}${n.resina?`<div class="kv"><span>Resinatura</span><b>${eur(n.resina)}</b></div>`:''}<div class="kv"><span>Avvio produzione</span><b>${eur(n.fisso)}</b></div>${1?`<div class="kv"><span class="mute">Ricarico ×${dec(n.fs,2)} · sconto volume ${dec(n.sconto*100)}% su ${dec(n.m2,2)} m²${n.corrQ?' · correttivo scaglione '+(n.corrQ>0?'+':'')+dec(n.corrQ)+'%':''}</span><b></b></div>`:''}<div class="kv"><span>Aumento ${dec(tot)}%${num(pp.corr)?' + correttivo '+num(pp.corr)+'%':''}${n.corrQ?' + scaglione '+dec(n.corrQ)+'%':''}</span><b>${eur(n.aumento)}</b></div><div class="kv"><span>Lavoro: ${eur(q>0?n.pezzi/q:0,4)} × ${q.toLocaleString('it-IT')}${n.lavSup?' (a superficie)':''}</span><b>${eur(n.pezzi)}</b></div><div class="kv tot"><span>Netto prima dell'arrotondamento</span><b>${eur(n.netto0)}</b></div>
+    <div class="kv"><span>A pezzo, IVA inclusa</span><b>${eur(n.lordo/q,3)}</b></div><div class="kv"><span>Costo vivo dei materiali</span><b>${eur(n.costoVivo)} · ${(n.netto>0?n.costoVivo/n.netto*100:0).toFixed(0)}% del netto</b></div></div>`;}
+  /* scheda prodotto */
+  if(has('oSec')){el('pOrario').placeholder='generale: '+dec(num(c.costoOrario),2);
+    {const sc=ENG.secCm2(pp),ora=ENG.orario(S,pp),og=num(pp.orario)>0?' (del prodotto)':'';
+      if(sc>0){const c2=ENG.costoCm2(S,pp);el('oOra').textContent=dec(num(pp.minCarrello))+' minuti × '+dec(ora,2)+' €/ora'+og+' ÷ '+dec(num(pp.m2Carrello),1)+' m²';el('oSec').textContent='= '+eur(c2*10000,2)+' al m² · '+eur(c2*46.75,3)+' su un 5,5 × 8,5 cm';}
+      else{el('oOra').textContent=dec(num(pp.sec),2)+' secondi × '+dec(ora,2)+' €/ora'+og;el('oSec').textContent='= '+eur(ENG.costoPezzo(S,pp),4)+' a pezzo';}}}
+  /* scaglioni */
+  if(has('oTiers')){const ck=controlli(pp);el('oChecks').innerHTML=`<span class="badge ${ck.okU?'b-ok':'b-bad'}">${ck.okU?'✓ Il prezzo a pezzo scende sempre':'✕ Il prezzo a pezzo risale ('+ck.dove+')'}</span><span class="badge ${ck.okT?'b-ok':'b-bad'}">${ck.okT?'✓ Il totale sale sempre':'✕ Un totale scende ('+ck.dove+')'}</span>`;
+    const mid=firstMat(pp),fid=firstFin(pp),qs=String(pp.qty).split(/[,;\s]+/).map(num).filter(x=>x>0);let prev=null;
+    el('oTiersSub').textContent='Prezzi IVA inclusa · '+((ENG.mat(S,mid)||{}).nome||'nessun materiale')+' · '+((ENG.fin(S,fid)||{}).nome||'nessuna finitura scelta');
+    el('oTiers').innerHTML=`<table><thead><tr><th>Pezzi</th><th>Oggi</th><th>2027</th><th>€ a pezzo</th><th>Variazione</th><th>Sullo scaglione prima</th></tr></thead><tbody>${qs.map(x=>{const g=args(pp,mid,fid,fmtSel,fmtSel,x,0),nn=prezzoNuovo(pp,g.n),oo=prezzoOggi(pp.id,g.o),v=nn.lordo/oo.lordo-1;const r=`<tr><td><b>${x.toLocaleString('it-IT')}</b></td><td class="mute">${eur(oo.lordo)}</td><td><b>${eur(nn.lordo)}</b></td><td>${eur(nn.lordo/x,3)}</td><td class="${cls(v)}"><b>${pct(v)}</b></td><td class="mute">${prev?pct(nn.lordo/prev-1):'—'}</td></tr>`;prev=nn.lordo;return r;}).join('')}</tbody></table>`;}
+  /* verifiche */
+  if(has('oAll')){el('oAll').innerHTML=`<table><thead><tr><th>Prodotto</th><th>Prezzo a pezzo</th><th>Totale</th><th>Lavoro a pezzo</th><th>Effetto sul mix</th></tr></thead><tbody>${S.prodotti.map(x=>{const k=controlli(x),v=mx.per[x.id];return `<tr><td><b>${esc(x.nome)}</b></td><td><span class="badge ${k.okU?'b-ok':'b-bad'}">${k.okU?'✓ scende sempre':'✕ risale: '+k.dove}</span></td><td><span class="badge ${k.okT?'b-ok':'b-bad'}">${k.okT?'✓ sale sempre':'✕ scende: '+k.dove}</span></td><td>${eur(ENG.costoPezzo(S,x),3)}</td><td class="${v?cls(v.n/v.o-1):''}">${v?pct(v.n/v.o-1,1):'nessun ordine'}</td></tr>`;}).join('')}</tbody></table>`;
+    const Q=[15,50,100,200,500,1000,3000];el('oCmp').innerHTML=`<table><thead><tr><th>Prodotto</th>${Q.map(x=>`<th>${x.toLocaleString('it-IT')} pz</th>`).join('')}</tr></thead><tbody>${S.prodotti.map(x=>`<tr><td><b>${esc(x.nome)}</b></td>${Q.map(qq=>{const g=args(x,firstMat(x),firstFin(x),50,50,qq,0),v=prezzoNuovo(x,g.n).lordo/prezzoOggi(x.id,g.o).lordo-1;return `<td class="${cls(v)}">${pct(v)}</td>`;}).join('')}</tr>`).join('')}</tbody></table>`;
+    const pm=prodById(M.prod),[mw,mh,mq]=dims(M),lm=prezzoNuovo(pm,{mat:M.mat,fin:M.fin,w:mw,h:mh,q:mq,ex:0}).netto,pr=num(M.prezzo),sc=lm>0?pr/lm-1:0,max=mq>num(c.prevSoglia)?num(c.prevScontoSopra):num(c.prevScontoSotto),ok=sc>=-max/100-1e-9;
+    el('oMan').innerHTML=`<div class="two"><div class="box old"><div class="mute" style="font-size:12px;font-weight:600">Listino 2027, IVA esclusa</div><div class="price">${eur(lm)}</div><div class="mute" style="font-size:12px">${eur(lm/mq,3)} a pezzo</div></div><div class="box new"><div style="font-size:12px;font-weight:600;color:var(--blue)">Prezzo proposto</div><div class="price">${eur(pr)}</div><div style="font-size:12px">${eur(pr/mq,3)} a pezzo</div></div></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;gap:10px;flex-wrap:wrap"><span>Scostamento dal listino: <b class="${cls(sc)}" style="font-size:20px">${pct(sc,1)}</b></span><span class="badge ${ok?'b-ok':'b-bad'}">${ok?'✓ Rispetta la regola':'✕ Fuori regola: serve la tua approvazione'}</span></div>
+    <div class="note">Sconto massimo per ${mq.toLocaleString('it-IT')} pezzi: ${max}%. Prezzo minimo senza approvazione: ${eur(lm*(1-max/100))} + IVA.</div>`;}
+}
+
+/* ---------- Eventi ---------- */
+function full(){renderLeft();renderRight();updateOutputs();save();}
+document.addEventListener('input',e=>{const t=e.target;
+  if(t.dataset.path){set(t.dataset.path,t.value);updateOutputs();save();return;}
+  if(t.dataset.m&&t.tagName==='INPUT'){M[t.dataset.m]=t.value;updateOutputs();return;}
+  if(['tW','tH','tQ'].includes(t.id)){T[t.id.slice(1).toLowerCase()]=t.value;updateOutputs();}
+});
+document.addEventListener('change',e=>{const t=e.target;
+  if(t.dataset.check){const chip=/\.(mats|fins)\./.test(t.dataset.check);set(t.dataset.check,chip?(t.checked?1:0):t.checked);full();return;}
+  if(t.dataset.m&&t.tagName==='SELECT'){M[t.dataset.m]=t.value;if(t.dataset.m==='prod')renderLeft();updateOutputs();return;}
+  if(t.id==='fmtSel'){fmtSel=+t.value;updateOutputs();return;}
+  if(t.id==='tMat'){T.mat=t.value;updateOutputs();return;}
+  if(t.id==='tFin'){T.fin=t.value;updateOutputs();return;}
+  if(t.id==='tEx'){T.ex=t.value;updateOutputs();return;}
+  if(t.dataset.path&&(/\.nome$/.test(t.dataset.path)||/^(materiali|finiture)\./.test(t.dataset.path)))full();
+});
+document.addEventListener('toggle',e=>{const t=e.target;if(t.dataset&&t.dataset.adv)ADV[t.dataset.adv]=t.open;},true);
+document.addEventListener('click',e=>{const t=e.target.closest('button');if(!t)return;
+  if(t.dataset.ltab){leftTab=t.dataset.ltab;full();return;}
+  if(t.dataset.rview){rightView=t.dataset.rview;full();return;}
+  if(t.dataset.prod){prodSel=t.dataset.prod;full();return;}
+  if(t.dataset.newprod){const src=prodById(prodSel),id='prodotto_'+Date.now();const n=JSON.parse(JSON.stringify(src));n.id=id;n.nome='Nuovo prodotto (copia di '+src.nome+')';S.prodotti.push(n);prodSel=id;rightView='scheda';full();return;}
+  if(t.dataset.add){const k=t.dataset.add,a=get(k);
+    if(k==='comune.spese')a.push({nome:'Nuova spesa o rata',mese:0,on:true});
+    else if(k==='materiali')a.push({id:'mat_'+Date.now(),nome:'Nuovo materiale',costo:0});
+    else if(k==='finiture')a.push({id:'fin_'+Date.now(),nome:'Nuova finitura',tipo:'m2',costo:0});
+    else{const l=a[a.length-1]||[0,0];a.push([num(l[0])*2||100,l[1]]);}
+    full();return;}
+  if(t.dataset.del){const ks=t.dataset.del.split('.'),i=+ks.pop(),k=ks.join('.'),a=get(k);if(a.length>1||k==='comune.spese'){a.splice(i,1);if(k==='prodotti')prodSel=S.prodotti[0].id;}full();return;}
+  if(t.id==='btnReset'){S=proposta();prodSel=S.prodotti[0].id;full();return;}
+  if(t.id==='btnExport'){const b=new Blob([JSON.stringify(S,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='listino-2027-configurazione.json';a.click();}
+});
+full();
+</script>
+</body>
+</html>

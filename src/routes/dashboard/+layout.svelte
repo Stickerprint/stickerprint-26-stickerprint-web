@@ -2,7 +2,6 @@
 	import '$lib/styles/dashboard.css';
 	import { page } from '$app/state';
 	import { invalidateAll } from '$app/navigation';
-	import { PRODUCT_ENGINES } from '$lib/pricing/engine';
 	import LiveClock from '$lib/components/LiveClock.svelte';
 
 	let { data, children } = $props();
@@ -61,7 +60,8 @@
 			{ label: 'Impostazioni', href: '/dashboard/marketing/impostazioni' }
 		] },
 		{ id: 'blog', title: 'Blog', items: [{ label: 'Articoli', href: '/dashboard/blog' }] },
-		{ id: 'preventivatori', title: 'Preventivatori', items: PRODUCT_ENGINES.map((p) => ({ label: p.name, href: `/dashboard/preventivatori/${p.slug}` })) },
+		/* un solo preventivatore: il listino 2027 vale per tutti i prodotti (sagome e misure per prodotto si aprono da li') */
+		{ id: 'preventivatori', title: 'Preventivatore', items: [{ label: 'Listino prezzi 2027', href: '/dashboard/preventivatori' }] },
 		{ id: 'setup', title: 'Setup', items: [
 			{ label: 'Metodi di pagamento', href: '/dashboard/setup/metodi-pagamento' },
 			{ label: 'Offerte (Promo)', href: '/dashboard/setup/promo' },

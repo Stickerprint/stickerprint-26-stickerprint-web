@@ -8,6 +8,8 @@
 import type { Lang } from '$lib/i18n';
 
 const it = {
+	/* nuova grafica del preventivatore (2027) */
+	nuovo: { risparmi: 'Risparmi {n}%', piuConveniente: 'Più conveniente', live: 'Anteprima immediata', controllo: 'Controllo del file', controlloTitolo: 'Controlliamo il tuo file', controlloSotto: 'e lo sistemiamo in caso di bisogno', altra: 'Altra quantità', minimo: 'minimo {n} pezzi', esempio: 'es. 750', regola: 'Regola bordo e posizione', chiudiRegola: 'Chiudi le regolazioni', prezziIva: 'Prezzi con o senza IVA', gratisInclusa: 'spedizione gratuita', gratisDa: 'spedizione gratuita da {soglia}', lamina: 'lamina {finitura}' },
 	passi: {
 		forma: 'Seleziona sagoma',
 		materiale: 'Materiale',
@@ -166,6 +168,8 @@ const it = {
 export type Configuratore = typeof it;
 
 const en: Configuratore = {
+	/* nuova grafica del preventivatore (2027) */
+	nuovo: { risparmi: 'Save {n}%', piuConveniente: 'Best value', live: 'Instant preview', controllo: 'File check', controlloTitolo: 'We check your file', controlloSotto: 'and fix it if needed', altra: 'Other quantity', minimo: 'minimum {n} pieces', esempio: 'e.g. 750', regola: 'Adjust border and position', chiudiRegola: 'Close adjustments', prezziIva: 'Prices with or without tax', gratisInclusa: 'free shipping', gratisDa: 'free shipping from {soglia}', lamina: '{finitura} laminate' },
 	passi: { forma: 'Select shape', materiale: 'Material', finitura: 'Protective laminate', finituraStampa: 'Print', misura: 'Size', qty: 'Choose quantity', modifica: 'Edit', passaggio: 'Step {n} of {tot}', eyebrow: 'Set up in 30 seconds', eyebrowTest: 'Pricing engine test', crea: 'Create {prodotto}' },
 	hint: {
 		materiale: 'Not sure which one? White works almost every time.',
@@ -289,6 +293,8 @@ const en: Configuratore = {
 };
 
 const es: Configuratore = {
+	/* nuova grafica del preventivatore (2027) */
+	nuovo: { risparmi: 'Ahorras {n}%', piuConveniente: 'Más conveniente', live: 'Vista previa inmediata', controllo: 'Revisión del archivo', controlloTitolo: 'Revisamos tu archivo', controlloSotto: 'y lo arreglamos si hace falta', altra: 'Otra cantidad', minimo: 'mínimo {n} unidades', esempio: 'ej. 750', regola: 'Ajustar borde y posición', chiudiRegola: 'Cerrar los ajustes', prezziIva: 'Precios con o sin IVA', gratisInclusa: 'envío gratis', gratisDa: 'envío gratis desde {soglia}', lamina: 'laminado {finitura}' },
 	passi: { forma: 'Elige la forma', materiale: 'Material', finitura: 'Laminado protector', finituraStampa: 'Impresión', misura: 'Tamaño', qty: 'Elige la cantidad', modifica: 'Cambiar', passaggio: 'Paso {n} de {tot}', eyebrow: 'Configúralo en 30 segundos', eyebrowTest: 'Prueba del calculador', crea: 'Crea {prodotto}' },
 	hint: {
 		materiale: '¿No sabes cuál elegir? El blanco va bien casi siempre.',
@@ -412,6 +418,8 @@ const es: Configuratore = {
 };
 
 const fr: Configuratore = {
+	/* nuova grafica del preventivatore (2027) */
+	nuovo: { risparmi: 'Économisez {n}%', piuConveniente: 'Le plus avantageux', live: 'Aperçu immédiat', controllo: 'Contrôle du fichier', controlloTitolo: 'Nous vérifions votre fichier', controlloSotto: 'et le corrigeons si besoin', altra: 'Autre quantité', minimo: 'minimum {n} pièces', esempio: 'ex. 750', regola: 'Régler le bord et la position', chiudiRegola: 'Fermer les réglages', prezziIva: 'Prix TTC ou HT', gratisInclusa: 'livraison gratuite', gratisDa: 'livraison gratuite dès {soglia}', lamina: 'pelliculage {finitura}' },
 	passi: { forma: 'Choisissez la forme', materiale: 'Matière', finitura: 'Lamination de protection', finituraStampa: 'Impression', misura: 'Dimensions', qty: 'Choisissez la quantité', modifica: 'Modifier', passaggio: 'Étape {n} sur {tot}', eyebrow: 'Configurez en 30 secondes', eyebrowTest: 'Test du calculateur', crea: 'Créez {prodotto}' },
 	hint: {
 		materiale: 'Vous hésitez ? Le blanc convient presque toujours.',
@@ -535,6 +543,8 @@ const fr: Configuratore = {
 };
 
 const de: Configuratore = {
+	/* nuova grafica del preventivatore (2027) */
+	nuovo: { risparmi: 'Du sparst {n}%', piuConveniente: 'Bester Preis', live: 'Sofort-Vorschau', controllo: 'Dateiprüfung', controlloTitolo: 'Wir prüfen deine Datei', controlloSotto: 'und korrigieren sie bei Bedarf', altra: 'Andere Menge', minimo: 'mindestens {n} Stück', esempio: 'z. B. 750', regola: 'Rand und Position anpassen', chiudiRegola: 'Einstellungen schließen', prezziIva: 'Preise mit oder ohne MwSt.', gratisInclusa: 'kostenloser Versand', gratisDa: 'kostenloser Versand ab {soglia}', lamina: 'Laminat {finitura}' },
 	passi: { forma: 'Form wählen', materiale: 'Material', finitura: 'Schutzlaminierung', finituraStampa: 'Druck', misura: 'Größe', qty: 'Menge wählen', modifica: 'Ändern', passaggio: 'Schritt {n} von {tot}', eyebrow: 'In 30 Sekunden konfiguriert', eyebrowTest: 'Test des Preisrechners', crea: 'Gestalte {prodotto}' },
 	hint: {
 		materiale: 'Unsicher? Weiß passt fast immer.',
@@ -658,6 +668,8 @@ const de: Configuratore = {
 };
 
 const nl: Configuratore = {
+	/* nuova grafica del preventivatore (2027) */
+	nuovo: { risparmi: 'Bespaar {n}%', piuConveniente: 'Voordeligst', live: 'Direct voorbeeld', controllo: 'Bestandscontrole', controlloTitolo: 'We controleren je bestand', controlloSotto: 'en passen het aan als dat nodig is', altra: 'Ander aantal', minimo: 'minimaal {n} stuks', esempio: 'bv. 750', regola: 'Rand en positie aanpassen', chiudiRegola: 'Aanpassingen sluiten', prezziIva: 'Prijzen met of zonder btw', gratisInclusa: 'gratis verzending', gratisDa: 'gratis verzending vanaf {soglia}', lamina: 'laminaat {finitura}' },
 	passi: { forma: 'Kies de vorm', materiale: 'Materiaal', finitura: 'Beschermend laminaat', finituraStampa: 'Druk', misura: 'Formaat', qty: 'Kies het aantal', modifica: 'Wijzigen', passaggio: 'Stap {n} van {tot}', eyebrow: 'In 30 seconden geregeld', eyebrowTest: 'Test prijscalculator', crea: 'Maak {prodotto}' },
 	hint: {
 		materiale: 'Weet je het niet? Wit is bijna altijd goed.',
