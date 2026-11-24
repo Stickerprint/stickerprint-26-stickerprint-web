@@ -40,18 +40,18 @@ describe('listino 2027', () => {
 		const q = (slug: string, o: Partial<{ w: number; h: number; materiale: string; finitura: string; qty: number }>) =>
 			quoteWith(attacca(slug, L), { w: 40, h: 40, forma: 'sagomato', materiale: 'bianco', finitura: 'nessuna', qty: 100, vatIncluded: true, ...o });
 		// adesivi personalizzati 40×40 bianco senza lamina (gli stessi numeri della prova mostrata a Mattia)
-		expect(q('adesivi_personalizzati', { qty: 15 }).gross).toBe(27.5);
-		expect(q('adesivi_personalizzati', { qty: 50 }).gross).toBe(47.5);
-		expect(q('adesivi_personalizzati', { qty: 100 }).gross).toBe(74.5);
-		expect(q('adesivi_personalizzati', { qty: 200 }).gross).toBe(84.5);
-		expect(q('adesivi_personalizzati', { qty: 500 }).gross).toBe(113.5);
-		expect(q('adesivi_personalizzati', { qty: 1000 }).gross).toBe(159.5);
+		expect(q('adesivi_personalizzati', { qty: 15 }).gross).toBe(28);
+		expect(q('adesivi_personalizzati', { qty: 50 }).gross).toBe(48);
+		expect(q('adesivi_personalizzati', { qty: 100 }).gross).toBe(75);
+		expect(q('adesivi_personalizzati', { qty: 200 }).gross).toBe(85);
+		expect(q('adesivi_personalizzati', { qty: 500 }).gross).toBe(114);
+		expect(q('adesivi_personalizzati', { qty: 1000 }).gross).toBe(160);
 		// resinati: 5,5×8,5 cm, 1.000 pezzi, lavoro del carrello compreso
 		expect(q('adesivi_resinati', { w: 55, h: 85, qty: 1000 }).gross).toBe(814);
-		// il lordo e' sempre un multiplo di 0,50 € e il netto e' il lordo senza IVA
+		// il lordo e' sempre un euro intero (mai ,50) e il netto e' il lordo senza IVA
 		for (const p of PRODUCT_ENGINES) for (const qty of [15, 50, 100, 333, 1000]) {
 			const r = q(p.slug, { qty });
-			expect(Math.round(r.gross * 2)).toBe(r.gross * 2);
+			expect(Number.isInteger(r.gross)).toBe(true);
 			expect(r.net).toBeCloseTo(r.gross / 1.22, 2);
 			expect(r.perPiece).toBeCloseTo(r.gross / qty, 9);
 		}
