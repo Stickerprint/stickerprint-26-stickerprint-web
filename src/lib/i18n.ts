@@ -132,6 +132,10 @@ export const PRICE_BOOKS: Record<Currency, { rate: number; markup: number; step:
 export const USD_RATE = PRICE_BOOKS.USD.rate;
 /** IVA italiana: i prezzi del sito sono IVA inclusa; fuori dall'UE (dollari) l'IVA non c'e' e si parte dal netto */
 export const IVA_IT = 0.22;
+/** scelta "IVA inclusa / IVA esclusa" nei configuratori: solo dove i prezzi hanno l'IVA (euro). Nel listino in dollari non
+ *  c'e' (Mattia, 24/11/2026): si mostra un prezzo solo, quello tasse incluse. Con la scelta su "escluse" il prezzo in
+ *  dollari veniva anche sbagliato: l'IVA era gia' tolta dal cambio e veniva tolta una seconda volta. */
+export const sceltaIva = (locale: Locale): boolean => locale.currency === 'EUR';
 /** importo in euro → importo nella valuta del locale (numero), con l'arrotondamento del listino.
  *  `lordo` (default) = l'importo in euro e' IVA inclusa: in dollari si toglie l'IVA prima del cambio (export senza IVA). */
 export function toCurrency(amountEur: number, currency: Currency, lordo = true): number {

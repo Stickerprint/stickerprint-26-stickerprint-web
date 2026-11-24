@@ -19,7 +19,7 @@
 	import { quoteWith, minForShape, startSize, sizeProposals, proportionalSize, sizeRule, showFinishStep, showMaterialStep, type EngineConfig } from '$lib/pricing/engine';
 	import { MM_PER_IN, mmToUnit, unitToMm, snapMm } from '$lib/i18n';
 	import { usaLingua } from '$lib/traduzioni';
-	import { formatAmount, toCurrency } from '$lib/i18n';
+	import { formatAmount, toCurrency, sceltaIva } from '$lib/i18n';
 
 	/* totale prodotti gia' nel carrello (per la barra della spedizione gratuita) */
 	let cartGross = $state(0);
@@ -445,10 +445,12 @@
 			<div class="grp" id="qty-step">
 				<div class="grp__h">
 					<span class="grp__n">{stepNo('qty')}</span><span class="grp__t">{t('configuratore.passi.qty')}</span>
-					<span class="vat" role="group" aria-label={t('configuratore.nuovo.prezziIva')}>
-						<button type="button" class:is-on={vatIncluded} aria-pressed={vatIncluded} onclick={() => (vatIncluded = true)}>{t('configuratore.riepilogo.ivaInclusa')}</button>
-						<button type="button" class:is-on={!vatIncluded} aria-pressed={!vatIncluded} onclick={() => (vatIncluded = false)}>{t('configuratore.riepilogo.ivaEsclusa')}</button>
-					</span>
+					{#if sceltaIva(locale)}
+						<span class="vat" role="group" aria-label={t('configuratore.nuovo.prezziIva')}>
+							<button type="button" class:is-on={vatIncluded} aria-pressed={vatIncluded} onclick={() => (vatIncluded = true)}>{t('configuratore.riepilogo.ivaInclusa')}</button>
+							<button type="button" class:is-on={!vatIncluded} aria-pressed={!vatIncluded} onclick={() => (vatIncluded = false)}>{t('configuratore.riepilogo.ivaEsclusa')}</button>
+						</span>
+					{/if}
 				</div>
 				{#if foglio && perSheet && file}
 					{@const nf = Math.ceil(qty / perSheet.n)}

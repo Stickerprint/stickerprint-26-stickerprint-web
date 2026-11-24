@@ -19,7 +19,7 @@
 	import type { EngineConfig } from '$lib/pricing/engine';
 	import EnginePreview from './EnginePreview.svelte';
 	import { usaLingua } from '$lib/traduzioni';
-	import { formatAmount } from '$lib/i18n';
+	import { formatAmount, sceltaIva } from '$lib/i18n';
 	const { t, lang, locale, prezzo, prezzoUnit, numero, path, unit, misuraU, misure } = usaLingua();
 	const inU = (mm: number) => (unit === 'in' ? Math.round(mmToUnit(mm, unit) * 100) / 100 : mm);
 	/* misure proposte: mm dal listino, pollici tondi sul sito USA */
@@ -433,7 +433,7 @@
 			<div class="sum__text">
 				<span class="sum__label">{t('kit.builder.riepilogo.totale')} {vatIncluded ? t('kit.builder.riepilogo.ivaInclusa') : t('kit.builder.riepilogo.ivaEsclusa')}</span>
 				<span class="sum__value sum__value--big">{prezzo(vatIncluded ? q.gross : q.net, 0)}</span>
-				<div class="vat-toggle"><span class:active={!vatIncluded}>{t('kit.builder.riepilogo.ivaEsclusa')}</span><button type="button" class="switch" class:on={vatIncluded} role="switch" aria-checked={vatIncluded} aria-label={t('kit.builder.riepilogo.mostraIva')} onclick={() => (vatIncluded = !vatIncluded)}><i></i></button><span class:active={vatIncluded}>{t('kit.builder.riepilogo.ivaInclusa')}</span></div>
+				{#if sceltaIva(locale)}<div class="vat-toggle"><span class:active={!vatIncluded}>{t('kit.builder.riepilogo.ivaEsclusa')}</span><button type="button" class="switch" class:on={vatIncluded} role="switch" aria-checked={vatIncluded} aria-label={t('kit.builder.riepilogo.mostraIva')} onclick={() => (vatIncluded = !vatIncluded)}><i></i></button><span class:active={vatIncluded}>{t('kit.builder.riepilogo.ivaInclusa')}</span></div>{/if}
 			</div>
 			<span class="sum__per">{t('kit.builder.qty.perKit', { prezzo: prezzoUnit(vatIncluded ? q.perKitGross : q.perKitNet) })}</span>
 		</div>

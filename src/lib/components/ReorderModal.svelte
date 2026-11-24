@@ -7,9 +7,10 @@
 	import { quoteWith, type EngineConfig } from '$lib/pricing/engine';
 	import { MATERIAL_LABEL, type Order } from '$lib/account';
 	import { usaLingua } from '$lib/traduzioni';
+	import { sceltaIva } from '$lib/i18n';
 
 	let { order, cfg, onclose }: { order: Order; cfg: EngineConfig; onclose: () => void } = $props();
-	const { t, path, prezzo, prezzoUnit, numero, misure } = usaLingua();
+	const { t, path, prezzo, prezzoUnit, numero, misure, locale } = usaLingua();
 	/* sagoma, materiale e lamina dell'ordine: dal catalogo per id, altrimenti il valore salvato */
 	const opz = (tipo: 'sagome' | 'materiali' | 'finiture', id: string, fallback: string) => {
 		const k = `configuratore.opzioni.${tipo}.${id}.label`;
@@ -63,7 +64,7 @@
 			<div class="rbox rbox--total">
 				<span class="rbox__label">{t('configuratore.riordina.totale')}</span>
 				<b class="rbox__big">{prezzo(q.gross, 0)}</b>
-				<span class="rbox__vat"><span class="is-on">{t('configuratore.riordina.ivaInclusa')}</span><span class="sep"></span><span>{t('configuratore.riordina.piuIva', { netto: prezzo(q.net) })}</span></span>
+				<span class="rbox__vat"><span class="is-on">{t('configuratore.riordina.ivaInclusa')}</span>{#if sceltaIva(locale)}<span class="sep"></span><span>{t('configuratore.riordina.piuIva', { netto: prezzo(q.net) })}</span>{/if}</span>
 			</div>
 			{#if added}
 				<a class="btn btn--green rbtn" href={path('/checkout')}>{t('configuratore.riordina.checkout')}</a>
