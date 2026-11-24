@@ -2,12 +2,13 @@ import { fail } from '@sveltejs/kit';
 import { PRODUCT_ENGINES } from '$lib/pricing/engine';
 import { LISTINO_SLUG, listinoIniziale, normalizzaListino, problemaListino, type Listino } from '$lib/pricing/listino';
 import { invalidateListino, loadListino } from '$lib/server/pricing';
+import { FORMATI_CONFRONTO, QTA_CONFRONTO, confronto2026 } from '$lib/server/listino-2026';
 import type { Actions, PageServerLoad } from './$types';
 
 /** Preventivatore unico: il listino 2027 vale per tutti i prodotti (riga `listino_2027` di `pricing_engines`). */
 export const load: PageServerLoad = async ({ locals: { supabase } }) => {
 	invalidateListino(); // in dashboard si vede sempre l'ultimo salvataggio, non la copia in memoria
-	const { savedAt } = await loadListino(supabase);
+	const { savedAt, listino } = await loadListino(supabase);
 	const { data: history } = await supabase
 		.from('pricing_engine_history')
 		.select('id, changed_at, config')
@@ -16,6 +17,9 @@ export const load: PageServerLoad = async ({ locals: { supabase } }) => {
 		.limit(10);
 	return {
 		savedAt,
+		/* confronto con il 2026: il listino di adesso (la pagina e' solo per lo staff) e i prezzi 2026 gia' calcolati */
+		listino,
+		confronto: { formati: FORMATI_CONFRONTO, quantita: QTA_CONFRONTO, prodotti: confronto2026() },
 		prodotti: PRODUCT_ENGINES.map((p) => ({ slug: p.slug, name: p.name, href: p.href })),
 		history: (history ?? []).map((h) => ({ id: h.id as string, changedAt: h.changed_at as string, ricarico: (h.config as Listino | null)?.comune?.ricarico ?? null, aumento: (h.config as Listino | null)?.comune?.aumentoBase ?? null }))
 	};
