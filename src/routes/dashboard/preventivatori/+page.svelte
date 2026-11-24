@@ -14,7 +14,8 @@
 	$effect(() => {
 		const onMsg = (e: MessageEvent) => {
 			if (e.origin !== location.origin || !e.data || typeof e.data !== 'object') return;
-			if (e.data.type === 'listino-2027' && e.data.listino) listino = JSON.stringify(e.data.listino);
+			/* il simulatore scrive qui anche all'apertura, senza che nulla sia cambiato: conta solo se dice che e' diverso dal listino online */
+			if (e.data.type === 'listino-2027' && e.data.listino) listino = e.data.modificato ? JSON.stringify(e.data.listino) : '';
 			if (e.data.type === 'listino-2027-altezza' && e.data.h > 0) altezza = Math.ceil(e.data.h) + 8;
 		};
 		window.addEventListener('message', onMsg);
