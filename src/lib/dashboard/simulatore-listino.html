@@ -223,7 +223,7 @@ const T={prod:'adesivi_personalizzati',mat:'bianco',fin:'lucida',w:50,h:50,q:500
 const M={prod:'adesivi_resinati',mat:'bianco',fin:'resina',w:50,h:50,q:3000,prezzo:500};
 const INIZIO=JSON.stringify(S);
 function save(){
-  if(IN_DASH){const d=document.getElementById('dirty');d.textContent='Modifiche non ancora salvate';d.hidden=JSON.stringify(S)===INIZIO;try{parent.postMessage({type:'listino-2027',listino:JSON.parse(JSON.stringify(S))},location.origin);}catch(e){}return;}
+  if(IN_DASH){const d=document.getElementById('dirty');d.textContent='Modifiche non ancora salvate';d.hidden=JSON.stringify(S)===INIZIO;try{parent.postMessage({type:'listino-2027',modificato:JSON.stringify(S)!==INIZIO,listino:JSON.parse(JSON.stringify(S))},location.origin);}catch(e){}return;}
   try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){} document.getElementById('dirty').hidden=JSON.stringify(S)===JSON.stringify(proposta());}
 if(IN_DASH)addEventListener('DOMContentLoaded',()=>{document.getElementById('modo').textContent='Le modifiche vanno online solo con Salva';const alt=()=>{try{parent.postMessage({type:'listino-2027-altezza',h:document.documentElement.scrollHeight},location.origin);}catch(e){}};new ResizeObserver(alt).observe(document.body);alt();});
 
