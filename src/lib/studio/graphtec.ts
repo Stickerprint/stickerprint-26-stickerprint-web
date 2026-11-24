@@ -80,14 +80,16 @@ export function maskFor(materiale: string | (string | null | undefined)[] | null
    linea) e, come in Cutting Master, il codice a barre resta sul bordo della pagina: fra la fascia del codice
    e il riquadro restano 5,5 mm, cosi' la barra nera del codice non si fonde col riquadro.
    Il contenuto sta ad almeno 3 mm dal nero. */
-/** margini del contenuto "dentro i crocini", con o senza riquadro nero */
-export const markedMargin = (mask = 0) => (mask > 0 ? { x: mask + MARK.arm + mask + 3, y: MARK.edge + mask + MARK.thick / 2 + 5 } : MARKED_MARGIN);
+/** margini del contenuto "dentro i crocini", con o senza riquadro nero; `bianco` = maschera di bianco, che sotto
+ *  i codici a barre scende piu' del riquadro */
+export const markedMargin = (mask = 0, bianco = false) =>
+	mask > 0 ? { x: mask + MARK.arm + mask + 3, y: Math.max(MARK.edge + mask + MARK.thick / 2 + 5, bianco ? WHITE_MARGIN_Y : 0) } : MARKED_MARGIN;
 /** margini della cornice a tutta larghezza, con o senza riquadro nero */
 export const markedMarginWide = (mask = 0) => (mask > 0 ? { x: mask + 4, y: MARK.edge + mask + MARK.arm + mask + 3 } : MARKED_MARGIN_WIDE);
 /** le due cornici dei fogli, con o senza riquadro nero */
-export const sheetFrames = (mask = 0) => {
+export const sheetFrames = (mask = 0, bianco = false) => {
 	if (!(mask > 0)) return SHEET_FRAMES;
-	const a = markedMargin(mask), b = markedMarginWide(mask);
+	const a = markedMargin(mask, bianco), b = markedMarginWide(mask);
 	return [
 		{ margin: a.x, marginY: a.y, label: 'dentro i crocini' },
 		{ margin: b.x, marginY: b.y, label: 'a tutta larghezza fra i crocini' }
@@ -190,9 +192,12 @@ export function maskRects(W: number, H: number, mask: number): { fuori: Rect; fo
  *  una maschera di bianco (Mattia, 24/11/2026): lo stesso riquadro del crocino, ma in RDG_WHITE (la Roland ci
  *  stampa il bianco) con il crocino nero sopra, e un rettangolo di bianco sotto ogni codice a barre, che resta nero. */
 export type MarkStyle = 'normali' | 'nero' | 'bianco';
-/** bianco attorno al codice a barre (mm): ai lati la zona di quiete del Code 39 (10 moduli), verso l'interno 3 mm.
- *  Fra la fascia del codice e il riquadro del crocino restano 5,5 mm: i due bianchi non si toccano. */
-export const WHITE_PAD = { x: 4, y: 3 };
+/** bianco attorno al codice a barre: 1,5 cm per lato (Mattia, 24/11/2026), fin dove c'e' pagina. Il codice sta sul
+ *  bordo alto o basso e la barra nera a 6 mm dal bordo laterale: da quelle parti il bianco arriva al bordo.
+ *  Verso l'interno la fascia e' alta 24 mm e si unisce al riquadro del crocino li' accanto (bianco su bianco). */
+export const WHITE_PAD = 15;
+/** con la maschera di bianco il contenuto parte piu' in basso: 5 mm sotto la fascia bianca del codice a barre */
+export const WHITE_MARGIN_Y = MARK.barH + WHITE_PAD + 5;
 /** Maschera di bianco: i riquadri dei crocini (gli stessi del riquadro nero) e un rettangolo sotto ogni codice
  *  a barre, barra nera compresa. Tutto dentro la pagina. */
 export function whiteRects(W: number, H: number, id: string, mask: number): { crocini: Rect[]; codici: Rect[] } {
@@ -204,8 +209,8 @@ export function whiteRects(W: number, H: number, id: string, mask: number): { cr
 	return {
 		crocini: maskRects(W, H, mask).map((q) => q.fuori),
 		codici: [
-			fra(fx0 - WHITE_PAD.x, r0 + WHITE_PAD.x, H - hB - WHITE_PAD.y, hB + WHITE_PAD.y),
-			fra(l - WHITE_PAD.x, rx1 + WHITE_PAD.x, 0, hB + WHITE_PAD.y)
+			fra(fx0 - WHITE_PAD, r0 + WHITE_PAD, H - hB - WHITE_PAD, hB + WHITE_PAD),
+			fra(l - WHITE_PAD, rx1 + WHITE_PAD, 0, hB + WHITE_PAD)
 		]
 	};
 }

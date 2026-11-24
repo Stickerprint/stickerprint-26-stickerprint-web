@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MARK, MARK_MASK, MARKED_MARGIN, SHEET_FRAMES, barcodeRects, markRects, maskFor, maskRects, markedMargin, markedMarginWide, sheetFrames, whiteRects, WHITE_PAD, xpfCommands, type XpfJob } from './graphtec';
+import { MARK, MARK_MASK, MARKED_MARGIN, SHEET_FRAMES, barcodeRects, markRects, maskFor, maskRects, markedMargin, markedMarginWide, sheetFrames, whiteRects, WHITE_PAD, WHITE_MARGIN_Y, xpfCommands, type XpfJob } from './graphtec';
 
 const W = 712, H = 300;
 
@@ -85,23 +85,36 @@ describe('maschera di bianco sotto crocini e codici a barre', () => {
 		w.crocini.forEach((q, i) => { for (const r of [neri[2 * i], neri[2 * i + 1]]) expect(dentro(r, q)).toBe(true); });
 	});
 
-	it('il bianco copre tutto il codice a barre, barra nera compresa, con la zona di quiete ai lati', () => {
+	it('il bianco sporge di 1,5 cm per lato dal codice a barre, fin dove c\'e\' pagina', () => {
 		const w = whiteRects(W, H, id, MARK_MASK), b = barcodeRects(W, H, id, MARK_MASK).rects;
+		expect(WHITE_PAD).toBe(15);
 		expect(w.codici).toHaveLength(2);
 		const [sotto, sopra] = w.codici;
 		const basso = b.filter((r) => r.y > H / 2), alto = b.filter((r) => r.y < H / 2);
 		expect(basso.length).toBeGreaterThan(10); expect(alto.length).toBeGreaterThan(10);
-		for (const r of basso) expect(dentro(r, sotto, WHITE_PAD.x)).toBe(true);
-		for (const r of alto) expect(dentro(r, sopra, WHITE_PAD.x)).toBe(true);
-		/* verso l'interno sporge di 3 mm, e resta dentro la pagina */
-		expect(sotto.y).toBeCloseTo(H - MARK.barH - WHITE_PAD.y, 6); expect(sotto.y + sotto.h).toBeCloseTo(H, 6);
-		expect(sopra.y).toBe(0); expect(sopra.h).toBeCloseTo(MARK.barH + WHITE_PAD.y, 6);
-		for (const r of w.codici) { expect(r.x).toBeGreaterThanOrEqual(0); expect(r.x + r.w).toBeLessThanOrEqual(W); }
+		for (const r of basso) expect(dentro(r, sotto)).toBe(true);
+		for (const r of alto) expect(dentro(r, sopra)).toBe(true);
+		/* dalla parte del codice 15 mm pieni; dalla parte della barra nera (a 6 mm dal bordo) arriva al bordo della pagina */
+		expect(Math.min(...basso.map((r) => r.x)) - sotto.x).toBeCloseTo(WHITE_PAD, 6);
+		expect(sotto.x + sotto.w).toBe(W);
+		expect(sopra.x).toBe(0);
+		expect(sopra.x + sopra.w - Math.max(...alto.map((r) => r.x + r.w))).toBeCloseTo(WHITE_PAD, 6);
+		/* verso l'interno 15 mm; verso l'esterno il codice e' gia' sul bordo */
+		expect(sotto.y).toBeCloseTo(H - MARK.barH - WHITE_PAD, 6); expect(sotto.y + sotto.h).toBeCloseTo(H, 6);
+		expect(sopra.y).toBe(0); expect(sopra.h).toBeCloseTo(MARK.barH + WHITE_PAD, 6);
 	});
 
-	it('il contenuto resta fuori dal bianco', () => {
-		const w = whiteRects(W, H, id, MARK_MASK), m = markedMargin(MARK_MASK);
-		for (const r of w.codici) expect(Math.min(r.y + r.h, H - r.y)).toBeLessThan(m.y);
-		for (const q of w.crocini) expect(q.x < W / 2 ? q.x + q.w : W - q.x).toBeLessThan(m.x);
+	it('il contenuto resta fuori dal bianco: 5 mm sotto la fascia del codice, 3 mm accanto al riquadro', () => {
+		const w = whiteRects(W, H, id, MARK_MASK), m = markedMargin(MARK_MASK, true);
+		expect(m.y).toBe(WHITE_MARGIN_Y);
+		for (const r of w.codici) expect(m.y - Math.min(r.y + r.h, H - r.y)).toBeCloseTo(5, 6);
+		for (const q of w.crocini) expect(m.x - (q.x < W / 2 ? q.x + q.w : W - q.x)).toBeCloseTo(3, 6);
+		/* la cornice dei fogli "dentro i crocini" segue lo stesso margine, quella a tutta larghezza era gia' piu' bassa */
+		const f = sheetFrames(MARK_MASK, true);
+		expect(f[0].marginY).toBe(WHITE_MARGIN_Y);
+		expect(f[1].marginY).toBeGreaterThan(MARK.barH + WHITE_PAD + 5);
+		/* senza maschera di bianco i margini sono quelli di prima */
+		expect(markedMargin(MARK_MASK).y).toBe(26);
+		expect(sheetFrames(MARK_MASK)[0].marginY).toBe(26);
 	});
 });

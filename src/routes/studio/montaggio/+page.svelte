@@ -160,7 +160,7 @@
 	const mask = $derived(crocini === 'normali' ? 0 : MARK_MASK);
 	const monta = $derived(
 		soggetti.length
-			? montaStriscia(soggetti, { pageW: Math.min(PAGINA_MAX, +pageW || pageWidthFor(mat.width)), maxH: +maxH || 1000, margin: markedMargin(mask).x, marginY: markedMargin(mask).y, gapBlocchi: Math.max(5, +gapBlocchi || 10) })
+			? montaStriscia(soggetti, { pageW: Math.min(PAGINA_MAX, +pageW || pageWidthFor(mat.width)), maxH: +maxH || 1000, margin: markedMargin(mask, bianco).x, marginY: markedMargin(mask, bianco).y, gapBlocchi: Math.max(5, +gapBlocchi || 10) })
 			: null
 	);
 
@@ -330,7 +330,7 @@
 					<option value="nero">Crocini su riquadro nero</option>
 					<option value="bianco">Neri su maschera di bianco (RDG_WHITE)</option>
 				</select></label>
-			<p class="mo-note">{crocini === 'nero' ? 'Per i materiali riflettenti: riquadro nero e crocino del colore del supporto. Sul Graphtec: modalità scansione 1, regolazione livello −5.' : bianco ? 'Riquadro in RDG_WHITE con il crocino nero sopra, e un rettangolo di RDG_WHITE sotto ogni codice a barre. In VersaWorks serve una modalità che stampa il bianco sotto il colore.' : 'Il riquadro nero si accende da solo se una riga è su glitterato, argento o oro.'}</p>
+			<p class="mo-note">{crocini === 'nero' ? 'Per i materiali riflettenti: riquadro nero e crocino del colore del supporto. Sul Graphtec: modalità scansione 1, regolazione livello −5.' : bianco ? 'Riquadro in RDG_WHITE con il crocino nero sopra, e un rettangolo di RDG_WHITE sotto ogni codice a barre, 1,5 cm più largo per lato. In VersaWorks serve una modalità che stampa il bianco sotto il colore.' : 'Il riquadro nero si accende da solo se una riga è su glitterato, argento o oro.'}</p>
 		</div>
 
 		<div class="dcard">

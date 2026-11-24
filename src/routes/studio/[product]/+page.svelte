@@ -834,8 +834,8 @@
 	   Non parte mai da sola: la sceglie l'operatore */
 	const bianco = $derived(crocini === 'bianco');
 	const mask = $derived(crocini === 'normali' ? 0 : MARK_MASK);
-	const margin = $derived(markedMargin(mask).x);
-	const marginY = $derived(markedMargin(mask).y);
+	const margin = $derived(markedMargin(mask, bianco).x);
+	const marginY = $derived(markedMargin(mask, bianco).y);
 	let gap = $state(8);
 	/* fra un foglio e l'altro almeno 1 cm (resinati, etichette, fogli di adesivi) */
 	const MIN_SHEET_GAP = 10;
@@ -844,7 +844,7 @@
 	/* altezza vuota = automatica: i fogli restano entro l'altezza consigliata, ma la striscia puo' alzarsi fino a
 	   SHEET_AUTO_MAX_H quando cosi' ci stanno piu' fogli affiancati (Ø80: 3 fogli in 473 mm invece di 1 in 227).
 	   Se l'operatore scrive un'altezza, quella comanda, anche oltre il consigliato. */
-	const fogliOpz = $derived(P.mode === 'fogli' && !MULTI ? { autoMaxH: hScritta ? undefined : SHEET_AUTO_MAX_H, frames: sheetFrames(mask), cols: nCols || undefined, rows: nRows || undefined } : {});
+	const fogliOpz = $derived(P.mode === 'fogli' && !MULTI ? { autoMaxH: hScritta ? undefined : SHEET_AUTO_MAX_H, frames: sheetFrames(mask, bianco), cols: nCols || undefined, rows: nRows || undefined } : {});
 
 	const cutW = $derived(engCut?.w ?? (cavallotto ? KIT_CAVALLOTTO.w : w));
 	const cutH = $derived(engCut?.h ?? (cavallotto ? KIT_CAVALLOTTO.h : h));
@@ -1422,7 +1422,7 @@
 						<option value="bianco">Neri su maschera di bianco (RDG_WHITE)</option>
 					</select>
 					{#if crocini === 'nero'}<em class="st-hint">per i materiali riflettenti: riquadro nero e crocino del colore del supporto. Sul Graphtec: modalità scansione 1, regolazione livello −5</em>
-					{:else if bianco}<em class="st-hint">riquadro in RDG_WHITE con il crocino nero sopra, e un rettangolo di RDG_WHITE sotto ogni codice a barre. In VersaWorks serve una modalità che stampa il bianco sotto il colore</em>
+					{:else if bianco}<em class="st-hint">riquadro in RDG_WHITE con il crocino nero sopra, e un rettangolo di RDG_WHITE sotto ogni codice a barre, 1,5 cm più largo per lato. In VersaWorks serve una modalità che stampa il bianco sotto il colore</em>
 					{:else}<em class="st-hint">il riquadro nero si accende da solo su glitterato, argento e oro</em>{/if}</label>
 				<label class="st-field"><span>{MULTI ? 'Fogli da stampare' : P.mode === 'fogli' ? 'Etichette da stampare' : 'Pezzi da stampare'} <em>(vuoto = una striscia piena)</em></span><input class="input" type="number" min="1" step="1" bind:value={qty} placeholder="riempi la striscia" />{#if qtyDaFare}<em class="st-hint">ne preparo {qtyDaFare}: l’8% in piu&#39; per gli scarti</em>{/if}</label>
 				{#if P.mode === 'fogli' && !MULTI}
