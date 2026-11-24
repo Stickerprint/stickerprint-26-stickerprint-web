@@ -16,7 +16,14 @@
  *   resina    = vendita resina €/cm² × cm² × (1+PR)              (prodotti resinati, sempre; nel foglio non ha il CR)
  *   netto     = materiale + stampa + lamina + resina + avvio produzione
  *   lordo     = netto × IVA
+ *
+ * DAL LISTINO 2027: quando il config porta con se' `listino` (lo aggancia `loadEngine`), il prezzo NON segue
+ * piu' le formule qui sopra ma la regola unica di `listino.ts` (ricarico, sconto volume, avvio, lavoro,
+ * arrotondamento per eccesso a 0,50 €). Commercial range, price range, markup e avvio di questo file restano
+ * solo come riserva per un config senza listino (test, vecchi dati).
  */
+
+import { prezzo as prezzoListino, finituraListino, num as numL, type Listino } from './listino';
 
 export type EngineKind = 'lamina' | 'resina';
 export interface CostItem { costM2: number; markup: number } // markup 0 = nessun ricarico, 0.5 = +50%
@@ -47,6 +54,8 @@ export interface EngineConfig {
 	finishes: FinishOption[];
 	finishTitle?: string; // titolo del passo finitura (default "Lamina protettiva")
 	finishNote?: string; // nota sotto le finiture (es. rilievo sempre lucido)
+	/** Listino 2027 agganciato da `loadEngine`: se c'e', i prezzi li fa la regola unica (`listino.ts`). Non si salva nel config del prodotto. */
+	listino?: { L: Listino; slug: string };
 }
 
 const IMG = '/images/estimator';
@@ -220,7 +229,8 @@ export function mergeConfig(defaults: EngineConfig, saved: unknown): EngineConfi
 		quantities: Array.isArray(s.quantities) && s.quantities.length ? [...s.quantities].map(Number).filter((n) => n > 0).sort((a, b) => a - b) : defaults.quantities,
 		shapes: list(defaults.shapes, s.shapes),
 		materials: list(defaults.materials, s.materials),
-		finishes: list(defaults.finishes, s.finishes)
+		finishes: list(defaults.finishes, s.finishes),
+		listino: undefined // il listino non appartiene al config salvato: lo riaggancia loadEngine
 	};
 }
 
@@ -258,6 +268,11 @@ export interface Breakdown {
 	laminate: number;
 	resin: number;
 	setup: number;
+	/* solo con il listino 2027 */
+	sconto?: number; // sconto volume applicato (0..1)
+	aumento?: number; // aumento generale + correttivi, in €
+	lavoro?: number; // lavoro, in €
+	k?: number;
 }
 export interface Quote {
 	net: number;
@@ -270,6 +285,7 @@ export interface Quote {
 
 export function quoteWith(cfg: EngineConfig, o: { w: number; h: number; forma: string; materiale: string; finitura: string; qty: number; vatIncluded: boolean }): Quote {
 	const qty = Math.max(1, Math.round(o.qty));
+	if (cfg.listino) { const q27 = quoteListino(cfg, cfg.listino.L, cfg.listino.slug, { ...o, qty }); if (q27) return q27; }
 	const m2 = ((o.w * o.h) / 1_000_000) * qty;
 	const cm2 = ((o.w * o.h) / 100) * qty;
 	const cr = rangeFactor(cfg.commercialRange, m2);
@@ -293,6 +309,28 @@ export function quoteWith(cfg: EngineConfig, o: { w: number; h: number; forma: s
 		perPieceNet: net / qty,
 		credit: net * cfg.creditRate,
 		breakdown: { m2, cm2, cr, pr, material, print, laminate, resin, setup }
+	};
+}
+
+/** Prezzo con la regola unica del listino 2027 (null se il prodotto non e' nel listino) */
+function quoteListino(cfg: EngineConfig, L: Listino, slug: string, o: { w: number; h: number; materiale: string; finitura: string; qty: number; vatIncluded: boolean }): Quote | null {
+	const p = L.prodotti.find((x) => x.id === slug);
+	if (!p) return null;
+	const mat = cfg.materials.find((m) => m.id === o.materiale) ?? cfg.materials.find((m) => m.visible) ?? cfg.materials[0];
+	const fin = cfg.finishes.find((f) => f.id === o.finitura);
+	const inListino = L.materiali.some((m) => m.id === mat?.id);
+	const r = prezzoListino(L, p, {
+		mat: inListino ? mat?.id : undefined,
+		supCosto: inListino ? undefined : mat ? sale(mat) : 0,
+		fin: finituraListino(L, p, cfg.kind, o.finitura, !!fin?.laminate),
+		w: o.w, h: o.h, q: o.qty
+	});
+	const gross = r.lordo;
+	const net = Math.round((gross / (1 + numL(L.comune.iva) / 100)) * 100) / 100;
+	const shown = o.vatIncluded ? gross : net;
+	return {
+		net, gross, perPiece: shown / o.qty, perPieceNet: net / o.qty, credit: net * cfg.creditRate,
+		breakdown: { m2: r.m2, cm2: r.cm2, cr: 0, pr: -r.sconto, material: r.supporto, print: r.stampa, laminate: r.finitura, resin: r.resina, setup: r.fisso, sconto: r.sconto, aumento: r.aumento, lavoro: r.pezzi, k: r.k }
 	};
 }
 

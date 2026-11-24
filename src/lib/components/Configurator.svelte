@@ -6,8 +6,9 @@
 	import { readCart, cartGross as cartGrossOf, onCartChange } from '$lib/cart';
 	/**
 	 * Preventivatore prodotto (adesivi, etichette, vetrofanie…).
-	 * Sinistra: il logo del cliente con i comandi del motore di anteprima.
-	 * Destra: i passi (sagoma, materiale, [finitura], misura, quantità) e riepilogo.
+	 * Grafica 2027. Sinistra: il file del cliente nel motore di anteprima (lo stesso di sempre) con i suoi comandi.
+	 * Destra: le scelte tutte aperte (sagoma, materiale, [finitura], misura, quantità in lista) e i tre riquadri.
+	 * In basso la barra gialla fissa con totale e bottone carrello.
 	 * Il listino `cfg` arriva dalla dashboard (Supabase) e decide cosa mostrare e i prezzi.
 	 * Con `test` (dashboard) niente colonna del file e niente carrello: solo i passi e il prezzo.
 	 */
@@ -18,11 +19,27 @@
 	import { quoteWith, minForShape, startSize, sizeProposals, proportionalSize, sizeRule, showFinishStep, showMaterialStep, type EngineConfig } from '$lib/pricing/engine';
 	import { MM_PER_IN, mmToUnit, unitToMm, snapMm } from '$lib/i18n';
 	import { usaLingua } from '$lib/traduzioni';
-	import { formatAmount } from '$lib/i18n';
+	import { formatAmount, toCurrency } from '$lib/i18n';
 
 	/* totale prodotti gia' nel carrello (per la barra della spedizione gratuita) */
 	let cartGross = $state(0);
 	onMount(() => { cartGross = cartGrossOf(); return onCartChange(() => { cartGross = cartGrossOf(); }); });
+	/* telefono: anteprima piu' bassa, che resta in alto mentre si scorre (si decide una volta, all'apertura:
+	   cambiare l'altezza del palco ricaricherebbe il motore) */
+	let stretto = $state(false);
+	let altoV = $state(900); // altezza dello schermo all'apertura: su computer il palco si adatta, cosi' anteprima e comandi stanno sempre a vista
+	let regola = $state(false); // telefono: comandi del motore (bordo, posizione) aperti sotto l'anteprima
+	/* barra d'acquisto fissa: compare quando il preventivatore entra nello schermo */
+	let sezione = $state<HTMLElement | undefined>();
+	let barraOff = $state(true);
+	onMount(() => {
+		stretto = matchMedia('(max-width: 900px)').matches;
+		altoV = window.innerHeight;
+		const on = () => { if (sezione) barraOff = sezione.getBoundingClientRect().top > window.innerHeight - 160; };
+		on();
+		addEventListener('scroll', on, { passive: true }); addEventListener('resize', on);
+		return () => { removeEventListener('scroll', on); removeEventListener('resize', on); };
+	});
 	let {
 		shipDate,
 		cfg,
@@ -57,7 +74,10 @@
 	/* titolo e nota del passo finitura: il listino li scrive in italiano, qui si traducono i due testi noti */
 	const finishTitle = $derived(cfg.finishTitle === 'Stampa' ? t('configuratore.passi.finituraStampa') : (cfg.finishTitle ?? t('configuratore.passi.finitura')));
 	const finishNote = $derived(cfg.finishNote === "L'effetto rilievo è sempre lucido." ? t('configuratore.hint.rilievoLucido') : (cfg.finishNote ?? ''));
-	const eur0 = (v: number) => prezzo(v, 0);
+	/* totali: i centesimi si vedono solo quando ci sono (27,50 € · 160 €) */
+	const eurT = (v: number) => { const c = toCurrency(v, locale.currency); return prezzo(v, Math.abs(c - Math.round(c)) > 0.004 ? 2 : 0); };
+	/* prezzo al pezzo: due decimali, tre sotto i 10 centesimi */
+	const unitP = (v: number) => locale.currency === 'EUR' ? new Intl.NumberFormat(locale.intl, { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: v < 0.1 ? 3 : 2 }).format(v) : prezzoUnit(v);
 	const eur2 = (v: number) => prezzo(v, 2);
 
 	const SHAPES = $derived(cfg.shapes.filter((s) => s.visible));
@@ -93,7 +113,6 @@
 	// si parte sempre dalla quantita' piu' bassa: il prezzo d'ingresso non deve spaventare
 	// svelte-ignore state_referenced_locally
 	let qty = $state(cfg.quantities[0] ?? 15);
-	let step = $state('forma');
 	let vatIncluded = $state(true);
 	let file = $state<File | null>(null);
 	let fileUrl = $state<string | null>(null);
@@ -113,7 +132,6 @@
 	const vetro = $derived(product === 'vetrofanie');
 	let perSheet = $state<{ n: number; cols: number; rows: number; w: number; h: number } | null>(null);
 	let over = $state(false);
-	let customOpen = $state(false);
 	let customQty = $state<number | ''>('');
 	let custom = $state(false);
 
@@ -124,7 +142,6 @@
 		/* la prima scelta e' SENZA lamina: il prezzo che il cliente vede all'inizio e' il piu' basso */
 		if (!FINISHES.some((f) => f.id === finitura)) finitura = FINISHES.find((f) => !f.laminate)?.id ?? FINISHES[0]?.id ?? 'nessuna';
 		if (!custom && !cfg.quantities.includes(qty)) qty = cfg.quantities[0];
-		if (!steps.includes(step)) step = steps[0];
 	});
 
 	const shape = $derived(SHAPES.find((s) => s.id === forma) ?? SHAPES[0]);
@@ -147,7 +164,6 @@
 		const shown = vatIncluded ? gross : net;
 		return { ...qListino, net, gross, perPiece: shown / qty, perPieceNet: net / qty, credit: net * cfg.creditRate };
 	});
-	const progress = $derived((stepNo(step) / steps.length) * 100);
 	/* sul sito USA le proposte sono pollici tondi (1,5″ 2″ 2,5″ 3″ 4″ 5″) convertiti in mm: il listino segue quelle misure */
 	const INCH_PRESETS = [1.5, 2, 2.5, 3, 4, 5].map((i) => i * MM_PER_IN);
 	const shapePresets = $derived(unit === 'in' ? INCH_PRESETS : (shape?.presets?.length ? shape.presets : [30, 50, 70, 100]));
@@ -208,22 +224,10 @@
 		}
 	});
 	const minQty = $derived(cfg.quantities[0] ?? 15);
-	/* barra mobile: −/+ scorre le fasce del listino; il prezzo porta al passo quantità */
-	function stepQty(dir: number) {
-		const list = cfg.quantities;
-		if (!list.length) return;
-		let i = list.findIndex((n) => n >= qty);
-		if (i < 0) i = list.length - 1;
-		if (dir > 0) i = list[i] === qty ? Math.min(list.length - 1, i + 1) : i;
-		else i = Math.max(0, i - 1);
-		custom = false; qty = list[i];
-	}
-	function goQty() { document.getElementById('qty-step')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
-	function goFile() { document.getElementById('configura')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); fileInput?.click(); }
+	function goFile() { if (stretto) document.getElementById('configura')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); fileInput?.click(); }
 	function applyCustom() {
 		const n = Math.max(minQty, Math.round(Number(customQty) || 0));
 		customQty = n; custom = true; qty = n;
-		customOpen = true;
 	}
 
 	function onRender(s: { png?: string | null; w: number; h: number; srcMM: { w: number; h: number } | null; palette?: { hex: string; img?: string }[]; palIdx?: number; rimuovi?: boolean; foglio?: { n: number; cols: number; rows: number; w: number; h: number } | null }) {
@@ -273,14 +277,6 @@
 		if (freeSize) { h = clamp(v); return; }
 		[w, h] = proportionalSize(cfg, forma, v * ratio, ratio);
 	}
-	function next(id: string) {
-		const i = steps.indexOf(id);
-		return steps[Math.min(i + 1, steps.length - 1)];
-	}
-	// la scelta non chiude il passo: il cliente confronta con calma e va avanti quando vuole
-	function choose(setter: () => void, _from: string) {
-		setter();
-	}
 	// si può ordinare solo con un file caricato
 	async function addCart() {
 		if (!file) return;
@@ -306,271 +302,227 @@
 		added = true;
 	}
 	const pezzi = (n: number) => t('configuratore.qty.pezzi', { n: numero(n) });
+	const tot = (r: { gross: number; net: number }) => (vatIncluded ? r.gross : r.net);
+	const stageH = $derived(stretto ? (foglio ? 300 : 250) : Math.max(280, Math.min(foglio ? 520 : 480, altoV - 454)));
+	/* etichetta sulla riga della quantita': "Consigliato" sui 100 pezzi, "Più conveniente" sulla quantita' consigliata dal listino */
+	const tagQty = (n: number) => (n === 100 ? 'cons' : n === cfg.recommendedQty ? 'conv' : null);
+	const riga = $derived([opz(tipoSagome, shape?.id ?? '', 'label', shape?.label), misure(w, h), ...(showMaterials ? [opz('materiali', material?.id ?? '', 'label', material?.label)] : []), ...(showFinish && finish?.laminate ? [t('configuratore.nuovo.lamina', { finitura: opz('finiture', finish.id, 'label', finish.label).toLowerCase() })] : [])].filter(Boolean).join(' · '));
+	const gratis = $derived(toCurrency(cartGross + q.gross, locale.currency) >= locale.freeShipping);
+	const ACCEPT = 'image/png,image/jpeg,image/svg+xml,application/pdf';
 </script>
 
-<section class="cfg" class:cfg--test={test} id="configura">
+<section class="pv" class:pv--test={test} id="configura" bind:this={sezione}>
 	{#if !test}
-		<!-- ANTEPRIMA + BARRA COMANDI (sfondo · rimuovi sfondo · cambia file · tracciato) -->
-		<div class="cfg__preview">
+		<!-- ANTEPRIMA: il motore di sempre (static/preprint) con i suoi comandi; sotto, sfondo · rimuovi sfondo · cambia file · linea di taglio -->
+		<div class="pv__stage" class:is-regola={regola} style="--palco:{stageH}px">
 			{#if file}
-				<EnginePreview bind:this={engine} {file} {forma} {materiale} finitura={showFinish ? finitura : 'lucida'} prodotto={engineProduct} {foglio} {rilievo} {vetro} {w} {h} {showCut} panel stage={foglio ? 440 : 370} onrender={onRender} />
+				<div class="pv__box">
+					<EnginePreview bind:this={engine} {file} {forma} {materiale} finitura={showFinish ? finitura : 'lucida'} prodotto={engineProduct} {foglio} {rilievo} {vetro} {w} {h} {showCut} panel nuovo dimLabel={misure(w, h)} stage={stageH} onrender={onRender} />
+				</div>
 				{#if fileUrl}<img src={fileUrl} alt="" hidden onload={onImgLoad} />{/if}
-				<div class="cfg__bar">
+				<div class="pv__tools">
 					{#if !vetro}
-					<div class="cfg__bar-group">
-						<span class="cfg__bar-label">{t('configuratore.file.sfondo')}</span>
-						<div class="cfg__dots">
+						<span class="pv__tl">{t('configuratore.file.sfondo')}</span>
+						<div class="pv__dots">
 							{#each palette as c, i (i)}
-								<button type="button" class="cfg__dot" class:is-on={i === palIdx} style={c.img === 'checker' ? 'background:repeating-conic-gradient(#cfd6dd 0 25%,#fff 0 50%) 0 0/10px 10px' : c.img ? `background-image:url(${c.img});background-size:cover` : `background:${c.hex}`} title={c.img ? t('configuratore.file.coloreMateriale') : c.hex.toUpperCase()} aria-label={t('configuratore.file.sfondoHex', { hex: c.hex })} onclick={() => engine?.post('bg', { idx: i })}></button>
+								<button type="button" class="pv__dot" class:is-on={i === palIdx} style={c.img === 'checker' ? 'background:repeating-conic-gradient(#cfd6dd 0 25%,#fff 0 50%) 0 0/10px 10px' : c.img ? `background-image:url(${c.img});background-size:cover` : `background:${c.hex}`} title={c.img ? t('configuratore.file.coloreMateriale') : c.hex.toUpperCase()} aria-label={t('configuratore.file.sfondoHex', { hex: c.hex })} onclick={() => engine?.post('bg', { idx: i })}></button>
 							{/each}
 							<!-- colore libero: il pallino arcobaleno apre il selettore e il colore scelto si aggiunge alla tavolozza -->
-							<button type="button" class="cfg__dot cfg__dot--arc" title={t('configuratore.file.colore')} aria-label={t('configuratore.file.coloreSfondo')} onclick={() => colInput?.click()}></button>
-							<input bind:this={colInput} type="color" class="cfg__col" value={palette[palIdx]?.hex ?? '#ffffff'} oninput={(e) => engine?.post('bgcol', { hex: (e.currentTarget as HTMLInputElement).value })} />
+							<button type="button" class="pv__dot pv__dot--arc" title={t('configuratore.file.colore')} aria-label={t('configuratore.file.coloreSfondo')} onclick={() => colInput?.click()}></button>
+							<input bind:this={colInput} type="color" class="pv__col" value={palette[palIdx]?.hex ?? '#ffffff'} oninput={(e) => engine?.post('bgcol', { hex: (e.currentTarget as HTMLInputElement).value })} />
 						</div>
-						<button type="button" class="cfg__tool" class:is-on={rimuovi} onclick={() => engine?.post('rimuovi')} title={t('configuratore.file.rimuoviSfondoTitolo')}>{t('configuratore.file.rimuoviSfondo')}</button>
-					</div>
+						<button type="button" class="pv__pill" class:is-on={rimuovi} onclick={() => engine?.post('rimuovi')} title={t('configuratore.file.rimuoviSfondoTitolo')}>{t('configuratore.file.rimuoviSfondo')}</button>
 					{/if}
-					<div class="cfg__bar-group">
-						<input bind:this={fileInput} type="file" accept="image/png,image/jpeg,image/svg+xml,application/pdf" hidden onchange={(e) => pick((e.currentTarget as HTMLInputElement).files?.[0])} />
-						<button type="button" class="cfg__tool cfg__tool--blue" onclick={() => fileInput?.click()} title={file.name}>{t('configuratore.file.cambia')}</button>
-						<button type="button" class="eye" class:is-off={!showCut} onclick={() => (showCut = !showCut)} aria-pressed={showCut} title={showCut ? t('configuratore.file.nascondiTaglio') : t('configuratore.file.mostraTaglio')}>
-							<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" />{#if !showCut}<path d="M3 3l18 18" />{/if}</svg>
-							<span class="eye__dash" aria-hidden="true"></span>
-							<span class="sr-only">{t('configuratore.file.lineaTaglio')}</span>
-						</button>
-					</div>
+					<input bind:this={fileInput} type="file" accept={ACCEPT} hidden onchange={(e) => pick((e.currentTarget as HTMLInputElement).files?.[0])} />
+					<button type="button" class="pv__pill pv__pill--blue" onclick={() => fileInput?.click()} title={file.name}>{t('configuratore.file.cambia')}</button>
+					<button type="button" class="pv__pill pv__eye" class:is-off={!showCut} onclick={() => (showCut = !showCut)} aria-pressed={showCut} title={showCut ? t('configuratore.file.nascondiTaglio') : t('configuratore.file.mostraTaglio')}>
+						<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" />{#if !showCut}<path d="M3 3l18 18" />{/if}</svg>
+						<i aria-hidden="true"></i>
+						<span class="sr-only">{t('configuratore.file.lineaTaglio')}</span>
+					</button>
 				</div>
+				<button type="button" class="pv__regola" aria-expanded={regola} onclick={() => { regola = !regola; if (regola) document.getElementById('configura')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}>{regola ? t('configuratore.nuovo.chiudiRegola') : t('configuratore.nuovo.regola')}</button>
 			{:else}
-				<label class="dropzone dropzone--compact cfg__drop" class:is-over={over}
+				<label class="pv__drop" class:is-over={over}
 					ondragenter={(e) => { e.preventDefault(); over = true; }}
 					ondragover={(e) => { e.preventDefault(); over = true; }}
 					ondragleave={() => (over = false)}
 					ondrop={(e) => { e.preventDefault(); over = false; pick(e.dataTransfer?.files[0]); }}>
-					<input bind:this={fileInput} type="file" accept="image/png,image/jpeg,image/svg+xml,application/pdf" onchange={(e) => pick((e.currentTarget as HTMLInputElement).files?.[0])} />
-					<div>
-						<div class="dropzone__icon"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 16V4m0 0l-4 4m4-4l4 4" /><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" /></svg></div>
-						<div class="dropzone__title">{t('configuratore.file.trascina')}</div>
-						<div class="dropzone__sub">{t('configuratore.file.oppure')}</div>
-					</div>
+					<input bind:this={fileInput} type="file" accept={ACCEPT} onchange={(e) => pick((e.currentTarget as HTMLInputElement).files?.[0])} />
+					<span class="pv__dropico"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4m0 0l-4 4m4-4l4 4" /><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" /></svg></span>
+					<b>{t('configuratore.file.trascina')}</b>
+					<span class="pv__drops">{t('configuratore.file.oppure')}</span>
 				</label>
 			{/if}
 		</div>
 	{/if}
 
-	<!-- CONFIGURAZIONE -->
-	<aside class="cfg__steps">
-		<div class="cfg__head">
-			<div>
-				<p class="eyebrow">{test ? t('configuratore.passi.eyebrowTest') : t('configuratore.passi.eyebrow')}</p>
-				<h2 class="cfg__title">{t('configuratore.passi.crea', { prodotto: productName })}</h2>
-			</div>
-			<span class="cfg__stepcount">{t('configuratore.passi.passaggio', { n: stepNo(step), tot: steps.length })}</span>
-		</div>
-		<div class="progress"><span style="width:{progress}%"></span></div>
+	<!-- SCELTE: tutte aperte, una sotto l'altra -->
+	<div class="pv__panel">
+		<p class="eyebrow">{test ? t('configuratore.passi.eyebrowTest') : t('configuratore.passi.eyebrow')}</p>
+		<h2 class="pv__title">{t('configuratore.passi.crea', { prodotto: productName })}</h2>
 
 		<!-- sagoma -->
-		<div class="step" class:is-open={step === 'forma'}>
-			<button class="step__head" type="button" onclick={() => (step = 'forma')} aria-expanded={step === 'forma'}>
-				<span class="step__n">{#if stepNo(step) > stepNo('forma')}✓{:else}{stepNo('forma')}{/if}</span>
-				<span class="step__title">{t('configuratore.passi.forma')} {#if step !== 'forma'}<em>{opz(tipoSagome, shape?.id ?? '', 'label', shape?.label)}</em>{/if}</span>
-				<span class="step__edit">{step === 'forma' ? '' : t('configuratore.passi.modifica')}</span>
-			</button>
-			{#if step === 'forma'}
-				<div class="step__body">
-					<div class="pic-grid pic-grid--3">
-						{#each SHAPES as s (s.id)}
-							<button type="button" class="pic" class:is-active={forma === s.id} onclick={() => choose(() => (forma = s.id), 'forma')}>
-								<img src={s.img} alt="" />
-								<b>{opz(tipoSagome, s.id, 'label', s.label)}</b>
-							</button>
-						{/each}
-					</div>
-				</div>
-			{/if}
+		<div class="grp">
+			<div class="grp__h"><span class="grp__n">{stepNo('forma')}</span><span class="grp__t">{t('configuratore.passi.forma')}</span><span class="grp__v">{opz(tipoSagome, shape?.id ?? '', 'label', shape?.label)}</span></div>
+			<div class="tiles">
+				{#each SHAPES as s (s.id)}
+					<button type="button" class="tile" class:is-on={forma === s.id} aria-pressed={forma === s.id} onclick={() => (forma = s.id)}>
+						<img src={s.img} alt="" />
+						<b>{opz(tipoSagome, s.id, 'label', s.label)}</b>
+					</button>
+				{/each}
+			</div>
 		</div>
 
 		<!-- materiale -->
 		{#if showMaterials && !promoOnly}
-			<div class="step" class:is-open={step === 'materiale'}>
-				<button class="step__head" type="button" onclick={() => (step = 'materiale')} aria-expanded={step === 'materiale'}>
-					<span class="step__n">{#if stepNo(step) > stepNo('materiale')}✓{:else}{stepNo('materiale')}{/if}</span>
-					<span class="step__title">{t('configuratore.passi.materiale')} {#if step !== 'materiale'}<em>{opz('materiali', material?.id ?? '', 'label', material?.label)}</em>{/if}</span>
-						<span class="step__edit">{step === 'materiale' ? '' : t('configuratore.passi.modifica')}</span>
-				</button>
-				{#if step === 'materiale'}
-					<div class="step__body">
-						<p class="step__hint">{t('configuratore.hint.materiale')}</p>
-						<div class="pic-grid pic-grid--3 pic-grid--sm">
-							{#each MATERIALS as m (m.id)}
-								<button type="button" class="pic" class:is-active={materiale === m.id} onclick={() => choose(() => (materiale = m.id), 'materiale')}>
-									<img src={m.img} alt="" />
-									<b>{opz('materiali', m.id, 'label', m.label)}</b>
-									{#if m.tag}<span class="pic__tag">{opz('materiali', m.id, 'tag', m.tag)}</span>{/if}
-								</button>
-							{/each}
-						</div>
-					</div>
-				{/if}
+			<div class="grp">
+				<div class="grp__h"><span class="grp__n">{stepNo('materiale')}</span><span class="grp__t">{t('configuratore.passi.materiale')}</span><span class="grp__v">{opz('materiali', material?.id ?? '', 'label', material?.label)}</span></div>
+				<div class="tiles">
+					{#each MATERIALS as m (m.id)}
+						<button type="button" class="tile" class:is-on={materiale === m.id} aria-pressed={materiale === m.id} onclick={() => (materiale = m.id)}>
+							{#if m.tag}<span class="tile__tag">{opz('materiali', m.id, 'tag', m.tag)}</span>{/if}
+							<img src={m.img} alt="" />
+							<b>{opz('materiali', m.id, 'label', m.label)}</b>
+						</button>
+					{/each}
+				</div>
+				<p class="grp__hint">{t('configuratore.hint.materiale')}</p>
 			</div>
 		{/if}
 
 		<!-- finitura (solo prodotti con lamina) -->
 		{#if showFinish && !promoOnly}
-			<div class="step" class:is-open={step === 'finitura'}>
-				<button class="step__head" type="button" onclick={() => (step = 'finitura')} aria-expanded={step === 'finitura'}>
-					<span class="step__n">{#if stepNo(step) > stepNo('finitura')}✓{:else}{stepNo('finitura')}{/if}</span>
-					<span class="step__title">{finishTitle} {#if step !== 'finitura'}<em>{opz('finiture', finish?.id ?? '', 'label', finish?.label)}</em>{/if}</span>
-						<span class="step__edit">{step === 'finitura' ? '' : t('configuratore.passi.modifica')}</span>
-				</button>
-				{#if step === 'finitura'}
-					<div class="step__body">
-						<div class="pic-grid pic-grid--3 pic-grid--sm">
-							{#each FINISHES as f (f.id)}
-								<button type="button" class="pic" class:is-active={finitura === f.id} onclick={() => choose(() => (finitura = f.id), 'finitura')}>
-									{#if f.tag}<span class="pic__tag">{opz('finiture', f.id, 'tag', f.tag)}</span>{/if}
-									<img src={f.img} alt="" />
-									<b>{opz('finiture', f.id, 'label', f.label)}</b>
-									<small>{opz('finiture', f.id, 'description', f.description ?? '')}</small>
-								</button>
-							{/each}
-						</div>
-						{#if finitura === 'nessuna'}<p class="step__hint">{t('configuratore.hint.senzaLamina')}</p>{/if}
-						{#if finishNote}<p class="step__hint">{finishNote}</p>{/if}
-					</div>
-				{/if}
+			<div class="grp">
+				<div class="grp__h"><span class="grp__n">{stepNo('finitura')}</span><span class="grp__t">{finishTitle}</span><span class="grp__v">{opz('finiture', finish?.id ?? '', 'label', finish?.label)}</span></div>
+				<div class="tiles">
+					{#each FINISHES as f (f.id)}
+						<button type="button" class="tile" class:is-on={finitura === f.id} aria-pressed={finitura === f.id} onclick={() => (finitura = f.id)}>
+							{#if f.tag}<span class="tile__tag">{opz('finiture', f.id, 'tag', f.tag)}</span>{/if}
+							<img src={f.img} alt="" />
+							<b>{opz('finiture', f.id, 'label', f.label)}</b>
+							<small>{opz('finiture', f.id, 'description', f.description ?? '')}</small>
+						</button>
+					{/each}
+				</div>
+				{#if finitura === 'nessuna'}<p class="grp__hint">{t('configuratore.hint.senzaLamina')}</p>{/if}
+				{#if finishNote}<p class="grp__hint">{finishNote}</p>{/if}
 			</div>
 		{/if}
 
 		<!-- misura -->
 		{#if !promoOnly}
-		<div class="step" class:is-open={step === 'misura'}>
-			<button class="step__head" type="button" onclick={() => (step = 'misura')} aria-expanded={step === 'misura'}>
-				<span class="step__n">{#if stepNo(step) > stepNo('misura')}✓{:else}{stepNo('misura')}{/if}</span>
-				<span class="step__title">{t('configuratore.passi.misura')} {#if step !== 'misura'}<em>{misure(w, h)}</em>{/if}</span>
-				<span class="step__edit">{step === 'misura' ? '' : t('configuratore.passi.modifica')}</span>
-			</button>
-			{#if step === 'misura'}
-				<div class="step__body">
-					<div class="size-presets">
-						{#each presets as [pw, ph], k (pw)}
-							<button type="button" class="size-btn" class:is-active={w === pw && h === ph} onclick={() => { w = pw; h = ph; }}>{#if k === 0}<small>{t('configuratore.misura.partenza')}</small>{/if}{misure(pw, ph)}</button>
-						{/each}
-					</div>
-					<div class="size-inputs">
-						<label><span>{t('configuratore.misura.larghezza')}</span><input type="number" min={inU(MIN_MM)} max={inU(MAX_MM)} step={unit === 'in' ? '0.05' : '0.5'} value={inU(w)} onchange={(e) => { const el = e.currentTarget as HTMLInputElement; setW(unitToMm(+el.value, unit)); el.value = String(inU(w)); }} /><em>{unit}</em></label>
-						<span class="size-x">×</span>
-						<label><span>{t('configuratore.misura.altezza')}</span><input type="number" min={inU(MIN_MM)} max={inU(MAX_MM)} step={unit === 'in' ? '0.05' : '0.5'} value={inU(h)} onchange={(e) => { const el = e.currentTarget as HTMLInputElement; setH(unitToMm(+el.value, unit)); el.value = String(inU(h)); }} /><em>{unit}</em></label>
-					</div>
+			<div class="grp">
+				<div class="grp__h"><span class="grp__n">{stepNo('misura')}</span><span class="grp__t">{t('configuratore.passi.misura')}</span><span class="grp__v">{misure(w, h)}</span></div>
+				<div class="chips">
+					{#each presets as [pw, ph], k (pw)}
+						<button type="button" class="chip" class:is-on={w === pw && h === ph} aria-pressed={w === pw && h === ph} onclick={() => { w = pw; h = ph; }}>{#if k === 0}<small>{t('configuratore.misura.partenza')}</small>{/if}{misure(pw, ph)}</button>
+					{/each}
 				</div>
-			{/if}
-		</div>
-
+				<div class="sizein">
+					<label>{t('configuratore.misura.larghezza')}<input type="number" inputmode="decimal" min={inU(MIN_MM)} max={inU(MAX_MM)} step={unit === 'in' ? '0.05' : '0.5'} value={inU(w)} onchange={(e) => { const el = e.currentTarget as HTMLInputElement; setW(unitToMm(+el.value, unit)); el.value = String(inU(w)); }} /><em>{unit}</em></label>
+					<span>×</span>
+					<label>{t('configuratore.misura.altezza')}<input type="number" inputmode="decimal" min={inU(MIN_MM)} max={inU(MAX_MM)} step={unit === 'in' ? '0.05' : '0.5'} value={inU(h)} onchange={(e) => { const el = e.currentTarget as HTMLInputElement; setH(unitToMm(+el.value, unit)); el.value = String(inU(h)); }} /><em>{unit}</em></label>
+				</div>
+			</div>
 		{/if}
+
 		{#if promoOnly && promo}
 			<!-- offerta: quantita', misura, materiale e finitura sono fissi -->
-			<div class="step is-open step--qty promo-fixed">
-				<div class="step__head" role="presentation"><span class="step__n">{stepNo('forma') + 1}</span><span class="step__title">{t('configuratore.offerta.titolo')}</span></div>
-					<div class="step__body">
-						<ul class="promo-fixed__list">
-							<li><b>{pezzi(promo.qty)}</b> · {t('configuratore.offerta.qty')}</li>
-							<li><b>{misure(w, h)}</b> · {t('configuratore.offerta.misura')}</li>
-							<li><b>{opz('materiali', materiale, 'label', material?.label ?? materiale)}</b>{#if finish}, {opz('finiture', finish.id, 'label', finish.label)}{/if} · {t('configuratore.offerta.materiale')}</li>
-					</ul>
-				</div>
+			<div class="grp">
+				<div class="grp__h"><span class="grp__n">{stepNo('forma') + 1}</span><span class="grp__t">{t('configuratore.offerta.titolo')}</span></div>
+				<ul class="promo-fixed__list">
+					<li><b>{pezzi(promo.qty)}</b> · {t('configuratore.offerta.qty')}</li>
+					<li><b>{misure(w, h)}</b> · {t('configuratore.offerta.misura')}</li>
+					<li><b>{opz('materiali', materiale, 'label', material?.label ?? materiale)}</b>{#if finish}, {opz('finiture', finish.id, 'label', finish.label)}{/if} · {t('configuratore.offerta.materiale')}</li>
+				</ul>
 			</div>
 		{/if}
-		<!-- quantità -->
-		<!-- sempre aperto: il cliente vede tutti i prezzi a colpo d'occhio -->
+
+		<!-- quantità: una riga per fascia, con prezzo al pezzo, risparmio e totale -->
 		{#if !promoOnly}
-		<div class="step is-open step--qty" id="qty-step">
-			<div class="step__head" role="presentation">
-				<span class="step__n">{stepNo('qty')}</span>
-				<span class="step__title">{t('configuratore.passi.qty')} <em>{t('configuratore.qty.riepilogo', { n: numero(qty), totale: eur0(vatIncluded ? q.gross : q.net) })}</em></span>
-			</div>
-				<div class="step__body">
-					{#if foglio && perSheet && file}
-						{@const nf = Math.ceil(qty / perSheet.n)}
-						<!-- testo dal catalogo (mai da input utente): i numeri si inseriscono nei segnaposto -->
-						<p class="step__hint step__hint--box">{@html t('configuratore.hint.foglio', { n: perSheet.n, cols: perSheet.cols, rows: perSheet.rows, misura: misure(perSheet.w, perSheet.h), qty: numero(qty), fogli: t(nf === 1 ? 'configuratore.hint.foglioUno' : 'configuratore.hint.foglioTanti', { n: numero(nf) }) })}</p>
-					{/if}
-					<div class="qty-grid">
-						{#each cfg.quantities as n (n)}
-							{@const qq = quoteWith(cfg, { w, h, forma, materiale, finitura: fin, qty: n, vatIncluded })}
-							{@const disc = Math.max(0, Math.round((1 - qq.perPiece / basePerPiece) * 100))}
-							<button type="button" class="qty" class:is-active={qty === n} onclick={() => { custom = false; qty = n; }}>
-								{#if n === cfg.recommendedQty}<span class="qty__tag">{t('configuratore.qty.consigliato')}</span>{/if}
-								<span class="qty__top"><b>{numero(n)}</b><b>{eur0(vatIncluded ? qq.gross : qq.net)}</b></span>
-								<span class="qty__bottom">{t('configuratore.qty.perPezzo', { prezzo: prezzoUnit(qq.perPiece) })} {#if disc > 0}<b>−{disc}%</b>{/if}</span>
-							</button>
-						{/each}
-					</div>
+			<div class="grp" id="qty-step">
+				<div class="grp__h">
+					<span class="grp__n">{stepNo('qty')}</span><span class="grp__t">{t('configuratore.passi.qty')}</span>
+					<span class="vat" role="group" aria-label={t('configuratore.nuovo.prezziIva')}>
+						<button type="button" class:is-on={vatIncluded} aria-pressed={vatIncluded} onclick={() => (vatIncluded = true)}>{t('configuratore.riepilogo.ivaInclusa')}</button>
+						<button type="button" class:is-on={!vatIncluded} aria-pressed={!vatIncluded} onclick={() => (vatIncluded = false)}>{t('configuratore.riepilogo.ivaEsclusa')}</button>
+					</span>
+				</div>
+				{#if foglio && perSheet && file}
+					{@const nf = Math.ceil(qty / perSheet.n)}
+					<!-- testo dal catalogo (mai da input utente): i numeri si inseriscono nei segnaposto -->
+					<p class="grp__hint grp__hint--box">{@html t('configuratore.hint.foglio', { n: perSheet.n, cols: perSheet.cols, rows: perSheet.rows, misura: misure(perSheet.w, perSheet.h), qty: numero(qty), fogli: t(nf === 1 ? 'configuratore.hint.foglioUno' : 'configuratore.hint.foglioTanti', { n: numero(nf) }) })}</p>
+				{/if}
+				<div class="qlist">
+					{#each cfg.quantities as n (n)}
+						{@const qq = quoteWith(cfg, { w, h, forma, materiale, finitura: fin, qty: n, vatIncluded })}
+						{@const disc = Math.max(0, Math.round((1 - qq.perPiece / basePerPiece) * 100))}
+						{@const tag = tagQty(n)}
+						<button type="button" class="q" class:is-on={!custom && qty === n} aria-pressed={!custom && qty === n} onclick={() => { custom = false; customQty = ''; qty = n; }}>
+							<span class="q__n">{t('configuratore.qty.pz', { n: numero(n) })}</span>
+							<span class="q__mid">
+								<span class="q__u">{t('configuratore.qty.perPezzo', { prezzo: unitP(qq.perPiece) })}</span>
+								{#if disc > 0}<span class="q__save">{t('configuratore.nuovo.risparmi', { n: disc })}</span>{/if}
+								{#if tag}<span class="q__tag" class:q__tag--g={tag === 'conv'}>{tag === 'conv' ? t('configuratore.nuovo.piuConveniente') : t('configuratore.qty.consigliato')}</span>{/if}
+							</span>
+							<span class="q__tot">{eurT(tot(qq))}</span>
+						</button>
+					{/each}
 					{#if !test}
-						<button type="button" class="link-btn" style="justify-self:start;font-size:14px" onclick={() => (customOpen = !customOpen)}>{t('configuratore.qty.altraQuantita')}</button>
-						{#if customOpen}
-							<div class="qty-custom">
-								<label>{t('configuratore.qty.quantita')}<input type="number" min={minQty} step="1" bind:value={customQty} placeholder={String(minQty)} onkeydown={(e) => { if (e.key === 'Enter') applyCustom(); }} /></label>
-								<button type="button" class="btn btn--blue btn--sm" onclick={applyCustom}>{t('configuratore.qty.calcola')}</button>
-									{#if custom}<span class="qty-custom__res"><b>{pezzi(qty)}</b> · {eur0(vatIncluded ? q.gross : q.net)} · {t('configuratore.qty.perPezzo', { prezzo: prezzoUnit(q.perPiece) })}</span>{/if}
-							</div>
-						{/if}
+						<div class="qcustom" class:is-on={custom}>
+							<label for="pv-altra">{t('configuratore.nuovo.altra')}</label>
+							<input id="pv-altra" type="number" inputmode="numeric" min={minQty} step="1" bind:value={customQty} placeholder={t('configuratore.nuovo.esempio')} onchange={() => { if (customQty === '' || customQty == null) custom = false; else applyCustom(); }} onkeydown={(e) => { if (e.key === 'Enter') (e.currentTarget as HTMLInputElement).blur(); }} />
+							{#if custom}<span class="qcustom__r"><b>{eurT(tot(q))}</b>{t('configuratore.qty.perPezzo', { prezzo: unitP(q.perPiece) })}</span>{:else}<span class="qcustom__r">{t('configuratore.nuovo.minimo', { n: numero(minQty) })}</span>{/if}
+						</div>
 					{/if}
 				</div>
-		</div>
+			</div>
 		{/if}
 
-	</aside>
-
-	<!-- RIEPILOGO: spedizione, credito, totale e bottone, tutti alla stessa altezza -->
-	<div class="cfg__freeship"><FreeShippingBar gross={cartGross + (added ? 0 : q.gross)} compact prefix={cartGross > 0 ? (added ? t('configuratore.spedizione.conCarrello') : t('configuratore.spedizione.conCarrelloOrdine')) : t('configuratore.spedizione.conOrdine')} /></div>
-	<div class="cfg__summary">
-		<div class="sum sum--ship">
-			<span class="sum__ico">🚀</span>
-			<div class="sum__text"><span class="sum__label">{t('configuratore.riepilogo.spedizioneStimata')}</span><span class="sum__value">{shipDate}</span><span class="sum__sub">{t('configuratore.riepilogo.spedizioneGratis', { soglia: formatAmount(locale.freeShipping, locale, 0) })}</span></div>
-		</div>
-		<div class="sum sum--credit">
-			<span class="sum__ico"><img src="/images/coin-sp.png" alt={t('configuratore.riepilogo.creditoAlt')} /></span>
-				<div class="sum__text"><span class="sum__label">{t('configuratore.riepilogo.guadagniCredito')}</span><span class="sum__value">{eur2(q.credit)}</span><span class="sum__sub">{t('configuratore.riepilogo.prossimoOrdine')}</span></div>
-		</div>
-		<div class="sum sum--total">
-			<div class="sum__text">
-				<span class="sum__label">{promoOk ? t('configuratore.offerta.prezzo') : t('configuratore.riepilogo.totale')}{vatIncluded ? t('configuratore.riepilogo.ivaInclusa') : t('configuratore.riepilogo.ivaEsclusa')}</span>
-				<span class="sum__value sum__value--big">{eur0(vatIncluded ? q.gross : q.net)}</span>
-				<div class="vat-toggle">
-					<span class:active={!vatIncluded}>{t('configuratore.riepilogo.ivaEsclusa')}</span>
-					<button type="button" class="switch" class:on={vatIncluded} role="switch" aria-checked={vatIncluded} aria-label={t('configuratore.riepilogo.mostraIva')} onclick={() => (vatIncluded = !vatIncluded)}><i></i></button>
-					<span class:active={vatIncluded}>{t('configuratore.riepilogo.ivaInclusa')}</span>
-				</div>
-			</div>
-			<span class="sum__per">{t('configuratore.qty.perPezzo', { prezzo: prezzoUnit(q.perPiece) })}</span>
-		</div>
 		{#if test}
-			<div class="test-detail">
-				<b>Netto {eur2(q.net)}</b> · materiale {eur2(q.breakdown.material)} · stampa {eur2(q.breakdown.print)}{#if cfg.kind === 'lamina'} · lamina {eur2(q.breakdown.laminate)}{:else} · resina {eur2(q.breakdown.resin)}{/if} · avvio {eur2(q.breakdown.setup)}<br />
-				{q.breakdown.m2.toFixed(3)} m² · commercial range ×{(1 + q.breakdown.cr).toFixed(2)} · price range ×{(1 + q.breakdown.pr).toFixed(2)}
+			<div class="pv__test">
+				<div class="pv__testtot"><span>{t('configuratore.riepilogo.totale')}{vatIncluded ? t('configuratore.riepilogo.ivaInclusa') : t('configuratore.riepilogo.ivaEsclusa')}</span><b>{eurT(tot(q))}</b><em>{t('configuratore.qty.perPezzo', { prezzo: unitP(q.perPiece) })}</em></div>
+				<div class="test-detail">
+					<b>Netto {eur2(q.net)}</b> · materiale {eur2(q.breakdown.material)} · stampa {eur2(q.breakdown.print)}{#if cfg.kind === 'lamina'} · lamina {eur2(q.breakdown.laminate)}{:else} · resina {eur2(q.breakdown.resin)}{/if} · avvio {eur2(q.breakdown.setup)}<br />
+					{#if q.breakdown.k != null}{q.breakdown.m2.toFixed(3)} m² · sconto volume {((q.breakdown.sconto ?? 0) * 100).toFixed(1)}% · aumento e correttivi {eur2(q.breakdown.aumento ?? 0)} · lavoro {eur2(q.breakdown.lavoro ?? 0)}{:else}{q.breakdown.m2.toFixed(3)} m² · commercial range ×{(1 + q.breakdown.cr).toFixed(2)} · price range ×{(1 + q.breakdown.pr).toFixed(2)}{/if}
+				</div>
 			</div>
 		{:else}
-			<button class="btn btn--green btn--cart" type="button" onclick={addCart} disabled={!file} title={file ? '' : t('configuratore.riepilogo.caricaTitolo')}>{file ? t('configuratore.riepilogo.aggiungi') : t('configuratore.riepilogo.caricaPerOrdinare')}</button>
+			<div class="pv__ship"><FreeShippingBar gross={cartGross + (added ? 0 : q.gross)} compact prefix={cartGross > 0 ? (added ? t('configuratore.spedizione.conCarrello') : t('configuratore.spedizione.conCarrelloOrdine')) : t('configuratore.spedizione.conOrdine')} /></div>
+			<!-- tre riquadri: spedizione, credito, controllo del file -->
+			<div class="trust">
+				<div class="tc">
+					<span class="tc__ico">🚀</span>
+					<span><span class="tc__l">{t('configuratore.riepilogo.spedizioneStimata')}</span><b class="tc__v">{shipDate}</b><span class="tc__s">{t('configuratore.riepilogo.spedizioneGratis', { soglia: formatAmount(locale.freeShipping, locale, 0) })}</span></span>
+				</div>
+				<div class="tc tc--y">
+					<span class="tc__ico"><img src="/images/coin-sp.png" alt={t('configuratore.riepilogo.creditoAlt')} /></span>
+					<span><span class="tc__l">{t('configuratore.riepilogo.guadagniCredito')}</span><b class="tc__v">{eur2(q.credit)}</b><span class="tc__s">{t('configuratore.riepilogo.prossimoOrdine')}</span></span>
+				</div>
+				<div class="tc tc--g">
+					<span class="tc__ico">✅</span>
+					<span><span class="tc__l">{t('configuratore.nuovo.controllo')}</span><b class="tc__v">{t('configuratore.nuovo.controlloTitolo')}</b><span class="tc__s">{t('configuratore.nuovo.controlloSotto')}</span></span>
+				</div>
+			</div>
 		{/if}
 	</div>
-	{#if !test}
-		<!-- MOBILE: barra prezzo fissa in basso. Il prezzo resta sempre visibile mentre si scorre;
-		     −/+ cambia la quantità sulle fasce del listino, il prezzo porta al passo quantità -->
-		<div class="cfg__mobar" role="region" aria-label={t('configuratore.riepilogo.barraPrezzo')}>
-				<div class="mobar__qty">
-					{#if !promoOnly}<button type="button" class="mobar__step" onclick={() => stepQty(-1)} aria-label={t('configuratore.qty.meno')}>−</button>{/if}
-					<button type="button" class="mobar__n" onclick={goQty}>{t('configuratore.qty.pz', { n: numero(qty) })}</button>
-					{#if !promoOnly}<button type="button" class="mobar__step" onclick={() => stepQty(1)} aria-label={t('configuratore.qty.piu')}>+</button>{/if}
-				</div>
-				<button type="button" class="mobar__price" onclick={goQty}>
-					<b>{eur0(vatIncluded ? q.gross : q.net)}</b>
-					<small>{t('configuratore.qty.perPezzo', { prezzo: prezzoUnit(q.perPiece) })} · {vatIncluded ? t('configuratore.riepilogo.ivaIncl') : t('configuratore.riepilogo.ivaEscl')}</small>
-				</button>
-				<button type="button" class="btn btn--green mobar__cta" onclick={file ? addCart : goFile}>{file ? t('configuratore.riepilogo.alCarrello') : t('configuratore.riepilogo.caricaFile')}</button>
-		</div>
-	{/if}
 </section>
 
 {#if !test}
+	<!-- BARRA D'ACQUISTO: gialla, fissa in basso, con totale e bottone azzurro -->
+	<div class="pv__buy" class:is-off={barraOff} role="region" aria-label={t('configuratore.riepilogo.barraPrezzo')}>
+		<div class="pv__buyin">
+			<div class="buy__sum"><b>{numero(qty)} × {productName.replace(/^(i tuoi|le tue) /, '')}</b><span>{riga}</span></div>
+			<div class="buy__ship"><b>🚀 {shipDate}</b>{gratis ? t('configuratore.nuovo.gratisInclusa') : t('configuratore.nuovo.gratisDa', { soglia: formatAmount(locale.freeShipping, locale, 0) })}</div>
+			<div class="buy__price"><b>{eurT(tot(q))}</b><span>{promoOk ? t('configuratore.offerta.prezzo') : ''}{t('configuratore.qty.perPezzo', { prezzo: unitP(q.perPiece) })} · {vatIncluded ? t('configuratore.riepilogo.ivaInclusa') : t('configuratore.riepilogo.ivaEsclusa')}</span></div>
+			<button type="button" class="cta" onclick={file ? addCart : goFile} title={file ? '' : t('configuratore.riepilogo.caricaTitolo')}>
+				{#if file}<span class="cta__d">{t('configuratore.riepilogo.aggiungi')}</span><span class="cta__m">{t('configuratore.riepilogo.alCarrello')}</span>{:else}{t('configuratore.riepilogo.caricaFile')}{/if}
+			</button>
+		</div>
+	</div>
+
 	<details class="special special--below">
 		<summary><span class="special__ico">💬</span> {t('configuratore.richiesta.titolo')} <em>{t('configuratore.richiesta.sotto')}</em></summary>
 		<p class="special__beta">{t('configuratore.richiesta.beta')}</p>
@@ -584,7 +536,7 @@
 		<div class="added" role="dialog" aria-modal="true" aria-label={t('configuratore.aggiunto.titolo')}>
 			<span class="added__ck">✓</span>
 			<h3>{t('configuratore.aggiunto.titolo')}</h3>
-			<p>{t('configuratore.aggiunto.riepilogo', { qty: numero(qty), prodotto: productName.replace(/^(i tuoi|le tue) /, ''), misura: misure(w, h), totale: eur0(q.gross) })}</p>
+			<p>{t('configuratore.aggiunto.riepilogo', { qty: numero(qty), prodotto: productName.replace(/^(i tuoi|le tue) /, ''), misura: misure(w, h), totale: eurT(q.gross) })}</p>
 			<div class="added__cta">
 				<a class="btn btn--green btn--lg" href={path('/checkout')}>{t('configuratore.aggiunto.checkout')}</a>
 				<a class="btn btn--ghost btn--lg" href={path('/prodotti')}>{t('configuratore.aggiunto.continua')}</a>
@@ -592,3 +544,167 @@
 		</div>
 	</div>
 {/if}
+
+<style>
+	/* ===== Preventivatore, grafica 2027 ===== */
+	.pv { --green-soft: #eefbe2; --green-deep: #2f7d0b; --bar-h: 84px; display: grid; grid-template-columns: minmax(0, 1.02fr) minmax(0, 1fr); gap: 44px; align-items: start; margin-top: 24px; scroll-margin-top: 84px; overflow-anchor: none; }
+	.pv--test { grid-template-columns: 1fr; max-width: 760px; margin-top: 16px; }
+	.pv :global(.sr-only) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+	/* anteprima */
+	.pv__stage { min-width: 0; display: grid; gap: 10px; align-content: start; }
+	/* computer: l'anteprima resta fissa a sinistra mentre a destra si scorre; su schermi bassi i comandi sotto scorrono dentro la colonna */
+	@media (min-width: 901px) { .pv__stage { position: sticky; top: calc(var(--header-h, 64px) + 12px); max-height: calc(100vh - var(--header-h, 64px) - 84px - 24px); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; } }
+	.pv__box { position: relative; }
+
+	.pv__drop { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; text-align: center; border: 2px dashed var(--blue); border-radius: 26px; background: #fff; cursor: pointer; padding: 16px; min-height: 420px; transition: background .15s; }
+	.pv__drop:hover, .pv__drop.is-over { background: var(--sky); }
+	.pv__drop input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+	.pv__dropico { width: 64px; height: 64px; border-radius: 18px; background: var(--sky); color: var(--blue); display: grid; place-items: center; margin-bottom: 12px; }
+	.pv__drop:hover .pv__dropico, .pv__drop.is-over .pv__dropico { background: #fff; }
+	.pv__drop b { font-family: var(--font-display); font-weight: 800; font-size: 22px; letter-spacing: -.02em; line-height: 1.15; }
+	.pv__drops { font-size: 14px; color: var(--ink-soft); }
+
+	.pv__tools { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; border: 1px solid var(--line); border-radius: 18px; padding: 10px 12px; background: #fff; }
+	.pv__tl { font-size: 11.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); }
+	.pv__dots { display: flex; gap: 5px; position: relative; }
+	.pv__dot { width: 24px; height: 24px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px #c5c8dc; cursor: pointer; padding: 0; flex: none; }
+	.pv__dot.is-on { box-shadow: 0 0 0 2px var(--blue); }
+	.pv__dot--arc { background: conic-gradient(from 0deg, #ff2d55, #ff9500, #ffe600, #34c759, #00b0ff, #7c4dff, #ff2d55); }
+	.pv__col { position: absolute; width: 0; height: 0; opacity: 0; border: 0; padding: 0; }
+	.pv__pill { border: 1px solid var(--line); background: #fff; border-radius: 999px; padding: 7px 11px; font: inherit; font-weight: 700; font-size: 12.5px; white-space: nowrap; cursor: pointer; color: var(--ink); }
+	.pv__pill.is-on { background: var(--navy); color: #fff; border-color: var(--navy); }
+	.pv__pill--blue { color: var(--blue-text); border-color: var(--blue); }
+	.pv__eye { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; }
+	.pv__eye i { width: 22px; border-top: 3px dashed #2fe010; }
+	.pv__eye.is-off { color: var(--muted); }
+	.pv__eye.is-off i { border-top-color: #c3ccd6; }
+	.pv__regola { display: none; }
+
+	/* scelte */
+	.pv__panel { min-width: 0; }
+	.pv__title { font-size: clamp(24px, 2.6vw, 34px); margin-top: 4px; }
+	.grp { margin-top: 24px; }
+	.grp__h { display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px; }
+	.grp__n { flex: none; width: 24px; height: 24px; border-radius: 50%; background: var(--navy); color: #fff; font-family: var(--font-display); font-weight: 800; font-size: 13px; display: grid; place-items: center; transform: translateY(3px); }
+	.grp__t { font-family: var(--font-display); font-weight: 800; font-size: 19px; letter-spacing: -.02em; }
+	.grp__v { font-size: 14px; color: var(--muted); font-weight: 500; margin-left: auto; text-align: right; }
+	.grp__hint { font-size: 12.5px; color: var(--muted); margin: 8px 0 0; }
+	.grp__hint--box { background: var(--sky); border-radius: 10px; padding: 12px 14px; color: var(--ink-soft); margin: 0 0 10px; }
+	.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(86px, 1fr)); gap: 8px; }
+	.tile { position: relative; border: 2px solid var(--line); background: #fff; border-radius: 14px; padding: 8px 6px 9px; display: grid; justify-items: center; align-content: start; gap: 4px; text-align: center; font: inherit; color: var(--ink); cursor: pointer; transition: border-color .12s, background .12s; }
+	.tile:hover { border-color: #c5c8dc; }
+	.tile.is-on { border-color: var(--blue); background: var(--sky); }
+	.tile img { width: 54px; height: 54px; object-fit: contain; }
+	.tile b { font-size: 13px; line-height: 1.2; }
+	.tile small { font-size: 11.5px; color: var(--muted); line-height: 1.25; }
+	.tile__tag { position: absolute; top: -9px; left: 50%; transform: translateX(-50%); background: var(--yellow); border-radius: 999px; font-size: 10.5px; font-weight: 700; padding: 1px 8px; white-space: nowrap; z-index: 1; }
+	.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+	.chip { border: 2px solid var(--line); background: #fff; border-radius: 12px; padding: 9px 14px; font: inherit; font-weight: 700; font-size: 14px; color: var(--ink); cursor: pointer; font-variant-numeric: tabular-nums; }
+	.chip small { display: block; font-size: 9.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--green-deep); margin-bottom: 1px; }
+	.chip.is-on { border-color: var(--blue); background: var(--sky); }
+	.sizein { display: flex; align-items: flex-end; gap: 10px; margin-top: 10px; }
+	.sizein label { display: grid; gap: 3px; font-size: 12px; color: var(--muted); font-weight: 600; flex: 1; max-width: 150px; position: relative; }
+	.sizein input { border: 2px solid var(--line); border-radius: 12px; padding: 10px 40px 10px 12px; font: inherit; font-weight: 700; font-size: 16px; width: 100%; color: var(--ink); }
+	.sizein input:focus { outline: none; border-color: var(--blue); }
+	.sizein em { position: absolute; right: 12px; bottom: 12px; font-style: normal; font-size: 13px; color: var(--muted); }
+	.sizein > span { padding-bottom: 12px; color: var(--muted); font-weight: 700; }
+
+	/* quantità */
+	.vat { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; padding: 2px; margin-left: auto; background: #f5f6fb; }
+	.vat { flex: none; }
+	.vat button { white-space: nowrap; border: 0; background: none; border-radius: 999px; padding: 4px 10px; font: inherit; font-size: 12px; font-weight: 700; color: var(--muted); cursor: pointer; }
+	.vat button.is-on { background: #fff; color: var(--ink); box-shadow: 0 1px 2px rgba(5, 5, 56, .15); }
+	.qlist { display: grid; gap: 6px; }
+	.q { display: grid; grid-template-columns: minmax(74px, auto) 1fr auto; align-items: center; gap: 10px; border: 2px solid var(--line); background: #fff; border-radius: 14px; padding: 10px 14px; text-align: left; width: 100%; font: inherit; color: var(--ink); cursor: pointer; font-variant-numeric: tabular-nums; transition: border-color .12s, background .12s; }
+	.q:hover { border-color: #c5c8dc; }
+	.q.is-on { border-color: var(--blue); background: var(--sky); box-shadow: 0 4px 14px rgba(14, 139, 255, .16); }
+	.q__n, .q__tot { font-family: var(--font-display); font-weight: 800; font-size: 19px; letter-spacing: -.02em; white-space: nowrap; }
+	.q__tot { text-align: right; }
+	.q__mid { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; min-width: 0; }
+	.q__u { font-size: 13px; color: var(--ink-soft); white-space: nowrap; }
+	.q__save { font-size: 12.5px; font-weight: 700; color: var(--green-deep); background: var(--green-soft); border-radius: 999px; padding: 2px 8px; white-space: nowrap; }
+	.q__tag { background: var(--yellow); border-radius: 999px; font-size: 11px; font-weight: 700; padding: 1px 8px; white-space: nowrap; }
+	.q__tag--g { background: var(--green); }
+	.qcustom { display: flex; align-items: center; gap: 10px; border: 2px dashed var(--line); border-radius: 14px; padding: 8px 14px; }
+	.qcustom.is-on { border: 2px solid var(--blue); background: var(--sky); }
+	.qcustom label { font-size: 13.5px; font-weight: 700; white-space: nowrap; }
+	.qcustom input { width: 110px; border: 2px solid var(--line); border-radius: 10px; padding: 7px 10px; font: inherit; font-weight: 700; font-size: 16px; background: #fff; color: var(--ink); }
+	.qcustom input:focus { outline: none; border-color: var(--blue); }
+	.qcustom__r { margin-left: auto; text-align: right; font-size: 13px; color: var(--ink-soft); }
+	.qcustom__r b { font-family: var(--font-display); font-size: 19px; color: var(--ink); display: block; letter-spacing: -.02em; }
+	.pv__ship { margin-top: 12px; }
+
+	/* tre riquadri */
+	.trust { margin-top: 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+	.tc { display: flex; align-items: center; gap: 14px; border-radius: 18px; padding: 14px 16px; background: var(--sky); min-width: 0; }
+	.tc--y { background: #fff1c9; }
+	.tc--g { background: var(--green-soft); grid-column: 1 / -1; }
+	.tc__ico { flex: none; width: 52px; height: 52px; border-radius: 14px; background: #fff; display: grid; place-items: center; font-size: 24px; box-shadow: 0 1px 3px rgba(5, 5, 56, .08); }
+	.tc__ico img { width: 40px; height: auto; }
+	.tc__l, .tc__s { display: block; }
+	.tc__l { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); }
+	.tc__v { display: block; font-family: var(--font-display); font-weight: 800; font-size: 18px; letter-spacing: -.02em; line-height: 1.2; margin: 1px 0; }
+	.tc__s { font-size: 12.5px; color: var(--ink-soft); line-height: 1.35; }
+
+	/* dashboard (test): totale e dettaglio del calcolo */
+	.pv__test { margin-top: 20px; display: grid; gap: 10px; }
+	.pv__testtot { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; background: #f4b400; border-radius: 16px; padding: 14px 18px; }
+	.pv__testtot span { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+	.pv__testtot b { font-family: var(--font-display); font-weight: 800; font-size: 28px; letter-spacing: -.03em; }
+	.pv__testtot em { font-style: normal; font-size: 13px; margin-left: auto; }
+	.test-detail { font-size: 12.5px; color: var(--muted); line-height: 1.6; border-top: 1px dashed var(--line); padding-top: 10px; }
+
+	/* barra d'acquisto */
+	.pv__buy { position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; background: #f4b400; color: #0b0b3b; box-shadow: 0 -8px 28px rgba(90, 65, 0, .28); padding-bottom: env(safe-area-inset-bottom); transition: transform .28s ease; font-variant-numeric: tabular-nums; }
+	.pv__buy.is-off { transform: translateY(115%); }
+	.pv__buyin { width: min(100% - 40px, 1240px); margin-inline: auto; display: flex; align-items: center; gap: 22px; height: 84px; }
+	.buy__sum { min-width: 0; flex: 1; }
+	.buy__sum b { display: block; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+	.buy__sum span { display: block; font-size: 13px; color: rgba(11, 11, 59, .82); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+	.buy__ship { font-size: 13px; color: rgba(11, 11, 59, .82); line-height: 1.35; white-space: nowrap; }
+	.buy__ship b { display: block; color: #0b0b3b; }
+	.buy__price { text-align: right; white-space: nowrap; }
+	.buy__price b { font-family: var(--font-display); font-weight: 800; font-size: 30px; letter-spacing: -.03em; line-height: 1; display: block; }
+	.buy__price span { font-size: 12.5px; color: rgba(11, 11, 59, .82); }
+	.cta { flex: none; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 0; border-radius: 12px; background: #0e8bff; color: #fff; font-family: var(--font-display); font-weight: 800; font-size: 16px; text-transform: uppercase; letter-spacing: -.01em; padding: 17px 26px; box-shadow: 0 4px 0 #0768c4; text-shadow: 0 1px 2px rgba(0, 45, 110, .45); cursor: pointer; white-space: nowrap; transition: transform .1s, filter .1s; }
+	.cta:hover { filter: brightness(1.04); transform: translateY(-1px); }
+	.cta__m { display: none; }
+	:global(body:has(.pv__buy)) { padding-bottom: 84px; }
+
+	@media (max-width: 900px) {
+		.pv { display: block; margin-top: 14px; }
+		/* l'anteprima resta in alto mentre si scorre: del motore si vede solo il palco; i suoi comandi si aprono con "Regola" */
+		.pv__box { position: sticky; top: calc(var(--header-h, 64px) + 6px); z-index: 30; height: var(--palco); overflow: hidden; border-radius: 22px; box-shadow: 0 6px 16px rgba(5, 5, 56, .12); background: #eef0f6; }
+		.pv__stage.is-regola .pv__box { position: relative; top: auto; height: auto; overflow: visible; box-shadow: none; background: none; }
+		.pv__stage { display: contents; }   /* cosi' l'anteprima resta agganciata per tutta la lunghezza del preventivatore */
+		.grp__t { font-size: 16.5px; white-space: nowrap; }
+		.grp__h { flex-wrap: wrap; row-gap: 6px; }
+		.vat button { font-size: 11px; padding: 4px 7px; }
+		.pv__tools { margin-top: 10px; border-radius: 14px; padding: 9px 10px; }
+		.pv__regola { display: block; width: 100%; margin-top: 8px; border: 2px solid var(--line); background: #fff; border-radius: 12px; padding: 10px; font: inherit; font-weight: 700; font-size: 14px; color: var(--ink); cursor: pointer; }
+		.pv__drop { min-height: 210px; border-radius: 18px; }
+		.pv__dropico { width: 48px; height: 48px; border-radius: 14px; margin-bottom: 8px; }
+		.pv__drop b { font-size: 19px; }
+		.pv__drops { font-size: 13px; }
+		.pv__panel { padding-top: 18px; }
+		.tiles { display: flex; overflow-x: auto; margin: 0 -16px; padding: 10px 16px 4px; scroll-snap-type: x proximity; scrollbar-width: none; }
+		.tiles::-webkit-scrollbar { display: none; }
+		.tile { flex: none; width: 98px; scroll-snap-align: start; }
+		.q { grid-template-columns: 1fr auto; row-gap: 5px; padding: 11px 12px; gap: 8px; }
+		.q__n, .q__tot { font-size: 18px; }
+		.q__mid { grid-column: 1 / -1; grid-row: 2; flex-wrap: nowrap; gap: 6px; }
+		.qcustom { flex-wrap: wrap; }
+		.trust { grid-template-columns: 1fr; }
+		.tc--g { grid-column: auto; }
+		.pv__buyin { gap: 12px; height: 72px; width: min(100% - 28px, 1240px); }
+		.buy__sum, .buy__ship { display: none; }
+		.buy__price { text-align: left; flex: 1; }
+		.buy__price b { font-size: 25px; }
+		.cta { padding: 15px 18px; font-size: 15px; }
+		.cta__d { display: none; }
+		.cta__m { display: inline; }
+		:global(body:has(.pv__buy)) { padding-bottom: 72px; }
+	}
+	@media (prefers-reduced-motion: reduce) { .pv__buy { transition: none; } }
+</style>

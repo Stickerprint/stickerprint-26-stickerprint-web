@@ -27,6 +27,8 @@
 		noombra = false,
 		live = false,
 		warm = false,
+		nuovo = false,
+		dimLabel = '',
 		busy = $bindable(false),
 		onrender
 	}: {
@@ -50,6 +52,10 @@
 		live?: boolean;
 		/** il motore si carica PRIMA che ci sia un file: quando il cliente lo sceglie e' gia' pronto */
 		warm?: boolean;
+		/** nuova grafica del preventivatore: palco grigio, tratteggio piu' spesso e sempre in movimento, targhetta della misura */
+		nuovo?: boolean;
+		/** testo della targhetta della misura (solo con `nuovo`) */
+		dimLabel?: string;
 		busy?: boolean;
 		onrender?: (s: { png: string | null; name?: string | null; shape?: string | null; w: number; h: number; srcMM: { w: number; h: number } | null; cut?: { x: number; y: number; w: number; h: number } | null; view?: { zoom: number; dx: number; dy: number } | null; palette?: { hex: string; img?: string }[]; palIdx?: number; rimuovi?: boolean; foglio?: { n: number; cols: number; rows: number; w: number; h: number } | null }) => void;
 	} = $props();
@@ -75,6 +81,7 @@
 		if (noang) q.set('noang', '1');
 		if (hires) q.set('hires', '1');
 		if (noombra) q.set('noombra', '1');
+		if (nuovo) q.set('nuovo', '1');
 		if (w > 0) q.set('w', String(w));
 		if (h > 0) q.set('h', String(h));
 		if (panel) {
@@ -172,6 +179,10 @@
 		});
 	});
 
+	// targhetta della misura: la scrive il sito (lingua e unita' giuste), il motore la mostra sotto il pezzo
+	const postMisura = () => { if (nuovo) frame?.contentWindow?.postMessage({ source: 'sito', type: 'misura', text: dimLabel }, location.origin); };
+	$effect(() => { void dimLabel; untrack(postMisura); });
+
 	// occhio: mostra/nasconde la linea di taglio senza ricaricare
 	$effect(() => {
 		const on = showCut;
@@ -215,6 +226,7 @@
 			}
 			onrender?.({ png: d.detail.png, name: d.detail.name ?? null, shape: d.detail.shape ?? null, w: d.detail.w ?? 0, h: d.detail.h ?? 0, srcMM: d.detail.srcMM ?? null, cut: d.detail.cut ?? null, view: d.detail.view ?? null, palette: d.detail.palette ?? [], palIdx: d.detail.palIdx ?? 0, rimuovi: !!d.detail.rimuovi, foglio: d.detail.foglio ?? null });
 			frame?.contentWindow?.postMessage({ source: 'sito', type: 'cut', on: showCut }, location.origin);
+			postMisura();
 			if (stale) flush();
 		}
 	}
