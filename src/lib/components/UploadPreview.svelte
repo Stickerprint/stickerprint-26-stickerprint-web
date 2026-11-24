@@ -117,43 +117,12 @@
 	}
 </script>
 
-<div class="up" bind:this={root}>
-	<!-- sinistra: le scelte, in ordine -->
-	<div class="up__choices">
-		<div class="up__step">
-			<div class="up__head"><span class="up__n">1</span><b>{t('configuratore.anteprima.cosaStampare')}</b></div>
-			<div class="up__tiles" role="radiogroup" aria-label={t('configuratore.anteprima.prodotto')}>
-				{#each PRODUCTS as p (p.id)}
-					<button type="button" class="up__tile" class:is-on={product === p.id} role="radio" aria-checked={product === p.id} onclick={() => setProduct(p.id)}>
-						<img src={p.img} alt="" loading="lazy" /><b>{p.label}</b><small>{p.hint}</small>
-					</button>
-				{/each}
-			</div>
-		</div>
-		<div class="up__step">
-			<div class="up__head"><span class="up__n">2</span><b>{t('configuratore.anteprima.cheSagoma')}</b><span class="up__pick">{FORME.find((f) => f.id === forma)?.label}</span></div>
-			<div class="up__shapes" role="radiogroup" aria-label={t('configuratore.anteprima.sagoma')}>
-				{#each FORME as f (f.id)}
-					<button type="button" class="up__shape" class:is-on={forma === f.id} role="radio" aria-checked={forma === f.id} title={f.label} onclick={() => setForma(f.id)}><img src={shapeImg(f.id)} alt="" loading="lazy" /><span>{f.label}</span></button>
-				{/each}
-			</div>
-		</div>
-		<div class="up__step">
-			<div class="up__head"><span class="up__n">3</span><b>{t('configuratore.anteprima.cheMateriale')}</b><span class="up__pick">{MATERIALI.find((m) => m.id === materiale)?.label}</span></div>
-			<div class="up__mats" data-n={materiali.length} role="radiogroup" aria-label={t('configuratore.anteprima.materiale')}>
-				{#each materiali as m (m.id)}
-					<button type="button" class="up__mat" class:is-on={materiale === m.id} role="radio" aria-checked={materiale === m.id} title={m.label} onclick={() => setMateriale(m.id)}><img src={m.img} alt="" loading="lazy" /><span>{m.label}</span></button>
-				{/each}
-			</div>
-		</div>
-	</div>
-
-	<!-- destra: il file e l'anteprima viva -->
-	<div class="up__file">
-		<div class="up__head"><span class="up__n">4</span><b>{t('configuratore.anteprima.tuoFile')}</b>{#if file}<button type="button" class="link-btn" onclick={reset}>{t('configuratore.file.cambia')}</button>{/if}</div>
+<!-- Stessa impostazione del preventivatore: a sinistra il file e l'anteprima, a destra le scelte e il bottone -->
+<div class="hp" bind:this={root}>
+	<div class="hp__file">
 		{#if !file}
 			<label
-				class="dropzone up__dz"
+				class="hp__drop"
 				class:is-over={over}
 				ondragenter={(e) => { e.preventDefault(); over = true; }}
 				ondragover={(e) => { e.preventDefault(); over = true; }}
@@ -161,26 +130,103 @@
 				ondrop={(e) => { e.preventDefault(); over = false; pick(e.dataTransfer?.files[0]); }}
 			>
 				<input type="file" accept={ACCEPT.join(',')} onchange={(e) => pick((e.currentTarget as HTMLInputElement).files?.[0])} />
-				<div>
-					<div class="dropzone__icon">
-						<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 16V4m0 0l-4 4m4-4l4 4" /><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" /></svg>
-					</div>
-					<div class="dropzone__title">{t('configuratore.file.trascina')}</div>
-					<div class="dropzone__sub">{t('configuratore.file.oppure')}</div>
-					<div class="up__dz-hint">{t('configuratore.anteprima.hint')}</div>
-					{#if error}<p class="error" style="margin-top:14px">{error}</p>{/if}
-				</div>
+				<span class="hp__dropico"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4m0 0l-4 4m4-4l4 4" /><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" /></svg></span>
+				<b>{t('configuratore.file.trascina')}</b>
+				<span class="hp__drops">{t('configuratore.file.oppure')}</span>
+				{#if error}<p class="error" style="margin-top:10px">{error}</p>{/if}
 			</label>
 		{/if}
 		{#if warm}
 			<!-- il motore e' gia' qui (invisibile) mentre il cliente sceglie il file: quando il file arriva parte subito -->
-			<div class="stage up__stage" class:is-warm={!file} aria-hidden={!file}>
-				<EnginePreview {file} {forma} {materiale} prodotto={product === 'resinati' ? 'resinati' : 'sticker'} foglio={product === 'fogli'} live warm bind:busy={engineBusy} onrender={onRender} />
+			<div class="stage up__stage hp__stage" class:is-warm={!file} aria-hidden={!file}>
+				<EnginePreview {file} {forma} {materiale} prodotto={product === 'resinati' ? 'resinati' : 'sticker'} foglio={product === 'fogli'} live warm nuovo bind:busy={engineBusy} onrender={onRender} />
+				{#if file}<button type="button" class="hp__cambia" onclick={reset}>{t('configuratore.file.cambia')}</button>{/if}
 			</div>
 		{/if}
-		<button class="btn btn--blue btn--xl up__cta" type="button" disabled={!file || saving || engineBusy || !snapshot} onclick={continua}>
+	</div>
+
+	<div class="hp__panel">
+		<div class="hp__grp">
+			<div class="hp__h"><span class="hp__n">1</span><span class="hp__t">{t('configuratore.anteprima.cosaStampare')}</span><span class="hp__v hp__v--largo">{current.label}</span></div>
+			<div class="hp__tiles hp__tiles--3" role="radiogroup" aria-label={t('configuratore.anteprima.prodotto')}>
+				{#each PRODUCTS as p (p.id)}
+					<button type="button" class="hp__tile hp__tile--foto" class:is-on={product === p.id} role="radio" aria-checked={product === p.id} onclick={() => setProduct(p.id)}>
+						<img src={p.img} alt="" loading="lazy" /><b>{p.label}</b>
+					</button>
+				{/each}
+			</div>
+		</div>
+		<div class="hp__grp">
+			<div class="hp__h"><span class="hp__n">2</span><span class="hp__t">{t('configuratore.anteprima.cheSagoma')}</span><span class="hp__v">{FORME.find((f) => f.id === forma)?.label}</span></div>
+			<div class="hp__tiles" role="radiogroup" aria-label={t('configuratore.anteprima.sagoma')}>
+				{#each FORME as f (f.id)}
+					<button type="button" class="hp__tile" class:is-on={forma === f.id} role="radio" aria-checked={forma === f.id} onclick={() => setForma(f.id)}><img src={shapeImg(f.id)} alt="" loading="lazy" /><b>{f.label}</b></button>
+				{/each}
+			</div>
+		</div>
+		<div class="hp__grp">
+			<div class="hp__h"><span class="hp__n">3</span><span class="hp__t">{t('configuratore.anteprima.cheMateriale')}</span><span class="hp__v">{MATERIALI.find((m) => m.id === materiale)?.label}</span></div>
+			<div class="hp__tiles" role="radiogroup" aria-label={t('configuratore.anteprima.materiale')}>
+				{#each materiali as m (m.id)}
+					<button type="button" class="hp__tile" class:is-on={materiale === m.id} role="radio" aria-checked={materiale === m.id} onclick={() => setMateriale(m.id)}><img src={m.img} alt="" loading="lazy" /><b>{m.label}</b></button>
+				{/each}
+			</div>
+		</div>
+		<button class="hp__cta" type="button" disabled={!file || saving || engineBusy || !snapshot} onclick={continua}>
 			{saving ? t('configuratore.anteprima.attimo') : file ? t('configuratore.anteprima.continua') : t('configuratore.anteprima.caricaContinua')}
 		</button>
-		<p class="up__note">{t('configuratore.anteprima.nota')}</p>
+		<p class="hp__note">{t('configuratore.anteprima.nota')}</p>
 	</div>
 </div>
+
+<style>
+	.hp { display: grid; grid-template-columns: minmax(0, 1.02fr) minmax(0, 1fr); gap: 44px; align-items: stretch; margin-top: 30px; text-align: left; }
+	.hp__file { position: relative; min-width: 0; min-height: 420px; }
+	.hp__drop { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; text-align: center; border: 2px dashed var(--blue); border-radius: 26px; background: #fff; cursor: pointer; padding: 16px; transition: background .15s; }
+	.hp__drop:hover, .hp__drop.is-over { background: var(--sky); }
+	.hp__drop input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+	.hp__dropico { width: 64px; height: 64px; border-radius: 18px; background: var(--sky); color: var(--blue); display: grid; place-items: center; margin-bottom: 12px; }
+	.hp__drop:hover .hp__dropico, .hp__drop.is-over .hp__dropico { background: #fff; }
+	.hp__drop b { font-family: var(--font-display); font-weight: 800; font-size: 22px; letter-spacing: -.02em; line-height: 1.15; }
+	.hp__drops { font-size: 14px; color: var(--ink-soft); }
+	.hp__stage { height: 100%; min-height: 420px; border-radius: 22px; background: #eef0f6; overflow: hidden; }
+	.hp__stage.is-warm { position: absolute; inset: 0; visibility: hidden; pointer-events: none; }
+	.hp__cambia { position: absolute; right: 12px; top: 12px; z-index: 3; border: 1px solid var(--blue); background: #fff; color: var(--blue-text); border-radius: 999px; padding: 7px 12px; font: inherit; font-weight: 700; font-size: 12.5px; cursor: pointer; box-shadow: 0 1px 3px rgba(5, 5, 56, .12); }
+
+	.hp__panel { min-width: 0; display: grid; gap: 22px; align-content: start; }
+	.hp__h { display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px; }
+	.hp__n { flex: none; width: 24px; height: 24px; border-radius: 50%; background: var(--navy); color: #fff; font-family: var(--font-display); font-weight: 800; font-size: 13px; display: grid; place-items: center; transform: translateY(3px); }
+	.hp__t { font-family: var(--font-display); font-weight: 800; font-size: 19px; letter-spacing: -.02em; }
+	.hp__v { font-size: 14px; color: var(--muted); font-weight: 500; margin-left: auto; text-align: right; }
+	.hp__tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(86px, 1fr)); gap: 8px; }
+	.hp__tiles--3 { grid-template-columns: repeat(3, 1fr); }
+	.hp__tile { border: 2px solid var(--line); background: #fff; border-radius: 14px; padding: 8px 6px 9px; display: grid; justify-items: center; align-content: start; gap: 4px; text-align: center; font: inherit; color: var(--ink); cursor: pointer; transition: border-color .12s, background .12s; }
+	.hp__tile:hover { border-color: #c5c8dc; }
+	.hp__tile.is-on { border-color: var(--blue); background: var(--sky); }
+	.hp__tile img { width: 54px; height: 54px; object-fit: contain; }
+	.hp__tile b { font-size: 13px; line-height: 1.2; }
+	.hp__tile--foto { grid-template-columns: 54px 1fr; justify-items: start; align-items: center; text-align: left; gap: 10px; padding: 8px 10px 8px 8px; }
+	.hp__tile--foto img { object-fit: cover; border-radius: 10px; }
+	.hp__cta { width: 100%; border: 0; border-radius: 12px; background: #0e8bff; color: #fff; font-family: var(--font-display); font-weight: 800; font-size: 16px; text-transform: uppercase; letter-spacing: -.01em; padding: 17px 26px; box-shadow: 0 4px 0 #0768c4; text-shadow: 0 1px 2px rgba(0, 45, 110, .45); cursor: pointer; transition: transform .1s, filter .1s; }
+	.hp__cta:hover:not(:disabled) { filter: brightness(1.04); transform: translateY(-1px); }
+	.hp__cta:disabled { opacity: .45; cursor: not-allowed; }
+	.hp__note { font-size: 12.5px; color: var(--muted); text-align: center; margin: -10px 0 0; }
+
+	@media (max-width: 900px) {
+		.hp { grid-template-columns: 1fr; gap: 20px; margin-top: 20px; }
+		.hp__file { min-height: 230px; }
+		.hp__file:has(.hp__stage:not(.is-warm)) { min-height: 300px; }
+		.hp__stage { min-height: 300px; }
+		.hp__drop { border-radius: 18px; }
+		.hp__dropico { width: 48px; height: 48px; border-radius: 14px; margin-bottom: 8px; }
+		.hp__drop b { font-size: 19px; }
+		.hp__drops { font-size: 13px; }
+		.hp__panel { gap: 18px; }
+		.hp__t { font-size: 17px; }
+		.hp__v--largo { display: none; }   /* su telefono il prodotto scelto si vede gia' nella lista sotto */
+		.hp__tiles:not(.hp__tiles--3) { display: flex; overflow-x: auto; margin: 0 -16px; padding: 2px 16px 4px; scroll-snap-type: x proximity; scrollbar-width: none; }
+		.hp__tiles:not(.hp__tiles--3)::-webkit-scrollbar { display: none; }
+		.hp__tiles:not(.hp__tiles--3) .hp__tile { flex: none; width: 92px; scroll-snap-align: start; }
+		.hp__tiles--3 { grid-template-columns: 1fr; }
+	}
+</style>
