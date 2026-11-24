@@ -48,7 +48,8 @@
 		else if (status !== 'all' && g.status !== status) return false;
 		if (star === 'starred' && !g.starred) return false;
 		if (star === 'unstarred' && g.starred) return false;
-		if (month !== null) {
+		/* con del testo nella ricerca si cerca in tutto l'anno: il mese scelto non conta (Mattia, 24/11/2026) */
+		if (month !== null && !q) {
 			const d = new Date(g.created_at); const y = d.getFullYear();
 			const k = y < year ? 'prev' : y > year ? 'next' : String(d.getMonth());
 			if (k !== month) return false;
@@ -69,7 +70,8 @@
 	});
 	/* mese di riferimento del fatturato: quello scelto nella barra dei mesi; con "Tutti i mesi" vale
 	   il mese in corso (se si guarda l'anno corrente), altrimenti tutto l'anno scelto */
-	const meseRif = $derived(month);
+	const cerca = $derived(search.trim());
+	const meseRif = $derived(cerca ? null : month);
 	const meseLabel = $derived(
 		meseRif === null ? `tutto il ${year}` : meseRif === 'prev' ? `prima del ${year}` : meseRif === 'next' ? `dopo il ${year}` : `${MONTHS[+meseRif]} ${year}`
 	);
@@ -117,7 +119,8 @@
 	<button type="button" class="btn btn--xs {month === null ? 'btn--blue' : 'btn--ghost'}" onclick={() => (month = null)}>Tutti i mesi</button>
 </div>
 
-<p class="stats5-rif">Stai guardando <b>{meseLabel}</b>{#if filtriAttivi} <b>con i filtri attivi</b>{/if}: riquadri, elenco e totali qui sotto sono solo di {meseLabel}{#if filtriAttivi} e degli ordini che passano i filtri{/if}.</p>
+{#if cerca}<p class="stats5-rif">Ricerca di <b>«{cerca}»</b> in <b>tutto il {year}</b>, tutti i mesi insieme: riquadri, elenco e totali qui sotto sono degli ordini trovati.</p>
+{:else}<p class="stats5-rif">Stai guardando <b>{meseLabel}</b>{#if filtriAttivi} <b>con i filtri attivi</b>{/if}: riquadri, elenco e totali qui sotto sono solo di {meseLabel}{#if filtriAttivi} e degli ordini che passano i filtri{/if}.</p>{/if}
 <div class="stats5">
 	<div class="dcard stat5"><span class="ico" style="background:#fde7f1;color:#e0117f">📦</span><div><small>Ordini · {meseLabel}</small><b>{stats.total}</b><i>{stats.ecom} e-commerce · {stats.manuali} manuali</i></div></div>
 	<div class="dcard stat5"><span class="ico" style="background:#e5f0ff;color:#3b82f6">🖨️</span><div><small>In produzione</small><b>{stats.produzione}</b><i>di {meseLabel}</i></div></div>

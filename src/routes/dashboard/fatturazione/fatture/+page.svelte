@@ -12,8 +12,11 @@
 	const manuale = (i: { ddt_numbers: string[] | null; ddt_number: string | null; payment_method: string | null }) => ddtsOf(i).length > 0 || !['stripe', 'paypal'].includes((i.payment_method ?? '').toLowerCase());
 	/* come negli ordini: si parte dal mese in corso, elenco e totali parlano di quel mese */
 	let month = $state<string | null>(data.year === new Date().getFullYear() ? String(new Date().getMonth()) : null);
-	const meseLabel = $derived(month === null ? `tutto il ${data.year}` : month === 'prev' ? `prima del ${data.year}` : month === 'next' ? `dopo il ${data.year}` : `${MONTHS[+month]} ${data.year}`);
-	const list = $derived(data.invoices.filter((i) => { if (month !== null && monthKey(i.issued_at, data.year) !== month) return false; if (canale === 'manuali' && !manuale(i)) return false; if (canale === 'ecommerce' && manuale(i)) return false; const q = search.trim().toLowerCase(); if (!q) return true; const b = i.billing ?? {}; return `${i.number} ${b.company ?? ''} ${b.first_name ?? ''} ${b.last_name ?? ''} ${i.email ?? ''} ${b.vat ?? ''}`.toLowerCase().includes(q); }));
+	/* con del testo nella ricerca si cerca in tutto l'anno: il mese scelto non conta (Mattia, 24/11/2026) */
+	const cerca = $derived(search.trim());
+	const mese = $derived(cerca ? null : month);
+	const meseLabel = $derived(mese === null ? `tutto il ${data.year}` : mese === 'prev' ? `prima del ${data.year}` : mese === 'next' ? `dopo il ${data.year}` : `${MONTHS[+mese]} ${data.year}`);
+	const list = $derived(data.invoices.filter((i) => { if (mese !== null && monthKey(i.issued_at, data.year) !== mese) return false; if (canale === 'manuali' && !manuale(i)) return false; if (canale === 'ecommerce' && manuale(i)) return false; const q = search.trim().toLowerCase(); if (!q) return true; const b = i.billing ?? {}; return `${i.number} ${b.company ?? ''} ${b.first_name ?? ''} ${b.last_name ?? ''} ${i.email ?? ''} ${b.vat ?? ''}`.toLowerCase().includes(q); }));
 	function toggle(id: string) { const s = new Set(selected); s.has(id) ? s.delete(id) : s.add(id); selected = s; }
 	/* distinta per la banca: solo le fatture manuali tra quelle selezionate */
 	const selManuali = $derived([...selected].filter((id) => { const i = data.invoices.find((x) => x.id === id); return i && manuale(i); }));
@@ -34,7 +37,8 @@
 	</div>
 </div>
 <MonthBar bind:month year={data.year} items={data.invoices} dateOf={(i: { issued_at: string }) => i.issued_at} amountOf={(i: { amount_gross: number }) => Number(i.amount_gross)} unit="fatt." />
-<p class="stats5-rif">Stai guardando <b>{meseLabel}</b>: elenco e totali qui sotto sono solo di {meseLabel}.</p>
+{#if cerca}<p class="stats5-rif">Ricerca di <b>«{cerca}»</b> in <b>tutto il {data.year}</b>, tutti i mesi insieme: elenco e totali qui sotto sono delle fatture trovate.</p>
+{:else}<p class="stats5-rif">Stai guardando <b>{meseLabel}</b>: elenco e totali qui sotto sono solo di {meseLabel}.</p>{/if}
 <div class="dcard filters" style="grid-template-columns:1fr auto">
 	<input type="text" placeholder="Cerca numero, intestatario, email o P.IVA…" bind:value={search} />
 	<div class="year-bar" role="group" aria-label="Tipo di fattura">{#each [['tutte', 'Tutte'], ['ecommerce', '🛒 E-commerce'], ['manuali', '✏️ Manuali']] as [k, l] (k)}<a href="?" class:is-active={canale === k} onclick={(e) => { e.preventDefault(); canale = k as typeof canale; selected = new Set(); }}>{l}</a>{/each}</div>
@@ -58,9 +62,9 @@
 					<td style="white-space:nowrap"><a class="btn btn--ghost btn--xs" href="/dashboard/fatturazione/fatture/{inv.id}">{inv.xml_generated_at ? '👁 Apri' : '✏️ Apri'}</a> {#if inv.pdf}<a class="btn btn--ghost btn--xs" href={inv.pdf} target="_blank" rel="noopener">⬇ PDF</a>{/if}</td>
 				</tr>
 			{:else}
-				<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:30px">Nessuna fattura in {meseLabel}.</td></tr>
+				<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:30px">Nessuna fattura {cerca ? `con «${cerca}» nel ${data.year}` : `in ${meseLabel}`}.</td></tr>
 			{/each}
 		</tbody>
-		{#if list.length}<tfoot><tr><td colspan="4"><b>Totale {meseLabel}</b></td><td><b>{money(net)}</b></td><td></td><td style="text-align:right"><b>{money(tot)}</b></td><td colspan="2"></td></tr></tfoot>{/if}
+		{#if list.length}<tfoot><tr><td colspan="4"><b>Totale {cerca ? `delle ${list.length} trovate` : meseLabel}</b></td><td><b>{money(net)}</b></td><td></td><td style="text-align:right"><b>{money(tot)}</b></td><td colspan="2"></td></tr></tfoot>{/if}
 	</table>
 </div>

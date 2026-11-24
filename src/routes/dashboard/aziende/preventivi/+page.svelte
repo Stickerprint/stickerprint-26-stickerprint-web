@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { page } from '$app/state';
-	import { QUOTE_REMIND_DAYS, QUOTE_STATUS, type QuoteStatus } from '$lib/dashboard/richieste';
+	import { QUOTE_REMIND_DAYS, QUOTE_STATUS, quoteDate, type QuoteStatus } from '$lib/dashboard/richieste';
 	import { money, dmy, monthKey, MONTHS } from '$lib/dashboard/orders';
 	import MonthBar from '$lib/components/dashboard/MonthBar.svelte';
 	import { fmtAgo } from '$lib/dashboard/produzione';
@@ -12,13 +12,19 @@
 	const filter = $derived(page.url.searchParams.get('stato') ?? 'tutti');
 	/* come negli ordini: si parte dal mese in corso; riquadri, elenco e totali parlano di quel mese */
 	let month = $state<string | null>(data.year === new Date().getFullYear() ? String(new Date().getMonth()) : null);
-	const meseLabel = $derived(month === null ? `tutto il ${data.year}` : month === 'prev' ? `prima del ${data.year}` : month === 'next' ? `dopo il ${data.year}` : `${MONTHS[+month]} ${data.year}`);
-	const nelMese = $derived(data.quotes.filter((q) => month === null || monthKey(q.created_at, data.year) === month));
+	/* ricerca per nome (Mattia, 24/11/2026): con del testo nella casella si cerca in TUTTO l'anno, il mese scelto non conta */
+	let search = $state('');
+	const cerca = $derived(search.trim().toLowerCase());
+	const mese = $derived(cerca ? null : month);
+	const meseLabel = $derived(mese === null ? `tutto il ${data.year}` : mese === 'prev' ? `prima del ${data.year}` : mese === 'next' ? `dopo il ${data.year}` : `${MONTHS[+mese]} ${data.year}`);
+	const testoDi = (q: (typeof data.quotes)[number]) => { const c = q.draft.customer; return `${q.number} ${c.name ?? ''} ${c.first_name ?? ''} ${c.last_name ?? ''} ${c.email ?? ''} ${c.piva ?? ''}`.toLowerCase(); };
+	/* il mese e' quello della data del preventivo (quoteDate), non del giorno di inserimento */
+	const nelMese = $derived(data.quotes.filter((q) => (mese === null || monthKey(quoteDate(q), data.year) === mese) && (!cerca || testoDi(q).includes(cerca))));
 	const list = $derived(nelMese.filter((q) => (filter === 'tutti' ? true : q.status === filter)));
 	/* paginazione (70 per pagina) e totali dell'elenco filtrato */
 	const PER_PAGE = 70;
 	let pg = $state(1);
-	$effect(() => { void [filter, month]; pg = 1; });
+	$effect(() => { void [filter, month, cerca]; pg = 1; });
 	const pages = $derived(Math.max(1, Math.ceil(list.length / PER_PAGE)));
 	const pageList = $derived(list.slice((pg - 1) * PER_PAGE, pg * PER_PAGE));
 	const sums = $derived.by(() => { const net = list.reduce((a, q) => a + Number(q.total_net), 0), gross = list.reduce((a, q) => a + Number(q.total_gross), 0); return { net, vat: gross - net, gross, pageNet: pageList.reduce((a, q) => a + Number(q.total_net), 0), pageGross: pageList.reduce((a, q) => a + Number(q.total_gross), 0) }; });
@@ -38,10 +44,12 @@
 {#if form?.error}<p class="error">{form.error}</p>{/if}
 {#if form?.message}<p class="ok">{form.message}</p>{/if}
 
-<MonthBar bind:month year={data.year} items={data.quotes} dateOf={(q: { created_at: string }) => q.created_at} amountOf={(q: { total_gross: number }) => Number(q.total_gross)} unit="prev." />
-<p class="stats5-rif">Stai guardando <b>{meseLabel}</b>: riquadri, elenco e totali qui sotto sono solo di {meseLabel}.</p>
+<MonthBar bind:month year={data.year} items={data.quotes} dateOf={quoteDate} amountOf={(q: { total_gross: number }) => Number(q.total_gross)} unit="prev." />
+<div class="dcard filters" style="grid-template-columns:1fr"><input type="text" placeholder="Cerca per nome del cliente, email, P.IVA o numero…" bind:value={search} /></div>
+{#if cerca}<p class="stats5-rif">Ricerca di <b>«{search.trim()}»</b> in <b>tutto il {data.year}</b>, tutti i mesi insieme: riquadri, elenco e totali qui sotto sono dei preventivi trovati.</p>
+{:else}<p class="stats5-rif">Stai guardando <b>{meseLabel}</b>: riquadri, elenco e totali qui sotto sono solo di {meseLabel}.</p>{/if}
 <div class="pr-kpis" style="grid-template-columns:repeat(4,1fr)">
-	<div class="pr-kpi"><b>{nelMese.length}</b><span>preventivi in {meseLabel}</span></div>
+	<div class="pr-kpi"><b>{nelMese.length}</b><span>{cerca ? 'preventivi trovati' : `preventivi in ${meseLabel}`}</span></div>
 	<div class="pr-kpi"><b>{nelMese.filter((q) => q.status === 'inviato').length}</b><span>in attesa · {money(totals.inviati)}</span></div>
 	<div class="pr-kpi"><b>{nelMese.filter((q) => q.status === 'accettato' || q.status === 'ordinato').length}</b><span>accettati · {money(totals.vinti)}</span></div>
 	<div class="pr-kpi" class:is-warn={nelMese.some(toRemind)}><b>{nelMese.filter(toRemind).length}</b><span>da sollecitare</span></div>
@@ -53,7 +61,7 @@
 </div>
 
 {#if list.length === 0}
-	<div class="dcard" style="text-align:center;color:var(--muted)">Nessun preventivo.</div>
+	<div class="dcard" style="text-align:center;color:var(--muted)">{cerca ? `Nessun preventivo con «${search.trim()}» nel ${data.year}.` : `Nessun preventivo in ${meseLabel}.`}</div>
 {:else}
 	<div class="dcard" style="padding:0;overflow:auto">
 		<table class="dtable">
@@ -62,7 +70,7 @@
 				{#each pageList as q (q.id)}
 					{@const st = QUOTE_STATUS[q.status as QuoteStatus]}
 					<tr>
-						<td>{#if q.unread}<span class="rq-dot" style="display:inline-block;background:var(--blue);box-shadow:0 0 0 3px #dbeafe;margin:0 8px 0 0;vertical-align:middle" title="Il cliente ha scritto"></span>{/if}<a class="pr-num" href="/dashboard/aziende/preventivi/{q.id}">{q.number}</a>{#if q.version > 1} <small class="osub">rev. {q.version}</small>{/if}</td>
+						<td>{#if q.unread}<span class="rq-dot" style="display:inline-block;background:var(--blue);box-shadow:0 0 0 3px #dbeafe;margin:0 8px 0 0;vertical-align:middle" title="Il cliente ha scritto"></span>{/if}<a class="pr-num" href="/dashboard/aziende/preventivi/{q.id}">{q.number}</a>{#if q.version > 1} <small class="osub">rev. {q.version}</small>{/if}<div class="osub">{dmy(quoteDate(q))}</div></td>
 						<td>{q.draft.customer.name}<div class="osub">{q.draft.customer.email}</div></td>
 						<td><b>{money(Number(q.total_gross))}</b><div class="osub">{q.draft.items.length} {q.draft.items.length === 1 ? 'riga' : 'righe'}</div></td>
 						<td><span class="pill" style="background:{st.soft};color:{st.color}">{st.label}</span>{#if q.order_group}<div><a class="link" style="font-size:12px" href="/dashboard/fatturazione/ordini/{q.order_group}">ordine ›</a></div>{/if}</td>

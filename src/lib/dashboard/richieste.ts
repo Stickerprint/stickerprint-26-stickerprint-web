@@ -33,6 +33,10 @@ export interface Quote {
 	sent_subject?: string | null; sent_message?: string | null; sender_name?: string | null; opened_count?: number; opened_at?: string | null; pdf_downloaded_at?: string | null; auto_remind?: boolean; unread?: boolean;
 }
 
+/** Data del preventivo: quella scritta sul documento (campo data della bozza), non il giorno in cui la riga e' entrata nel gestionale.
+ *  I 40 preventivi importati da Fatture in Cloud il 31/10/2026 sono di gennaio-agosto: contando `created_at` finivano tutti in ottobre. */
+export const quoteDate = (q: { draft?: { date?: string | null } | null; created_at: string }): string => (q.draft?.date && /^\d{4}-\d{2}-\d{2}/.test(q.draft.date) ? q.draft.date : q.created_at);
+
 export interface QuoteMessage { id: number; quote_id: string; direction: 'in' | 'out'; author: string | null; body: string; created_at: string }
 const itLong = (d: string | null) => (d ? new Date(d + 'T12:00:00').toLocaleDateString('it-IT', { day: 'numeric', month: 'long' }) : null);
 const eur = (v: number) => new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR', useGrouping: 'always' }).format(v);
