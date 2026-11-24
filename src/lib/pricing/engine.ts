@@ -19,7 +19,7 @@
  *
  * DAL LISTINO 2027: quando il config porta con se' `listino` (lo aggancia `loadEngine`), il prezzo NON segue
  * piu' le formule qui sopra ma la regola unica di `listino.ts` (ricarico, sconto volume, avvio, lavoro,
- * arrotondamento per eccesso a 0,50 €). Commercial range, price range, markup e avvio di questo file restano
+ * prezzo portato all'euro intero successivo). Commercial range, price range, markup e avvio di questo file restano
  * solo come riserva per un config senza listino (test, vecchi dati).
  */
 

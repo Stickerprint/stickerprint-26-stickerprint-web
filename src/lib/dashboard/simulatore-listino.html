@@ -109,7 +109,7 @@ header.top{position:static;padding:10px 24px;flex:none}
 </div>
 <details class="guida" open>
   <summary>Come funziona il listino e cosa modificare</summary>
-  <p class="f0"><b>Prezzo</b> = avvio produzione + (materiale + stampa + lamina) × ricarico + resina + lavoro. Poi si aggiungono l'aumento generale e l'IVA, e si arrotonda.</p>
+  <p class="f0"><b>Prezzo</b> = avvio produzione + (materiale + stampa + lamina) × ricarico + resina + lavoro. Poi si aggiungono l'aumento generale e l'IVA, e il prezzo sale all'euro intero successivo (283,50 € diventa 284 €).</p>
   <div class="cols">
     <ul>
       <li>Il fornitore cambia prezzo → <b>2 · Materiali</b> o <b>3 · Finiture</b>: aggiorna il costo.</li>
@@ -143,7 +143,7 @@ function proposta(){
   const P=(id,nome,o)=>Object.assign({id,nome,mats:Object.assign({},tuttiM),fins:{nessuna:1,opaca:1,lucida:1},stampa:4,sec:2.9,minCarrello:0,m2Carrello:0,orario:'',corr:0,qty:'15, 50, 100, 200, 300, 500, 1000, 2000, 3000'},o||{});
   return {
     comune:{
-      iva:22, aumentoBase:5, fatturato:182000, costoOrario:25, arrot:.5, express:30,
+      iva:22, aumentoBase:5, fatturato:182000, costoOrario:25, arrot:1, express:30,
       spese:[{nome:'Esempio: leasing nuova macchina',mese:400,on:false},{nome:'Esempio: nuovo dipendente',mese:2200,on:false}],
       prevSoglia:5000, prevScontoSotto:0, prevScontoSopra:10,
       /* regola: avvio + ricarico unico × sconto volume + correttivo per scaglione */
@@ -195,7 +195,7 @@ const ENG=(()=>{
     const corrQ=interp(c.scagl,q);
     const k=(1+aumentoTot(L)/100)*(1+num(p.corr)/100)*(1+corrQ/100),aumento=base*(k-1);
     const lavSup=cm2*costoCm2(L,p),pezzi=q*costoPezzo(L,p)+lavSup,netto0=base+aumento+pezzi;
-    const iva=1+num(c.iva)/100,ar=num(c.arrot)||.01,rnd=x=>Math.round(Math.ceil(x/ar-1e-9)*ar*100)/100;
+    const iva=1+num(c.iva)/100,ar=1/* il prezzo IVA inclusa sale sempre all'euro intero successivo (283,50 diventa 284) */,rnd=x=>Math.round(Math.ceil(x/ar-1e-9)*ar*100)/100;
     const lordoBase=rnd(netto0*iva),lordoEx=rnd(lordoBase*(1+num(c.express)/100));
     const lordo=lordoBase+(lordoEx-lordoBase)*(o.ex||0);
     return {supporto,stampa,finitura,resina,fisso,aumento,pezzi,netto0,lordo,netto:lordo/iva,k,m2,fs,fq,ar,sconto,corrQ,lavSup,
@@ -310,7 +310,7 @@ function pRegole(){return `
   <h3>Avvio produzione</h3><p class="sub">Importo fisso per ordine. Pesa sugli ordini piccoli.</p>${tabella('comune.avvio','Pezzi','Avvio','pz','€')}
   <h3>Correttivo per scaglione</h3><p class="sub">Alza o abbassa una sola quantità: +5 = +5% sul prezzo di quei pezzi.</p>${tabella('comune.scagl','Pezzi','Correttivo','pz','%')}
   ${adv('regole',`<h3>Sconto volume</h3><p class="sub">Sconto sul materiale in base ai metri quadri totali dell'ordine. Non si applica a resina e avvio.</p>${tabella('comune.vol','m² totali','Sconto','m²','%')}
-  <h3>IVA, arrotondamento, espressa</h3><div class="grid"><label class="f">IVA (%)${inp('comune.iva',{cls:'w'})}</label><label class="f">Arrotondamento prezzo IVA incl. (€)${inp('comune.arrot',{cls:'w'})}</label><label class="f">Spedizione espressa (+%)${inp('comune.express',{cls:'w'})}</label></div>
+  <h3>IVA, arrotondamento, espressa</h3><div class="grid"><label class="f">IVA (%)${inp('comune.iva',{cls:'w'})}</label><label class="f">Arrotondamento<span style="display:block;font-weight:600;padding-top:8px">all'euro intero successivo</span></label><label class="f">Spedizione espressa (+%)${inp('comune.express',{cls:'w'})}</label></div>
   <h3>Preventivi manuali</h3><div class="grid"><label class="f">Soglia pezzi per riga${inp('comune.prevSoglia',{cls:'w'})}</label><label class="f">Sconto massimo sotto soglia (%)${inp('comune.prevScontoSotto',{cls:'w'})}</label><label class="f">Sconto massimo sopra soglia (%)${inp('comune.prevScontoSopra',{cls:'w'})}</label></div>`)}`;}
 function pVerifiche(){
   const pm=prodById(M.prod);M.prod=pm.id;if(!matsOf(pm).find(m=>m.id===M.mat))M.mat=firstMat(pm);if(!finsOf(pm).find(f=>f.id===M.fin))M.fin=firstFin(pm);

@@ -14,7 +14,7 @@
  *                 k = (1 + aumento generale) × (1 + correttivo prodotto) × (1 + correttivo scaglione)
  *   lavoro      = quantità × secondi a pezzo × costo orario / 3600
  *                 + cm² × lavoro per cm² (resinati: minuti di un carrello pieno ÷ m² del carrello)
- *   netto       = tutto sommato;  lordo = netto × IVA arrotondato PER ECCESSO al passo (0,50 €)
+ *   netto       = tutto sommato;  lordo = netto × IVA portato all'EURO INTERO SUCCESSIVO (283,50 → 284; mai centesimi)
  */
 
 export type Tabella = [number, number][]; // [soglia, valore], interpolata sul logaritmo della soglia
@@ -25,7 +25,7 @@ export interface ListinoComune {
 	aumentoBase: number | string; // % su tutto
 	fatturato: number | string; // serve solo a trasformare le spese mensili in %
 	costoOrario: number | string; // €/ora del lavoro
-	arrot: number | string; // passo dell'arrotondamento del lordo (0,5)
+	arrot: number | string; // non piu' usato: il lordo sale sempre all'euro intero successivo (resta per i listini gia' salvati)
 	express: number | string; // % produzione espressa (non usata dal sito, resta per i preventivi)
 	spese: ListinoSpesa[];
 	prevSoglia?: number | string;
@@ -65,7 +65,7 @@ export function listinoIniziale(): Listino {
 	});
 	return {
 		comune: {
-			iva: 22, aumentoBase: 5, fatturato: 182000, costoOrario: 25, arrot: 0.5, express: 30,
+			iva: 22, aumentoBase: 5, fatturato: 182000, costoOrario: 25, arrot: 1, express: 30,
 			spese: [{ nome: 'Esempio: leasing nuova macchina', mese: 400, on: false }, { nome: 'Esempio: nuovo dipendente', mese: 2200, on: false }],
 			prevSoglia: 5000, prevScontoSotto: 0, prevScontoSopra: 10,
 			avvio: [[15, 20], [50, 33], [100, 50]],
@@ -158,7 +158,7 @@ export function prezzo(L: Listino, p: ListinoProdotto, o: PrezzoIn): PrezzoOut {
 	const corrQ = interp(c.scagl, q);
 	const k = (1 + aumentoTot(L) / 100) * (1 + num(p.corr) / 100) * (1 + corrQ / 100), aumento = base * (k - 1);
 	const pezzi = q * costoPezzo(L, p) + cm2 * costoCm2(L, p), netto0 = base + aumento + pezzi;
-	const iva = 1 + num(c.iva) / 100, ar = num(c.arrot) || 0.01;
+	const iva = 1 + num(c.iva) / 100, ar = 1; // sempre all'euro intero successivo (Mattia, 24/11/2026: niente prezzi a ,50)
 	const lordo = Math.round(Math.ceil((netto0 * iva) / ar - 1e-9) * ar * 100) / 100;
 	return {
 		supporto, stampa, finitura, resina, fisso, aumento, pezzi, netto0, lordo, netto: lordo / iva, k, m2, cm2, sconto, corrQ,
@@ -202,7 +202,6 @@ export function problemaListino(L: Listino): string | null {
 	const c = L.comune;
 	if (!(num(c.ricarico) > 0)) return 'Il ricarico deve essere maggiore di zero.';
 	if (!(num(c.iva) >= 0 && num(c.iva) < 100)) return 'IVA non valida (es. 22).';
-	if (!(num(c.arrot) > 0)) return "L'arrotondamento deve essere maggiore di zero (es. 0,5).";
 	if (!(c.avvio || []).some((r) => num(r[0]) > 0)) return "Manca la tabella dell'avvio produzione.";
 	if ((c.vol || []).some((r) => num(r[1]) >= 100 || num(r[1]) < 0)) return 'Lo sconto volume deve stare fra 0 e 99%.';
 	for (const m of L.materiali) if (!(num(m.costo) > 0)) return `Il materiale "${m.nome}" non ha un costo.`;
