@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import { ORDER_STATUS, ACTIVE_STATUSES, LEGACY_STATUSES, PROD_STAGES, CATS, COUNTRIES, MONTHS, money, dmy, itemMeta, thumbOf, PRODUCTION_STATUSES, SHIPPING_STATUSES, DEVICE_ICON, CHANNEL_ICON, type OrderGroup } from '$lib/dashboard/orders';
+	import { ORDER_STATUS, ACTIVE_STATUSES, LEGACY_STATUSES, PROD_STAGES, CATS, COUNTRIES, MONTHS, money, dmy, itemMeta, thumbOf, PRODUCTION_STATUSES, SHIPPING_STATUSES, DEVICE_ICON, CHANNEL_ICON, giornoFra, partenzaDi, partonoIl, type OrderGroup } from '$lib/dashboard/orders';
 	import { paymentIcon, paymentLabel } from '$lib/dashboard/payments';
 	import ItemsCell from '$lib/components/dashboard/ItemsCell.svelte';
 	let { data, form } = $props();
@@ -9,6 +9,15 @@
 	let channel = $state('all');
 	let status = $state('all');
 	let star = $state('entrambi');
+	/* "Data partenza": oggi, domani o dopodomani = gli ordini che devono partire quel giorno (Mattia, 25/11/2026).
+	   Vale la data, non il mese in cui l'ordine e' stato fatto: con questo filtro il mese scelto non conta */
+	let partenza = $state('all');
+	const GIORNI_PARTENZA = $derived(['Oggi', 'Domani', 'Dopodomani'].map((nome, i) => {
+		const giorno = giornoFra(i);
+		const quando = new Intl.DateTimeFormat('it-IT', { weekday: 'short', day: '2-digit', month: '2-digit' }).format(new Date(`${giorno}T12:00:00`));
+		return { k: String(i), nome, giorno, quando, n: partonoIl(data.groups as OrderGroup[], giorno).length };
+	}));
+	const giornoScelto = $derived(GIORNI_PARTENZA.find((x) => x.k === partenza) ?? null);
 	/* si parte dal mese in corso: elenco, totali e riquadri parlano sempre dello stesso mese.
 	   Con "Tutti i mesi" si vede tutto l'anno, elenco compreso. */
 	let month = $state<string | null>(new Date().getFullYear() === (data.year ?? new Date().getFullYear()) ? String(new Date().getMonth()) : null);
@@ -48,8 +57,10 @@
 		else if (status !== 'all' && g.status !== status) return false;
 		if (star === 'starred' && !g.starred) return false;
 		if (star === 'unstarred' && g.starred) return false;
-		/* con del testo nella ricerca si cerca in tutto l'anno: il mese scelto non conta (Mattia, 24/11/2026) */
-		if (month !== null && !q) {
+		if (giornoScelto && (g.status === 'annullato' || partenzaDi(g) !== giornoScelto.giorno)) return false;
+		/* con del testo nella ricerca si cerca in tutto l'anno: il mese scelto non conta (Mattia, 24/11/2026).
+		   Lo stesso con la data di partenza: un ordine di fine mese puo' partire il mese dopo */
+		if (month !== null && !q && !giornoScelto) {
 			const d = new Date(g.created_at); const y = d.getFullYear();
 			const k = y < year ? 'prev' : y > year ? 'next' : String(d.getMonth());
 			if (k !== month) return false;
@@ -59,7 +70,7 @@
 	/* paginazione (70 per pagina) e totali dell'elenco filtrato: imponibile, IVA e totale, senza gli annullati */
 	const PER_PAGE = 70;
 	let page = $state(1);
-	$effect(() => { void [search, cat, channel, status, star, month]; page = 1; });
+	$effect(() => { void [search, cat, channel, status, star, month, partenza]; page = 1; });
 	const pages = $derived(Math.max(1, Math.ceil(list.length / PER_PAGE)));
 	const pageList = $derived(list.slice((page - 1) * PER_PAGE, page * PER_PAGE));
 	const totals = $derived.by(() => {
@@ -71,13 +82,16 @@
 	/* mese di riferimento del fatturato: quello scelto nella barra dei mesi; con "Tutti i mesi" vale
 	   il mese in corso (se si guarda l'anno corrente), altrimenti tutto l'anno scelto */
 	const cerca = $derived(search.trim());
-	const meseRif = $derived(cerca ? null : month);
+	const meseRif = $derived(cerca || giornoScelto ? null : month);
 	const meseLabel = $derived(
 		meseRif === null ? `tutto il ${year}` : meseRif === 'prev' ? `prima del ${year}` : meseRif === 'next' ? `dopo il ${year}` : `${MONTHS[+meseRif]} ${year}`
 	);
+	/* come i riquadri chiamano gli ordini che stanno contando: il mese, oppure il giorno di partenza scelto */
+	const rifTitolo = $derived(giornoScelto ? `in partenza ${giornoScelto.nome.toLowerCase()}` : meseLabel);
+	const rifDi = $derived(giornoScelto ? `in partenza ${giornoScelto.nome.toLowerCase()}` : `di ${meseLabel}`);
 	/* TUTTI i riquadri parlano del mese di riferimento e dei filtri attivi (categoria, canale, stato, segnati, ricerca):
 	   scegliendo agosto e "solo manuali" si vedono ordini e fatturato di agosto dei soli manuali */
-	const filtriAttivi = $derived(search.trim() !== '' || cat !== 'all' || channel !== 'all' || status !== 'all' || star !== 'entrambi');
+	const filtriAttivi = $derived(search.trim() !== '' || cat !== 'all' || channel !== 'all' || status !== 'all' || star !== 'entrambi' || partenza !== 'all');
 	const stats = $derived.by(() => {
 		const mese = list;
 		const validi = mese.filter((g: OrderGroup) => g.status !== 'annullato');
@@ -119,21 +133,23 @@
 	<button type="button" class="btn btn--xs {month === null ? 'btn--blue' : 'btn--ghost'}" onclick={() => (month = null)}>Tutti i mesi</button>
 </div>
 
-{#if cerca}<p class="stats5-rif">Ricerca di <b>«{cerca}»</b> in <b>tutto il {year}</b>, tutti i mesi insieme: riquadri, elenco e totali qui sotto sono degli ordini trovati.</p>
+{#if giornoScelto}<p class="stats5-rif">Stai guardando gli ordini che devono partire <b>{giornoScelto.nome.toLowerCase()}, {giornoScelto.quando}</b>{#if cerca || cat !== 'all' || channel !== 'all' || status !== 'all' || star !== 'entrambi'} <b>con gli altri filtri attivi</b>{/if}: conta la data di partenza, non il mese dell'ordine. Ci sono anche quelli già partiti, col loro stato; gli annullati no.</p>
+{:else if cerca}<p class="stats5-rif">Ricerca di <b>«{cerca}»</b> in <b>tutto il {year}</b>, tutti i mesi insieme: riquadri, elenco e totali qui sotto sono degli ordini trovati.</p>
 {:else}<p class="stats5-rif">Stai guardando <b>{meseLabel}</b>{#if filtriAttivi} <b>con i filtri attivi</b>{/if}: riquadri, elenco e totali qui sotto sono solo di {meseLabel}{#if filtriAttivi} e degli ordini che passano i filtri{/if}.</p>{/if}
 <div class="stats5">
-	<div class="dcard stat5"><span class="ico" style="background:#fde7f1;color:#e0117f">📦</span><div><small>Ordini · {meseLabel}</small><b>{stats.total}</b><i>{stats.ecom} e-commerce · {stats.manuali} manuali</i></div></div>
-	<div class="dcard stat5"><span class="ico" style="background:#e5f0ff;color:#3b82f6">🖨️</span><div><small>In produzione</small><b>{stats.produzione}</b><i>di {meseLabel}</i></div></div>
-	<div class="dcard stat5"><span class="ico" style="background:#dcf9f4;color:#0d9488">🚚</span><div><small>In spedizione</small><b>{stats.spedizione}</b><i>di {meseLabel}</i></div></div>
-	<div class="dcard stat5"><span class="ico" style="background:#dcfce7;color:#15803d">✅</span><div><small>Consegnati</small><b>{stats.consegnati}</b><i>di {meseLabel}</i></div></div>
-	<div class="dcard stat5"><span class="ico" style="background:#fef6db;color:#c48a00">💶</span><div><small>Fatturato netto</small><b>{money(stats.net)}</b><i>{stats.netOrdini} {stats.netOrdini === 1 ? 'ordine' : 'ordini'} di {meseLabel}{#if filtriAttivi} · filtri attivi{/if}</i></div></div>
+	<div class="dcard stat5"><span class="ico" style="background:#fde7f1;color:#e0117f">📦</span><div><small>Ordini · {rifTitolo}</small><b>{stats.total}</b><i>{stats.ecom} e-commerce · {stats.manuali} manuali</i></div></div>
+	<div class="dcard stat5"><span class="ico" style="background:#e5f0ff;color:#3b82f6">🖨️</span><div><small>In produzione</small><b>{stats.produzione}</b><i>{rifDi}</i></div></div>
+	<div class="dcard stat5"><span class="ico" style="background:#dcf9f4;color:#0d9488">🚚</span><div><small>In spedizione</small><b>{stats.spedizione}</b><i>{rifDi}</i></div></div>
+	<div class="dcard stat5"><span class="ico" style="background:#dcfce7;color:#15803d">✅</span><div><small>Consegnati</small><b>{stats.consegnati}</b><i>{rifDi}</i></div></div>
+	<div class="dcard stat5"><span class="ico" style="background:#fef6db;color:#c48a00">💶</span><div><small>Fatturato netto</small><b>{money(stats.net)}</b><i>{stats.netOrdini} {stats.netOrdini === 1 ? 'ordine' : 'ordini'} {rifDi}{#if filtriAttivi} · filtri attivi{/if}</i></div></div>
 </div>
 
-<div class="dcard filters">
+<div class="dcard filters filters--ordini">
 	<input type="text" placeholder="Cerca ordine, cliente o email…" bind:value={search} />
 	<select bind:value={cat}><option value="all">Tutte le categorie</option>{#each Object.entries(CATS) as [slug, c] (slug)}<option value={slug}>{c.name}</option>{/each}</select>
 	<select bind:value={channel}><option value="all">Tutti i canali</option><option value="ecommerce">🛒 E-commerce</option><option value="manuale">✍️ Manuale</option></select>
 	<select bind:value={status}><option value="all">Tutti gli stati</option>{#each ACTIVE_STATUSES as k (k)}<option value={k}>{ORDER_STATUS[k].label}</option>{/each}<option value="vecchi">Vecchio flusso (prove)</option></select>
+	<select bind:value={partenza} aria-label="Data partenza" class:is-on={partenza !== 'all'}><option value="all">🚚 Data partenza: tutte</option>{#each GIORNI_PARTENZA as p (p.k)}<option value={p.k}>{p.nome} · {p.quando} ({p.n})</option>{/each}</select>
 	<select bind:value={star}><option value="entrambi">⭐ Tutti</option><option value="starred">Segnati</option><option value="unstarred">Non segnati</option></select>
 </div>
 
@@ -185,6 +201,7 @@
 							{@const late = !['spedito', 'in_consegna', 'consegnato', 'annullato'].includes(g.status) && g.shipBy < new Date().toISOString().slice(0, 10)}
 							<b class:is-late={late} title={late ? 'Doveva partire entro questa data' : 'Deve partire entro questa data'}>{late ? '⚠ ' : ''}{dmy(g.shipBy)}</b>
 							{#if first.shipped_at}<div class="osub">partito {dmy(first.shipped_at)}</div>{:else}<div class="osub">entro</div>{/if}
+						{:else if g.delivery_date}<b title="Spedizione prevista scritta sull'ordine">{dmy(g.delivery_date)}</b><div class="osub">prevista</div>
 						{:else}<span class="osub">—</span>{/if}
 					</td>
 					<td style="text-align:right"><b>{money(g.net)}</b>{#if g.discount > 0}<div class="osub" style="color:#b45309">sconto {g.discountCode ?? ''} −{money(g.discount)}</div>{/if}<div class="osub">{money(g.gross)} IVA incl.</div>{#if paymentIcon(g.payment_method)}<div class="payrow"><img src={paymentIcon(g.payment_method)} alt={paymentLabel(g.payment_method)} title={paymentLabel(g.payment_method)} /></div>{:else if g.payment_method}<div class="osub">{paymentLabel(g.payment_method)}</div>{/if}</td>
@@ -231,3 +248,9 @@
 		<span class="osub">{PER_PAGE} per pagina</span>
 	</div>
 {/if}
+
+<style>
+	/* sei campi su una riga (ricerca + cinque tendine); sotto i 1100 px vale la colonna unica di dashboard.css */
+	@media (min-width: 1101px) { .filters--ordini { grid-template-columns: 1.6fr repeat(5, 1fr); } }
+	.filters--ordini select.is-on { border-color: var(--blue); background: #f4f9ff; font-weight: 700; }
+</style>

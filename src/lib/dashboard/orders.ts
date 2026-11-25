@@ -142,6 +142,20 @@ export function groupOrders(rows: OrderRow[]): OrderGroup[] {
 		};
 	}).sort((a, b) => b.created_at.localeCompare(a.created_at));
 }
+/* ---------- filtro "Data partenza" dell'elenco ordini (Mattia, 25/11/2026) ---------- */
+/** il giorno in cui l'ordine deve partire (AAAA-MM-GG): quello promesso al cliente (`ship_by`), altrimenti la
+ *  "spedizione prevista" scritta sull'ordine manuale. null = nessuna data */
+export const partenzaDi = (g: { shipBy: string | null; delivery_date: string | null }): string | null => (g.shipBy ?? g.delivery_date)?.slice(0, 10) || null;
+/** il giorno di calendario fra `tra` giorni (0 = oggi, 1 = domani, 2 = dopodomani), nell'ora locale di chi guarda */
+export function giornoFra(tra: number, adesso = new Date()): string {
+	const d = new Date(adesso.getFullYear(), adesso.getMonth(), adesso.getDate() + tra);
+	return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+/** gli ordini che devono partire quel giorno: conta la data, non lo stato (chi e' gia' partito resta in elenco,
+ *  col suo stato), e gli annullati restano fuori */
+export const partonoIl = <G extends { shipBy: string | null; delivery_date: string | null; status: string }>(groups: G[], giorno: string): G[] =>
+	groups.filter((g) => g.status !== 'annullato' && partenzaDi(g) === giorno);
+
 export const money = (v: number) => new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR', useGrouping: 'always' }).format(v);
 /** prezzo unitario: fino a 4 decimali (0,295 €), mai meno di 2 */
 export const moneyUnit = (v: number) => new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR', useGrouping: 'always', minimumFractionDigits: 2, maximumFractionDigits: 4 }).format(v);
