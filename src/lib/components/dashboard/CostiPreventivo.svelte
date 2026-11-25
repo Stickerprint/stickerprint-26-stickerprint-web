@@ -91,8 +91,8 @@
 		<!-- tempi -->
 		<section class="cp__tempi">
 			<div><span>⏱</span><div><b>{tempo(a.minuti)}</b><small>di lavoro</small></div></div>
-			<div><span>📅</span><div><b>{a.giorniLavoro.toLocaleString('it-IT')} {a.giorniLavoro === 1 ? 'giornata' : 'giornate'}</b><small>da {tempo(a.minutiGiorno)} l'una</small></div></div>
-			<div><span>🚀</span><div><b>pronto in {a.giorniConsegna} {a.giorniConsegna === 1 ? 'giorno' : 'giorni'}</b><small>lavorativi{#if a.attesa}, con {tempo(a.attesa)} di attesa{/if}</small></div></div>
+			<div><span>📅</span><div><b>{a.giorniLavoro < 0.1 ? 'meno di un’ora' : `${a.giorniLavoro.toLocaleString('it-IT')} ${a.giorniLavoro === 1 ? 'giornata' : 'giornate'}`}</b><small>{a.giorniLavoro < 0.1 ? 'di una giornata' : 'da'} {a.giorniLavoro < 0.1 ? `da ${tempo(a.minutiGiorno)}` : `${tempo(a.minutiGiorno)} l'una`}</small></div></div>
+			<div><span>🚀</span><div><b>pronto in {a.giorniConsegna} {a.giorniConsegna === 1 ? 'giorno' : 'giorni'}</b><small>{a.giorniConsegna === 1 ? 'lavorativo' : 'lavorativi'}{#if a.attesa}, con {tempo(a.attesa)} di attesa{/if}</small></div></div>
 		</section>
 		<p class="cp__nota" style="margin-top:-4px">I giorni non contano gli altri lavori già in coda.</p>
 
