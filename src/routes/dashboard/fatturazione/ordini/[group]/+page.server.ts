@@ -8,6 +8,7 @@ import { previewIntegration, requestIntegration, cancelIntegration, type ChangeI
 import { shippingUpdateEmail } from '$lib/server/email-templates';
 import { thumbOf } from '$lib/dashboard/orders';
 import { langOf } from '$lib/i18n';
+import { creaDdt } from '$lib/server/ddt';
 import type { Actions, PageServerLoad } from './$types';
 
 /** Nome del corriere dal link di tracking, per l'email e la scheda (solo quando l'ordine non ne ha già uno). */
@@ -56,7 +57,8 @@ export const load: PageServerLoad = async ({ params, url, locals: { supabase, us
 		}
 	}
 	const [{ data: invoices }, { data: ddts }, editor] = await Promise.all([
-		supabase.from('invoices').select('id, number, issued_at, amount_gross').eq('checkout_group', group.key),
+		/* la fattura dell'ordine: collegata dal gruppo, oppure (fattura da piu' ordini) dal numero d'ordine */
+		supabase.from('invoices').select('id, number, issued_at, amount_gross').or(`checkout_group.eq.${group.key},order_numbers.cs.{${group.numbers.filter((n) => /^[A-Za-z0-9_-]+$/.test(n)).join(',')}}`),
 		supabase.from('ddts').select('id, number, issued_at').eq('checkout_group', group.key),
 		loadEditorData(supabase)
 	]);
@@ -69,6 +71,16 @@ export const load: PageServerLoad = async ({ params, url, locals: { supabase, us
 };
 
 export const actions: Actions = {
+	/** «Genera DDT» dalla scheda dell'ordine (Mattia, 25/11/2026): facoltativo, con le quantita' consegnate, colli e peso.
+	    Non cambia lo stato dell'ordine e non manda email; poi si fattura da Fatturazione → DDT oppure dagli ordini */
+	ddt: async ({ request, params, locals: { supabase } }) => {
+		const f = await request.formData();
+		let qtys: Record<string, number> = {};
+		try { qtys = JSON.parse(String(f.get('qtys') ?? '{}')); } catch { qtys = {}; }
+		const r = await creaDdt(supabase, params.group, { parcels: Number(f.get('parcels') ?? 1), weight: Number(f.get('weight') ?? 0) || null, qtys });
+		if ('error' in r) return fail(400, { error: r.error });
+		return { ok: true, ddtFatto: { id: r.id, number: r.number } };
+	},
 	save: async ({ request, params, locals: { supabase } }) => {
 		const f = await request.formData();
 		const d = parseDraft(f.get('payload'));

@@ -46,6 +46,18 @@
 	$effect(() => { if (data.openSend) openSend(); });
 	$effect(() => { if (form?.sent) sendOpen = false; });
 	const previewLines = $derived(message.split('\n'));
+
+	/* «Genera DDT» (Mattia, 25/11/2026): facoltativo, solo sugli ordini inseriti a mano. Quantita' consegnate, colli e peso */
+	let ddtOpen = $state(false);
+	let ddtColli = $state(1);
+	let ddtPeso = $state<number | null>(null);
+	let ddtQty = $state<Record<string, number>>({});
+	let ddtInvio = $state(false);
+	const puoFareDdt = $derived(g.channel !== 'ecommerce' && g.status !== 'annullato' && !data.ddts.length);
+	const ddtTotale = $derived(g.items.reduce((s, i) => s + Number(i.unit_net ?? Number(i.total_net) / i.qty) * Number(ddtQty[i.id] ?? i.qty), 0));
+	function apriDdt() { ddtColli = first.parcels ?? 1; ddtPeso = first.weight_kg ?? null; ddtQty = Object.fromEntries(g.items.map((i) => [i.id, i.qty])); ddtOpen = true; }
+	const ddtFatto = $derived((form as { ddtFatto?: { id: string; number: string } } | null)?.ddtFatto ?? null);
+	$effect(() => { if (ddtFatto) ddtOpen = false; });
 </script>
 
 <svelte:head><title>Ordine {g.number} | Dashboard</title></svelte:head>
@@ -54,6 +66,7 @@
 {#if data.created}<p class="success">Ordine {data.created} creato.{#if data.mail} {data.mail}{/if}</p>{/if}
 {#if form?.error && !(form as { sendError?: boolean }).sendError}<p class="error">{form.error}</p>{/if}
 {#if form?.ok && form.message}<p class="success">{form.message}</p>{/if}
+{#if ddtFatto}<p class="success">DDT {ddtFatto.number} creato: <a class="link" href="/dashboard/fatturazione/ddt/{ddtFatto.id}/pdf" target="_blank" rel="noopener">⬇ PDF</a> · <a class="link" href="/dashboard/produzione/spedizioni/etichette?ddt={ddtFatto.id}" target="_blank" rel="noopener">🏷️ etichette dei colli</a>. Per fatturarlo vai in <a class="link" href="/dashboard/fatturazione/ddt">Fatturazione → DDT</a>.</p>{/if}
 
 
 {#if integOpen}
@@ -126,6 +139,8 @@
 		<button type="button" class="btn btn--blue btn--xs" onclick={openSend} disabled={!g.email} title={g.email ? '' : 'L’ordine non ha un’email'}>✉️ {data.conf.sent_at ? 'Reinvia conferma' : 'Invia conferma'}</button>
 		<button type="button" class="btn btn--yellow btn--xs" onclick={() => (editing = true)}>✏️ Modifica</button>
 		{#if ['in_produzione', 'attesa_pagamento', 'attesa_integrazione', 'in_attesa'].includes(g.status)}<button type="button" class="btn btn--pink btn--xs" onclick={openInteg} title="Il cliente vuole misura, finitura o quantità diverse: ricalcolo e richiesta della differenza">💶 Integrazione</button>{/if}
+		{#if puoFareDdt}<button type="button" class="btn btn--ghost btn--xs" onclick={apriDdt} title="Documento di trasporto di questo ordine: facoltativo, non cambia lo stato dell'ordine">🚚 Genera DDT</button>
+		{:else if data.ddts.length}{#each data.ddts as d (d.id)}<a class="btn btn--ghost btn--xs" href="/dashboard/fatturazione/ddt/{d.id}/pdf" target="_blank" rel="noopener" title="DDT già generato per questo ordine">🚚 DDT {d.number}</a>{/each}{/if}
 		<a class="btn btn--ghost btn--xs" href="/dashboard/fatturazione/ordini/nuovo?da={g.key}" title="Ordine nuovo, con numero nuovo, gia' compilato con questi dati">⧉ Duplica</a>
 		<a class="btn btn--ghost btn--xs" href="/dashboard/fatturazione/ordini/{g.key}/pdf" target="_blank" rel="noopener">⬇ PDF conferma</a>
 		<a class="btn btn--ghost btn--xs" href="/conferma/{data.conf.token}?anteprima=1" target="_blank" rel="noopener">🔗 Pagina del cliente</a>
@@ -311,6 +326,38 @@
 			</form>
 		</div>
 	{/if}
+{/if}
+
+{#if ddtOpen}
+	<div class="dmodal-bg" role="presentation" onclick={(e) => { if (e.target === e.currentTarget) ddtOpen = false; }}><div class="dmodal dmodal--lg">
+		<h3>🚚 Genera il DDT dell'ordine {g.number} · {g.customer}</h3>
+		<p class="note">Controlla le quantità consegnate: se sono diverse da quelle ordinate (es. ordinate 1.000, prodotte 1.200) l'ordine e la fattura seguono quelle consegnate. Il DDT prende il prossimo numero SPD. L'ordine resta nello stato in cui è.</p>
+		<form method="POST" action="?/ddt" use:enhance={() => { ddtInvio = true; return async ({ update }) => { ddtInvio = false; await update(); }; }} style="display:grid;gap:12px">
+			<input type="hidden" name="qtys" value={JSON.stringify(ddtQty)} />
+			<div class="tscroll"><table class="dtable">
+				<thead><tr><th>Articolo</th><th>Q.tà ordinata</th><th>Q.tà consegnata</th><th>Prezzo unit.</th><th style="text-align:right">Imponibile</th></tr></thead>
+				<tbody>
+					{#each g.items as it (it.id)}
+						{@const unit = Number(it.unit_net ?? Number(it.total_net) / it.qty)}
+						<tr>
+							<td><div class="item-cell">{#if thumbOf(it)}<img src={thumbOf(it)} alt="" />{/if}<div><b>{it.product_name}</b><div class="osub">{itemMeta(it)}</div></div></div></td>
+							<td>{it.qty.toLocaleString('it-IT')}</td>
+							<td><input type="number" min="1" class="sel-sm" style="width:100px" bind:value={ddtQty[it.id]} /></td>
+							<td>{moneyUnit(unit)}</td>
+							<td style="text-align:right"><b>{money(unit * Number(ddtQty[it.id] ?? it.qty))}</b></td>
+						</tr>
+					{/each}
+				</tbody>
+				<tfoot><tr><td colspan="4"><b>Imponibile</b> · IVA {money(ddtTotale * 0.22)} · totale {money(ddtTotale * 1.22)}</td><td style="text-align:right"><b>{money(ddtTotale)}</b></td></tr></tfoot>
+			</table></div>
+			<div class="row3" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,2fr)">
+				<label>Colli<input type="number" name="parcels" min="1" bind:value={ddtColli} /></label>
+				<label>Peso (kg)<input type="number" name="weight" step="0.1" min="0" bind:value={ddtPeso} placeholder="es. 2.4" /></label>
+				<div><span class="osub">Trasporto scritto sul DDT</span><br /><b>{first.shipping_method ?? 'Corriere a carico del mittente'}</b><div class="osub">è il metodo di spedizione dell'ordine: si cambia con ✏️ Modifica</div></div>
+			</div>
+			<div style="display:flex;gap:8px;justify-content:flex-end"><button type="button" class="btn btn--ghost btn--xs" onclick={() => (ddtOpen = false)}>Annulla</button><button class="btn btn--green" type="submit" disabled={ddtInvio}>{ddtInvio ? 'Creo il DDT…' : '🚚 Genera DDT'}</button></div>
+		</form>
+	</div></div>
 {/if}
 
 <style>

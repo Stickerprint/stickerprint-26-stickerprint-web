@@ -5,10 +5,11 @@ import { perLingua, t as tradotto } from '$lib/traduzioni';
  * STATI DELL'ORDINE (regola del 18/09/2026, niente piu' prove da inviare o approvare):
  *   pagamento acquisito (o preventivo confermato) → in_produzione → in_spedizione → spedito → in_consegna → consegnato
  *   - in_produzione: avanza di reparto in reparto dalla dashboard produzione;
- *   - in_spedizione: uscito dall'ultimo reparto, compare in Spedizioni → "In spedizione" finche' non viene inviato a Qapla o concluso;
+ *   - in_spedizione: uscito dall'ultimo reparto, compare in Spedizioni → "In spedizione" finche' non viene inviato a Qapla;
  *   - spedito / in_consegna / consegnato: li porta avanti Qapla (webhook e sincronizzazione), con gli stati intermedi in shipping_status;
- *   - consegna diretta Stickerprint: con "Concludi" l'ordine e' subito consegnato;
- *   - corriere del cliente: con "Concludi" l'ordine e' spedito e si ferma li' (non sappiamo quando consegna).
+ *   - dal 25/11/2026 in Spedizioni c'e' solo Qapla: un ordine consegnato a mano o ritirato dal corriere del cliente si chiude
+ *     cambiando lo stato dalla scheda dell'ordine. Il DDT non nasce piu' da solo: si genera dalla scheda dell'ordine, se serve,
+ *     e la fattura degli ordini manuali si fa da Ordini (ordini spuntati) oppure da Fatturazione → DDT.
  *   attesa_pagamento resta per gli anticipi degli ordini manuali; annullato per gli annulli.
  * Le chiavi sotto "stati di prima" servono solo a leggere gli ordini vecchi (anche quelli importati dal vecchio sito).
  */

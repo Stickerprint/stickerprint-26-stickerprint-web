@@ -4,6 +4,7 @@ import { ensurePlan, operatorName } from '$lib/server/produzione';
 import { righeDelGruppo, aggiornaGruppo, cambiaStato } from '$lib/server/ordini-gruppo';
 import { inviaRichiestaRecensione } from '$lib/server/recensioni';
 import { leggiTutto } from '$lib/server/leggi-tutto';
+import { fatturaDaOrdini, fatturaDi, ordiniFatturati } from '$lib/server/fattura-da-ordini';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ url, locals: { supabase } }) => {
@@ -14,13 +15,25 @@ export const load: PageServerLoad = async ({ url, locals: { supabase } }) => {
 	const { data } = await leggiTutto<OrderRow>((i, f) => supabase.from('orders').select('*', { count: 'exact' }).gte('created_at', `${year}-01-01`).lt('created_at', `${year + 1}-01-01`).or('channel.neq.ecommerce,status.neq.attesa_pagamento').order('created_at', { ascending: false }).order('id').range(i, f));
 	const { data: first } = await supabase.from('orders').select('created_at').order('created_at', { ascending: true }).limit(1).maybeSingle();
 	const firstYear = first ? new Date(first.created_at).getFullYear() : year;
-	return { groups: groupOrders(data), year, years: Array.from({ length: Math.max(1, new Date().getFullYear() - Math.min(firstYear, new Date().getFullYear() - 2) + 1) }, (_, i) => new Date().getFullYear() - i) };
+	/* per ogni ordine, la fattura che lo copre: chi non ne ha si puo' spuntare per «Genera fattura da ordini» */
+	const groups = groupOrders(data);
+	const fatt = await ordiniFatturati(supabase);
+	const fatturati: Record<string, string> = {};
+	for (const g of groups) { const n = fatturaDi(g, fatt); if (n) fatturati[g.key] = n; }
+	return { groups, fatturati, year, years: Array.from({ length: Math.max(1, new Date().getFullYear() - Math.min(firstYear, new Date().getFullYear() - 2) + 1) }, (_, i) => new Date().getFullYear() - i) };
 };
 
 /* La "chiave" di un ordine e' il checkout_group, ma gli ordini che non ce l'hanno (manuali e quelli
    vecchi) sono identificati dall'id della riga: le azioni devono cercare in tutti e due i modi,
    altrimenti rispondono "ordine non trovato". */
 export const actions: Actions = {
+	/** «Genera fattura da ordini» (Mattia, 25/11/2026): un'unica fattura per gli ordini spuntati dello stesso cliente */
+	fattura: async ({ request, locals: { supabase } }) => {
+		const keys = String((await request.formData()).get('groups') ?? '').split(',').filter(Boolean);
+		const r = await fatturaDaOrdini(supabase, keys);
+		if (!r.ok) return fail(400, { error: r.error });
+		return { ok: true, fattura: { id: r.id, number: r.number, ordini: r.ordini, ddt: r.ddt, metodoAnagrafica: r.metodoAnagrafica, pagata: r.pagata } };
+	},
 	/** "Inizia produzione": l'ordine entra nella coda (stato in produzione, prima lavorazione stampa, piano delle lavorazioni creato) */
 	produzione: async ({ request, locals: { supabase, user } }) => {
 		const f = await request.formData();

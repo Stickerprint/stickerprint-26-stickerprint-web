@@ -17,16 +17,22 @@
 	const activeKey = $derived(selected.size ? keyOf(data.ddts.find((d) => selected.has(d.id))!) : null);
 	const selectable = $derived(list.filter((d) => !d.invoice_id && (!activeKey || keyOf(d) === activeKey)).map((d) => d.id));
 	function toggle(id: string) { const s = new Set(selected); s.has(id) ? s.delete(id) : s.add(id); selected = s; }
-	function toggleAll() { selected = selected.size === selectable.length ? new Set() : new Set(selectable); }
+	/* «seleziona tutti»: tutti i DDT da fatturare dell'elenco, di un cliente solo (quello gia' scelto, altrimenti il primo dell'elenco) */
+	function toggleAll() {
+		if (selected.size && selected.size === selectable.length) { selected = new Set(); return; }
+		const primo = list.find((d) => !d.invoice_id);
+		const chiave = activeKey ?? (primo ? keyOf(primo) : null);
+		selected = new Set(list.filter((d) => !d.invoice_id && keyOf(d) === chiave).map((d) => d.id));
+	}
 </script>
 
 <svelte:head><title>DDT {data.year} | Dashboard</title></svelte:head>
 
 <div class="toolbar" style="justify-content:space-between">
-	<div><h1>DDT {data.year}</h1><p class="lead">Documenti di trasporto degli ordini manuali. Filtra per cliente, seleziona i DDT della stessa partita IVA e genera un'unica fattura.</p></div>
+	<div><h1>DDT {data.year}</h1><p class="lead">Documenti di trasporto generati dalla scheda degli ordini («Genera DDT»). Cerca il cliente, seleziona i suoi DDT e genera un'unica fattura. Il DDT è facoltativo: la fattura si può fare anche direttamente da Ordini.</p></div>
 	<div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
 		<div class="year-bar">{#each data.years as y (y)}<a href="?anno={y}" class:is-active={y === data.year}>{y}</a>{/each}</div>
-		<form method="POST" action="?/invoice" use:enhance={() => async ({ update }) => { selected = new Set(); await update(); }}><input type="hidden" name="ids" value={[...selected].join(',')} /><button class="btn btn--green" type="submit" disabled={selected.size === 0}>🧾 {selected.size > 1 ? `Genera unica fattura (${selected.size} DDT)` : 'Genera fattura'}</button></form>
+		<form method="POST" action="?/invoice" use:enhance={() => async ({ update }) => { selected = new Set(); await update(); }}><input type="hidden" name="ids" value={[...selected].join(',')} /><button class="btn btn--green" type="submit" disabled={selected.size === 0}>🧾 {selected.size ? `Genera fattura da DDT selezionati (${selected.size})` : 'Genera fattura da DDT selezionati'}</button></form>
 	</div>
 </div>
 {#if form?.error}<p class="error">{form.error}</p>{/if}
@@ -42,7 +48,7 @@
 
 <div class="dcard" style="padding:0;overflow-x:auto">
 	<table class="dtable">
-		<thead><tr><th><input type="checkbox" checked={selected.size > 0 && selected.size === selectable.length} onchange={toggleAll} /></th><th>DDT</th><th>Data</th><th>Cliente</th><th>Ordine</th><th>Colli / peso</th><th>Trasporto</th><th style="text-align:right">Totale</th><th>Fattura</th><th></th></tr></thead>
+		<thead><tr><th><input type="checkbox" checked={selected.size > 0 && selected.size === selectable.length} disabled={!selectable.length} onchange={toggleAll} aria-label="Seleziona tutti i DDT da fatturare dell'elenco" title="Seleziona tutti i DDT da fatturare dell'elenco" /></th><th>DDT</th><th>Data</th><th>Cliente</th><th>Ordine</th><th>Colli / peso</th><th>Trasporto</th><th style="text-align:right">Totale</th><th>Fattura</th><th></th></tr></thead>
 		<tbody>
 			{#each list as d (d.id)}
 				{@const dd = d.data ?? {}}
@@ -64,7 +70,7 @@
 					</td>
 				</tr>
 			{:else}
-				<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:30px">Nessun DDT{cerca ? ` con «${cerca}» nel ${data.year}` : ` in ${meseLabel}`}. Si generano da In spedizione con "Concludi".</td></tr>
+				<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:30px">Nessun DDT{cerca ? ` con «${cerca}» nel ${data.year}` : ` in ${meseLabel}`}. Si generano dalla scheda dell'ordine con «Genera DDT».</td></tr>
 			{/each}
 		</tbody>
 	</table>

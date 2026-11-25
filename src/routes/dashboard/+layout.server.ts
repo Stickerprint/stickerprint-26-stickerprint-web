@@ -21,7 +21,8 @@ async function menuCounts(supabase: App.Locals['supabase']): Promise<Record<stri
 	const counts: Record<string, number> = {};
 	for (const t of tasks ?? []) counts[t.stage] = (counts[t.stage] ?? 0) + 1;
 	if (daAvviare) counts.daAvviare = daAvviare;
-	for (const r of rows ?? []) if (!r.transmitted_at && !r.ddt_id) counts.spedizione = (counts.spedizione ?? 0) + 1;
+	/* in spedizione = non ancora inviati a Qapla; avere gia' un DDT non conta piu' (dal 25/11/2026 il DDT e' facoltativo e non chiude l'ordine) */
+	for (const r of rows ?? []) if (!r.transmitted_at) counts.spedizione = (counts.spedizione ?? 0) + 1;
 	if (rev) counts.recensioni = rev;
 	if (invq) counts.fatture = invq;
 	if (conf) counts.prove = (counts.prove ?? 0) + conf;

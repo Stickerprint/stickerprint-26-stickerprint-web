@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { ORDER_STATUS, ACTIVE_STATUSES, LEGACY_STATUSES, PROD_STAGES, CATS, COUNTRIES, MONTHS, money, dmy, itemMeta, thumbOf, PRODUCTION_STATUSES, SHIPPING_STATUSES, DEVICE_ICON, CHANNEL_ICON, arretrati, giornoFra, partenzaDi, partonoIl, type OrderGroup } from '$lib/dashboard/orders';
+	import { chiaveClienteOrdine, fatturabile } from '$lib/dashboard/fattura-ordini';
 	import { paymentIcon, paymentLabel } from '$lib/dashboard/payments';
 	import ItemsCell from '$lib/components/dashboard/ItemsCell.svelte';
 	let { data, form } = $props();
@@ -111,12 +112,38 @@
 			netOrdini: validi.length
 		};
 	});
+	/* ---------- «Genera fattura da ordini» (Mattia, 25/11/2026) ----------
+	   Si spuntano gli ordini senza fattura dello stesso cliente (di solito dopo averlo cercato per nome) e un bottone
+	   genera un'unica fattura. Scelto il primo, gli ordini degli altri clienti si disattivano. */
+	let scelti = $state<Set<string>>(new Set());
+	let confermaFattura = $state(false);
+	let fatturando = $state(false);
+	const fatturati = $derived((data.fatturati ?? {}) as Record<string, string>);
+	const primoScelto = $derived(scelti.size ? (data.groups as OrderGroup[]).find((g) => scelti.has(g.key)) ?? null : null);
+	const clienteScelto = $derived(primoScelto ? chiaveClienteOrdine(primoScelto) : null);
+	const spuntabile = (g: OrderGroup) => fatturabile(g, fatturati) && (!clienteScelto || chiaveClienteOrdine(g) === clienteScelto);
+	/* «seleziona tutti» vale per tutto l'elenco filtrato (tutte le pagine), non solo per quelli a schermo */
+	const spuntabili = $derived(list.filter((g: OrderGroup) => spuntabile(g)).map((g: OrderGroup) => g.key));
+	const tuttiScelti = $derived(spuntabili.length > 0 && spuntabili.every((k: string) => scelti.has(k)));
+	function spunta(k: string) { const s = new Set(scelti); s.has(k) ? s.delete(k) : s.add(k); scelti = s; confermaFattura = false; }
+	function spuntaTutti() {
+		confermaFattura = false;
+		if (tuttiScelti) { scelti = new Set(); return; }
+		/* senza un cliente gia' scelto, «tutti» ha senso solo se l'elenco e' di un cliente solo: si parte dal primo */
+		const chiave = clienteScelto ?? (list.find((g: OrderGroup) => fatturabile(g, fatturati)) ? chiaveClienteOrdine(list.find((g: OrderGroup) => fatturabile(g, fatturati))!) : null);
+		scelti = new Set(list.filter((g: OrderGroup) => fatturabile(g, fatturati) && chiaveClienteOrdine(g) === chiave).map((g: OrderGroup) => g.key));
+	}
+	const ordiniScelti = $derived((data.groups as OrderGroup[]).filter((g) => scelti.has(g.key)));
+	const totScelti = $derived({ net: ordiniScelti.reduce((s, g) => s + g.net, 0), gross: ordiniScelti.reduce((s, g) => s + g.gross, 0) });
+	const altriClienti = $derived(clienteScelto ? list.filter((g: OrderGroup) => fatturabile(g, fatturati) && chiaveClienteOrdine(g) !== clienteScelto).length : 0);
+	const fatta = $derived((form as { fattura?: { id: string; number: string; ordini: string[]; ddt: string[]; metodoAnagrafica: string | null; pagata: boolean } } | null)?.fattura ?? null);
 	function toggle(k: string) { const s = new Set(expanded); s.has(k) ? s.delete(k) : s.add(k); expanded = s; }
 	const st = (s: string) => ORDER_STATUS[s] ?? { label: s, color: '#6b7280', soft: '#eceef3' };
 </script>
 
 <svelte:head><title>Ordini | Dashboard Stickerprint</title></svelte:head>
 {#if form?.error}<p class="error">{form.error}</p>{/if}
+{#if fatta}<p class="success">Fattura <b>{fatta.number}</b> creata da {fatta.ordini.length === 1 ? `l'ordine ${fatta.ordini[0]}` : `${fatta.ordini.length} ordini (${fatta.ordini.join(', ')})`}{#if fatta.ddt.length}, con {fatta.ddt.length === 1 ? `il DDT ${fatta.ddt[0]}` : `i DDT ${fatta.ddt.join(', ')}`}{/if}: <a class="link" href="/dashboard/fatturazione/fatture/{fatta.id}">aprila</a>.{#if fatta.metodoAnagrafica} Pagamento preso dall'anagrafica del cliente: <b>{fatta.metodoAnagrafica}</b>.{/if}{#if fatta.pagata} Gli ordini erano già pagati: la fattura risulta pagata.{/if}</p>{/if}
 {#if form?.ok && form.started}<p class="success">Ordine {form.started} in produzione: lo trovi in <a class="link" href="/dashboard/produzione">Produzione › Stampa</a>.</p>{/if}
 
 <div class="toolbar" style="justify-content:space-between">
@@ -159,13 +186,33 @@
 	<select bind:value={star}><option value="entrambi">⭐ Tutti</option><option value="starred">Segnati</option><option value="unstarred">Non segnati</option></select>
 </div>
 
+{#if scelti.size}
+	<div class="dcard selbar">
+		<div><b>{scelti.size} {scelti.size === 1 ? 'ordine selezionato' : 'ordini selezionati'}</b> di <b>{primoScelto?.customer}</b> · {money(totScelti.net)} + IVA = {money(totScelti.gross)}
+			{#if altriClienti}<div class="osub">Una fattura è di un cliente solo: gli ordini degli altri clienti sono disattivati.</div>{/if}</div>
+		<div class="selbar__btns">
+			{#if confermaFattura}
+				<form method="POST" action="?/fattura" use:enhance={() => { fatturando = true; return async ({ result, update }) => { fatturando = false; confermaFattura = false; if (result.type === 'success') scelti = new Set(); await update(); }; }}>
+					<input type="hidden" name="groups" value={[...scelti].join(',')} />
+					<button class="btn btn--green" type="submit" disabled={fatturando}>{fatturando ? 'Genero la fattura…' : `Sì, genera la fattura (${scelti.size} ${scelti.size === 1 ? 'ordine' : 'ordini'})`}</button>
+				</form>
+				<button type="button" class="btn btn--ghost btn--xs" onclick={() => (confermaFattura = false)}>annulla</button>
+			{:else}
+				<button type="button" class="btn btn--green" onclick={() => (confermaFattura = true)} title="Un'unica fattura per gli ordini selezionati: prende il prossimo numero SPF">🧾 Genera fattura da ordini</button>
+				<button type="button" class="btn btn--ghost btn--xs" onclick={() => (scelti = new Set())}>azzera la selezione</button>
+			{/if}
+		</div>
+	</div>
+{/if}
+
 <div class="dcard" style="overflow-x:auto;padding:0">
 	<table class="dtable otable">
-		<thead><tr><th></th><th>Ordine</th><th>Cliente</th><th>Articolo</th><th>Categoria</th><th>Q.tà</th><th>Stato</th><th>Spedizione</th><th style="text-align:right">Importo</th><th></th></tr></thead>
+		<thead><tr><th title="Seleziona gli ordini senza fattura per generarne una"><input type="checkbox" checked={tuttiScelti} disabled={!spuntabili.length} onchange={spuntaTutti} aria-label="Seleziona tutti gli ordini senza fattura dell'elenco" /></th><th></th><th>Ordine</th><th>Cliente</th><th>Articolo</th><th>Categoria</th><th>Q.tà</th><th>Stato</th><th>Spedizione</th><th style="text-align:right">Importo</th><th></th></tr></thead>
 		<tbody>
 			{#each pageList as g (g.key)}
 				{@const first = g.items[0]}
-				<tr class="orow-main">
+				<tr class="orow-main" class:is-scelto={scelti.has(g.key)}>
+					<td>{#if fatturabile(g, fatturati)}<input type="checkbox" checked={scelti.has(g.key)} disabled={!spuntabile(g)} onchange={() => spunta(g.key)} aria-label="Seleziona l'ordine {g.number} per la fattura" title={spuntabile(g) ? 'Senza fattura: selezionalo per generarla' : 'È di un altro cliente rispetto agli ordini già selezionati'} />{:else if fatturati[g.key]}<span class="osub" title="Fattura {fatturati[g.key]}">🧾</span>{/if}</td>
 					<td>{COUNTRIES[g.country]?.flag ?? '🌍'}</td>
 					<td><a class="oid" href="/dashboard/fatturazione/ordini/{g.key}">{g.number}{#if g.items.length > 1} <small>+{g.items.length - 1}</small>{/if}</a><div class="osub">{dmy(g.created_at)} <span title={CHANNEL_ICON[g.channel]?.label}>{CHANNEL_ICON[g.channel]?.icon ?? ''}</span>{#if g.device}<span title="Ordinato da {g.device}">{DEVICE_ICON[g.device] ?? ''}</span>{/if}{#if g.express} <span title="Produzione express">⚡</span>{/if}</div></td>
 					<td><b>{g.customer}</b><div class="osub">{g.email}</div></td>
@@ -222,7 +269,7 @@
 				{#if expanded.has(g.key)}
 					{#each g.items.slice(1) as it (it.id)}
 						<tr class="orow-sub">
-							<td></td><td><span class="osub">{it.number}</span></td><td></td>
+							<td></td><td></td><td><span class="osub">{it.number}</span></td><td></td>
 							<td><div class="item-cell">{#if it.preview_url || it.mockup_url}<img src={it.mockup_url ?? it.preview_url} alt="" />{/if}<div><b>{it.product_name}</b><div class="osub">{itemMeta(it)}</div></div></div></td>
 							<td><span class="cat" style="background:{CATS[it.product_slug]?.soft};color:{CATS[it.product_slug]?.color}">{CATS[it.product_slug]?.name ?? it.product_slug}</span></td>
 							<td>{it.qty.toLocaleString('it-IT')} pz</td>
@@ -232,13 +279,13 @@
 					{/each}
 				{/if}
 			{:else}
-				<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:30px">Nessun ordine corrisponde ai filtri selezionati.</td></tr>
+				<tr><td colspan="11" style="text-align:center;color:var(--muted);padding:30px">Nessun ordine corrisponde ai filtri selezionati.</td></tr>
 			{/each}
 		</tbody>
 		{#if list.length}
 			<tfoot class="otot">
 				<tr>
-					<td colspan="8"><b>Totale {totals.n} {totals.n === 1 ? 'ordine' : 'ordini'}</b> con i filtri attivi{#if totals.cancelled} <span class="osub">({totals.cancelled} {totals.cancelled === 1 ? 'annullato escluso' : 'annullati esclusi'})</span>{/if}{#if pages > 1}<div class="osub">In questa pagina: {money(totals.pageNet)} imponibile · {money(totals.pageGross)} IVA inclusa</div>{/if}</td>
+					<td colspan="9"><b>Totale {totals.n} {totals.n === 1 ? 'ordine' : 'ordini'}</b> con i filtri attivi{#if totals.cancelled} <span class="osub">({totals.cancelled} {totals.cancelled === 1 ? 'annullato escluso' : 'annullati esclusi'})</span>{/if}{#if pages > 1}<div class="osub">In questa pagina: {money(totals.pageNet)} imponibile · {money(totals.pageGross)} IVA inclusa</div>{/if}</td>
 					<td style="text-align:right"><div class="otot__row"><span>Imponibile</span><b>{money(totals.net)}</b></div><div class="otot__row"><span>IVA</span><b>{money(totals.vat)}</b></div><div class="otot__row otot__row--tot"><span>Totale IVA inclusa</span><b>{money(totals.gross)}</b></div></td>
 					<td></td>
 				</tr>
@@ -259,4 +306,8 @@
 	/* sei campi su una riga (ricerca + cinque tendine); sotto i 1100 px vale la colonna unica di dashboard.css */
 	@media (min-width: 1101px) { .filters--ordini { grid-template-columns: 1.6fr repeat(5, 1fr); } }
 	.filters--ordini select.is-on { border-color: var(--blue); background: #f4f9ff; font-weight: 700; }
+	/* barra della selezione per «Genera fattura da ordini»: resta in vista mentre si scorre l'elenco */
+	.selbar { position: sticky; top: 8px; z-index: 5; display: flex; gap: 14px; align-items: center; justify-content: space-between; flex-wrap: wrap; padding: 12px 16px; border: 2px solid var(--green); }
+	.selbar__btns { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+	.orow-main.is-scelto > td { background: #f2fbe9; }
 </style>

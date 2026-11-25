@@ -1,57 +1,33 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import { ORDER_STATUS, COUNTRIES, COURIERS, deliveryMode, dmy, money, moneyUnit, itemMeta, thumbOf, CATS } from '$lib/dashboard/orders';
+	import { ORDER_STATUS, COUNTRIES, COURIERS, deliveryMode, dmy, money, itemMeta, thumbOf, CATS } from '$lib/dashboard/orders';
 	import ItemsCell from '$lib/components/dashboard/ItemsCell.svelte';
 	let { data, form } = $props();
 	const st = (s: string) => ORDER_STATUS[s] ?? { label: s, color: '#6b7280', soft: '#eceef3' };
 	type G = (typeof data.groups)[number];
-	let ddtPopup = $state<string | null>(null);
-	/* il popup serve a "Concludi" (consegna diretta, corriere cliente) e a "Invia a Qapla": il DDT si fa sempre */
-	let popupKind = $state<'ddt' | 'qapla'>('ddt');
-	/* regola: e-commerce pagato subito → fattura gia' emessa al checkout, niente DDT; manuali e altri casi → DDT sempre */
-	const needsDdt = (g: { channel: string | null; items: { payment_status: string | null }[] }) => !(g.channel === 'ecommerce' && g.items[0]?.payment_status === 'paid');
+	/* Dal 25/11/2026 (Mattia) qui c'e' solo Qapla: niente scelta fra nostro corriere, consegna diretta e corriere del cliente,
+	   e nessun DDT creato da qui (si genera, se serve, dalla scheda dell'ordine). Il popup chiede solo colli, peso e corriere. */
+	let qaplaPopup = $state<string | null>(null);
+	/* ordine del sito gia' pagato: si invia subito, senza popup (1 collo, corriere predefinito) */
+	const invioSubito = (g: { channel: string | null; items: { payment_status: string | null }[] }) => g.channel === 'ecommerce' && g.items[0]?.payment_status === 'paid';
 	let qaplaCourier = $state(data.defaultCourier ?? 'GLS-ITA');
-	let ddtParcels = $state(1);
-	let ddtWeight = $state<number | null>(null);
-	let ddtQty = $state<Record<string, number>>({});
-	let openMenu = $state<string | null>(null);
-	/* la tendina si apre "sopra a tutto" (position: fixed, ancorata al bottone): dentro il riquadro della tabella, che ha lo
-	   scorrimento interno, veniva tagliata e bisognava scendere per vederla. Se sotto non c'e' spazio si apre verso l'alto. */
-	let menuPos = $state({ left: 0, top: 0 });
+	let colli = $state(1);
+	let peso = $state<number | null>(null);
 	/* "Copia link": il link del tracking finisce negli appunti, pronto da incollare nella risposta al cliente */
 	let copied = $state<string | null>(null);
 	async function copyTracking(key: string, url: string) {
 		try { await navigator.clipboard.writeText(url); } catch { window.prompt('Copia il link del tracking:', url); return; }
 		copied = key; setTimeout(() => { if (copied === key) copied = null; }, 1800);
 	}
-	/* scorrendo (pagina o riquadri interni) la tendina si chiude: e' ancorata allo schermo, non al bottone */
-	$effect(() => { if (!openMenu) return; const close = () => (openMenu = null); document.addEventListener('scroll', close, true); return () => document.removeEventListener('scroll', close, true); });
-	function toggleMenu(e: MouseEvent, key: string) {
-		if (openMenu === key) { openMenu = null; return; }
-		const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
-		const H = 230, W = 270;
-		menuPos = { left: Math.max(8, Math.min(r.left, window.innerWidth - W - 8)), top: r.bottom + 4 + H > window.innerHeight ? Math.max(8, r.top - H - 4) : r.bottom + 4 };
-		openMenu = key;
-	}
 	let sending = $state<string | null>(null);
 	let expanded = $state<Set<string>>(new Set());
-	const ddtGroup = $derived(data.groups.find((g) => g.key === ddtPopup) ?? null);
-	const ddtTotal = $derived(ddtGroup ? ddtGroup.items.reduce((s, i) => s + Number(i.unit_net ?? Number(i.total_net) / i.qty) * Number(ddtQty[i.id] ?? i.qty), 0) : 0);
+	/* negli ordini gia' partiti: come sono stati spediti (consegna diretta e corriere del cliente restano per lo storico) */
 	const mode = (g: G) => deliveryMode(g);
-	/** scelta nella tendina: qapla (nostro corriere via Qapla'), direct, customer, oppure niente */
-	const choice = (g: G): 'qapla' | 'direct' | 'customer' | '' => { const m = mode(g); if (m === 'direct') return 'direct'; if (m === 'customer') return 'customer'; return g.items[0].courier === 'Qapla' ? 'qapla' : ''; };
-	const CHOICES: { id: 'qapla' | 'direct' | 'customer'; label: string; sub: string; logo?: string }[] = [
-		{ id: 'qapla', label: 'Invia a Qapla', sub: 'nostro corriere · etichetta dal pannello Qapla', logo: COURIERS.Qapla.logo },
-		{ id: 'direct', label: 'Consegna diretta', sub: 'consegniamo noi' },
-		{ id: 'customer', label: 'Corriere cliente', sub: 'ritira il corriere del cliente' }
-	];
-	function openDdt(g: G, kind: 'ddt' | 'qapla' = 'ddt') { popupKind = kind; ddtPopup = g.key; ddtParcels = g.items[0].parcels ?? 1; ddtWeight = null; ddtQty = Object.fromEntries(g.items.map((i) => [i.id, i.qty])); }
+	const qaplaGroup = $derived(data.groups.find((g) => g.key === qaplaPopup) ?? null);
+	function apriQapla(g: G) { qaplaPopup = g.key; colli = g.items[0].parcels ?? 1; peso = g.items[0].weight_kg ?? null; }
 	function toggleRow(k: string) { const s = new Set(expanded); s.has(k) ? s.delete(k) : s.add(k); expanded = s; }
-	$effect(() => {
-		// dopo la conclusione: scarica DDT ed etichette dei colli e chiudi il popup (se il browser blocca la finestra resta il link nel messaggio)
-		if (form?.ok && form.labels) { try { window.open(form.labels, '_blank'); } catch { /* link nel messaggio */ } ddtPopup = null; }
-		else if (form?.ok) ddtPopup = null;
-	});
+	/* dopo l'invio il popup si chiude */
+	$effect(() => { if (form?.ok) qaplaPopup = null; });
 
 	/* ---------- calendario degli ordini spediti ---------- */
 	const MESI = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno', 'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre'];
@@ -77,22 +53,20 @@
 	const problem = (g: G) => [5, 6, 8, 95].includes(Number(g.items[0].shipping_status_id));
 </script>
 
-<svelte:window onresize={() => (openMenu = null)} onclick={(e) => { if (openMenu && !(e.target as HTMLElement).closest('.cmenu')) openMenu = null; }} />
 <svelte:head><title>{data.view === 'spediti' ? 'Spediti' : 'In spedizione'} | Dashboard</title></svelte:head>
 
 <div class="ship-head">
 	<!-- le due viste sono due voci del menu' Spedizioni (In spedizione e Spediti): qui niente linguette (Mattia, 25/11/2026) -->
 	<div><h1>{#if data.view === 'spediti'}📦 Spediti{:else}🚀 In spedizione <span class="tabbtn__n">{data.groups.length}</span>{/if}</h1>
 		{#if data.view === 'da-spedire'}
-			<p class="lead" style="margin-top:12px">Qui arrivano gli ordini usciti dall'ultimo reparto. Per ognuno scegli dalla tendina: <b>Invia a Qapla</b> (nostro corriere: etichetta dal pannello Qapla, il cliente riceve l'email "in attesa di ritiro", poi spedito, in consegna e consegnato arrivano da soli), <b>Consegna diretta</b> (l'ordine è <b>consegnato</b>) o <b>Corriere cliente</b> (l'ordine è <b>spedito</b> e si chiude lì). In tutti e tre i casi si compila il <b>DDT</b> con colli, peso e quantità spedite. Poi l'ordine esce da questa lista e lo ritrovi in <b>Spediti</b>.</p>
+			<p class="lead" style="margin-top:12px">Qui trovi gli ordini nello stato <b>in spedizione</b>. Con <b>Invia a Qapla</b> l'ordine passa al corriere: l'etichetta si stampa dal pannello Qapla, il cliente riceve l'email "in attesa di ritiro", poi spedito, in consegna e consegnato arrivano da soli, e l'ordine si sposta in <b>Spediti</b>. Da qui non nasce più nessun DDT: se serve lo generi dalla scheda dell'ordine. Un ordine consegnato a mano si chiude dalla sua scheda, cambiando lo stato.</p>
 		{:else}
 			<p class="lead" style="margin-top:12px">Il calendario degli ordini partiti: clicca un giorno per vedere cosa è stato spedito, con quale corriere e a che punto è. Gli stati delle spedizioni Qapla si aggiornano da soli.</p>
 		{/if}
 	</div>
 </div>
 {#if form?.error}<p class="error">{form.error}</p>{/if}
-{#if form?.ok && form.qapla}<p class="success">Ordine {form.qapla} inviato a Qapla{form.emailed ? ' · email "in attesa di ritiro" inviata al cliente' : ' · email non inviata'}. Ora stampa l'etichetta dal pannello Qapla (Etichette → Crea): tracking e stati arrivano da soli in <a class="link" href="/dashboard/produzione/spedizioni?vista=spediti">Spediti</a>.{#if form.ddt} DDT {form.ddt} creato: <a class="link" href={form.labels} target="_blank" rel="noopener">⬇ etichette dei colli</a>.{/if}</p>
-{:else if form?.ok && form.ddt}<p class="success">DDT {form.ddt} creato, ordine {form.closed === 'consegnato' ? 'consegnato' : 'spedito'}: <a class="link" href={form.labels} target="_blank" rel="noopener">⬇ etichette dei colli</a>. Lo ritrovi in <a class="link" href="/dashboard/produzione/spedizioni?vista=spediti">Spediti</a>.</p>{/if}
+{#if form?.ok && form.qapla}<p class="success">Ordine {form.qapla} inviato a Qapla{form.emailed ? ' · email "in attesa di ritiro" inviata al cliente' : ' · email non inviata'}. Ora stampa l'etichetta dal pannello Qapla (Etichette → Crea): tracking e stati arrivano da soli in <a class="link" href="/dashboard/produzione/spedizioni?vista=spediti">Spediti</a>.</p>{/if}
 {#if !data.qaplaOk}<p class="error">Qapla non è ancora collegato (manca QAPLA_API_KEY su Vercel): "Invia a Qapla" non funzionerà finché non viene impostata.</p>{/if}
 
 {#if data.view === 'da-spedire'}
@@ -103,40 +77,16 @@
 			{#each data.groups as g (g.key)}
 				{@const ship = g.items[0].shipping ?? {}}
 				{@const f = g.items[0]}
-				{@const c = choice(g)}
 				<tr>
 					<td><a class="oid" href="/dashboard/fatturazione/ordini/{g.key}">{g.number}</a><div class="osub"><b>{g.customer}</b></div><div class="osub">{dmy(g.created_at)} · {g.qty.toLocaleString('it-IT')} pz · {money(g.gross)} · {g.channel === 'manuale' ? '✏️ manuale' : '🛒 e-commerce'}</div></td>
 					<td><ItemsCell items={g.items} size="lg" expanded={expanded.has(g.key)} ontoggle={() => toggleRow(g.key)} /></td>
 					<td>{COUNTRIES[g.country]?.flag ?? ''} {ship.city ?? ''} {ship.province ? `(${ship.province})` : ''}<div class="osub">{ship.street ?? ''}{ship.zip ? ` · ${ship.zip}` : ''}</div><div class="osub">{g.email}</div></td>
-					<td>
-							<div class="cmenu">
-								<form method="POST" action="?/mode" use:enhance={() => async ({ update }) => { openMenu = null; await update(); }}>
-									<input type="hidden" name="group" value={g.key} />
-									<button type="button" class="cmenu__btn" class:is-set={!!c} onclick={(e) => toggleMenu(e, g.key)} title="Scegli come spedire">
-										{#if c === 'qapla'}<img src={COURIERS.Qapla.logo} alt="Qapla" />{:else if c}<span>{CHOICES.find((x) => x.id === c)?.label}</span>{:else}<span>Scegli spedizione</span>{/if}<i>▾</i>
-									</button>
-									{#if openMenu === g.key}
-										<div class="cmenu__list cmenu__list--fixed" style="left:{menuPos.left}px;top:{menuPos.top}px">
-											{#each CHOICES as x (x.id)}<button type="submit" name="mode" value={x.id} class:is-on={c === x.id} class="cmenu__opt">{#if x.logo}<img src={x.logo} alt="" />{/if}<span class="cmenu__txt"><b>{x.label}</b><small>{x.sub}</small></span></button>{/each}
-										</div>
-									{/if}
-								</form>
-							</div>
-					</td>
+					<td><img class="courier-logo" src={COURIERS.Qapla.logo} alt="Qapla" />{#if f.ddt_id}<div class="osub">DDT già fatto</div>{/if}</td>
 					<td style="white-space:nowrap">
-						{#if c === 'qapla'}
-							{#if !needsDdt(g)}
-								<!-- e-commerce gia' pagato e fatturato: si invia subito, senza popup (1 collo, corriere predefinito; si cambia dopo da Spediti) -->
-								<form method="POST" action="?/qapla" use:enhance={() => { sending = g.key; return async ({ update }) => { sending = null; await update(); }; }} style="display:inline"><input type="hidden" name="group" value={g.key} /><input type="hidden" name="courier" value={qaplaCourier} /><button class="btn btn--blue btn--xs" type="submit" disabled={sending === g.key} title="Invia subito a Qapla (ordine già fatturato)">{sending === g.key ? '…' : '📦 Invia a Qapla'}</button></form>
-							{:else if !f.ddt_id}
-								<button type="button" class="btn btn--blue btn--xs" title="Colli, peso e quantità spedite, poi DDT e invio a Qapla" onclick={() => openDdt(g, 'qapla')}>📦 Invia a Qapla</button>
-							{:else}
-								<form method="POST" action="?/qapla" use:enhance={() => { sending = g.key; return async ({ update }) => { sending = null; await update(); }; }}><input type="hidden" name="group" value={g.key} /><button class="btn btn--blue btn--xs" type="submit" disabled={sending === g.key} title="Trasmette l'ordine a Qapla e avvisa il cliente">{sending === g.key ? '…' : '📦 Invia a Qapla'}</button></form>
-							{/if}
-						{:else if c}
-							<button type="button" class="btn btn--green btn--xs" title={c === 'direct' ? 'DDT ed etichette: l’ordine risulta consegnato' : 'DDT ed etichette: l’ordine risulta spedito'} onclick={() => openDdt(g)}>✓ Concludi</button>
+						{#if invioSubito(g)}
+							<form method="POST" action="?/qapla" use:enhance={() => { sending = g.key; return async ({ update }) => { sending = null; await update(); }; }} style="display:inline"><input type="hidden" name="group" value={g.key} /><input type="hidden" name="courier" value={qaplaCourier} /><button class="btn btn--blue btn--xs" type="submit" disabled={sending === g.key} title="Invia subito a Qapla (ordine del sito già pagato)">{sending === g.key ? '…' : '📦 Invia a Qapla'}</button></form>
 						{:else}
-							<span class="osub">scegli la spedizione</span>
+							<button type="button" class="btn btn--blue btn--xs" title="Colli, peso e corriere, poi l'ordine passa a Qapla" onclick={() => apriQapla(g)}>📦 Invia a Qapla</button>
 						{/if}
 					</td>
 				</tr>
@@ -210,48 +160,21 @@
 </div>
 {/if}
 
-{#if ddtPopup && ddtGroup}
-	{@const m = mode(ddtGroup)}
-	{@const c = ddtGroup.items[0].courier ?? ''}
+{#if qaplaPopup && qaplaGroup}
 	<div class="dmodal-bg"><div class="dmodal">
-		<h3>{popupKind === 'qapla' ? 'Invia a Qapla' : 'Concludi'} l'ordine {ddtGroup.number} · {ddtGroup.customer}</h3>
-		{#if needsDdt(ddtGroup)}<p class="note">Controlla le voci: puoi cambiare solo le quantità (es. ordinate 1.000, prodotte 1.200). Importi e fattura seguiranno le quantità consegnate.</p>
-		{:else}<p class="note">Ordine e-commerce già pagato e fatturato al momento dell'acquisto: niente DDT, servono solo colli e peso.</p>{/if}
-		<form method="POST" action={popupKind === 'qapla' ? '?/qapla' : '?/ddt'} use:enhance style="display:grid;gap:12px">
-			<input type="hidden" name="group" value={ddtPopup} />
-			<input type="hidden" name="qtys" value={JSON.stringify(ddtQty)} />
-			{#if needsDdt(ddtGroup)}<div class="tscroll"><table class="dtable">
-				<thead><tr><th>Articolo</th><th>Q.tà ordinata</th><th>Q.tà consegnata</th><th>Prezzo unit.</th><th style="text-align:right">Imponibile</th></tr></thead>
-				<tbody>
-					{#each ddtGroup.items as it (it.id)}
-						{@const unit = Number(it.unit_net ?? Number(it.total_net) / it.qty)}
-						<tr>
-							<td><div class="item-cell">{#if thumbOf(it)}<img src={thumbOf(it)} alt="" />{/if}<div><b>{it.product_name}</b><div class="osub">{itemMeta(it)}</div></div></div></td>
-							<td>{it.qty.toLocaleString('it-IT')}</td>
-							<td><input type="number" min="1" class="sel-sm" style="width:100px" bind:value={ddtQty[it.id]} /></td>
-							<td>{moneyUnit(unit)}</td>
-							<td style="text-align:right"><b>{money(unit * Number(ddtQty[it.id] ?? it.qty))}</b></td>
-						</tr>
-					{/each}
-				</tbody>
-				<tfoot><tr><td colspan="4"><b>Imponibile</b> · IVA {money(ddtTotal * 0.22)} · totale {money(ddtTotal * 1.22)}</td><td style="text-align:right"><b>{money(ddtTotal)}</b></td></tr></tfoot>
-			</table></div>{/if}
+		<h3>Invia a Qapla l'ordine {qaplaGroup.number} · {qaplaGroup.customer}</h3>
+		<p class="note">Servono solo colli e peso per l'etichetta. Qui non si crea nessun DDT: se a questo cliente serve, generalo dalla <a class="link" href="/dashboard/fatturazione/ordini/{qaplaGroup.key}">scheda dell'ordine</a>.</p>
+		<form method="POST" action="?/qapla" use:enhance={() => { sending = qaplaPopup; return async ({ update }) => { sending = null; await update(); }; }} style="display:grid;gap:12px">
+			<input type="hidden" name="group" value={qaplaPopup} />
 			<div class="row3" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,2fr)">
-				<label>Colli<input type="number" name="parcels" min="1" bind:value={ddtParcels} /></label>
-				<label>Peso (kg)<input type="number" name="weight" step="0.1" min="0" bind:value={ddtWeight} placeholder="es. 2.4" /></label>
-				<div><span class="osub">Trasporto</span><br />
-					{#if m === 'direct'}<b>Consegna diretta Stickerprint</b>
-					{:else if m === 'customer'}<b>Corriere a carico del destinatario</b><div class="osub">ritira il corriere del cliente</div>
-					{:else}<b style="display:flex;align-items:center;gap:8px">{#if COURIERS[c]}<img class="courier-logo" src={COURIERS[c].logo} alt={c} />{/if}Corriere a carico del mittente · Qapla</b>
-						{#if popupKind === 'qapla'}
-							{#if data.couriers?.length}<label style="display:block;margin-top:6px"><span class="osub">Corriere con cui spedire</span><select name="courier" bind:value={qaplaCourier}>{#each data.couriers as k (k.code)}<option value={k.code}>{k.name}</option>{/each}</select></label>
-							{:else}<input type="hidden" name="courier" value={qaplaCourier} /><div class="osub">corriere: {qaplaCourier} (elenco corrieri non disponibile da Qapla)</div>{/if}
-						{/if}
-						<div class="osub">l'ordine passa a Qapla: etichetta dal pannello Qapla</div>{/if}
+				<label>Colli<input type="number" name="parcels" min="1" bind:value={colli} /></label>
+				<label>Peso (kg)<input type="number" name="weight" step="0.1" min="0" bind:value={peso} placeholder="es. 2.4" /></label>
+				<div>
+					{#if data.couriers?.length}<label style="display:block"><span class="osub">Corriere con cui spedire</span><select name="courier" bind:value={qaplaCourier}>{#each data.couriers as k (k.code)}<option value={k.code}>{k.name}</option>{/each}</select></label>
+					{:else}<input type="hidden" name="courier" value={qaplaCourier} /><span class="osub">Corriere</span><br /><b>{qaplaCourier}</b><div class="osub">elenco corrieri non disponibile da Qapla</div>{/if}
 				</div>
 			</div>
-			{#if needsDdt(ddtGroup)}<p class="note">Il DDT prende il prossimo numero SPD (Fatturazione → DDT){ddtGroup.channel === 'manuale' ? ' e sarà da fatturare' : ''}; le etichette dei colli, una per collo, si scaricano subito.</p>{/if}
-			<div style="display:flex;gap:8px;justify-content:flex-end"><button type="button" class="btn btn--ghost btn--xs" onclick={() => (ddtPopup = null)}>Annulla</button><button class="btn btn--green" type="submit">{popupKind === 'qapla' ? (needsDdt(ddtGroup) ? 'Genera DDT e invia a Qapla' : 'Invia a Qapla') : m === 'direct' ? 'Genera DDT: ordine consegnato' : 'Genera DDT: ordine spedito'}</button></div>
+			<div style="display:flex;gap:8px;justify-content:flex-end"><button type="button" class="btn btn--ghost btn--xs" onclick={() => (qaplaPopup = null)}>Annulla</button><button class="btn btn--blue" type="submit" disabled={sending === qaplaPopup}>{sending === qaplaPopup ? 'Invio…' : '📦 Invia a Qapla'}</button></div>
 		</form>
 	</div></div>
 {/if}
