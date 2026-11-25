@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import { untrack } from 'svelte';
+	import { untrack, type Snippet } from 'svelte';
 	import type { SupabaseClient } from '@supabase/supabase-js';
 	import { CATS, COUNTRIES, SHIPPING_METHODS, money } from '$lib/dashboard/orders';
 	import { computeTerms, type PaymentMethod } from '$lib/dashboard/payments';
@@ -9,7 +9,7 @@
 
 	export interface PickContact { id: string; kind: 'contact' | 'profile'; name: string; first_name: string; last_name: string; email: string; phone: string; street: string; city: string; zip: string; province: string; country: string; vat: string; fiscal_code: string; sdi: string; pec: string; /** metodo di pagamento abituale dell'azienda (anagrafica) */ payment_method_id?: string | null }
 	export interface EditorLabels { lead?: string; save?: string; send?: string | null; back?: string }
-	let { draft, methods, codes, contacts, supabase, mode, form, title, oncancel, labels = {}, metodoIniziale = '', ondraft }: { draft: OrderDraft; methods: PaymentMethod[]; codes: ProductCode[]; contacts: PickContact[]; supabase: SupabaseClient; mode: 'create' | 'edit'; form: Record<string, unknown> | null | undefined; title: string; oncancel?: () => void; labels?: EditorLabels; /** nome del metodo di pagamento da proporre su una bozza senza scadenze (i preventivi: «Pagamento anticipato») */ metodoIniziale?: string; /** chiamata a ogni modifica con una copia della bozza: la usa il pannello «Costi e margini» dei preventivi */ ondraft?: (d: OrderDraft) => void } = $props();
+	let { draft, methods, codes, contacts, supabase, mode, form, title, oncancel, labels = {}, metodoIniziale = '', ondraft, anagraficaUnica = false, dopoAnagrafica }: { draft: OrderDraft; methods: PaymentMethod[]; codes: ProductCode[]; contacts: PickContact[]; supabase: SupabaseClient; mode: 'create' | 'edit'; form: Record<string, unknown> | null | undefined; title: string; oncancel?: () => void; labels?: EditorLabels; /** nome del metodo di pagamento da proporre su una bozza senza scadenze (i preventivi: «Pagamento anticipato») */ metodoIniziale?: string; /** chiamata a ogni modifica con una copia della bozza: la usa il pannello «Costi e margini» dei preventivi */ ondraft?: (d: OrderDraft) => void; /** preventivi: cliente e «ordine e spedizione» in un solo blocco «Anagrafica» che si chiude */ anagraficaUnica?: boolean; /** contenuto fra l'anagrafica e gli articoli (il pannello «Costi e margini») */ dopoAnagrafica?: Snippet } = $props();
 
 	// svelte-ignore state_referenced_locally
 	let d = $state<OrderDraft>(structuredClone($state.snapshot(draft)));
@@ -19,6 +19,10 @@
 	   scriverci dentro (prezzo consigliato, impostazioni dei costi di una riga) */
 	$effect(() => { ondraft?.($state.snapshot(d) as OrderDraft); });
 	export function modifica(fn: (d: OrderDraft) => void) { fn(d); }
+	/* blocco «Anagrafica» (preventivi): aperto su un preventivo nuovo, chiuso su uno gia' compilato; si apre e chiude a mano */
+	// svelte-ignore state_referenced_locally
+	let anagAperta = $state(mode === 'create' || !draft.customer?.name);
+	const anagRiassunto = $derived([d.customer.name || 'cliente da scegliere', d.customer.email || 'senza email', d.customer.piva ? `P.IVA ${d.customer.piva}` : '', d.ship_method, d.lead_time?.trim() ? `tempi: ${d.lead_time.trim()}` : ''].filter(Boolean).join(' · '));
 	/* calcolatore dal listino del sito: si apre sulla riga, chiede misura/materiale/quantita' e scrive prezzo e descrizione */
 	type Opt = { id: string; label: string };
 	let calc = $state<{ i: number; product: string; w: number; h: number; qty: number; forma: string; materiale: string; finitura: string; opts: { shapes: Opt[]; materials: Opt[]; finishes: Opt[]; quantities: number[] } | null; net: number; unitNet: number; description: string; busy: boolean; error: string } | null>(null);
@@ -162,6 +166,7 @@
 	{#if form?.contactMsg}<p class="success">{String(form.contactMsg)}</p>{/if}
 	{#if uploadMsg}<p class="error">{uploadMsg}</p>{/if}
 
+	{#snippet anagrafica()}
 	<div class="grid3" style="grid-template-columns:1.2fr 1fr">
 		<div class="dcard">
 			<h3>👤 Cliente <button class="btn btn--ghost btn--xs" type="submit" formaction="?/contact" title="Salva o aggiorna questo cliente in Anagrafica">{d.contact_id ? '🔄 Aggiorna anagrafica' : '＋ Salva in anagrafica'}</button></h3>
@@ -197,6 +202,20 @@
 			</div>
 		</div>
 	</div>
+	{/snippet}
+	{#if anagraficaUnica}
+		<!-- preventivi: un blocco solo che si chiude, cosi' costi e articoli restano sott'occhio -->
+		<div class="dcard anag" class:is-chiusa={!anagAperta}>
+			<button type="button" class="anag__testa" onclick={() => (anagAperta = !anagAperta)} aria-expanded={anagAperta}>
+				<span class="anag__titolo"><b>🗂 Anagrafica</b><small>{anagAperta ? 'Cliente, ordine e spedizione' : anagRiassunto}</small></span>
+				<i>{anagAperta ? 'chiudi ▴' : 'apri ▾'}</i>
+			</button>
+			{#if anagAperta}<div class="anag__corpo">{@render anagrafica()}</div>{/if}
+		</div>
+	{:else}
+		{@render anagrafica()}
+	{/if}
+	{@render dopoAnagrafica?.()}
 
 	<div class="dcard" style="overflow-x:auto">
 		<h3>📦 Articoli <label style="display:flex;gap:8px;align-items:center;font-size:13px;font-weight:700"><input type="checkbox" checked={lordi} onchange={(e) => (d.price_type = (e.currentTarget as HTMLInputElement).checked ? 'lordi' : 'netti')} /> Inserisci prezzi lordi (IVA inclusa)</label></h3>
@@ -265,6 +284,16 @@
 </form>
 
 <style>
+	/* blocco «Anagrafica» dei preventivi: le due schede dentro non hanno un bordo loro */
+	.anag { padding: 0; overflow: hidden; }
+	.anag__testa { width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 14px; background: #fff; border: 0; padding: 16px 22px; font: inherit; text-align: left; cursor: pointer; color: inherit; }
+	.anag__titolo { display: grid; gap: 2px; min-width: 0; }
+	.anag__titolo b { font-size: 17px; }
+	.anag__titolo small { color: var(--muted); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+	.anag__testa i { font-style: normal; font-size: 12.5px; font-weight: 700; color: var(--blue); white-space: nowrap; }
+	.anag__corpo { padding: 0 22px 20px; border-top: 1px solid var(--line); }
+	.anag__corpo :global(.dcard) { border: 0; padding: 18px 0 0; border-radius: 0; }
+	.anag.is-chiusa .anag__testa { padding: 12px 22px; }
 	.dhandle { white-space: nowrap; width: 26px; padding-left: 4px !important; padding-right: 0 !important; }
 	.grip { cursor: grab; color: #9aa0b4; font-size: 18px; user-select: none; display: inline-block; padding: 4px 2px; }
 	.grip:active { cursor: grabbing; }

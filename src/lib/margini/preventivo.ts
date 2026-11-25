@@ -51,7 +51,7 @@ export interface VoceCosto {
 	altriNota?: string | null;
 }
 /** impostazioni del calcolo per tutto il preventivo (`draft.costi`) */
-export interface CostiBozza { /** margine a cui si vuole uscire, in percento sul prezzo */ margine?: number | null }
+export interface CostiBozza { /** margine a cui si vuole uscire, in percento sul prezzo */ margine?: number | null; /** il pannello mostra i prezzi al cliente IVA inclusa (true) o esclusa (false); null = come i prezzi della bozza */ iva?: boolean | null }
 export const MARGINE_DEFAULT = 50;
 export const SFRIDO_DEFAULT = 25;
 
@@ -114,6 +114,8 @@ export interface AnalisiPreventivo {
 	orario: number | null; margineObiettivo: number;
 	/** prezzo di listino del sito per tutto il lavoro, se tutte le righe sono a catalogo */
 	listino: number | null;
+	/** pezzi di tutti i lavori (senza i servizi): servono per il costo e il prezzo «cad.» */
+	pezzi: number;
 	/** tutte le righe hanno un costo: i totali sono affidabili */
 	completo: boolean;
 	avvisi: string[];
@@ -271,7 +273,7 @@ export function analizzaPreventivo(d: { items: RigaBozza[]; price_type?: string;
 		if (listino != null && listino > 0) consigli.push({ nome: 'Listino sito', margine: Math.round(((listino - costo) / listino) * 1000) / 10, prezzo: listino, guadagno: r2(listino - costo) });
 		else { const m = Math.min(95, Math.max(margineObiettivo + 15, 70)); const prezzo = prezzoPerMargine(costo, m); consigli.push({ nome: 'Pieno', margine: m, prezzo, guadagno: r2(prezzo - costo) }); }
 	}
-	return { righe, materiale, manodopera, altri, spedizione, costo, ricavo, margine, marginePct: pct(margine, ricavo), minuti, attesa, minutiGiorno: mg, giorniLavoro, giorniConsegna, orario, margineObiettivo, listino, completo, avvisi, consigli };
+	return { righe, materiale, manodopera, altri, spedizione, costo, ricavo, margine, marginePct: pct(margine, ricavo), minuti, attesa, minutiGiorno: mg, giorniLavoro, giorniConsegna, orario, margineObiettivo, listino, pezzi: lavori.reduce((s, r) => s + r.qty, 0), completo, avvisi, consigli };
 }
 
 /** il prezzo a pezzo che porta UNA riga al margine voluto (la spedizione e gli altri lavori restano fuori) */

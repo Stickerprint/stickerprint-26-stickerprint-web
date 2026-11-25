@@ -129,6 +129,7 @@ describe('tutto il preventivo', () => {
 		expect(a.costo).toBeCloseTo(a.materiale + a.manodopera! + a.spedizione, 2);
 		expect(a.margine).toBeCloseTo(200 - a.costo, 2);
 		expect(a.giorniConsegna).toBe(1);
+		expect(a.pezzi).toBe(500);
 		expect(a.completo).toBe(true);
 		expect(a.consigli.map((c) => c.nome)).toEqual(['Pareggio', 'Minimo', 'Consigliato', 'Listino sito']);
 		expect(a.consigli[0].prezzo).toBe(a.costo);
