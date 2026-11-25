@@ -1,7 +1,8 @@
 import { fail } from '@sveltejs/kit';
 import { buildInvoicePdf, type InvoiceLine } from '$lib/server/invoice';
 import { linguaDaPaese } from '$lib/server/fatture';
-import { computeTerms, type PaymentMethod } from '$lib/dashboard/payments';
+import { computeTerms, scadenzeFattura, type PaymentMethod, type PaymentTerm } from '$lib/dashboard/payments';
+import { metodoDelCliente } from '$lib/server/metodo-cliente';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ url, locals: { supabase } }) => {
@@ -35,15 +36,22 @@ export const actions: Actions = {
 		const { data: num } = await supabase.rpc('next_invoice_number');
 		const number = num as string;
 		const issued = new Date().toISOString().slice(0, 10);
-		// scadenze: quelle del DDT se è uno solo, altrimenti ricalcolate sul totale con il metodo del primo DDT
-		let terms = ddts.length === 1 && fd.payment_terms?.length ? fd.payment_terms : null;
-		if (!terms) {
+		/* scadenze: se il cliente e' un'azienda con un metodo di pagamento salvato in anagrafica, vale quello, calcolato su
+		   totale e data della fattura (non se l'ordine e' gia' pagato). Altrimenti la regola di prima: quelle del DDT se e'
+		   uno solo, oppure ricalcolate sul totale con il metodo del primo DDT. Poi si cambiano a mano dalla fattura. */
+		const abituale = await metodoDelCliente(supabase, first.checkout_group ?? null, fd.customer?.vat);
+		let ripiego: PaymentTerm[] = [{ due: issued, amount: gross, method: fd.payment_method ?? 'Bonifico', xml_code: 'MP05' }];
+		const usaAbituale = !!abituale.metodo && !abituale.metodo.custom && !abituale.pagato;
+		if (!usaAbituale && !(ddts.length === 1 && fd.payment_terms?.length)) {
 			const { data: pm } = await supabase.from('payment_methods').select('*').eq('name', fd.payment_method ?? '').maybeSingle();
-			terms = pm && !(pm as PaymentMethod).custom ? computeTerms(pm as PaymentMethod, gross, issued) : [{ due: issued, amount: gross, method: fd.payment_method ?? 'Bonifico', xml_code: 'MP05' }];
+			if (pm && !(pm as PaymentMethod).custom) ripiego = computeTerms(pm as PaymentMethod, gross, issued);
 		}
+		const scelta = scadenzeFattura({ abituale: abituale.metodo, pagato: abituale.pagato, delDdt: ddts.length === 1 && fd.payment_terms?.length ? (fd.payment_terms as PaymentTerm[]) : null, ripiego: () => ripiego, totale: gross, data: issued });
+		const terms = scelta.terms;
+		const metodoFattura = scelta.daAnagrafica ? abituale.metodo!.name : (fd.payment_method ?? 'Bonifico');
 		const orderNumbers = [...new Set(ddts.flatMap((d) => (d.data as DdtData).order_numbers ?? [d.order_number]))];
 		const ddtNumbers = ddts.map((d) => d.number as string);
-		const inv = { lang: linguaDaPaese(fd.customer?.country), number, issued_at: issued, email: first.email ?? '', billing: fd.customer, lines, subtotal_net: subtotal, discount_net: 0, discount_code: null, express_net: 0, credit_used: 0, vat_amount: vat, total_gross: gross, to_pay: gross, payment_method: fd.payment_method ?? 'Bonifico', orders: orderNumbers, payment_terms: terms, ddt_numbers: ddtNumbers };
+		const inv = { lang: linguaDaPaese(fd.customer?.country), number, issued_at: issued, email: first.email ?? '', billing: fd.customer, lines, subtotal_net: subtotal, discount_net: 0, discount_code: null, express_net: 0, credit_used: 0, vat_amount: vat, total_gross: gross, to_pay: gross, payment_method: metodoFattura, orders: orderNumbers, payment_terms: terms, ddt_numbers: ddtNumbers };
 		let pdfPath: string | null = null;
 		try {
 			const bytes = await buildInvoicePdf(inv);
@@ -55,7 +63,7 @@ export const actions: Actions = {
 		const { data: row, error } = await supabase.from('invoices').insert({ user_id: order?.user_id ?? null, number, issued_at: issued, amount_gross: gross, pdf_path: pdfPath, email: first.email, billing: fd.customer, lines, subtotal_net: subtotal, vat_amount: vat, payment_method: inv.payment_method, payment_terms: terms, checkout_group: first.checkout_group, ddt_id: first.id, ddt_number: first.number, ddt_ids: ddts.map((d) => d.id), ddt_numbers: ddtNumbers, order_numbers: orderNumbers }).select('id').single();
 		if (error) return fail(400, { error: `Fattura non creata: ${error.message}` });
 		await supabase.from('ddts').update({ invoice_id: row.id }).in('id', ddts.map((d) => d.id));
-		return { ok: true, made: [number], invoiceId: row.id, ddtCount: ddts.length };
+		return { ok: true, made: [number], invoiceId: row.id, ddtCount: ddts.length, metodoAnagrafica: scelta.daAnagrafica ? metodoFattura : null };
 	},
 	delete: async ({ request, locals: { supabase } }) => {
 		const f = await request.formData();

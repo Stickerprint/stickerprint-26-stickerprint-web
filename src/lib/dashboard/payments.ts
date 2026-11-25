@@ -36,3 +36,19 @@ export function computeTerms(m: Pick<PaymentMethod, 'name' | 'xml_code' | 'days'
 		return { due: iso(m.days === 0 ? d0 : due), amount: i === n - 1 ? r2(total - each * (n - 1)) : each, method: m.name, xml_code: m.xml_code };
 	});
 }
+
+/* ---------- metodo di pagamento salvato in anagrafica (Mattia, 25/11/2026) ---------- */
+/** Solo le aziende hanno un metodo di pagamento abituale: in anagrafica e' azienda chi ha la partita IVA */
+export const clienteAzienda = (c: { kind?: string | null; vat?: string | null } | null | undefined): boolean => !!c && (c.kind === 'azienda' || !!String(c.vat ?? '').trim());
+/** Il metodo abituale del cliente fra quelli attivi: null se non e' un'azienda, non l'ha scelto o il metodo non c'e' piu' */
+export function metodoAbituale(c: { kind?: string | null; vat?: string | null; payment_method_id?: string | null } | null | undefined, methods: PaymentMethod[]): PaymentMethod | null {
+	if (!clienteAzienda(c) || !c?.payment_method_id) return null;
+	return methods.find((m) => m.id === c.payment_method_id && m.active !== false) ?? null;
+}
+/** Scadenze della fattura creata dai DDT. Vince il metodo abituale del cliente, a meno che l'ordine sia gia' pagato
+ *  (allora restano le scadenze dell'ordine) o il metodo sia "a rate personalizzate" (le date non si calcolano).
+ *  Senza metodo abituale vale la regola di prima: le scadenze del DDT se e' uno solo, altrimenti quelle di `ripiego`. */
+export function scadenzeFattura(o: { abituale: PaymentMethod | null; pagato: boolean; delDdt: PaymentTerm[] | null; ripiego: () => PaymentTerm[]; totale: number; data: string }): { terms: PaymentTerm[]; daAnagrafica: boolean } {
+	if (o.abituale && !o.abituale.custom && !o.pagato) return { terms: computeTerms(o.abituale, o.totale, o.data), daAnagrafica: true };
+	return { terms: o.delDdt?.length ? o.delDdt : o.ripiego(), daAnagrafica: false };
+}

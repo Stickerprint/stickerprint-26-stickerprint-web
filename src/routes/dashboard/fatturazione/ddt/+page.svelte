@@ -33,7 +33,7 @@
 <MonthBar bind:month year={data.year} items={data.ddts} dateOf={(d: { issued_at: string }) => d.issued_at} amountOf={(d: { data: { total_gross?: number } | null }) => Number(d.data?.total_gross ?? 0)} unit="DDT" />
 {#if cerca}<p class="stats5-rif">Ricerca di <b>«{cerca}»</b> in <b>tutto il {data.year}</b>, tutti i mesi insieme.</p>
 {:else}<p class="stats5-rif">Stai guardando <b>{meseLabel}</b>: l'elenco qui sotto è solo di {meseLabel}.</p>{/if}
-{#if form?.ok && form.made?.length}<p class="success">Fattura {form.made.join(', ')} creata{#if form.ddtCount > 1} da {form.ddtCount} DDT{/if}: <a class="link" href="/dashboard/fatturazione/fatture/{form.invoiceId}">aprila</a>.</p>{/if}
+{#if form?.ok && form.made?.length}<p class="success">Fattura {form.made.join(', ')} creata{#if form.ddtCount > 1} da {form.ddtCount} DDT{/if}: <a class="link" href="/dashboard/fatturazione/fatture/{form.invoiceId}">aprila</a>.{#if form.metodoAnagrafica} Pagamento preso dall'anagrafica del cliente: <b>{form.metodoAnagrafica}</b> (si cambia dalla fattura).{/if}</p>{/if}
 
 <div class="dcard filters" style="grid-template-columns:1fr auto">
 	<input type="text" placeholder="Cerca per cliente, P.IVA, email, numero DDT o ordine…" bind:value={search} />

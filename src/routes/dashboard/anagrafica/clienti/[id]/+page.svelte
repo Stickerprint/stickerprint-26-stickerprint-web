@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { ORDER_STATUS, COUNTRIES, money, dmy } from '$lib/dashboard/orders';
+	import { clienteAzienda } from '$lib/dashboard/payments';
 	let { data, form } = $props();
 	const p = $derived(data.p);
 	const c = $derived(data.contact);
@@ -48,6 +49,19 @@
 				<div class="row2"><label>Partita IVA<input name="piva" value={c.vat ?? ''} /></label><label>Codice fiscale<input name="cf" value={c.fiscal_code ?? ''} /></label></div>
 				<div class="row2"><label>Codice SDI<input name="sdi" value={c.sdi ?? ''} maxlength="7" /></label><label>PEC<input name="pec" value={c.pec ?? ''} type="email" /></label></div>
 				<div class="row2"><label>Email<input name="email" value={c.email ?? ''} type="email" /></label><label>Telefono<input name="phone" value={c.phone ?? ''} /></label></div>
+				<!-- metodo di pagamento abituale: solo aziende. Viene proposto su ordini e preventivi e usato dalla fattura creata dai DDT -->
+				{#if clienteAzienda(c)}
+					{#if 'payment_method_id' in c}
+						<label>Metodo di pagamento abituale
+							<select name="payment_method_id" value={c.payment_method_id ?? ''}>
+								<option value="">Nessuno: si sceglie ogni volta</option>
+								{#each data.methods as m (m.id)}<option value={m.id}>{m.name}</option>{/each}
+							</select>
+							<small class="osub">Viene proposto quando scegli questo cliente in un ordine o in un preventivo, e la fattura creata dai DDT lo usa per le scadenze. Si può sempre cambiare a mano.</small></label>
+					{:else}
+						<p class="osub">Metodo di pagamento abituale: per attivarlo va eseguita la migrazione 0064 nel database.</p>
+					{/if}
+				{/if}
 				<label>Note<textarea name="notes" rows="2">{c.notes ?? ''}</textarea></label>
 				<div style="display:flex;gap:8px;justify-content:space-between"><button class="btn btn--green btn--xs" type="submit">💾 Salva</button><button class="link-btn" type="submit" formaction="?/delete" style="color:#b3261e" onclick={(e) => { if (!confirm('Eliminare questa anagrafica?')) e.preventDefault(); }}>🗑️ Elimina</button></div>
 			</form>

@@ -7,7 +7,7 @@
 	import { PRODUCT_ENGINES } from '$lib/pricing/engine';
 	import { categoryOf, draftTotals, emptyItem, splitAmounts, termsForMethod, type OrderDraft, type ProductCode } from '$lib/dashboard/orderDraft';
 
-	export interface PickContact { id: string; kind: 'contact' | 'profile'; name: string; first_name: string; last_name: string; email: string; phone: string; street: string; city: string; zip: string; province: string; country: string; vat: string; fiscal_code: string; sdi: string; pec: string }
+	export interface PickContact { id: string; kind: 'contact' | 'profile'; name: string; first_name: string; last_name: string; email: string; phone: string; street: string; city: string; zip: string; province: string; country: string; vat: string; fiscal_code: string; sdi: string; pec: string; /** metodo di pagamento abituale dell'azienda (anagrafica) */ payment_method_id?: string | null }
 	export interface EditorLabels { lead?: string; save?: string; send?: string | null; back?: string }
 	let { draft, methods, codes, contacts, supabase, mode, form, title, oncancel, labels = {} }: { draft: OrderDraft; methods: PaymentMethod[]; codes: ProductCode[]; contacts: PickContact[]; supabase: SupabaseClient; mode: 'create' | 'edit'; form: Record<string, unknown> | null | undefined; title: string; oncancel?: () => void; labels?: EditorLabels } = $props();
 
@@ -58,6 +58,8 @@
 	let pick = $state('');
 	let pickOpen = $state(false);
 	let autoAmounts = $state(true);
+	/* nome del cliente dal quale e' arrivato il metodo di pagamento proposto (avviso sotto le scadenze) */
+	let metodoDa = $state('');
 	const tot = $derived(draftTotals(d));
 	const lordi = $derived(d.price_type === 'lordi');
 	const byId = $derived(new Map(methods.map((m) => [m.id, m])));
@@ -78,6 +80,9 @@
 	function choose(c: PickContact) {
 		d.customer = { name: c.name, first_name: c.first_name, last_name: c.last_name, address: c.street, city: c.city, cap: c.zip, province: c.province, country: c.country || 'IT', piva: c.vat, cf: c.fiscal_code, sdi: c.sdi, pec: c.pec, email: c.email, phone: c.phone };
 		d.contact_id = c.kind === 'contact' ? c.id : null;
+		/* azienda con un metodo di pagamento salvato in anagrafica: le scadenze partono da quello, poi si cambiano a mano come sempre */
+		const abituale = c.payment_method_id ? methods.find((m) => m.id === c.payment_method_id) : null;
+		if (abituale) { d.terms = termsForMethod(abituale, tot.tot, d.date); autoAmounts = true; metodoDa = c.name; } else metodoDa = '';
 		pick = ''; pickOpen = false;
 	}
 	function applyCode(i: number) {
@@ -88,6 +93,7 @@
 		if (p.unit_net != null) it.price = Number(p.unit_net);
 	}
 	function setMethod(i: number, id: string) {
+		metodoDa = '';
 		const m = byId.get(id); if (!m) return;
 		if (m.installments > 1 && d.terms.length === 1) { d.terms = termsForMethod(m, tot.tot, d.date); return; }
 		const t = d.terms[i]; t.method_id = m.id; t.method = m.name; t.xml_code = m.xml_code; t.due = m.custom ? d.date : computeTerms(m, tot.tot, d.date)[0].due;
@@ -234,6 +240,7 @@
 						</div>
 					{/each}
 				</div>
+				{#if metodoDa}<p class="note" style="margin-top:8px">Metodo di pagamento abituale di <b>{metodoDa}</b>, preso dall'anagrafica: puoi cambiarlo qui.</p>{/if}
 				<button type="button" class="btn btn--ghost btn--xs" style="margin-top:10px" onclick={addTerm}>＋ Suddividi pagamento</button>
 				{#if !autoAmounts}<span class="note" style="margin-left:10px">Rate: {money(d.terms.reduce((s, t) => s + Number(t.amount || 0), 0))} su {money(tot.tot)} <button type="button" class="link-btn" onclick={() => (autoAmounts = true)}>ripartisci in parti uguali</button></span>{/if}
 			</div>
