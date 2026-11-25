@@ -60,7 +60,7 @@
   .ship-thumbs { width: auto !important; flex-wrap: nowrap !important; }
 
   /* ================= Ordini: scheda con l'anteprima ================= */
-  .otable tr.orow-main { display: grid; grid-template-columns: 84px minmax(0, 1fr) auto; grid-template-areas: "thumb num num" "thumb cust cust" "thumb art art" "thumb piu piu" "stato stato imp" "sped sped qty" "sel act act"; gap: 0; align-items: start; padding: 14px; }
+  .otable tr.orow-main { display: grid; grid-template-columns: 84px minmax(0, 1fr) auto; grid-template-areas: "thumb num num" "thumb cust cust" "thumb art art" "thumb piu piu" "stato stato imp" "sped sped qty" "act act act"; gap: 0; align-items: start; padding: 14px; position: relative; }
   .otable tr.orow-main.is-scelto { border-color: var(--green); box-shadow: 0 0 0 1px var(--green); }
   .otable tr.orow-main > td { min-width: 0; max-width: none; font-size: 14px; }
   .otable tr.orow-main > td::before, .otable tr.orow-sub > td::before { content: none !important; }
@@ -90,10 +90,11 @@
   .otable .oc-sped b { font-size: 14px; }
   .otable .oc-sped .osub { margin: 0; }
   .otable .oc-qty { grid-area: qty; padding-top: 8px; text-align: right !important; font-weight: 800; white-space: nowrap !important; }
-  .otable .oc-sel { grid-area: sel; align-self: center; justify-self: center; padding-top: 12px; }
-  .otable .oc-sel input { width: 24px; height: 24px; }
+  /* la casella per «Genera fattura da ordini» (o il segno 🧾 di fattura gia' fatta) sta sull'angolo dell'anteprima */
+  .otable .oc-sel { position: absolute; top: 6px; left: 6px; z-index: 1; line-height: 1; }
+  .otable .oc-sel input { width: 24px; height: 24px; margin: 0; display: block; }
+  .otable .oc-sel .osub { display: block; margin: 0; padding: 2px 5px; border-radius: 7px; background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, .18); font-size: 13px; }
   .otable .oc-act { grid-area: act; padding-top: 12px; }
-  .otable tr.orow-main:has(> .oc-sel:empty) .oc-act { grid-column: 1 / -1; }
   .otable .row-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
   .otable .row-actions form { display: contents; }
   .otable .ibtn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; width: 100%; min-height: 40px; padding: 8px 6px; border: 1px solid var(--line); border-radius: 10px; background: #fff; font-size: 15px; font-weight: 700; color: var(--ink); text-decoration: none; }
@@ -131,7 +132,7 @@
   .trk .btn, .reship .btn { padding: 9px 12px; }
 
   /* ================= editor di ordini e preventivi: una scheda per articolo ================= */
-  .etable tr.drow { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); grid-template-areas: "code code cat cat move del" "desc desc desc desc desc desc" "qty qty price price tot tot" "lam lam lam mock mock mock"; gap: 10px 8px; align-items: end; }
+  .etable tr.drow { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); grid-template-areas: "code code cat cat move del" "desc desc desc desc desc desc" "qty qty price price price price" "lam lam lam tot tot tot" "mock mock mock mock mock mock"; gap: 10px 8px; align-items: end; }
   .etable tr.drow > td { min-width: 0; max-width: none; }
   .etable .et-move { grid-area: move; align-self: center; justify-self: end; }
   .etable .et-move .grip { display: none; }
@@ -147,7 +148,8 @@
   .etable .et-qty { grid-area: qty; }
   .etable .et-qty input, .etable .et-price input { max-width: none !important; }
   .etable .et-price { grid-area: price; }
-  .etable .et-tot { grid-area: tot; text-align: right !important; align-self: center; font-size: 15px; white-space: nowrap !important; }
+  .etable .et-price input { flex: 1 1 0; min-width: 0; }
+  .etable .et-tot { grid-area: tot; text-align: right !important; font-size: 16px; white-space: nowrap !important; }
   .etable .et-lam { grid-area: lam; }
   .etable .et-mock { grid-area: mock; }
   .etable .et-mock img { width: 64px !important; height: 64px !important; object-fit: contain !important; }
@@ -156,6 +158,9 @@
   .term-row > label:first-child { grid-column: 1 / -1; }
   .editor-actions { justify-content: stretch; }
   .editor-actions .btn { flex: 1 1 auto; justify-content: center; text-align: center; }
+  /* moduli: i campi non escono mai dalla loro colonna */
+  .row2 input, .row3 input, .row2 select, .row3 select, .dform input:not([type=checkbox]):not([type=radio]), .dform select, .dform textarea { width: 100%; min-width: 0; box-sizing: border-box; }
+  .dform__pair input { width: 90px !important; }
   .anag__testa { padding: 14px !important; }
   .anag__corpo { padding: 0 14px 14px !important; }
 }
