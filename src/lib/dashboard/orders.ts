@@ -5,7 +5,7 @@ import { perLingua, t as tradotto } from '$lib/traduzioni';
  * STATI DELL'ORDINE (regola del 18/09/2026, niente piu' prove da inviare o approvare):
  *   pagamento acquisito (o preventivo confermato) → in_produzione → in_spedizione → spedito → in_consegna → consegnato
  *   - in_produzione: avanza di reparto in reparto dalla dashboard produzione;
- *   - in_spedizione: uscito dall'ultimo reparto, compare in Spedizioni → "Da spedire" finche' non viene inviato a Qapla o concluso;
+ *   - in_spedizione: uscito dall'ultimo reparto, compare in Spedizioni → "In spedizione" finche' non viene inviato a Qapla o concluso;
  *   - spedito / in_consegna / consegnato: li porta avanti Qapla (webhook e sincronizzazione), con gli stati intermedi in shipping_status;
  *   - consegna diretta Stickerprint: con "Concludi" l'ordine e' subito consegnato;
  *   - corriere del cliente: con "Concludi" l'ordine e' spedito e si ferma li' (non sappiamo quando consegna).

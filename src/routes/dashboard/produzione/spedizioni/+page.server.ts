@@ -122,7 +122,7 @@ export const actions: Actions = {
 		if (hard.length) return fail(400, { error: hard.join(' · ') + ' — se Qapla rifiuta il riferimento doppio, elimina l\'ordine dal pannello Qapla (Etichette → Crea) e riprova.' });
 		return { ok: true, qapla: data[0].number, emailed: false, notes: [], ddt: null, labels: null, reshipped: courierCode };
 	},
-	/** Invia a Qapla': l'ordine passa a Qapla' (sezione Crea, etichetta dal pannello) ed esce da "Da spedire". Resta IN SPEDIZIONE
+	/** Invia a Qapla': l'ordine passa a Qapla' (sezione Crea, etichetta dal pannello) ed esce da "In spedizione". Resta IN SPEDIZIONE
 	    finche' il corriere non lo ritira: da li' spedito, in consegna e consegnato arrivano da Qapla' (webhook e sincronizzazione).
 	    Il cliente riceve l'email "in attesa di ritiro". */
 	qapla: async ({ request, url, locals: { supabase } }) => {
@@ -159,7 +159,7 @@ export const actions: Actions = {
 		}
 		return { ok: true, qapla: g.number, emailed, notes: r.warnings, ddt: ddtInfo?.number ?? null, labels: ddtInfo ? `/dashboard/produzione/spedizioni/etichette?ddt=${ddtInfo.id}&courier=Qapla` : null };
 	},
-	/** Concludi (consegna diretta o corriere del cliente): DDT ed etichette dei colli, poi l'ordine esce da "Da spedire".
+	/** Concludi (consegna diretta o corriere del cliente): DDT ed etichette dei colli, poi l'ordine esce da "In spedizione".
 	    Consegna diretta → l'ordine e' CONSEGNATO. Corriere del cliente → SPEDITO, e si ferma li' (non sappiamo quando consegna). */
 	ddt: async ({ request, url, locals: { supabase } }) => {
 		const f = await request.formData();

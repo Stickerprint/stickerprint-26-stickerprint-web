@@ -78,24 +78,21 @@
 </script>
 
 <svelte:window onresize={() => (openMenu = null)} onclick={(e) => { if (openMenu && !(e.target as HTMLElement).closest('.cmenu')) openMenu = null; }} />
-<svelte:head><title>Spedizioni | Dashboard</title></svelte:head>
+<svelte:head><title>{data.view === 'spediti' ? 'Spediti' : 'In spedizione'} | Dashboard</title></svelte:head>
 
 <div class="ship-head">
-	<div><h1>🚀 Spedizioni</h1>
-		<div class="tabs" style="margin-top:10px">
-			<a class="tabbtn" class:is-active={data.view === 'da-spedire'} href="/dashboard/produzione/spedizioni">Da spedire <span class="tabbtn__n">{data.todoCount}</span></a>
-			<a class="tabbtn" class:is-active={data.view === 'spediti'} href="/dashboard/produzione/spedizioni?vista=spediti">Ordini spediti</a>
-		</div>
+	<!-- le due viste sono due voci del menu' Spedizioni (In spedizione e Spediti): qui niente linguette (Mattia, 25/11/2026) -->
+	<div><h1>{#if data.view === 'spediti'}📦 Spediti{:else}🚀 In spedizione <span class="tabbtn__n">{data.groups.length}</span>{/if}</h1>
 		{#if data.view === 'da-spedire'}
-			<p class="lead" style="margin-top:12px">Qui arrivano gli ordini usciti dall'ultimo reparto. Per ognuno scegli dalla tendina: <b>Invia a Qapla</b> (nostro corriere: etichetta dal pannello Qapla, il cliente riceve l'email "in attesa di ritiro", poi spedito, in consegna e consegnato arrivano da soli), <b>Consegna diretta</b> (l'ordine è <b>consegnato</b>) o <b>Corriere cliente</b> (l'ordine è <b>spedito</b> e si chiude lì). In tutti e tre i casi si compila il <b>DDT</b> con colli, peso e quantità spedite. Poi l'ordine esce da questa lista e lo ritrovi in <b>Ordini spediti</b>.</p>
+			<p class="lead" style="margin-top:12px">Qui arrivano gli ordini usciti dall'ultimo reparto. Per ognuno scegli dalla tendina: <b>Invia a Qapla</b> (nostro corriere: etichetta dal pannello Qapla, il cliente riceve l'email "in attesa di ritiro", poi spedito, in consegna e consegnato arrivano da soli), <b>Consegna diretta</b> (l'ordine è <b>consegnato</b>) o <b>Corriere cliente</b> (l'ordine è <b>spedito</b> e si chiude lì). In tutti e tre i casi si compila il <b>DDT</b> con colli, peso e quantità spedite. Poi l'ordine esce da questa lista e lo ritrovi in <b>Spediti</b>.</p>
 		{:else}
 			<p class="lead" style="margin-top:12px">Il calendario degli ordini partiti: clicca un giorno per vedere cosa è stato spedito, con quale corriere e a che punto è. Gli stati delle spedizioni Qapla si aggiornano da soli.</p>
 		{/if}
 	</div>
 </div>
 {#if form?.error}<p class="error">{form.error}</p>{/if}
-{#if form?.ok && form.qapla}<p class="success">Ordine {form.qapla} inviato a Qapla{form.emailed ? ' · email "in attesa di ritiro" inviata al cliente' : ' · email non inviata'}. Ora stampa l'etichetta dal pannello Qapla (Etichette → Crea): tracking e stati arrivano da soli in <a class="link" href="/dashboard/produzione/spedizioni?vista=spediti">Ordini spediti</a>.{#if form.ddt} DDT {form.ddt} creato: <a class="link" href={form.labels} target="_blank" rel="noopener">⬇ etichette dei colli</a>.{/if}</p>
-{:else if form?.ok && form.ddt}<p class="success">DDT {form.ddt} creato, ordine {form.closed === 'consegnato' ? 'consegnato' : 'spedito'}: <a class="link" href={form.labels} target="_blank" rel="noopener">⬇ etichette dei colli</a>. Lo ritrovi in <a class="link" href="/dashboard/produzione/spedizioni?vista=spediti">Ordini spediti</a>.</p>{/if}
+{#if form?.ok && form.qapla}<p class="success">Ordine {form.qapla} inviato a Qapla{form.emailed ? ' · email "in attesa di ritiro" inviata al cliente' : ' · email non inviata'}. Ora stampa l'etichetta dal pannello Qapla (Etichette → Crea): tracking e stati arrivano da soli in <a class="link" href="/dashboard/produzione/spedizioni?vista=spediti">Spediti</a>.{#if form.ddt} DDT {form.ddt} creato: <a class="link" href={form.labels} target="_blank" rel="noopener">⬇ etichette dei colli</a>.{/if}</p>
+{:else if form?.ok && form.ddt}<p class="success">DDT {form.ddt} creato, ordine {form.closed === 'consegnato' ? 'consegnato' : 'spedito'}: <a class="link" href={form.labels} target="_blank" rel="noopener">⬇ etichette dei colli</a>. Lo ritrovi in <a class="link" href="/dashboard/produzione/spedizioni?vista=spediti">Spediti</a>.</p>{/if}
 {#if !data.qaplaOk}<p class="error">Qapla non è ancora collegato (manca QAPLA_API_KEY su Vercel): "Invia a Qapla" non funzionerà finché non viene impostata.</p>{/if}
 
 {#if data.view === 'da-spedire'}
@@ -129,7 +126,7 @@
 					<td style="white-space:nowrap">
 						{#if c === 'qapla'}
 							{#if !needsDdt(g)}
-								<!-- e-commerce gia' pagato e fatturato: si invia subito, senza popup (1 collo, corriere predefinito; si cambia dopo da Ordini spediti) -->
+								<!-- e-commerce gia' pagato e fatturato: si invia subito, senza popup (1 collo, corriere predefinito; si cambia dopo da Spediti) -->
 								<form method="POST" action="?/qapla" use:enhance={() => { sending = g.key; return async ({ update }) => { sending = null; await update(); }; }} style="display:inline"><input type="hidden" name="group" value={g.key} /><input type="hidden" name="courier" value={qaplaCourier} /><button class="btn btn--blue btn--xs" type="submit" disabled={sending === g.key} title="Invia subito a Qapla (ordine già fatturato)">{sending === g.key ? '…' : '📦 Invia a Qapla'}</button></form>
 							{:else if !f.ddt_id}
 								<button type="button" class="btn btn--blue btn--xs" title="Colli, peso e quantità spedite, poi DDT e invio a Qapla" onclick={() => openDdt(g, 'qapla')}>📦 Invia a Qapla</button>

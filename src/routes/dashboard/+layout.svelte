@@ -25,9 +25,12 @@
 			// il riepilogo del giorno: fatturato, ordini da far partire, nuovi ordini, assistenza, margini (src/lib/server/home.ts)
 			{ label: 'Riepilogo di oggi', href: '/dashboard', exact: true }
 		] },
-		{ id: 'produzione', title: 'Produzione', items: [
-			{ label: 'Da fare oggi', href: '/dashboard/produzione', exact: true, count: data.counts?.daFare },
-			{ label: 'Spedizioni', href: '/dashboard/produzione/spedizioni', count: data.counts?.spedizione }
+		/* Spedizioni (era "Produzione"): due voci, le due viste della stessa pagina (Mattia, 25/11/2026).
+		   "Da fare oggi" (/dashboard/produzione) e' tolta dal menu' per il momento: al suo posto c'e' il filtro
+		   "Data partenza" in Ordini. La pagina esiste ancora, basta rimettere la voce qui. */
+		{ id: 'produzione', title: 'Spedizioni', items: [
+			{ label: 'In spedizione', href: '/dashboard/produzione/spedizioni', count: data.counts?.spedizione },
+			{ label: 'Spediti', href: '/dashboard/produzione/spedizioni?vista=spediti' }
 		] },
 		{ id: 'richieste', title: 'Richieste', items: [
 			{ label: 'Aziende', href: '/dashboard/aziende/richieste', count: data.counts?.aziende },
@@ -74,7 +77,12 @@
 			{ label: 'Calendario di lavoro', href: '/dashboard/setup/calendario' }
 		] }
 	]);
-	const active = (href: string, exact = false) => path === href || (!exact && path.startsWith(href + '/'));
+	/* solo il percorso: per la barra in basso del telefono */
+	const inPath = (href: string, exact = false) => { const p = href.split('?')[0]; return path === p || (!exact && path.startsWith(p + '/')); };
+	/* voce del menu': conta anche la vista, perche' In spedizione e Spediti sono la stessa pagina con ?vista=spediti */
+	const SPEDIZIONI = '/dashboard/produzione/spedizioni';
+	const active = (href: string, exact = false) =>
+		inPath(href, exact) && (href.split('?')[0] !== SPEDIZIONI || path !== SPEDIZIONI || (page.url.searchParams.get('vista') === 'spediti') === href.includes('vista=spediti'));
 	const isClosed = (g: { id: string; items: { href: string; count?: number }[] }) => closed.has(g.id) && !g.items.some((it) => active(it.href) || (it.count ?? 0) > 0);
 
 	// gruppi aperti/chiusi, ricordati nel browser
@@ -183,7 +191,7 @@
 		</div>
 		<!-- telefono: barra in basso con le voci piu' usate -->
 		<nav class="dash__tabs" aria-label="Sezioni principali">
-			{#each tabs as t (t.href)}<a href={t.href} class:is-active={active(t.href, 'exact' in t && !!t.exact)}><span class="dash__tab-ico">{t.icon}{#if t.count}<i class="dash__tab-n">{t.count}</i>{/if}</span><span>{t.label}</span></a>{/each}
+			{#each tabs as t (t.href)}<a href={t.href} class:is-active={inPath(t.href, 'exact' in t && !!t.exact)}><span class="dash__tab-ico">{t.icon}{#if t.count}<i class="dash__tab-n">{t.count}</i>{/if}</span><span>{t.label}</span></a>{/each}
 			<button type="button" class:is-active={menuOpen} onclick={() => (menuOpen = !menuOpen)}><span class="dash__tab-ico">☰</span><span>Menu</span></button>
 		</nav>
 		{#if toasts.length}
