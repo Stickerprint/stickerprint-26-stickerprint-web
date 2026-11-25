@@ -20,7 +20,7 @@
 	import { matKindOf, paintSheetBackground } from '$lib/material-texture';
 	import { usaLingua } from '$lib/traduzioni';
 	import { formatAmount, sceltaIva } from '$lib/i18n';
-	import { mmToUnit, unitToMm, snapMm } from '$lib/i18n';
+	import { mmToUnit, unitToMm, snapMm, MM_PER_IN } from '$lib/i18n';
 	const { t, lang, locale, prezzo, prezzoUnit, numero, path, unit, misuraU, misure } = usaLingua();
 	const inU = (mm: number) => (unit === 'in' ? Math.round(mmToUnit(mm, unit) * 100) / 100 : mm);
 	/** etichetta di una voce del listino (materiale, lamina, sagoma, orientamento, formato) nella lingua: dal catalogo se c'e', altrimenti quella del listino */
@@ -34,11 +34,18 @@
 
 	/* ---- formati del foglio (misure in mm, lato corto × lato lungo) e quanti design ci stanno ---- */
 	/* le etichette (Piccolo / Medio / Grande) stanno nel catalogo: fogli.opzioni.S/M/L */
-	const FORMATI = [
-		{ id: 'S', a: 100, b: 150, max: 6, cols: 2, rows: 3 },
-		{ id: 'M', a: 148, b: 210, max: 8, cols: 2, rows: 4 },
-		{ id: 'L', a: 213, b: 275, max: 12, cols: 3, rows: 4 }
-	] as const;
+	/* sito USA (Mattia, 25/11/2026): formati americani veri, Small 4×6″, Medium 6×8,5″, Large 8,5×11″ */
+	const FORMATI: { id: 'S' | 'M' | 'L'; a: number; b: number; max: number; cols: number; rows: number }[] = unit === 'in'
+		? [
+			{ id: 'S', a: 4 * MM_PER_IN, b: 6 * MM_PER_IN, max: 6, cols: 2, rows: 3 },
+			{ id: 'M', a: 6 * MM_PER_IN, b: 8.5 * MM_PER_IN, max: 8, cols: 2, rows: 4 },
+			{ id: 'L', a: 8.5 * MM_PER_IN, b: 11 * MM_PER_IN, max: 12, cols: 3, rows: 4 }
+		]
+		: [
+			{ id: 'S', a: 100, b: 150, max: 6, cols: 2, rows: 3 },
+			{ id: 'M', a: 148, b: 210, max: 8, cols: 2, rows: 4 },
+			{ id: 'L', a: 213, b: 275, max: 12, cols: 3, rows: 4 }
+		];
 	type FormatoId = (typeof FORMATI)[number]['id'];
 	let orientamento = $state<'verticale' | 'orizzontale'>('verticale');
 	let formato = $state<FormatoId>('M');
