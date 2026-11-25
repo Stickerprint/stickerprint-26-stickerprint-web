@@ -155,6 +155,15 @@ export function giornoFra(tra: number, adesso = new Date()): string {
  *  col suo stato), e gli annullati restano fuori */
 export const partonoIl = <G extends { shipBy: string | null; delivery_date: string | null; status: string }>(groups: G[], giorno: string): G[] =>
 	groups.filter((g) => g.status !== 'annullato' && partenzaDi(g) === giorno);
+/** stati di un ordine gia' partito: da qui in poi non e' piu' "indietro" */
+export const STATI_PARTITO = ['spedito', 'in_consegna', 'consegnato'];
+/** Ordini arretrati: dovevano partire prima di `oggi`, in un giorno del mese in corso, e non sono ancora partiti
+ *  (ne' annullati). Quelli rimasti indietro dai mesi passati restano fuori: lo ha chiesto Mattia (25/11/2026) */
+export const arretrati = <G extends { shipBy: string | null; delivery_date: string | null; status: string }>(groups: G[], oggi: string): G[] =>
+	groups.filter((g) => {
+		const d = partenzaDi(g);
+		return !!d && d < oggi && d.slice(0, 7) === oggi.slice(0, 7) && g.status !== 'annullato' && !STATI_PARTITO.includes(g.status);
+	});
 
 export const money = (v: number) => new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR', useGrouping: 'always' }).format(v);
 /** prezzo unitario: fino a 4 decimali (0,295 €), mai meno di 2 */

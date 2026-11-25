@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { giornoFra, partenzaDi, partonoIl } from './orders';
+import { arretrati, giornoFra, partenzaDi, partonoIl } from './orders';
 
 describe('filtro data partenza', () => {
 	it('oggi, domani e dopodomani sono giorni di calendario, anche a cavallo di mese e anno', () => {
@@ -31,5 +31,24 @@ describe('filtro data partenza', () => {
 		expect(partonoIl(g, '2026-11-25').map((x) => x.n)).toEqual(['a', 'b', 'e']);
 		expect(partonoIl(g, '2026-11-26').map((x) => x.n)).toEqual(['d']);
 		expect(partonoIl(g, '2026-11-27')).toEqual([]);
+	});
+
+	it('arretrati: dovevano partire nei giorni scorsi di questo mese e non sono ancora partiti', () => {
+		const g = [
+			{ n: 'ieri', shipBy: '2026-11-24', delivery_date: null, status: 'in_produzione' },
+			{ n: 'inizio mese', shipBy: '2026-11-02', delivery_date: null, status: 'in_spedizione' },
+			{ n: 'manuale', shipBy: null, delivery_date: '2026-11-20', status: 'in_attesa' },
+			{ n: 'oggi', shipBy: '2026-11-25', delivery_date: null, status: 'in_produzione' },
+			{ n: 'domani', shipBy: '2026-11-26', delivery_date: null, status: 'in_produzione' },
+			{ n: 'partito', shipBy: '2026-11-20', delivery_date: null, status: 'spedito' },
+			{ n: 'in consegna', shipBy: '2026-11-20', delivery_date: null, status: 'in_consegna' },
+			{ n: 'consegnato', shipBy: '2026-11-20', delivery_date: null, status: 'consegnato' },
+			{ n: 'annullato', shipBy: '2026-11-20', delivery_date: null, status: 'annullato' },
+			{ n: 'ottobre', shipBy: '2026-10-30', delivery_date: null, status: 'in_produzione' },
+			{ n: 'senza data', shipBy: null, delivery_date: null, status: 'in_produzione' }
+		];
+		expect(arretrati(g, '2026-11-25').map((x) => x.n)).toEqual(['ieri', 'inizio mese', 'manuale']);
+		/* il primo del mese non c'e' ancora niente di arretrato: quelli del mese prima restano fuori */
+		expect(arretrati(g, '2026-12-01')).toEqual([]);
 	});
 });
