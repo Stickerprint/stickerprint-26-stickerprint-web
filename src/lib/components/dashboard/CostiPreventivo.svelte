@@ -14,21 +14,12 @@
 
 	/* ---- scritture nella bozza dell'editor ---- */
 	const voce = (i: number, patch: Partial<VoceCosto>) => onmodifica((d) => { const it = d.items[i]; if (it) it.costo = { ...(it.costo ?? {}), ...patch }; });
-	const impostazioni = (patch: { orario?: number | null; margine?: number | null }) => onmodifica((d) => { d.costi = { ...(d.costi ?? {}), ...patch }; });
+	const impostazioni = (patch: { margine?: number | null }) => onmodifica((d) => { d.costi = { ...(d.costi ?? {}), ...patch }; });
 	const n = (e: Event): number | null => { const v = (e.currentTarget as HTMLInputElement).value.replace(',', '.'); return v === '' || !Number.isFinite(Number(v)) ? null : Number(v); };
-	/* il costo orario si ricorda nel browser: un preventivo nuovo parte dall'ultimo usato */
-	const CHIAVE = 'sp-costo-orario';
-	let ricordato = false;   // una volta sola, all'apertura: dopo, se il campo viene svuotato resta vuoto
-	$effect(() => {
-		if (ricordato) return;
-		ricordato = true;
-		if (bozza.costi?.orario != null) return;
-		try { const v = Number(localStorage.getItem(CHIAVE)); if (v > 0) impostazioni({ orario: v }); } catch { /* niente memoria */ }
-	});
-	function orario(e: Event) { const v = n(e); impostazioni({ orario: v }); try { if (v && v > 0) localStorage.setItem(CHIAVE, String(v)); } catch { /* niente memoria */ } }
 
 	/** prezzo a pezzo scritto nell'editor: l'editor lo vuole IVA inclusa se la bozza e' a prezzi lordi */
 	const perEditor = (netto: number) => Math.round((lordi ? netto * 1.22 : netto) * 10000) / 10000;
+	const applicaListino = (r: AnalisiRiga) => { if (r.listino != null && r.qty > 0) onmodifica((d) => { if (d.items[r.i]) d.items[r.i].price = perEditor(r.listino! / r.qty); }); };
 	const applicaRiga = (r: AnalisiRiga, margine: number) => { const p = prezzoPezzoPerMargine(r, margine); if (p > 0) onmodifica((d) => { if (d.items[r.i]) d.items[r.i].price = perEditor(p); }); };
 	/** tutte le righe al margine voluto: il costo del corriere si spalma sulle righe in proporzione al loro costo */
 	function applicaTutte(margine: number) {
@@ -75,7 +66,8 @@
 
 	<!-- due numeri che decidono tutto: quanto costa un'ora e a che margine si vuole uscire -->
 	<div class="cp__imposta">
-		<label><span>Costo di un'ora di lavoro</span><div class="cp__campo"><input type="number" min="0" step="0.5" inputmode="decimal" value={bozza.costi?.orario ?? ''} oninput={orario} placeholder="es. 30" /><i>€/h</i></div></label>
+		<!-- il costo orario non si scrive qui: e' quello del Preventivatore, insieme ai secondi di lavoro a pezzo -->
+		<div class="cp__orario"><span>Costo di un'ora di lavoro</span><b>{a.orario == null ? '—' : `${a.orario.toLocaleString('it-IT')} €/h`}</b><a href="/dashboard/preventivatori" target="_blank" rel="noopener">dal Preventivatore ↗</a></div>
 		<label><span>Margine a cui vuoi uscire: <b>{obiettivo}%</b></span><input type="range" min="10" max="80" step="5" value={obiettivo} oninput={(e) => impostazioni({ margine: Number((e.currentTarget as HTMLInputElement).value) })} /></label>
 	</div>
 	{#each a.avvisi as m (m)}<p class="cp__avviso">⚠ {m}</p>{/each}
@@ -93,7 +85,7 @@
 				<div class="cp__barra" role="img" aria-label="Come si divide il prezzo fra costi e guadagno">{#each barra as p (p.nome)}<i class="cp__seg cp__seg--{p.classe}" style="width:{p.pct}%" title="{p.nome}: {money(p.valore)}"></i>{/each}</div>
 				<ul class="cp__legenda">{#each barra as p (p.nome)}<li><i class="cp__pallino cp__seg--{p.classe}"></i>{p.nome} <b>{money(p.valore)}</b></li>{/each}</ul>
 			{/if}
-			{#if a.manodopera == null}<p class="cp__nota">Manodopera non contata: manca il costo orario.</p>{/if}
+			{#if a.manodopera == null}<p class="cp__nota">Manodopera non contata: il Preventivatore non si legge.</p>{/if}
 		</section>
 
 		<!-- tempi -->
@@ -111,7 +103,7 @@
 				<div class="cp__livelli">
 					{#each a.consigli as c (c.nome)}
 						<div class="cp__livello" class:is-consigliato={c.nome === 'Consigliato'} class:is-superato={a.ricavo >= c.prezzo && a.ricavo > 0}>
-							<small>{c.nome} · {c.margine}%</small>
+							<small>{c.nome} · {c.margine.toLocaleString('it-IT', { maximumFractionDigits: 0 })}%</small>
 							<b>{money(c.prezzo)}</b>
 							<span>{c.guadagno > 0 ? `+ ${money(c.guadagno)}` : 'nessun guadagno'}</span>
 						</div>
@@ -190,21 +182,28 @@
 									<tbody>
 										{#each r.materiali as m (m.nome)}<tr><td>{m.nome}</td><td>{money(m.valore)}</td></tr>{/each}
 										{#each r.fasi as f (f.label)}<tr class="cp__conto-t"><td>{f.label}{#if f.stimata && !f.passiva} <i>(riserva)</i>{/if}</td><td>{f.passiva ? `attesa ${tempo(f.attesa)}` : tempo(f.minuti)}</td></tr>{/each}
-										<tr><td>Manodopera ({tempo(r.minuti)})</td><td>{r.manodopera == null ? 'manca il costo orario' : money(r.manodopera)}</td></tr>
+										<tr><td>Manodopera ({tempo(r.minuti)}{r.orario ? ` a ${r.orario.toLocaleString('it-IT')} €/h` : ''})</td><td>{r.manodopera == null ? 'non contata' : money(r.manodopera)}</td></tr>
 										{#if r.altri}<tr><td>Altri costi{v.altriNota ? `: ${v.altriNota}` : ''}</td><td>{money(r.altri)}</td></tr>{/if}
 									</tbody>
 									<tfoot>
 										<tr><td>Costo del lavoro</td><td>{money(r.costo)}</td></tr>
 										<tr><td>Costo a pezzo</td><td>{moneyUnit(r.costoPezzo)}</td></tr>
 										<tr><td>Prezzo a pezzo scritto</td><td>{moneyUnit(r.prezzoPezzo)}</td></tr>
+										{#if r.listino != null && r.qty > 0}<tr class="cp__conto-t"><td>Listino del sito per questa riga</td><td>{money(r.listino)} · {moneyUnit(r.listino / r.qty)}</td></tr>{/if}
 										<tr class="cp__t--{tono(r.marginePct)}"><td>Guadagno su questa riga</td><td>{money(r.margine)} · {perc(r.marginePct)}</td></tr>
 									</tfoot>
 								</table>
 								{#if r.costo > 0}
 									<div class="cp__prezzi">
-										{#each [30, obiettivo, Math.min(95, Math.max(obiettivo + 15, 70))].filter((m, k, tutti) => tutti.indexOf(m) === k) as m (m)}
+										{#each [30, obiettivo].filter((m, k, tutti) => tutti.indexOf(m) === k) as m (m)}
 											<button type="button" onclick={() => applicaRiga(r, m)} title="Scrive questo prezzo a pezzo nella riga del preventivo"><small>al {m}%</small><b>{moneyUnit(prezzoPezzoPerMargine(r, m))}</b><span>usa</span></button>
 										{/each}
+										{#if r.listino != null && r.qty > 0}
+											<button type="button" onclick={() => applicaListino(r)} title="Scrive nella riga il prezzo a pezzo del listino del sito"><small>listino</small><b>{moneyUnit(r.listino / r.qty)}</b><span>usa</span></button>
+										{:else}
+											{@const pieno = Math.min(95, Math.max(obiettivo + 15, 70))}
+											<button type="button" onclick={() => applicaRiga(r, pieno)} title="Scrive questo prezzo a pezzo nella riga del preventivo"><small>al {pieno}%</small><b>{moneyUnit(prezzoPezzoPerMargine(r, pieno))}</b><span>usa</span></button>
+										{/if}
 									</div>
 								{/if}
 							{/if}
@@ -216,7 +215,7 @@
 	{:else}
 		<p class="cp__vuoto">Aggiungi le righe del preventivo: qui vedi subito quanto ti costano, quanto ci guadagni e in quanti giorni si fa.</p>
 	{/if}
-	<p class="cp__piede">Materiali ai costi dei preventivatori, tempi dai macchinari di Setup. Margine = guadagno sul prezzo. Le impostazioni si salvano col preventivo ({MARGINE_DEFAULT}% se non scegli).</p>
+	<p class="cp__piede">Costi di materiali, secondi di lavoro e costo orario sono quelli del Preventivatore; il materiale conta la bobina che si consuma davvero, scarti compresi. Margine = guadagno sul prezzo. Il margine scelto e le correzioni delle righe si salvano col preventivo ({MARGINE_DEFAULT}% se non scegli).</p>
 </div>
 
 <style>
@@ -232,6 +231,9 @@
 	.cp__imposta { display: grid; grid-template-columns: 1fr 1.2fr; gap: 12px; background: #f6f7fb; border-radius: 14px; padding: 12px; }
 	.cp__imposta label { display: grid; gap: 6px; font-size: 12px; font-weight: 700; min-width: 0; }
 	.cp__imposta input[type=range] { width: 100%; accent-color: var(--blue); }
+	.cp__orario { display: grid; gap: 2px; font-size: 12px; font-weight: 700; min-width: 0; }
+	.cp__orario b { font-size: 20px; line-height: 1.1; }
+	.cp__orario a { font-size: 11.5px; font-weight: 600; color: var(--blue); text-decoration: none; }
 	.cp__campo { display: flex; align-items: center; border: 1.5px solid var(--line); border-radius: 10px; background: #fff; overflow: hidden; }
 	.cp__campo input { flex: 1; min-width: 0; border: 0; padding: 8px 10px; font: inherit; font-size: 14px; background: transparent; outline: none; }
 	.cp__campo i { font-style: normal; font-size: 12px; color: var(--muted); padding: 0 10px 0 2px; }
