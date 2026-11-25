@@ -34,6 +34,11 @@ export const ORDER_STATUS: Record<string, { label: string; color: string; soft: 
 export const STATUS_RANK = ['in_attesa', 'attesa_file', 'attesa_prova', 'modifiche_richieste', 'approvazione', 'attesa_pagamento', 'attesa_integrazione', 'in_produzione', 'pronto', 'in_spedizione', 'spedito', 'in_consegna', 'consegnato', 'annullato'];
 /** gli stati che si possono assegnare a mano dalla scheda ordine */
 export const ACTIVE_STATUSES = ['attesa_pagamento', 'in_produzione', 'in_spedizione', 'spedito', 'in_consegna', 'consegnato', 'annullato'];
+/** Gli stati che lo staff sceglie a mano dalla tendina (Mattia, 25/11/2026). Restano fuori «spedito» e «in consegna», che
+ *  arrivano solo da Qapla, e «annullato»: un ordine annullato si elimina. I filtri dell'elenco li mostrano tutti. */
+export const STATI_A_MANO = ['attesa_pagamento', 'in_produzione', 'in_spedizione', 'consegnato'];
+/** voci della tendina di un ordine: lo stato in cui e' (anche se non si sceglie a mano) piu' quelli che si scelgono a mano */
+export const statiPerTendina = (attuale: string): string[] => (STATI_A_MANO.includes(attuale) ? STATI_A_MANO : [attuale, ...STATI_A_MANO]);
 export const LEGACY_STATUSES = ['pronto', 'in_attesa', 'attesa_file', 'attesa_prova', 'modifiche_richieste', 'approvazione'];
 export const PROD_STAGES: Record<string, string> = { stampa: 'In stampa', plastifica: 'In plastifica', taglio: 'In taglio', resinatura: 'In resinatura', controllo: 'In controllo', confezionamento: 'In confezionamento' };
 export const PRODUCTION_STATUSES = ['in_produzione'];

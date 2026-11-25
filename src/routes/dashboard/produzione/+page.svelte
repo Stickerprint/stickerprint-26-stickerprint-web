@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import { ACTIVE_STATUSES, ORDER_STATUS, CATS } from '$lib/dashboard/orders';
+	import { statiPerTendina, ORDER_STATUS, CATS } from '$lib/dashboard/orders';
 	let { data, form } = $props();
 	const st = (s: string) => ORDER_STATUS[s] ?? { label: s, color: '#6b7280', soft: '#eceef3' };
 	const giorno = (d: string) => new Intl.DateTimeFormat('it-IT', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(d + 'T12:00:00'));
@@ -45,7 +45,7 @@
 							{#if a.studio}<a class="btn btn--blue btn--xs" href={a.studio} target="_blank" rel="noopener">🎨 Passa in studio</a>{/if}
 							<form method="POST" action="?/stato" use:enhance class="stform"><input type="hidden" name="group" value={a.group} />
 								<select name="status" class="st stsel" style="background:{st(a.status).soft};color:{st(a.status).color}" value={a.status} onchange={(e) => (e.currentTarget.form as HTMLFormElement).requestSubmit()} title="Cambia stato">
-									{#each (ACTIVE_STATUSES.includes(a.status) ? ACTIVE_STATUSES : [a.status, ...ACTIVE_STATUSES]) as k (k)}<option value={k}>{st(k).label}</option>{/each}
+									{#each statiPerTendina(a.status) as k (k)}<option value={k}>{st(k).label}</option>{/each}
 								</select>
 							</form>
 						</div>

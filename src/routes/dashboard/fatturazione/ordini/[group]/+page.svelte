@@ -2,8 +2,9 @@
 	import { enhance } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
 	import OrderEditor from '$lib/components/dashboard/OrderEditor.svelte';
-	import { ORDER_STATUS, ACTIVE_STATUSES, PROD_STAGES, CATS, COUNTRIES, money, moneyUnit, dmy, itemMeta, thumbOf, DEVICE_ICON, CHANNEL_ICON } from '$lib/dashboard/orders';
-	const statusOptions = (cur: string) => (ACTIVE_STATUSES.includes(cur) ? ACTIVE_STATUSES : [cur, ...ACTIVE_STATUSES]);
+	import { ORDER_STATUS, statiPerTendina, PROD_STAGES, CATS, COUNTRIES, money, moneyUnit, dmy, itemMeta, thumbOf, DEVICE_ICON, CHANNEL_ICON } from '$lib/dashboard/orders';
+	/* solo gli stati che si scelgono a mano: spedito e in consegna arrivano da Qapla, un ordine annullato si elimina */
+	const statusOptions = (cur: string) => statiPerTendina(cur);
 	import { draftFromGroup } from '$lib/dashboard/orderDraft';
 	import { studioOrderHref } from '$lib/studio/products';
 	import { paymentLabel, paymentIcon } from '$lib/dashboard/payments';

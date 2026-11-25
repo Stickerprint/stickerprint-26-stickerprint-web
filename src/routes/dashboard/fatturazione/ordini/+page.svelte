@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import { ORDER_STATUS, ACTIVE_STATUSES, LEGACY_STATUSES, PROD_STAGES, CATS, COUNTRIES, MONTHS, money, dmy, itemMeta, thumbOf, PRODUCTION_STATUSES, SHIPPING_STATUSES, DEVICE_ICON, CHANNEL_ICON, arretrati, giornoFra, partenzaDi, partonoIl, type OrderGroup } from '$lib/dashboard/orders';
+	import { ORDER_STATUS, ACTIVE_STATUSES, statiPerTendina, LEGACY_STATUSES, PROD_STAGES, CATS, COUNTRIES, MONTHS, money, dmy, itemMeta, thumbOf, PRODUCTION_STATUSES, SHIPPING_STATUSES, DEVICE_ICON, CHANNEL_ICON, arretrati, giornoFra, partenzaDi, partonoIl, type OrderGroup } from '$lib/dashboard/orders';
 	import { chiaveClienteOrdine, fatturabile, nonFatturabile } from '$lib/dashboard/fattura-ordini';
 	import { paymentIcon, paymentLabel } from '$lib/dashboard/payments';
 	import ItemsCell from '$lib/components/dashboard/ItemsCell.svelte';
@@ -233,7 +233,7 @@
 							<!-- cambio stato al volo: la tendina ha i colori dello stato e invia da sola -->
 							<form method="POST" action="?/stato" use:enhance class="stform"><input type="hidden" name="group" value={g.key} />
 								<select name="status" class="st stsel" style="background:{st(g.status).soft};color:{st(g.status).color}" value={g.status} onchange={(e) => (e.currentTarget.form as HTMLFormElement).requestSubmit()} title="Cambia stato senza aprire l'ordine">
-									{#each (ACTIVE_STATUSES.includes(g.status) ? ACTIVE_STATUSES : [g.status, ...ACTIVE_STATUSES]) as k (k)}<option value={k}>{st(k).label}</option>{/each}
+									{#each statiPerTendina(g.status) as k (k)}<option value={k}>{st(k).label}</option>{/each}
 								</select>
 							</form>
 							{#if g.status === 'in_produzione' && first.prod_stage}<div class="osub">{PROD_STAGES[first.prod_stage] ?? first.prod_stage}</div>{/if}
