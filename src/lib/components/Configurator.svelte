@@ -97,7 +97,18 @@
 
 	let forma = $state(''); // la prima sagoma visibile del listino (resinati: tondo)
 	// sul sagomato puo' valere un minimo piu' alto (resinati: 40 mm)
-	const MIN_MM = $derived(sizeRule(cfg, forma).short);
+	/* SITO USA, adesivi personalizzati / resinati / in rilievo (Mattia, 25/11/2026): le misure proposte sono pollici tondi
+	   e si parte dalla prima. Tondo, quadrato e sagomato: 2×2, 3×3, 4×4, 5×5; rettangolo e ovale: 2×1, 3×2, 4×2, 5×3.
+	   Il tondo scende fino a 0,75″. Gli altri prodotti e gli altri siti restano come sono. */
+	const usSize = $derived(unit === 'in' && ['adesivi_personalizzati', 'adesivi_resinati', 'adesivi_rilievo'].includes(product));
+	const US_TONDO_MIN = 0.75 * MM_PER_IN;
+	function usPresets(f: string, r: number): [number, number][] {
+		if (f === 'rettangolare' || f === 'ovale') return ([[2, 1], [3, 2], [4, 2], [5, 3]] as [number, number][]).map(([a, b]) => [a * MM_PER_IN, b * MM_PER_IN]);
+		/* sagomato: il numero e' il lato lungo, l'altro segue la proporzione del disegno */
+		const k = f === 'sagomato' && r > 0 ? r : 1;
+		return [2, 3, 4, 5].map((n) => (k >= 1 ? [n * MM_PER_IN, snapMm((n * MM_PER_IN) / k, unit)] : [snapMm(n * MM_PER_IN * k, unit), n * MM_PER_IN]) as [number, number]);
+	}
+	const MIN_MM = $derived(usSize && forma === 'tondo' ? US_TONDO_MIN : sizeRule(cfg, forma).short);
 	let materiale = $state('bianco');
 	let finitura = $state(''); // la prima scelta e' senza lamina (vedi effetto sotto)
 	// svelte-ignore state_referenced_locally
@@ -170,6 +181,7 @@
 	/* la prima proposta e' sempre la misura minima della sagoma (lato corto al minimo, lato lungo in
 	   proporzione al disegno), poi tre misure piu' grandi; le misure personalizzate si scrivono sotto */
 	const presets = $derived.by(() => {
+		if (usSize) return usPresets(forma, ratio);
 		const p = sizeProposals(cfg, forma, ratio, shapePresets, unit === 'in' ? quartoPollice : undefined);
 		if (unit !== 'in') return p;
 		/* la misura minima sale al quarto di pollice successivo, in proporzione */
@@ -244,7 +256,7 @@
 		// geometriche resta quella scelta dal cliente, cosi' il cambio sagoma non rifa' il disegno due volte
 		/* si parte SEMPRE dalla misura minima della sagoma, anche se il file dichiara una misura
 		   sua: il cliente vede prima il prezzo piu' basso e poi sale se vuole */
-		const [w0, h0] = startSize(cfg, forma, r);
+		const [w0, h0] = usSize ? usPresets(forma, r)[0] : startSize(cfg, forma, r);
 		w = w0; h = h0;
 	}
 
@@ -271,10 +283,12 @@
 	   restano in proporzione e nessun lato scende mai sotto il minimo (vedi proportionalSize) */
 	function setW(v: number) {
 		if (freeSize) { w = clamp(v); return; }
+		if (usSize && forma === 'tondo') { w = h = clamp(v); return; }   // tondo USA: minimo 0,75″
 		[w, h] = proportionalSize(cfg, forma, v, ratio);
 	}
 	function setH(v: number) {
 		if (freeSize) { h = clamp(v); return; }
+		if (usSize && forma === 'tondo') { w = h = clamp(v); return; }
 		[w, h] = proportionalSize(cfg, forma, v * ratio, ratio);
 	}
 	// si può ordinare solo con un file caricato
