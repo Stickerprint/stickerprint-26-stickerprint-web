@@ -26,7 +26,10 @@ const link = (lang: Lang, p: string) => `${SITE}${localizePath(p, perLingua(lang
 /** "Ciao Mario," in apertura */
 const hi = (T: T, name?: string | null) => `<p>${T('comune.ciao', { nome: esc(name || '') })}</p>`;
 /** firma dello staff in grigio sotto il testo */
-const firma = (T: T, name: string | null | undefined, chiave: string, stile = '') => (name ? `<p style="${stile}color:#8e92b0;font-size:13px;">${T(chiave, { nome: esc(name) })}</p>` : '');
+/* Firma di tutte le email al cliente (Mattia, 25/11/2026): mai il nome di chi segue l'ordine, sempre «Stickerprint-Staff»,
+   e i testi parlano al plurale. Il nome che arriva (`_chi`) resta nella dashboard per sapere chi ha scritto, ma non si stampa. */
+export const FIRMA_STAFF = 'Stickerprint-Staff';
+const firma = (T: T, _chi: string | null | undefined, chiave: string, stile = '') => `<p style="${stile}color:#8e92b0;font-size:13px;">${T(chiave, { nome: FIRMA_STAFF })}</p>`;
 /** paragrafo "intanto guarda le domande frequenti" con il link alla pagina di supporto */
 const faq = (T: T, lang: Lang) => T('comune.faq', { link: `<a href="${link(lang, '/support')}" style="color:#1d6bf3;font-weight:700;">${T('comune.faqLink')}</a>` });
 /** parola chiave sottolineata di verde (stesso segno del sito): regge anche in Gmail e Outlook */

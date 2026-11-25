@@ -220,7 +220,7 @@
 					<label class="osub">Copia a (facoltativo) <input name="cc" bind:value={cc} placeholder="amministrazione@azienda.it" /></label>
 					<label class="osub">Oggetto <input name="subject" bind:value={subject} required /></label>
 					<label class="osub">Testo <textarea name="message" bind:value={message} rows="11" required></textarea></label>
-					<label class="osub">Firma <input name="sender" bind:value={sender} placeholder="Chi segue il cliente" /></label>
+					<span class="osub">Firma: <b>Stickerprint-Staff</b>, sempre. Scrivi al plurale e non mettere il tuo nome nel testo.</span>
 				</div>
 				<div class="qt-send__preview">
 					<div class="qt-mail">
@@ -230,7 +230,7 @@
 							<h4>La tua fattura {inv.number} <u>pronta</u> 🧾</h4>
 							{#each previewLines as l, i (i)}<p>{l || '\u00a0'}</p>{/each}
 							{#if due > 0}<p style="background:#fef6db;padding:10px 12px;border-radius:8px"><b>Da pagare: {money(due)}</b>. Nella pagina della fattura puoi pagare subito con carta o vedere i dati per il bonifico.</p>{/if}
-							{#if sender}<p class="qt-mail__sig">{sender} · Stickerprint · per qualsiasi cosa rispondi pure a questa email.</p>{/if}
+							<p class="qt-mail__sig">Stickerprint-Staff · per qualsiasi cosa rispondi pure a questa email.</p>
 							<span class="qt-mail__btn">APRI LA FATTURA</span>
 						</div>
 					</div>

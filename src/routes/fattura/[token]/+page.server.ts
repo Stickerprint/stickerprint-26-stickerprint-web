@@ -36,10 +36,10 @@ export const load: PageServerLoad = async ({ params, url, request, locals: { loc
 	const natura = c.inv.natura ?? 'N3.1';
 	if (Number(c.inv.express_net) > 0) lines.push({ description: t(locale, 'account.doc.express'), qty: 1, unit_net: Number(c.inv.express_net), total_net: Number(c.inv.express_net) });
 	return {
-		inv: { number: c.inv.number, issued_at: c.inv.issued_at, orders: c.inv.order_numbers ?? [], net: Number(c.inv.subtotal_net) - Number(c.inv.discount_net) + Number(c.inv.express_net), vat: Number(c.inv.vat_amount), ivaLabel: rate === 0 ? D('fattura.ivaZero', { natura }) : D('fattura.ivaAliquota', { p: Math.round(rate * 100) }), ivaNota: rate === 0 ? (natura === 'N3.2' ? D('fattura.n32') : natura === 'N3.1' ? D('fattura.n31') : D('fattura.nonImponibile')) : null, gross: Number(c.inv.amount_gross), first_name: b.first_name || b.company || '', sender: c.inv.sender_name, notes: c.inv.notes },
+		inv: { number: c.inv.number, issued_at: c.inv.issued_at, orders: c.inv.order_numbers ?? [], net: Number(c.inv.subtotal_net) - Number(c.inv.discount_net) + Number(c.inv.express_net), vat: Number(c.inv.vat_amount), ivaLabel: rate === 0 ? D('fattura.ivaZero', { natura }) : D('fattura.ivaAliquota', { p: Math.round(rate * 100) }), ivaNota: rate === 0 ? (natura === 'N3.2' ? D('fattura.n32') : natura === 'N3.1' ? D('fattura.n31') : D('fattura.nonImponibile')) : null, gross: Number(c.inv.amount_gross), first_name: b.first_name || b.company || '', /* mai il nome di chi segue: la pagina firma sempre «Stickerprint-Staff» */ sender: null as string | null, notes: c.inv.notes },
 		addr, lines,
 		payments: c.payments.map((p) => ({ seq: p.seq, method: p.method, due: p.due, amount: Number(p.amount), payable: p.payable, status: p.status, paid_at: p.paid_at })),
-		messages: c.messages.map((m) => ({ id: m.id, direction: m.direction, author: m.author, body: m.body, created_at: m.created_at })),
+		messages: c.messages.map((m) => ({ id: m.id, direction: m.direction, author: m.direction === 'out' ? null : m.author, body: m.body, created_at: m.created_at })),
 		bank: { iban: COMPANY.iban || null, name: COMPANY.name }, online: onlinePaymentsOn(), paypal: paypalConfigured(), simulation: !stripeConfigured() && onlinePaymentsOn(), paid, ppError, cancelled: url.searchParams.get('annullato') === '1'
 	};
 };

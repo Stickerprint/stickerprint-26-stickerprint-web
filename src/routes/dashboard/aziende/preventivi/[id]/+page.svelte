@@ -149,7 +149,7 @@
 					<label class="osub">Copia a (facoltativo) <input name="cc" bind:value={cc} placeholder="altro@azienda.it" /></label>
 					<label class="osub">Oggetto <input name="subject" bind:value={subject} required /></label>
 					<label class="osub">Testo <textarea name="message" bind:value={message} rows="10" required></textarea></label>
-					<label class="osub">Firma <input name="sender" bind:value={sender} placeholder="Chi segue il cliente" /></label>
+					<span class="osub">Firma: <b>Stickerprint-Staff</b>, sempre. Scrivi al plurale e non mettere il tuo nome nel testo.</span>
 					<label class="osub qt-check"><input type="checkbox" name="auto_remind" bind:checked={autoRemind} /> Ricordaglielo da solo se non risponde entro 5 giorni</label>
 					<label class="osub qt-check"><input type="checkbox" name="save_template" bind:checked={saveTemplate} /> Salva questo testo come modello</label>
 					{#if saveTemplate}<label class="osub">Nome del modello <input name="template_title" bind:value={templateTitle} placeholder="Es. Etichette in bobina" /></label>{/if}
@@ -161,7 +161,7 @@
 							<div class="qt-mail__subject">{subject || '…'}</div>
 							<h4>Preventivo {q.number} <u>pronto</u> 📄</h4>
 							{#each previewLines as l, i (i)}<p>{l || ' '}</p>{/each}
-							{#if sender}<p class="qt-mail__sig">{sender} · Stickerprint · ti seguo io: rispondi pure a questa email.</p>{/if}
+							<p class="qt-mail__sig">Stickerprint-Staff · seguiamo noi il tuo ordine: rispondi pure a questa email.</p>
 							<span class="qt-mail__btn">APRI IL PREVENTIVO</span>
 							<p class="qt-mail__sig">Valido fino al {it(q.valid_until)}.</p>
 						</div>

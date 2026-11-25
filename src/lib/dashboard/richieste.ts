@@ -48,11 +48,13 @@ export interface QuoteMessage { id: number; quote_id: string; direction: 'in' | 
 const itLong = (d: string | null) => (d ? new Date(d + 'T12:00:00').toLocaleDateString('it-IT', { day: 'numeric', month: 'long' }) : null);
 const eur = (v: number) => new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR', useGrouping: 'always' }).format(v);
 /** Email di invio proposta dallo staff: si modifica prima di mandarla (mai a freddo) */
-export function defaultQuoteEmail(q: Pick<Quote, 'number' | 'draft' | 'total_gross' | 'valid_until'>, sender: string | null): { subject: string; body: string } {
+/** firma di tutto quello che arriva al cliente: mai il nome di chi segue (Mattia, 25/11/2026) */
+export const FIRMA_STAFF = 'Stickerprint-Staff';
+export function defaultQuoteEmail(q: Pick<Quote, 'number' | 'draft' | 'total_gross' | 'valid_until'>, _sender?: string | null): { subject: string; body: string } {
 	const c = q.draft.customer;
 	const first = c.first_name?.trim() || c.name;
 	const items = q.draft.items.filter((i) => Number(i.qty) > 0);
 	const subject = `Il tuo preventivo ${q.number}: ${items[0]?.description ?? 'la tua richiesta'}`.slice(0, 120);
-	const body = `Ciao ${first},\n\nti abbiamo finalmente preparato il preventivo richiesto: lo trovi nel link qui sotto, con tutti i dettagli.\nSe qualcosa non torna scrivimi pure.\n\nA presto,\n${sender ?? 'Stickerprint'}`;
+	const body = `Ciao ${first},\n\nti abbiamo finalmente preparato il preventivo richiesto: lo trovi nel link qui sotto, con tutti i dettagli.\nSe qualcosa non torna scrivici pure.\n\nA presto,\n${FIRMA_STAFF}`;
 	return { subject, body };
 }

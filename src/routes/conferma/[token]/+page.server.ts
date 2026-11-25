@@ -46,7 +46,7 @@ export const load: PageServerLoad = async ({ params, url, request, locals: { loc
 		/* dati di fatturazione ancora da completare (solo ordini inseriti dallo staff): finche' mancano non si paga */
 		fattura: { mancanti: chiedeDatiFattura(g), valori: { company: f.billing?.company ?? '', first_name: f.billing?.first_name ?? '', last_name: f.billing?.last_name ?? '', vat: f.billing?.vat ?? '', fiscal_code: f.billing?.fiscal_code ?? '', sdi: f.billing?.sdi ?? '', pec: f.billing?.pec ?? '', street: f.billing?.street ?? '', zip: f.billing?.zip ?? '', city: f.billing?.city ?? '', province: f.billing?.province ?? '', country: f.billing?.country ?? 'IT' } as DatiFattura, chiesti: url.searchParams.get('dati') === '1' },
 		payments: c.payments.map((p) => ({ seq: p.seq, method: p.method, due: p.due, amount: Number(p.amount), upfront: p.upfront, status: p.status, paid_at: p.paid_at, kind: p.kind ?? 'scadenza', reason: p.reason ?? null })),
-		sender: c.conf.sender_name, messages: c.messages.map((m) => ({ id: m.id, direction: m.direction, kind: m.kind, author: m.author, body: m.body, created_at: m.created_at })),
+		/* mai il nome di chi segue: la pagina firma sempre «Stickerprint-Staff» */ sender: null as string | null, messages: c.messages.map((m) => ({ id: m.id, direction: m.direction, kind: m.kind, author: m.direction === 'out' ? null : m.author, body: m.body, created_at: m.created_at })),
 		bank: { iban: COMPANY.iban || null, name: COMPANY.name }, online: onlinePaymentsOn(), paypal: paypalConfigured(), simulation: !stripeConfigured() && onlinePaymentsOn(), paid, cancelled, ppError, stats
 	};
 };

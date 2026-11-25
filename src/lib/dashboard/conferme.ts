@@ -17,7 +17,7 @@ const itLong = (d: string | null) => (d ? new Date(d + 'T12:00:00').toLocaleDate
 export const upfrontDue = (payments: OrderPayment[]) => payments.filter((p) => p.upfront && p.status === 'da_pagare').reduce((a, p) => a + Number(p.amount), 0);
 
 /** Email proposta: si modifica nel popup prima dell'invio */
-export function defaultConfirmEmail(g: Pick<OrderGroup, 'number' | 'customer' | 'items' | 'gross' | 'delivery_date'>, payments: OrderPayment[], sender: string | null): { subject: string; body: string } {
+export function defaultConfirmEmail(g: Pick<OrderGroup, 'number' | 'customer' | 'items' | 'gross' | 'delivery_date'>, payments: OrderPayment[], _sender?: string | null): { subject: string; body: string } {
 	const f = g.items[0];
 	const first = (f.billing?.first_name || f.shipping?.first_name || '').trim() || g.customer;
 	const what = g.items.length === 1 ? `${g.items[0].qty.toLocaleString('it-IT')} ${g.items[0].description || g.items[0].product_name}` : `${g.items.length} articoli`;
@@ -26,6 +26,6 @@ export function defaultConfirmEmail(g: Pick<OrderGroup, 'number' | 'customer' | 
 	const pay = due > 0
 		? `\n\nPer far partire la produzione ci serve il pagamento anticipato di ${eur(due)}: dalla pagina trovi come farlo, e appena arriva si parte.`
 		: '\n\nL\'ordine è già in lavorazione.';
-	const body = `Ciao ${first},\n\nti confermo l'ordine ${g.number} per ${what}, totale ${eur(g.gross)} IVA inclusa${g.delivery_date ? `, spedizione prevista ${itLong(g.delivery_date)}` : ''}. Dal bottone qui sotto puoi controllare tutti i dettagli (articoli, indirizzi, scadenze) e scaricare il PDF.${pay}\n\nSe qualcosa non torna, segnalamelo direttamente dalla pagina: lo sistemiamo prima di stampare.\n\nA presto,\n${sender ?? 'Stickerprint'}`;
+	const body = `Ciao ${first},\n\nti confermiamo l'ordine ${g.number} per ${what}, totale ${eur(g.gross)} IVA inclusa${g.delivery_date ? `, spedizione prevista ${itLong(g.delivery_date)}` : ''}. Dal bottone qui sotto puoi controllare tutti i dettagli (articoli, indirizzi, scadenze) e scaricare il PDF.${pay}\n\nSe qualcosa non torna, segnalacelo direttamente dalla pagina: lo sistemiamo prima di stampare.\n\nA presto,\nStickerprint-Staff`;
 	return { subject, body };
 }
