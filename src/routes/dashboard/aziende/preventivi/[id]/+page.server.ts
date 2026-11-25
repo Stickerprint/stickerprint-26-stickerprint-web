@@ -74,8 +74,16 @@ export const actions: Actions = {
 		if (r.error || !r.id) return fail(400, { error: r.error ?? 'Versione non creata.' });
 		redirect(303, `/dashboard/aziende/preventivi/${r.id}`);
 	},
+	/** Trasforma il preventivo in ordine. Se il preventivo e' ancora modificabile e l'editor e' aperto, prima si salva
+	    quello che c'e' a schermo: l'ordine nasce con i dati che lo staff sta guardando, non con l'ultimo salvataggio */
 	ordine: async ({ request, params, url, locals: { supabase } }) => {
 		const f = await request.formData();
+		const q = await getQuote(supabase, params.id);
+		const d = f.get('payload') ? parseDraft(f.get('payload')) : null;
+		if (d && q && !q.order_group && (q.status === 'bozza' || q.status === 'inviato')) {
+			const s = await saveQuote(supabase, d, params.id);
+			if (s.error) return fail(400, { error: s.error });
+		}
 		const r = await orderFromQuote(supabase, params.id, f.get('mail') === 'on', url.origin);
 		if (!r.group) return fail(400, { error: r.message });
 		redirect(303, `/dashboard/fatturazione/ordini/${r.group}?creato=${r.number ?? ''}&mail=${encodeURIComponent(r.message)}`);

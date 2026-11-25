@@ -37,6 +37,30 @@ describe('buildFatturaPaXml / Causale', () => {
 		const { xml } = buildFatturaPaXml({ ...base, number: 'SPF00001', payment_method: null, lines: [{ description: 'Adesivi', qty: 1, unit_net: 100, total_net: 100 }] }, '00001');
 		expect(causali(xml)).toEqual(['Vendita']);
 	});
+
+	it('la nota della fattura entra nella Causale, prima delle altre voci', () => {
+		const { xml } = buildFatturaPaXml({ ...base, number: 'SPF00950', lines: [{ description: 'Etichette', qty: 10, unit_net: 1, total_net: 10 }], order_numbers: ['SP00700'], payment_method: 'Bonifico', notes: 'Vs. ordine n. 4500123456 del 12/11/2026' }, '00950');
+		const c = causali(xml);
+		expect(c[0]).toBe('Vs. ordine n. 4500123456 del 12/11/2026');
+		expect(c).toContain('Ordine SP00700');
+		expect(c).toContain('Pagamento: Bonifico');
+	});
+	it('una riga della nota per Causale; caratteri fuori da Latin-1 sistemati e righe lunghe spezzate entro i 200', () => {
+		const lunga = 'Riferimento commessa ' + Array.from({ length: 30 }, (_, i) => `C-${1000 + i}`).join(', ');
+		const { xml } = buildFatturaPaXml({ ...base, number: 'SPF00951', lines: [{ description: 'Etichette', qty: 10, unit_net: 1, total_net: 10 }], payment_method: null, notes: `Vs. ordine n° 77/A – “Fiera”…\n\n${lunga}\n  ` }, '00951');
+		const c = causali(xml);
+		expect(c[0]).toBe('Vs. ordine n° 77/A - &quot;Fiera&quot;...');
+		expect(c.length).toBeGreaterThan(2);
+		for (const x of c) { expect(x.length).toBeLessThanOrEqual(200 + 20); expect(x.replace(/&quot;|&amp;|&lt;|&gt;/g, '"').length).toBeLessThanOrEqual(200); expect(/^[\u0020-\u007E\u00A1-\u00FF]+$/.test(x)).toBe(true); }
+		/* niente «Vendita» di riempimento quando c'e' la nota */
+		expect(c).not.toContain('Vendita');
+	});
+	it('senza nota la Causale resta quella di prima', () => {
+		const a = buildFatturaPaXml({ ...base, number: 'SPF00952', lines: [{ description: 'Etichette', qty: 10, unit_net: 1, total_net: 10 }], order_numbers: ['SP00700'], payment_method: 'Bonifico' }, '00952').xml;
+		const b = buildFatturaPaXml({ ...base, number: 'SPF00952', lines: [{ description: 'Etichette', qty: 10, unit_net: 1, total_net: 10 }], order_numbers: ['SP00700'], payment_method: 'Bonifico', notes: '  ' }, '00952').xml;
+		expect(b).toBe(a);
+		expect(causali(a)).toEqual(['Ordine SP00700', 'Pagamento: Bonifico']);
+	});
 });
 
 describe('clienti esteri (dal 21/10/2026)', () => {

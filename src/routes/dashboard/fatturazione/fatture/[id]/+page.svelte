@@ -93,7 +93,8 @@
 					<div class="sumrow"><span>Numero</span><b>{inv.number}</b></div>
 					{#if ddtNumbers.length}<div class="sumrow"><span>DDT collegati</span><b>{ddtNumbers.join(', ')}</b></div>{/if}
 					{#if inv.order_numbers?.length}<div class="sumrow"><span>Ordini</span><b>{inv.order_numbers.join(', ')}</b></div>{/if}
-					<label>Note in fattura<textarea bind:value={e.notes} rows="3"></textarea></label>
+					<label>Nota visibile in fattura<textarea bind:value={e.notes} rows="3" placeholder="Es. Vs. ordine n. 4500123456 del 12/11/2026"></textarea>
+						<small class="osub">Il cliente la legge sul PDF, sulla pagina della fattura e nella fattura elettronica (campo Causale). Serve per il numero d'ordine del cliente o altri riferimenti che ti chiedono. Una riga per riferimento.</small></label>
 				</div>
 			</div>
 		</div>
@@ -160,7 +161,7 @@
 			{#if inv.order_numbers?.length}<div class="sumrow"><span>Ordini</span><b>{#if inv.checkout_group}<a class="link" href="/dashboard/fatturazione/ordini/{inv.checkout_group}">{inv.order_numbers.join(', ')}</a>{:else}{inv.order_numbers.join(', ')}{/if}</b></div>{/if}
 			<div class="sumrow"><span>Pagamento</span><b>{#if paymentIcon(inv.payment_method)}<img src={paymentIcon(inv.payment_method)} alt="" style="height:16px;vertical-align:middle;margin-right:6px" />{/if}{paymentLabel(inv.payment_method)}{#if inv.paid_at} · pagata{/if}</b></div>
 			{#if inv.sent_at}<div class="sumrow"><span>Inviata al cliente</span><b>{fmtAgo(inv.sent_at)}{#if inv.sender_name} da {inv.sender_name}{/if} · 👁 {inv.opened_count ? `aperta ${inv.opened_count}×, ${fmtAgo(inv.opened_at)}` : 'mai aperta'}{#if inv.pdf_downloaded_at} · 📄 PDF scaricato{/if}</b></div>{/if}
-			{#if inv.notes}<h4 class="h4">Note</h4><p class="small">{inv.notes}</p>{/if}
+			{#if inv.notes}<h4 class="h4">Nota visibile in fattura</h4><p class="small" style="white-space:pre-line">{inv.notes}</p>{/if}
 		</div>
 	</div>
 	<div class="dcard" style="overflow-x:auto">

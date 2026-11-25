@@ -113,7 +113,12 @@ export async function buildInvoicePdf(inv: InvoiceData): Promise<Uint8Array> {
 	const multiDdt = new Set(rows.map((r) => r[4]).filter(Boolean)).size > 1;
 	y = drawTable({ page, x: M, y: y + 6, cols: DOC_COLS(undefined, lang), rows: rows.map(([c, d, q, u, t, ddt]) => [c, winAnsi(multiDdt && ddt ? `${d} (${ddt})` : d), q, u, t]), font, bold });
 	y -= 14;
-	if (inv.notes) { text(D('note', { note: inv.notes }).slice(0, 140), M, y, 9, font, gray); y -= 13; }
+	/* nota della fattura: deve vedersi (le aziende ci cercano il loro numero d'ordine). In neretto, a capo sulla
+	   larghezza della pagina, fino a 5 righe. Prima era una riga sola in grigio, tagliata a 140 caratteri. */
+	if (inv.notes) {
+		for (const riga of wrapText(bold, winAnsi(D('note', { note: inv.notes.replace(/\s*\n+\s*/g, ' · ') })), 9.5, 499, 5)) { text(riga, M, y, 9.5, bold); y -= 13; }
+		y -= 2;
+	}
 	// in fondo alla pagina: pagamento e scadenze a sinistra, totali a destra
 	const taxable = Math.round((inv.lines.reduce((s, l) => s + l.total_net, 0) + inv.express_net) * 100) / 100;
 	/* IVA: quella registrata sulla fattura (scorporo dal prezzo IVA inclusa: totale = incassato al centesimo); se manca, il 22% dell'imponibile */

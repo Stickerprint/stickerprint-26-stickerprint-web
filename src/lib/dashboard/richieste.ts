@@ -19,6 +19,13 @@ export const QUOTE_STATUS: Record<QuoteStatus, { label: string; color: string; s
 	scaduto: { label: 'Scaduto', color: '#b45309', soft: '#fef3c7' },
 	ordinato: { label: 'Diventato ordine', color: '#15803d', soft: '#dcfce7' }
 };
+/** Un preventivo si puo' trasformare in ordine a mano in qualsiasi momento (Mattia, 25/11/2026): bozza, inviato,
+ *  accettato o scaduto. Non quello gia' diventato ordine, ne' quello rifiutato, ne' una versione vecchia
+ *  sostituita da una revisione (l'ordine nascerebbe con i dati superati). */
+export const puoDiventareOrdine = (q: { status: string; order_group?: string | null; rejected_reason?: string | null }): boolean =>
+	['bozza', 'inviato', 'accettato', 'scaduto'].includes(q.status) && !q.order_group && !/^Sostituito dalla rev/i.test(q.rejected_reason ?? '');
+/** la nota che entra nell'ordine nato da un preventivo */
+export const notaPreventivo = (q: { number: string; version?: number | null }): string => `Collegato al preventivo ${q.number}${(q.version ?? 1) > 1 ? ` rev. ${q.version}` : ''}`;
 export const QUOTE_VALID_DAYS = 30;
 export const QUOTE_REMIND_DAYS = 5;
 

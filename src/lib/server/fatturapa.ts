@@ -8,6 +8,8 @@ export interface FpaInvoice {
 	payment_terms?: { due: string; amount: number; method: string; xml_code?: string }[] | null;
 	/** aliquota applicata (default 22%) e natura quando e' 0: N3.1 esportazione extra UE, N3.2 cessione intracomunitaria (VIES) */
 	vat_rate?: number | null; natura?: string | null;
+	/** nota visibile scritta dallo staff sulla fattura (es. il numero d'ordine del cliente): entra nella Causale */
+	notes?: string | null;
 }
 /** riferimento normativo per le operazioni senza IVA */
 const RIFERIMENTO: Record<string, string> = { 'N3.1': 'Non imponibile art. 8 DPR 633/72', 'N3.2': 'Non imponibile art. 41 DL 331/93', 'N2.1': 'Non soggetta art. 7-ter DPR 633/72' };
@@ -102,7 +104,11 @@ export function buildFatturaPaXml(inv: FpaInvoice, progressivo: string): { xml: 
 	// un <Causale> per voce (DDT, ordini, pagamento) e le voci lunghe spezzate alle virgole. Una causale sola da 253 caratteri
 	// ha fatto scartare la SPF00362 (Metrica, 10 DDT e 10 ordini) il 14/10/2026
 	const voci = [ddtList.length ? `DDT collegati: ${ddtList.join(', ')}` : '', inv.order_numbers?.length ? `Ordine ${inv.order_numbers.join(', ')}` : '', payText && (inv.payment_method === 'paypal' || inv.payment_method === 'stripe') ? `Pagato con ${payText}` : payText ? `Pagamento: ${payText}` : ''].filter(Boolean);
-	const causale = (voci.length ? voci.flatMap((v) => spezza200(v)) : ['Vendita']).map((c) => `<Causale>${esc(c)}</Causale>`).join('');
+	// Nota della fattura (Mattia, 25/11/2026): alcune aziende vogliono leggere in fattura il loro numero d'ordine. Va nella
+	// Causale, che ogni programma mostra in testa alla fattura elettronica, PRIMA delle altre voci: una Causale per riga
+	// della nota. I caratteri si normalizzano prima di spezzare, perche' latin() puo' allungare il testo («…» diventa «...»)
+	const nota = String(inv.notes ?? '').split(/\r?\n/).map((r) => latin(r)).filter(Boolean);
+	const causale = [...nota, ...(voci.length ? voci : nota.length ? [] : ['Vendita'])].flatMap((v) => spezza200(v)).map((c) => `<Causale>${esc(c)}</Causale>`).join('');
 	const terms = inv.payment_terms?.length ? inv.payment_terms : [{ due: inv.issued_at, amount: 0, method: payText, xml_code: payMode }];
 	const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <p:FatturaElettronica versione="FPR12" xmlns:p="http://ivaservizi.agenziaentrate.gov.it/docs/xsd/fatture/v1.2" xmlns:ds="http://www.w3.org/2000/09/xmldsig#" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://ivaservizi.agenziaentrate.gov.it/docs/xsd/fatture/v1.2 http://www.fatturapa.gov.it/export/fatturazione/sdi/fatturapa/v1.2/Schema_del_file_xml_FatturaPA_versione_1.2.xsd">

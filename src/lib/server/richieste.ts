@@ -18,7 +18,7 @@ import { ensurePlan } from './produzione';
 import type { OrderRow } from '$lib/dashboard/orders';
 
 export * from '$lib/dashboard/richieste';
-import { QUOTE_VALID_DAYS, QUOTE_REMIND_DAYS, REQUEST_STATUS, type ContactRequest, type Quote, type QuoteMessage, type QuoteStatus } from '$lib/dashboard/richieste';
+import { QUOTE_STATUS, QUOTE_VALID_DAYS, QUOTE_REMIND_DAYS, REQUEST_STATUS, notaPreventivo, puoDiventareOrdine, type ContactRequest, type Quote, type QuoteMessage, type QuoteStatus } from '$lib/dashboard/richieste';
 type DB = SupabaseClient;
 export const toB64 = (bytes: Uint8Array) => { let s = ''; for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000)); return btoa(s); };
 const today = () => new Date().toISOString().slice(0, 10);
@@ -363,16 +363,21 @@ export async function rejectQuoteByToken(db: DB, token: string, reason: string, 
 	await sendEmail({ to: OWNER_EMAIL, ...ownerNotifyEmail({ title: `Preventivo ${q.number} rifiutato`, lines: [`Cliente: ${q.draft.customer.name}`, `Motivo: ${reason.trim() || '—'}`] }) });
 	return { ok: true, message: T('messaggi.rispostaRegistrata') };
 }
-/** Da preventivo accettato a ordine manuale (entra in produzione a lavorazioni). `lang`: lingua del cliente (accettazione dalla pagina pubblica) salvata sull'ordine */
+/** Da preventivo a ordine manuale (entra in produzione a lavorazioni). Dal 25/11/2026 non serve piu' che sia
+ *  "accettato": lo staff lo trasforma in ordine anche da bozza, inviato o scaduto (vedi puoDiventareOrdine), e
+ *  l'ordine porta nelle note "Collegato al preventivo SPP…". `lang`: lingua del cliente (accettazione dalla pagina pubblica) salvata sull'ordine */
 export async function orderFromQuote(db: DB, id: string, sendMail: boolean, origin: string, lang: Lang = 'it'): Promise<{ group: string | null; number: string | null; message: string }> {
 	const q = await getQuote(db, id);
 	if (!q) return { group: null, number: null, message: 'Preventivo non trovato.' };
 	if (q.order_group) return { group: q.order_group, number: null, message: 'Ordine già creato.' };
+	if (!puoDiventareOrdine(q)) return { group: null, number: null, message: `Il preventivo ${q.number} è ${(QUOTE_STATUS[q.status]?.label ?? q.status).toLowerCase()}${q.rejected_reason ? ` (${q.rejected_reason})` : ''}: non si può trasformare in ordine.` };
 	const ed = await loadEditorData(db);
-	const d: OrderDraft = { ...q.draft, date: today(), notes: [`Da preventivo ${q.number}`, q.draft.notes].filter(Boolean).join(' · ') };
+	const d: OrderDraft = { ...q.draft, date: today(), notes: [notaPreventivo(q), q.draft.notes].filter(Boolean).join(' · ') };
 	const r = await saveOrderDraft(db, d, null, ed);
 	if (r.error) return { group: null, number: null, message: r.error };
-	await db.from('quotes').update({ status: 'ordinato', order_group: r.group, updated_at: new Date().toISOString() }).eq('id', id);
+	/* trasformato dallo staff senza passare da "accettato": resta scritto quando e da chi */
+	const ora = new Date().toISOString();
+	await db.from('quotes').update({ status: 'ordinato', order_group: r.group, updated_at: ora, ...(q.accepted_at ? {} : { accepted_at: ora, accepted_by: 'staff (trasformato in ordine)' }) }).eq('id', id);
 	if (lang !== 'it') await db.from('orders').update({ locale: perLingua(lang) }).eq('checkout_group', r.group);
 	if (q.request_id) await db.from('contact_requests').update({ status: 'won' }).eq('id', q.request_id);
 	const { data: rows } = await db.from('orders').select('*').eq('checkout_group', r.group);

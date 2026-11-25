@@ -1,12 +1,15 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import OrderEditor from '$lib/components/dashboard/OrderEditor.svelte';
-	import { QUOTE_STATUS, defaultQuoteEmail, type QuoteStatus } from '$lib/dashboard/richieste';
+	import { QUOTE_STATUS, defaultQuoteEmail, puoDiventareOrdine, type QuoteStatus } from '$lib/dashboard/richieste';
 	import { money, dmy } from '$lib/dashboard/orders';
 	import { fmtAgo, fmtWhen } from '$lib/dashboard/produzione';
 	let { data, form } = $props();
 	/* cancellazione in due passaggi, senza finestrelle del browser */
 	let cancellare = $state(false);
+	/* "Trasforma in ordine" in due passaggi: da un preventivo non ancora accettato l'ordine non deve nascere per un clic sbagliato */
+	let trasforma = $state(false);
+	let creando = $state(false);
 	const q = $derived(data.q);
 	const st = $derived(QUOTE_STATUS[q.status as QuoteStatus]);
 	const editable = $derived(q.status === 'bozza' || q.status === 'inviato');
@@ -81,8 +84,22 @@
 			<form method="POST" action="?/stato" use:enhance><input type="hidden" name="status" value="accettato" /><input type="hidden" name="motivo" value="confermato a voce/email" /><button class="btn btn--ghost btn--xs" type="submit" title="Il cliente ha confermato per telefono o email">✓ Segna accettato</button></form>
 			<form method="POST" action="?/stato" use:enhance><input type="hidden" name="status" value="rifiutato" /><input type="hidden" name="motivo" value="rifiutato (segnato dallo staff)" /><button class="btn btn--ghost btn--xs" type="submit">✕ Rifiutato</button></form>
 		{/if}
-		{#if q.status === 'accettato'}
-			<form method="POST" action="?/ordine" use:enhance style="display:flex;gap:6px;align-items:center"><label class="osub" style="display:flex;gap:4px;align-items:center"><input type="checkbox" name="mail" checked /> conferma via email</label><button class="btn btn--green btn--xs" type="submit">📦 Crea ordine</button></form>
+		{#if puoDiventareOrdine(q)}
+			{#if q.status === 'accettato' || trasforma}
+				<!-- la bozza a schermo (se l'editor e' aperto) parte insieme al modulo: l'azione la salva prima di creare l'ordine -->
+				<form method="POST" action="?/ordine" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap" use:enhance={({ formData }) => {
+					const raw = editable ? (document.querySelector('#order-editor input[name=payload]') as HTMLInputElement | null)?.value : null;
+					if (raw) formData.set('payload', raw);
+					creando = true;
+					return async ({ update }) => { creando = false; await update(); };
+				}}>
+					<label class="osub" style="display:flex;gap:4px;align-items:center" title={q.draft.customer.email ? 'Il cliente riceve la conferma d’ordine' : 'Manca l’email del cliente'}><input type="checkbox" name="mail" checked={q.status === 'accettato' && !!q.draft.customer.email} disabled={!q.draft.customer.email} /> manda la conferma d'ordine al cliente</label>
+					<button class="btn btn--green btn--xs" type="submit" disabled={creando}>📦 {creando ? 'Creo l’ordine…' : q.status === 'accettato' ? 'Crea ordine' : `Sì, crea l'ordine da ${q.number}`}</button>
+					{#if q.status !== 'accettato'}<button class="btn btn--ghost btn--xs" type="button" onclick={() => (trasforma = false)}>annulla</button>{/if}
+				</form>
+			{:else}
+				<button class="btn btn--green btn--xs" type="button" onclick={() => (trasforma = true)} title="Crea l'ordine con i dati di questo preventivo: nelle note dell'ordine resta scritto «Collegato al preventivo {q.number}»">📦 Trasforma in ordine</button>
+			{/if}
 		{/if}
 		{#if q.status !== 'ordinato'}<form method="POST" action="?/versione" use:enhance><button class="btn btn--ghost btn--xs" type="submit" title="Copia modificabile con lo stesso numero (rev. successiva)">↻ Nuova versione</button></form>{/if}
 		<a class="btn btn--ghost btn--xs" href="/dashboard/aziende/preventivi/nuovo?da={q.id}" title="Preventivo nuovo, con numero nuovo, gia' compilato con questi dati">⧉ Duplica</a>

@@ -63,7 +63,9 @@ export const load: PageServerLoad = async ({ params, url, locals: { supabase, us
 	// conferma d'ordine come pagina del cliente: scadenze, invio, domande
 	await markConfirmationRead(supabase, group.key);
 	const [conf, payments, messages, sender] = await Promise.all([getConfirmation(supabase, group.key), syncPayments(supabase, group.key), loadMessages(supabase, group.key), operatorName(supabase, user)]);
-	return { group, files, fileLists, invoices: invoices ?? [], ddts: ddts ?? [], created: url.searchParams.get('creato'), mail: url.searchParams.get('mail'), openSend: url.searchParams.get('invia') === '1', conf, payments, messages, sender, ...editor };
+	/* l'ordine nato da un preventivo: il collegamento sta sul preventivo (quotes.order_group) */
+	const { data: quote } = await supabase.from('quotes').select('id, number, version').eq('order_group', group.key).order('version', { ascending: false }).limit(1).maybeSingle();
+	return { quote: quote ?? null, group, files, fileLists, invoices: invoices ?? [], ddts: ddts ?? [], created: url.searchParams.get('creato'), mail: url.searchParams.get('mail'), openSend: url.searchParams.get('invia') === '1', conf, payments, messages, sender, ...editor };
 };
 
 export const actions: Actions = {

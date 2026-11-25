@@ -104,6 +104,7 @@
 		<div class="ohead__title">
 			<h1>Ordine {g.number}{#if g.discount > 0} <span class="disc-badge" title="Il cliente ha usato un codice sconto al checkout">🏷️ Codice sconto {g.discountCode ?? ''} · −{money(g.discount)}</span>{/if}</h1>
 			<p class="lead">{dmy(g.created_at)} · {g.customer} · <span title={CHANNEL_ICON[g.channel]?.label}>{CHANNEL_ICON[g.channel]?.icon} {CHANNEL_ICON[g.channel]?.label}</span>{#if g.device} · {DEVICE_ICON[g.device]} da {g.device}{/if} · {COUNTRIES[g.country]?.flag ?? ''} {COUNTRIES[g.country]?.name ?? g.country}</p>
+			{#if data.quote}<p class="lead" style="margin-top:4px">📄 Collegato al preventivo <a class="link" href="/dashboard/aziende/preventivi/{data.quote.id}">{data.quote.number}{#if data.quote.version > 1} rev. {data.quote.version}{/if}</a></p>{/if}
 		</div>
 		<!-- stato: lo porta avanti la produzione (reparti) e la pagina Spedizioni; da qui si cambia solo nei casi eccezionali -->
 		<div class="ostate" style="background:{st(g.status).soft};color:{st(g.status).color};border-color:{st(g.status).color}">
