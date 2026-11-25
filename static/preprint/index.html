@@ -5464,6 +5464,35 @@ function rilievoMask(){
     if(rg.m.compat<0.05)continue;   /* il rosa del toro fra due anelli: 0,069; la scritta DIAVEL: 0,03 */
     let k=-1;for(let t=1;t<cols.length;t++)if(dcc(cols[t],rg.col)<40){k=t;break;}
     if(k>=0){rg.plate=true;for(const i of rg.px){bg[i]=1;bgOf[i]=k;}}}
+  /* ---- 1b-bis. CAMPO DI CARTA DENTRO LA CORNICE (MOTOCICLI PAVONE, 25/11/2026) ----
+     Un timbro: anello e fascia colorati (placca) che racchiudono due campi BIANCHI con dentro una
+     scritta. Il campo ha il colore del pezzo: e' carta che si vede attraverso la cornice, non
+     grafica. Prima veniva confrontato con la placca che lo circonda e finiva tutto in rilievo.
+     Regola di Mattia: in rilievo vanno SOLO le scritte, mai il contorno ne' i campi.
+     Una regione interna del colore del pezzo (o dello sfondo del file) che porta sopra almeno 3
+     elementi di grafica ben contrastati (le lettere), per almeno il 6% della sua area, e' sfondo.
+     Una scritta bianca sulla placca (PAVONE) non porta niente sopra e resta in rilievo: le sue
+     controforme sono placca, non grafica. Il corpo bianco di una figura (il fantasma) ha sopra
+     solo ombre tenui o tratti del colore della placca, che non contano. */
+  {const cartaCol=[fill];if(fileBg)cartaCol.push(fileBg);const minE=0.0005*artArea;
+   for(const rg of regioni){if(rg.plate||rg.touch||rg.px.length<Aedge)continue;
+     if(!cartaCol.some(c=>dcc(rg.col,c)<40))continue;
+     const [x0,y0,x1,y1]=rg.box;const bwid=x1-x0+1,bhei=y1-y0+1;const mark=new Uint8Array(bwid*bhei);
+     for(const i of rg.px){const x=i%w-x0,y=((i/w)|0)-y0;mark[y*bwid+x]=1;}
+     const qq=new Int32Array(bwid*bhei);let nEl=0,aEl=0;
+     for(let k0=0;k0<mark.length;k0++){if(mark[k0])continue;const g0=(((k0/bwid)|0)+y0)*w+(k0%bwid+x0);
+       if(!inArt[g0]||bg[g0]){mark[k0]=2;continue;}
+       let area=0,adiac=false,hh=0,sr=0,sg=0,sb=0;qq[hh++]=k0;mark[k0]=3;
+       while(hh){const k=qq[--hh];area++;const x=k%bwid,y=(k/bwid)|0;const gi=((y+y0)*w+(x+x0))*4;sr+=db[gi];sg+=db[gi+1];sb+=db[gi+2];
+         for(const kk of [x>0?k-1:-1,x<bwid-1?k+1:-1,y>0?k-bwid:-1,y<bhei-1?k+bwid:-1]){if(kk<0)continue;
+           if(mark[kk]===1){adiac=true;continue;}if(mark[kk])continue;
+           const gj=(((kk/bwid)|0)+y0)*w+(kk%bwid+x0);if(!inArt[gj]||bg[gj]){mark[kk]=2;continue;}
+           mark[kk]=3;qq[hh++]=kk;}}
+       /* conta l'elemento se e' appoggiato sul campo, non e' un puntino e si stacca NETTAMENTE dal campo
+          (una lettera nera o colorata; non l'ombra chiara dentro una figura) */
+       if(adiac&&area>=minE&&dcc([sr/area,sg/area,sb/area],rg.col)>=150){nEl++;aEl+=area;}}
+     rg.carta={nEl,frac:+(aEl/rg.px.length).toFixed(3)};
+     if(nEl>=3&&aEl>=0.06*rg.px.length){rg.plate=true;const kc=cols.length;cols.push(rg.col);plateTouch[kc]=false;plateReg[kc]=rg;for(const i of rg.px){bg[i]=1;bgOf[i]=kc;}}}}
   /* ---- 1c. colore della CORNICE ----
      Il colore di una placca che tocca il bordo (l'anello nero di Sobi, l'anello di uno stemma)
      e' il colore della cornice. Le forme di quel colore SOTTILI o ALLUNGATE (un arco interno
@@ -5686,7 +5715,7 @@ function rilievoMask(){
   g.putImageData(im,0,0);
   /* spessore locale (distanza dal bordo del rilievo), usato solo dal vecchio mockup 3D */
   const md=new Float32Array(N);{const inv=new Uint8Array(N);for(let i=0;i<N;i++)inv[i]=R[i]?0:1;const dd2=edt2d(inv,w,h);for(let i=0;i<N;i++)if(R[i])md[i]=Math.sqrt(dd2[i]);}
-  S.ril={key,canvas:c,w,h,frac,on:R,md,dbg:{bg,bgOf,nearest,db,inArt,dNon,linee,mono,fileBg,regioniRaw:S.rilDebugRaw?regioni:null,regioni:regioni.map(r=>({area:+(r.px.length/artArea).toFixed(3),touch:r.touch,tf:+r.touchFrac.toFixed(2),plate:r.plate,col:r.col.map(Math.round),lum:r.lum,box:r.box,m:r.m||null,gd:r.geoDbg||null}))}};
+  S.ril={key,canvas:c,w,h,frac,on:R,md,dbg:{bg,bgOf,nearest,db,inArt,dNon,linee,mono,fileBg,regioniRaw:S.rilDebugRaw?regioni:null,regioni:regioni.map(r=>({area:+(r.px.length/artArea).toFixed(3),touch:r.touch,tf:+r.touchFrac.toFixed(2),plate:r.plate,col:r.col.map(Math.round),lum:r.lum,box:r.box,m:r.m||null,carta:r.carta||null,gd:r.geoDbg||null}))}};
   try{console.debug('[rilievo] '+Math.round(frac*100)+'% del disegno in rilievo, '+w+'x'+h+' in '+Math.round(performance.now()-t0)+' ms');}catch(e){}
   return S.ril;}
 
