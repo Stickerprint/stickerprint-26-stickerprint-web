@@ -6,7 +6,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { groupOrders, type OrderGroup, type OrderRow } from '$lib/dashboard/orders';
 import { computeTerms, scadenzeFattura, type PaymentMethod, type PaymentTerm } from '$lib/dashboard/payments';
-import { chiaveClienteOrdine, righeDaOrdini, totaliFattura } from '$lib/dashboard/fattura-ordini';
+import { chiaveClienteOrdine, nonFatturabile, righeDaOrdini, totaliFattura } from '$lib/dashboard/fattura-ordini';
 import { buildInvoicePdf } from './invoice';
 import { linguaDaPaese } from './fatture';
 import { leggiTutto } from './leggi-tutto';
@@ -47,10 +47,10 @@ export async function fatturaDaOrdini(db: Db, keys: string[]): Promise<EsitoFatt
 	}
 	groups.sort((a, b) => a.number.localeCompare(b.number));
 	if (new Set(groups.map(chiaveClienteOrdine)).size > 1) return { ok: false, error: 'Si possono unire solo ordini dello stesso cliente (stessa partita IVA).' };
-	/* nessuno deve avere gia' una fattura */
+	/* nessuno deve avere gia' una fattura, nel sistema o altrove (Fatture in Cloud, vecchio sito, checkout del sito) */
 	const fatt = await ordiniFatturati(db);
-	const gia = groups.map((g) => ({ g, n: fatturaDi(g, fatt) })).filter((x) => x.n);
-	if (gia.length) return { ok: false, error: `Già fatturati: ${gia.map((x) => `${x.g.number} (${x.n})`).join(', ')}. Toglili dalla selezione.` };
+	const no = groups.map((g) => { const n = fatturaDi(g, fatt); return { g, perche: nonFatturabile(g, n ? { [g.key]: n } : {}) }; }).filter((x) => x.perche);
+	if (no.length) return { ok: false, error: `Non si possono fatturare da qui: ${no.map((x) => `${x.g.number} (${x.perche})`).join(', ')}. Toglili dalla selezione.` };
 	/* DDT di questi ordini: quelli non fatturati entrano nella fattura; uno gia' fatturato vuol dire ordine gia' fatturato */
 	const { data: ddts } = await db.from('ddts').select('id, number, issued_at, checkout_group, invoice_id').in('checkout_group', groups.map((g) => g.key));
 	const fatturato = (ddts ?? []).find((d) => d.invoice_id);

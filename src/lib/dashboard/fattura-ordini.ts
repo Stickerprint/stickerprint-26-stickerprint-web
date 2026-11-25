@@ -16,8 +16,22 @@ export function chiaveCliente(cliente: Record<string, string> | null | undefined
 }
 export const chiaveClienteOrdine = (g: Pick<OrderGroup, 'items' | 'customer'>) => chiaveCliente(g.items[0]?.billing as Record<string, string> | null, g.customer);
 
-/** Un ordine si puo' fatturare da qui se non e' annullato e non ha gia' una fattura (`fatturati`: chiave dell'ordine → numero della fattura) */
-export const fatturabile = (g: Pick<OrderGroup, 'key' | 'status'>, fatturati: Record<string, string>): boolean => g.status !== 'annullato' && !fatturati[g.key];
+/** Perche' un ordine NON si puo' fatturare da qui (null = si puo'). Oltre agli annullati e a quelli che hanno gia' una
+ *  fattura nel sistema, restano fuori gli ordini che una fattura ce l'hanno altrove:
+ *  - quelli importati da Fatture in Cloud (gennaio-agosto 2026, fatturati la'): le note interne lo dicono;
+ *  - quelli arrivati dal vecchio sito (`legacy_id`), fatturati dal vecchio sito;
+ *  - quelli del sito, che la fattura la ricevono dal checkout al momento del pagamento.
+ *  Senza questa regola «seleziona tutti» su Metrica proponeva 20 ordini gia' fatturati in Fatture in Cloud (27.707 €). */
+export function nonFatturabile(g: Pick<OrderGroup, 'key' | 'status' | 'channel' | 'items'>, fatturati: Record<string, string>): string | null {
+	if (g.status === 'annullato') return 'Ordine annullato';
+	if (fatturati[g.key]) return `Fattura ${fatturati[g.key]}`;
+	if (g.items.some((i) => /importato da fatture in cloud/i.test(i.internal_notes ?? ''))) return 'Importato da Fatture in Cloud: già fatturato lì';
+	if (g.items.some((i) => i.legacy_id != null) || /^legacy-/.test(g.key)) return 'Ordine del vecchio sito: fatturato dal vecchio sito';
+	if (g.channel === 'ecommerce') return 'Ordine del sito: la fattura nasce dal checkout al pagamento';
+	return null;
+}
+/** Un ordine si puo' fatturare da qui (`fatturati`: chiave dell'ordine → numero della fattura) */
+export const fatturabile = (g: Pick<OrderGroup, 'key' | 'status' | 'channel' | 'items'>, fatturati: Record<string, string>): boolean => nonFatturabile(g, fatturati) === null;
 
 /** Righe della fattura: una per riga d'ordine, con il riferimento al DDT se l'ordine ne ha uno. Con piu' ordini,
  *  le righe senza DDT dicono da quale ordine arrivano. */

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { ORDER_STATUS, ACTIVE_STATUSES, LEGACY_STATUSES, PROD_STAGES, CATS, COUNTRIES, MONTHS, money, dmy, itemMeta, thumbOf, PRODUCTION_STATUSES, SHIPPING_STATUSES, DEVICE_ICON, CHANNEL_ICON, arretrati, giornoFra, partenzaDi, partonoIl, type OrderGroup } from '$lib/dashboard/orders';
-	import { chiaveClienteOrdine, fatturabile } from '$lib/dashboard/fattura-ordini';
+	import { chiaveClienteOrdine, fatturabile, nonFatturabile } from '$lib/dashboard/fattura-ordini';
 	import { paymentIcon, paymentLabel } from '$lib/dashboard/payments';
 	import ItemsCell from '$lib/components/dashboard/ItemsCell.svelte';
 	let { data, form } = $props();
@@ -212,7 +212,7 @@
 			{#each pageList as g (g.key)}
 				{@const first = g.items[0]}
 				<tr class="orow-main" class:is-scelto={scelti.has(g.key)}>
-					<td>{#if fatturabile(g, fatturati)}<input type="checkbox" checked={scelti.has(g.key)} disabled={!spuntabile(g)} onchange={() => spunta(g.key)} aria-label="Seleziona l'ordine {g.number} per la fattura" title={spuntabile(g) ? 'Senza fattura: selezionalo per generarla' : 'È di un altro cliente rispetto agli ordini già selezionati'} />{:else if fatturati[g.key]}<span class="osub" title="Fattura {fatturati[g.key]}">🧾</span>{/if}</td>
+					<td>{#if fatturabile(g, fatturati)}<input type="checkbox" checked={scelti.has(g.key)} disabled={!spuntabile(g)} onchange={() => spunta(g.key)} aria-label="Seleziona l'ordine {g.number} per la fattura" title={spuntabile(g) ? 'Senza fattura: selezionalo per generarla' : 'È di un altro cliente rispetto agli ordini già selezionati'} />{:else if fatturati[g.key]}<span class="osub" title="Fattura {fatturati[g.key]}">🧾</span>{:else if g.status !== 'annullato' && g.channel !== 'ecommerce'}<span class="osub" title={nonFatturabile(g, fatturati) ?? ''}>—</span>{/if}</td>
 					<td>{COUNTRIES[g.country]?.flag ?? '🌍'}</td>
 					<td><a class="oid" href="/dashboard/fatturazione/ordini/{g.key}">{g.number}{#if g.items.length > 1} <small>+{g.items.length - 1}</small>{/if}</a><div class="osub">{dmy(g.created_at)} <span title={CHANNEL_ICON[g.channel]?.label}>{CHANNEL_ICON[g.channel]?.icon ?? ''}</span>{#if g.device}<span title="Ordinato da {g.device}">{DEVICE_ICON[g.device] ?? ''}</span>{/if}{#if g.express} <span title="Produzione express">⚡</span>{/if}</div></td>
 					<td><b>{g.customer}</b><div class="osub">{g.email}</div></td>
