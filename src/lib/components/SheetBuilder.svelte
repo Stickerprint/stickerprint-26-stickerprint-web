@@ -8,6 +8,7 @@
 	 */
 	import '$lib/styles/kit.css';
 	import '$lib/styles/sheet.css';
+	import '$lib/styles/pvx.css';
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import { track } from '$lib/tracking';
@@ -19,7 +20,7 @@
 	import { quoteWith, type EngineConfig } from '$lib/pricing/engine';
 	import { matKindOf, paintSheetBackground } from '$lib/material-texture';
 	import { usaLingua } from '$lib/traduzioni';
-	import { formatAmount, sceltaIva } from '$lib/i18n';
+	import { formatAmount, sceltaIva, toCurrency } from '$lib/i18n';
 	import { mmToUnit, unitToMm, snapMm, MM_PER_IN } from '$lib/i18n';
 	const { t, lang, locale, prezzo, prezzoUnit, numero, path, unit, misuraU, misure } = usaLingua();
 	const inU = (mm: number) => (unit === 'in' ? Math.round(mmToUnit(mm, unit) * 100) / 100 : mm);
@@ -105,13 +106,25 @@
 	let vatIncluded = $state(true);
 	const QTY = $derived(cfg.quantities.length ? cfg.quantities : [15, 50, 100, 200, 300, 500, 1000]);
 	const q = $derived(quoteWith(cfg, { w: sheetW, h: sheetH, forma, materiale, finitura, qty, vatIncluded }));
+	/* nuova grafica: totali con i centesimi solo quando ci sono, prezzo a foglio a due decimali, risparmio rispetto alla prima fascia */
+	const eurT = (v: number) => { const c = toCurrency(v, locale.currency); return prezzo(v, Math.abs(c - Math.round(c)) > 0.004 ? 2 : 0); };
+	const unitP = (v: number) => locale.currency === 'EUR' ? new Intl.NumberFormat(locale.intl, { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: v < 0.1 ? 3 : 2 }).format(v) : prezzoUnit(v);
+	const basePerPiece = $derived(quoteWith(cfg, { w: sheetW, h: sheetH, forma, materiale, finitura, qty: QTY[0], vatIncluded }).perPiece);
+	/* barra d'acquisto fissa: compare quando il preventivatore entra nello schermo */
+	let sezione = $state<HTMLElement | undefined>();
+	let barraOff = $state(true);
+	onMount(() => {
+		const on = () => { if (sezione) barraOff = sezione.getBoundingClientRect().top > window.innerHeight - 160; };
+		on();
+		addEventListener('scroll', on, { passive: true }); addEventListener('resize', on);
+		return () => { removeEventListener('scroll', on); removeEventListener('resize', on); };
+	});
 
 	/* ---- passaggi ---- */
 	let pronto = $state(false);   // "ho gia' il foglio impaginato": un solo file, niente anteprima
 	let step = $state<'foglio' | 'materiale' | 'sfondo' | 'adesivi' | 'qty'>('foglio');
 	const STEPS = $derived(pronto ? (['foglio', 'materiale', 'adesivi', 'qty'] as const) : (['foglio', 'materiale', 'sfondo', 'adesivi', 'qty'] as const));
 	const stepNo = (s: string) => STEPS.indexOf(s as never) + 1;
-	const progress = $derived((stepNo(step) / STEPS.length) * 100);
 	$effect(() => { if (!STEPS.includes(step as never)) step = 'adesivi'; });
 	let adding = $state(false);
 	let flash = $state('');
@@ -380,9 +393,9 @@
 	}
 </script>
 
-<section class="cfg kitcfg sheetcfg" id="configura">
+<section class="pvx sheetcfg" id="configura" bind:this={sezione}>
 	<!-- ANTEPRIMA: il foglio -->
-	<div class="cfg__preview kit__preview">
+	<div class="pvx__stage">
 		<div class="sheet__stage" class:is-over={over} bind:this={stage} style="height:{px(sheetH + 2 * PAD)}px" role="region" aria-label={t('fogli.builder.anteprima')} ondragover={(e) => { e.preventDefault(); over = true; }} ondragleave={() => (over = false)} ondrop={onDrop} onpointermove={move} onpointerup={up} onpointercancel={up}>
 			{#if pronto}
 				<div class="sheet" class:is-dark={!readyUrl} style="left:{px(PAD)}px;top:{px(PAD)}px;width:{px(sheetW)}px;height:{px(sheetH)}px;background:#fff">
@@ -417,110 +430,74 @@
 		{#if n && !pronto}<p class="kit__tip">{t('fogli.builder.tip')} <button type="button" class="link-btn" onclick={centerAll}>{t('fogli.builder.riallinea')}</button></p>{/if}
 	</div>
 
-	<!-- PASSAGGI -->
-	<aside class="cfg__steps">
-		<div class="cfg__head">
-			<div><p class="eyebrow">{t('fogli.builder.eyebrow')}</p><h2 class="cfg__title">{t('fogli.builder.titolo')}</h2></div>
-			<span class="cfg__stepcount">{t('fogli.builder.passaggio', { n: stepNo(step), tot: STEPS.length })}</span>
-		</div>
-		<div class="progress"><span style="width:{progress}%"></span></div>
+	<!-- SCELTE: tutte aperte, una sotto l'altra (come il preventivatore dei prodotti) -->
+	<div class="pvx__panel">
+		<p class="eyebrow">{t('fogli.builder.eyebrow')}</p>
+		<h2 class="pvx__title">{t('fogli.builder.titolo')}</h2>
 
 		<!-- 1 foglio -->
-		<div class="step" class:is-open={step === 'foglio'}>
-			<button class="step__head" type="button" onclick={() => (step = 'foglio')} aria-expanded={step === 'foglio'}>
-				<span class="step__n">{#if stepNo(step) > 1}✓{:else}1{/if}</span>
-				<span class="step__title">{t('fogli.builder.foglio.titolo')} {#if step !== 'foglio'}<em>{opz(orientamento, 'label', orientamento)} · {opz(fmt.id, 'label', fmt.id)} {sheetW}×{sheetH} mm</em>{/if}</span>
-				<span class="step__edit">{step === 'foglio' ? '' : t('fogli.builder.modifica')}</span>
-			</button>
-			{#if step === 'foglio'}
-				<div class="step__body">
-					<p class="step__hint">{t('fogli.builder.foglio.orientamento')}</p>
-					<div class="sheet__opts">
-						<button type="button" class="sheet__opt" class:is-active={orientamento === 'verticale'} onclick={() => (orientamento = 'verticale')}><i class="sheet__ico sheet__ico--v"></i><b>{opz('verticale', 'label', 'Verticale')}</b></button>
-						<button type="button" class="sheet__opt" class:is-active={orientamento === 'orizzontale'} onclick={() => (orientamento = 'orizzontale')}><i class="sheet__ico sheet__ico--h"></i><b>{opz('orizzontale', 'label', 'Orizzontale')}</b></button>
-					</div>
-					<p class="step__hint" style="margin-top:12px">{t('fogli.builder.foglio.formato')}</p>
-					<div class="sheet__opts sheet__opts--3">
-						{#each FORMATI as f (f.id)}
-							<button type="button" class="sheet__opt" class:is-active={formato === f.id} onclick={() => (formato = f.id)}><b>{opz(f.id, 'label', f.id)}</b><span>{orientamento === 'verticale' ? misure(f.a, f.b) : misure(f.b, f.a)}</span><small>{t('fogli.builder.foglio.finoA', { max: f.max })}</small></button>
-						{/each}
-					</div>
-					<button type="button" class="btn btn--blue btn--sm" style="margin-top:12px" onclick={() => (step = 'materiale')}>{t('fogli.builder.foglio.avanti')}</button>
-				</div>
-			{/if}
+		<div class="xg">
+			<div class="xg__h"><span class="xg__n">1</span><span class="xg__t">{t('fogli.builder.foglio.titolo')}</span><span class="xg__v">{opz(orientamento, 'label', orientamento)} · {opz(fmt.id, 'label', fmt.id)}</span></div>
+			<p class="xg__hint">{t('fogli.builder.foglio.orientamento')}</p>
+			<div class="sheet__opts">
+				<button type="button" class="sheet__opt" class:is-active={orientamento === 'verticale'} aria-pressed={orientamento === 'verticale'} onclick={() => (orientamento = 'verticale')}><i class="sheet__ico sheet__ico--v"></i><b>{opz('verticale', 'label', 'Verticale')}</b></button>
+				<button type="button" class="sheet__opt" class:is-active={orientamento === 'orizzontale'} aria-pressed={orientamento === 'orizzontale'} onclick={() => (orientamento = 'orizzontale')}><i class="sheet__ico sheet__ico--h"></i><b>{opz('orizzontale', 'label', 'Orizzontale')}</b></button>
+			</div>
+			<p class="xg__hint" style="margin-top:12px">{t('fogli.builder.foglio.formato')}</p>
+			<div class="sheet__opts sheet__opts--3">
+				{#each FORMATI as f (f.id)}
+					<button type="button" class="sheet__opt" class:is-active={formato === f.id} aria-pressed={formato === f.id} onclick={() => (formato = f.id)}><b>{opz(f.id, 'label', f.id)}</b><span>{orientamento === 'verticale' ? misure(f.a, f.b) : misure(f.b, f.a)}</span><small>{t('fogli.builder.foglio.finoA', { max: f.max })}</small></button>
+				{/each}
+			</div>
 		</div>
 
 		<!-- 2 materiale -->
-		<div class="step" class:is-open={step === 'materiale'}>
-			<button class="step__head" type="button" onclick={() => (step = 'materiale')} aria-expanded={step === 'materiale'}>
-				<span class="step__n">{#if stepNo(step) > 2}✓{:else}2{/if}</span>
-				<span class="step__title">{t('fogli.builder.materiale.titolo')} {#if step !== 'materiale'}<em>{material ? opz(material.id, 'label', material.label) : ''}{#if finish && FINISHES.length > 1}, {opz(finish.id, 'label', finish.label)}{/if}</em>{/if}</span>
-				<span class="step__edit">{step === 'materiale' ? '' : t('fogli.builder.modifica')}</span>
-			</button>
-			{#if step === 'materiale'}
-				<div class="step__body">
-					<p class="step__hint">{t('fogli.builder.materiale.hint')}</p>
-					<div class="pic-grid pic-grid--3 pic-grid--sm">
-						{#each MATERIALS as m (m.id)}
-							<button type="button" class="pic" class:is-active={materiale === m.id} onclick={() => { materiale = m.id; step = pronto ? 'adesivi' : 'sfondo'; }}>
-								<img src={m.img} alt="" /><b>{opz(m.id, 'label', m.label)}</b>{#if m.tag}<span class="pic__tag">{opz(m.id, 'tag', m.tag)}</span>{/if}
-							</button>
-						{/each}
-					</div>
-					{#if FINISHES.length > 1}
-						<p class="step__hint" style="margin-top:12px">{lang === 'it' && cfg.finishTitle ? cfg.finishTitle : t('fogli.builder.materiale.lamina')}</p>
-						<div class="kit__chips">{#each FINISHES as f (f.id)}<button type="button" class="chip" class:is-on={finitura === f.id} onclick={() => (finitura = f.id)}>{opz(f.id, 'label', f.label)}</button>{/each}</div>
-					{/if}
-				</div>
+		<div class="xg">
+			<div class="xg__h"><span class="xg__n">2</span><span class="xg__t">{t('fogli.builder.materiale.titolo')}</span><span class="xg__v">{material ? opz(material.id, 'label', material.label) : ''}{#if finish && FINISHES.length > 1}, {opz(finish.id, 'label', finish.label)}{/if}</span></div>
+			<div class="xtiles">
+				{#each MATERIALS as m (m.id)}
+					<button type="button" class="xtile" class:is-on={materiale === m.id} aria-pressed={materiale === m.id} onclick={() => (materiale = m.id)}>
+						{#if m.tag}<span class="xtile__tag">{opz(m.id, 'tag', m.tag)}</span>{/if}<img src={m.img} alt="" /><b>{opz(m.id, 'label', m.label)}</b>
+					</button>
+				{/each}
+			</div>
+			<p class="xg__hint xg__hint--sotto">{t('fogli.builder.materiale.hint')}</p>
+			{#if FINISHES.length > 1}
+				<p class="xg__sub">{lang === 'it' && cfg.finishTitle ? cfg.finishTitle : t('fogli.builder.materiale.lamina')}</p>
+				<div class="xchips">{#each FINISHES as f (f.id)}<button type="button" class="xchip" class:is-on={finitura === f.id} aria-pressed={finitura === f.id} onclick={() => (finitura = f.id)}>{opz(f.id, 'label', f.label)}</button>{/each}</div>
 			{/if}
 		</div>
 
 		<!-- 3 sfondo (solo con l'anteprima) -->
 		{#if !pronto}
-			<div class="step" class:is-open={step === 'sfondo'}>
-				<button class="step__head" type="button" onclick={() => (step = 'sfondo')} aria-expanded={step === 'sfondo'}>
-					<span class="step__n">{#if stepNo(step) > 3}✓{:else}3{/if}</span>
-					<span class="step__title">{t('fogli.builder.sfondo.titolo')} {#if step !== 'sfondo'}<em>{bgFile ? t('fogli.builder.sfondo.immagine') : bgColor === '#ffffff' ? t('fogli.builder.sfondo.bianco') : bgColor}</em>{/if}</span>
-					<span class="step__edit">{step === 'sfondo' ? '' : t('fogli.builder.modifica')}</span>
-				</button>
-				{#if step === 'sfondo'}
-					<div class="step__body">
-						<p class="step__hint">{t('fogli.builder.sfondo.hint')}{#if matKind !== 'white' && material} {t('fogli.builder.sfondo.hintMateriale', { materiale: opz(material.id, 'label', material.label).toLowerCase() })}{/if}</p>
-						<div class="sheet__colors">
-							{#each PRESET_COLORS as c (c)}<button type="button" class="sheet__color" class:is-on={bgColor === c && !bgFile} style="background:{c}" aria-label={t('fogli.builder.sfondo.colore', { colore: c })} onclick={() => { bgColor = c; clearBg(); }}></button>{/each}
-							<label class="sheet__color sheet__color--free" title={t('fogli.builder.sfondo.coloreTuo')}><input type="color" value={bgColor} oninput={(e) => { bgColor = (e.currentTarget as HTMLInputElement).value; clearBg(); }} /></label>
-						</div>
-						<label class="kit__cav sheet__bgpick" class:has={!!bgFile}>
-							<input type="file" hidden accept="image/png,image/jpeg,image/webp" onchange={pickBg} />
-							{#if bgUrl}<img src={bgUrl} alt="" /><span>{bgFile?.name}</span><b>{t('fogli.builder.sfondo.cambia')}</b>{:else}<span class="kit__plus">+</span><span>{t('fogli.builder.sfondo.caricaImmagine')}</span>{/if}
-						</label>
-						{#if bgFile}<button type="button" class="link-btn" style="margin-top:6px" onclick={clearBg}>{t('fogli.builder.sfondo.togliImmagine')}</button>{/if}
-						<button type="button" class="btn btn--blue btn--sm" style="margin-top:12px" onclick={() => (step = 'adesivi')}>{t('fogli.builder.sfondo.avanti')}</button>
-					</div>
-				{/if}
+			<div class="xg">
+				<div class="xg__h"><span class="xg__n">3</span><span class="xg__t">{t('fogli.builder.sfondo.titolo')}</span><span class="xg__v">{bgFile ? t('fogli.builder.sfondo.immagine') : bgColor === '#ffffff' ? t('fogli.builder.sfondo.bianco') : bgColor}</span></div>
+				<p class="xg__hint">{t('fogli.builder.sfondo.hint')}{#if matKind !== 'white' && material} {t('fogli.builder.sfondo.hintMateriale', { materiale: opz(material.id, 'label', material.label).toLowerCase() })}{/if}</p>
+				<div class="sheet__colors">
+					{#each PRESET_COLORS as c (c)}<button type="button" class="sheet__color" class:is-on={bgColor === c && !bgFile} style="background:{c}" aria-label={t('fogli.builder.sfondo.colore', { colore: c })} onclick={() => { bgColor = c; clearBg(); }}></button>{/each}
+					<label class="sheet__color sheet__color--free" title={t('fogli.builder.sfondo.coloreTuo')}><input type="color" value={bgColor} oninput={(e) => { bgColor = (e.currentTarget as HTMLInputElement).value; clearBg(); }} /></label>
+				</div>
+				<label class="kit__cav sheet__bgpick" class:has={!!bgFile}>
+					<input type="file" hidden accept="image/png,image/jpeg,image/webp" onchange={pickBg} />
+					{#if bgUrl}<img src={bgUrl} alt="" /><span>{bgFile?.name}</span><b>{t('fogli.builder.sfondo.cambia')}</b>{:else}<span class="kit__plus">+</span><span>{t('fogli.builder.sfondo.caricaImmagine')}</span>{/if}
+				</label>
+				{#if bgFile}<button type="button" class="link-btn" style="margin-top:6px" onclick={clearBg}>{t('fogli.builder.sfondo.togliImmagine')}</button>{/if}
 			</div>
 		{/if}
 
 		<!-- 4 design -->
-		<div class="step" class:is-open={step === 'adesivi'}>
-			<button class="step__head" type="button" onclick={() => (step = 'adesivi')} aria-expanded={step === 'adesivi'}>
-				<span class="step__n">{#if (pronto ? !!readyFile : n > 0) && step !== 'adesivi'}✓{:else}{stepNo('adesivi')}{/if}</span>
-				<span class="step__title">{pronto ? t('fogli.builder.design.tuoFoglio') : t('fogli.builder.design.titolo')} {#if step !== 'adesivi'}<em>{pronto ? (readyFile?.name ?? t('fogli.builder.design.daCaricare')) : t('fogli.builder.design.nDi', { n, max: MAX })}</em>{/if}</span>
-				<span class="step__edit">{step === 'adesivi' ? '' : t('fogli.builder.modifica')}</span>
-			</button>
-			{#if step === 'adesivi'}
-				<div class="step__body">
+		<div class="xg">
+			<div class="xg__h"><span class="xg__n">{stepNo('adesivi')}</span><span class="xg__t">{pronto ? t('fogli.builder.design.tuoFoglio') : t('fogli.builder.design.titolo')}</span><span class="xg__v">{pronto ? (readyFile?.name ?? t('fogli.builder.design.daCaricare')) : t('fogli.builder.design.nDi', { n, max: MAX })}</span></div>
 					{#if pronto}
-						<p class="step__hint">{t('fogli.builder.design.prontoHint')}</p>
+						<p class="xg__hint">{t('fogli.builder.design.prontoHint')}</p>
 						<label class="kit__cav" class:has={!!readyFile}>
 							<input type="file" hidden accept={ACCEPT} onchange={pickReady} />
 							{#if readyUrl}<img src={readyUrl} alt="" />{:else if readyFile}<span class="kit__plus">📄</span>{:else}<span class="kit__plus">+</span>{/if}
 							<span>{readyFile ? readyFile.name : t('fogli.builder.design.caricaFile')}</span>{#if readyFile}<b>{t('fogli.builder.design.cambia')}</b>{/if}
 						</label>
 						<button type="button" class="link-btn" style="margin-top:10px" onclick={() => { pronto = false; step = 'adesivi'; }}>{t('fogli.builder.design.preferisco')}</button>
-						{#if readyFile}<button type="button" class="btn btn--blue btn--sm" style="margin-top:12px;display:block" onclick={() => (step = 'qty')}>{t('fogli.builder.design.avanti')}</button>{/if}
 					{:else}
-						<p class="step__hint">{t('fogli.builder.design.hint', { max: MAX })}</p>
+						<p class="xg__hint">{t('fogli.builder.design.hint', { max: MAX })}</p>
 						<div class="kit__slots sheet__slots" style="--n:{cols * 2}">
 							{#each slots.slice(0, MAX) as s, i (i)}
 								<label class="slot" class:has={!!s.file} class:busy={s.busy}>
@@ -532,57 +509,58 @@
 							{/each}
 						</div>
 						{#if flash}<p class="kit__flash">{flash}</p>{/if}
-						{#if n}<button type="button" class="btn btn--blue btn--sm" style="margin-top:12px" onclick={() => (step = 'qty')}>{t('fogli.builder.design.avanti')}</button>{/if}
 						<div class="sheet__ready">
 							<b>{t('fogli.builder.design.haiGia')}</b>
 							<button type="button" class="btn btn--ghost btn--sm" onclick={() => { pronto = true; step = 'adesivi'; }}>{t('fogli.builder.design.caricaQui')}</button>
 						</div>
 					{/if}
-				</div>
-			{/if}
+
 		</div>
 
-		<!-- 5 quantita' -->
-		<div class="step step--qty" class:is-open={step === 'qty'}>
-			<button class="step__head" type="button" onclick={() => (step = 'qty')} aria-expanded={step === 'qty'}>
-				<span class="step__n">{stepNo('qty')}</span>
-				<span class="step__title">{t('fogli.builder.qty.titolo')} <em>{t('fogli.builder.qty.riepilogo', { n: numero(qty), prezzo: prezzo(vatIncluded ? q.gross : q.net, 0) })}</em></span>
-				<span class="step__edit">{step === 'qty' ? '' : t('fogli.builder.modifica')}</span>
-			</button>
-			{#if step === 'qty'}
-				<div class="step__body">
-					<div class="qty-grid">
-						{#each QTY as k (k)}
-							{@const qq = quoteWith(cfg, { w: sheetW, h: sheetH, forma, materiale, finitura, qty: k, vatIncluded })}
-							<button type="button" class="qty" class:is-active={qty === k} onclick={() => (qty = k)}>
-								<span class="qty__top"><b>{numero(k)}</b><b>{prezzo(vatIncluded ? qq.gross : qq.net, 0)}</b></span>
-								<span class="qty__bottom">{t('fogli.builder.qty.perFoglio', { prezzo: prezzoUnit(qq.perPiece) })}</span>
-							</button>
-						{/each}
-					</div>
-					<p class="step__hint">{t('fogli.builder.qty.hint')}</p>
-				</div>
-			{/if}
-		</div>
-	</aside>
-
-	<!-- RIEPILOGO -->
-	<div class="cfg__freeship"><FreeShippingBar gross={cartGross + q.gross} compact prefix={cartGross > 0 ? t('fogli.builder.riepilogo.conCarrello') : t('fogli.builder.riepilogo.conOrdine')} /></div>
-	<div class="cfg__summary">
-		<div class="sum sum--ship"><span class="sum__ico">🚀</span><div class="sum__text"><span class="sum__label">{t('fogli.builder.riepilogo.spedizione')}</span><span class="sum__value">{shipDate}</span><span class="sum__sub">{t('fogli.builder.riepilogo.spedizioneGratis', { soglia })}</span></div></div>
-		<div class="sum sum--credit"><span class="sum__ico"><img src="/images/coin-sp.png" alt={t('fogli.builder.riepilogo.creditoAlt')} /></span><div class="sum__text"><span class="sum__label">{t('fogli.builder.riepilogo.credito')}</span><span class="sum__value">{prezzo(q.net * cfg.creditRate)}</span><span class="sum__sub">{t('fogli.builder.riepilogo.creditoSub')}</span></div></div>
-		<div class="sum sum--total">
-			<div class="sum__text">
-				<span class="sum__label">{t('fogli.builder.riepilogo.totale')} {vatIncluded ? t('fogli.builder.riepilogo.ivaInclusa') : t('fogli.builder.riepilogo.ivaEsclusa')}</span>
-				<span class="sum__value sum__value--big">{prezzo(vatIncluded ? q.gross : q.net, 0)}</span>
-				{#if sceltaIva(locale)}<div class="vat-toggle"><span class:active={!vatIncluded}>{t('fogli.builder.riepilogo.ivaEsclusa')}</span><button type="button" class="switch" class:on={vatIncluded} role="switch" aria-checked={vatIncluded} aria-label={t('fogli.builder.riepilogo.mostraIva')} onclick={() => (vatIncluded = !vatIncluded)}><i></i></button><span class:active={vatIncluded}>{t('fogli.builder.riepilogo.ivaInclusa')}</span></div>{/if}
+		<!-- 5 quantita': una riga per fascia -->
+		<div class="xg" id="qty-step">
+			<div class="xg__h">
+				<span class="xg__n">{stepNo('qty')}</span><span class="xg__t">{t('fogli.builder.qty.titolo')}</span>
+				{#if sceltaIva(locale)}
+					<span class="xvat" role="group" aria-label={t('configuratore.nuovo.prezziIva')}>
+						<button type="button" class:is-on={vatIncluded} aria-pressed={vatIncluded} onclick={() => (vatIncluded = true)}>{t('fogli.builder.riepilogo.ivaInclusa')}</button>
+						<button type="button" class:is-on={!vatIncluded} aria-pressed={!vatIncluded} onclick={() => (vatIncluded = false)}>{t('fogli.builder.riepilogo.ivaEsclusa')}</button>
+					</span>
+				{/if}
 			</div>
-			<span class="sum__per">{t('fogli.builder.qty.perFoglio', { prezzo: prezzoUnit(q.perPiece) })}</span>
+			<div class="xqlist">
+				{#each QTY as k (k)}
+					{@const qq = quoteWith(cfg, { w: sheetW, h: sheetH, forma, materiale, finitura, qty: k, vatIncluded })}
+					{@const disc = Math.max(0, Math.round((1 - qq.perPiece / basePerPiece) * 100))}
+					<button type="button" class="xq" class:is-on={qty === k} aria-pressed={qty === k} onclick={() => (qty = k)}>
+						<span class="xq__n">{numero(k)}</span>
+						<span class="xq__mid"><span class="xq__u">{t('fogli.builder.qty.perFoglio', { prezzo: unitP(qq.perPiece) })}</span>{#if disc > 0}<span class="xq__save">{t('configuratore.nuovo.risparmi', { n: disc })}</span>{/if}</span>
+						<span class="xq__tot">{eurT(vatIncluded ? qq.gross : qq.net)}</span>
+					</button>
+				{/each}
+			</div>
+			<p class="xg__hint xg__hint--sotto">{t('fogli.builder.qty.hint')}</p>
 		</div>
-		<input bind:this={quickInput} type="file" hidden accept={ACCEPT} onchange={pickQuick} />
-		<button class="btn btn--green btn--cart" type="button" onclick={cartClick} disabled={adding || (!readyToAdd && !canUpload)} title={readyToAdd ? '' : t('fogli.builder.riepilogo.serve')}>{adding ? t('fogli.builder.riepilogo.unAttimo') : readyToAdd ? t('fogli.builder.riepilogo.aggiungi') : pronto ? t('fogli.builder.riepilogo.caricaFile') : t('fogli.builder.riepilogo.caricaDesign')}</button>
+
+		<div class="pvx__ship"><FreeShippingBar gross={cartGross + q.gross} compact prefix={cartGross > 0 ? t('fogli.builder.riepilogo.conCarrello') : t('fogli.builder.riepilogo.conOrdine')} /></div>
+		<div class="xtrust">
+			<div class="xtc"><span class="xtc__ico">🚀</span><span><span class="xtc__l">{t('fogli.builder.riepilogo.spedizione')}</span><b class="xtc__v">{shipDate}</b><span class="xtc__s">{t('fogli.builder.riepilogo.spedizioneGratis', { soglia })}</span></span></div>
+			<div class="xtc xtc--y"><span class="xtc__ico"><img src="/images/coin-sp.png" alt={t('fogli.builder.riepilogo.creditoAlt')} /></span><span><span class="xtc__l">{t('fogli.builder.riepilogo.credito')}</span><b class="xtc__v">{prezzo(q.net * cfg.creditRate)}</b><span class="xtc__s">{t('fogli.builder.riepilogo.creditoSub')}</span></span></div>
+			<div class="xtc xtc--g"><span class="xtc__ico">✅</span><span><span class="xtc__l">{t('configuratore.nuovo.controllo')}</span><b class="xtc__v">{t('configuratore.nuovo.controlloTitolo')}</b><span class="xtc__s">{t('configuratore.nuovo.controlloSotto')}</span></span></div>
+		</div>
 	</div>
 </section>
+
+<!-- BARRA D'ACQUISTO: gialla, fissa in basso, con totale e bottone azzurro -->
+<div class="xbuy" class:is-off={barraOff} role="region" aria-label={t('configuratore.riepilogo.barraPrezzo')}>
+	<div class="xbuy__in">
+		<div class="xbuy__sum"><b>{t('fogli.builder.qty.riepilogo', { n: numero(qty), prezzo: misure(sheetW, sheetH) })}</b><span>{opz(orientamento, 'label', orientamento)} · {material ? opz(material.id, 'label', material.label) : ''}{#if finish?.laminate} · {opz(finish.id, 'label', finish.label)}{/if}</span></div>
+		<div class="xbuy__ship"><b>🚀 {shipDate}</b>{t('fogli.builder.riepilogo.spedizioneGratis', { soglia })}</div>
+		<div class="xbuy__price"><b>{eurT(vatIncluded ? q.gross : q.net)}</b><span>{t('fogli.builder.qty.perFoglio', { prezzo: unitP(q.perPiece) })}{#if sceltaIva(locale)} · {vatIncluded ? t('fogli.builder.riepilogo.ivaInclusa') : t('fogli.builder.riepilogo.ivaEsclusa')}{/if}</span></div>
+		<input bind:this={quickInput} type="file" hidden accept={ACCEPT} onchange={pickQuick} />
+		<button class="xcta" type="button" onclick={cartClick} disabled={adding || (!readyToAdd && !canUpload)} title={readyToAdd ? '' : t('fogli.builder.riepilogo.serve')}>{adding ? t('fogli.builder.riepilogo.unAttimo') : readyToAdd ? t('fogli.builder.riepilogo.aggiungi') : pronto ? t('fogli.builder.riepilogo.caricaFile') : t('fogli.builder.riepilogo.caricaDesign')}</button>
+	</div>
+</div>
 
 <!-- POPUP: il motore per il design appena caricato (sagoma, bordo, sfondo, zoom; misura qui sotto) -->
 {#if engines.length}

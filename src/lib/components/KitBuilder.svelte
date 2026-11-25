@@ -19,7 +19,8 @@
 	import type { EngineConfig } from '$lib/pricing/engine';
 	import EnginePreview from './EnginePreview.svelte';
 	import { usaLingua } from '$lib/traduzioni';
-	import { formatAmount, sceltaIva } from '$lib/i18n';
+	import { formatAmount, sceltaIva, toCurrency } from '$lib/i18n';
+	import '$lib/styles/pvx.css';
 	const { t, lang, locale, prezzo, prezzoUnit, numero, path, unit, misuraU, misure } = usaLingua();
 	const inU = (mm: number) => (unit === 'in' ? Math.round(mmToUnit(mm, unit) * 100) / 100 : mm);
 	/* misure proposte: mm dal listino, pollici tondi sul sito USA */
@@ -69,7 +70,19 @@
 	const misuraMedia = $derived(n ? Math.round(filled.reduce((a, s) => a + s.misura, 0) / n) : 50);
 	const q = $derived(kitQuote(cfg, { materiale, finitura, misura: misuraMedia, n: n || KIT_MAX, qty }));
 	const ready = $derived(n > 0 && !!cav.png && slots.every((s) => !s.busy));
-	const progress = $derived((stepNo(step) / STEPS.length) * 100);
+	/* nuova grafica: totali con i centesimi solo quando ci sono, prezzo a kit a due decimali, risparmio rispetto alla prima fascia */
+	const eurT = (v: number) => { const c = toCurrency(v, locale.currency); return prezzo(v, Math.abs(c - Math.round(c)) > 0.004 ? 2 : 0); };
+	const unitP = (v: number) => locale.currency === 'EUR' ? new Intl.NumberFormat(locale.intl, { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v) : prezzoUnit(v);
+	const baseKit = $derived(kitQuote(cfg, { materiale, finitura, misura: misuraMedia, n: n || KIT_MAX, qty: KIT_QTY[0] }).perKitGross);
+	/* barra d'acquisto fissa: compare quando il preventivatore entra nello schermo */
+	let sezione = $state<HTMLElement | undefined>();
+	let barraOff = $state(true);
+	onMount(() => {
+		const on = () => { if (sezione) barraOff = sezione.getBoundingClientRect().top > window.innerHeight - 160; };
+		on();
+		addEventListener('scroll', on, { passive: true }); addEventListener('resize', on);
+		return () => { removeEventListener('scroll', on); removeEventListener('resize', on); };
+	});
 
 	/* ---- popup con il motore: cavallotto o adesivo ---- */
 	type Pop = { kind: 'cav' | 'sticker'; key: string; index: number; file: File; misura: number; forma: string; w: number; h: number; ratio: number; last: Render | null; busy: boolean; covered: boolean; forced: number };
@@ -293,9 +306,9 @@
 	}
 </script>
 
-<section class="cfg kitcfg" id="configura">
+<section class="pvx kitcfg" id="configura" bind:this={sezione}>
 	<!-- ANTEPRIMA: la bustina -->
-	<div class="cfg__preview kit__preview">
+	<div class="pvx__stage">
 		<div class="kit__stage" class:is-over={over} role="region" aria-label={t('kit.builder.anteprima')} ondragover={(e) => { e.preventDefault(); over = true; }} ondragleave={() => (over = false)} ondrop={onDrop}>
 			<div class="bag">
 				<label class="cav" class:has={!!cav.png} title={t('kit.builder.caricaCavallottoTitolo')}>
@@ -322,124 +335,98 @@
 		</div>
 	</div>
 
-	<!-- PASSAGGI -->
-	<aside class="cfg__steps">
-		<div class="cfg__head">
-			<div><p class="eyebrow">{t('kit.builder.eyebrow')}</p><h2 class="cfg__title">{t('kit.builder.titolo')}</h2></div>
-			<span class="cfg__stepcount">{t('kit.builder.passaggio', { n: stepNo(step), tot: STEPS.length })}</span>
-		</div>
-		<div class="progress"><span style="width:{progress}%"></span></div>
+	<!-- SCELTE: tutte aperte, una sotto l'altra (come il preventivatore dei prodotti) -->
+	<div class="pvx__panel">
+		<p class="eyebrow">{t('kit.builder.eyebrow')}</p>
+		<h2 class="pvx__title">{t('kit.builder.titolo')}</h2>
 
 		<!-- 1 materiale -->
-		<div class="step" class:is-open={step === 'materiale'}>
-			<button class="step__head" type="button" onclick={() => (step = 'materiale')} aria-expanded={step === 'materiale'}>
-				<span class="step__n">{#if stepNo(step) > 1}✓{:else}1{/if}</span>
-				<span class="step__title">{t('kit.builder.materiale.titolo')} {#if step !== 'materiale'}<em>{material ? opz(material.id, 'label', material.label) : ''}{#if finish && FINISHES.length > 1}, {opz(finish.id, 'label', finish.label)}{/if}</em>{/if}</span>
-				<span class="step__edit">{step === 'materiale' ? '' : t('kit.builder.modifica')}</span>
-			</button>
-			{#if step === 'materiale'}
-				<div class="step__body">
-					<p class="step__hint">{t('kit.builder.materiale.hint')}</p>
-					<div class="pic-grid pic-grid--3 pic-grid--sm">
-						{#each MATERIALS as m (m.id)}
-							<button type="button" class="pic" class:is-active={materiale === m.id} onclick={() => { materiale = m.id; step = cav.png ? 'adesivi' : 'cavallotto'; }}>
-								<img src={m.img} alt="" /><b>{opz(m.id, 'label', m.label)}</b>{#if m.tag}<span class="pic__tag">{opz(m.id, 'tag', m.tag)}</span>{/if}
-							</button>
-						{/each}
-					</div>
-					{#if FINISHES.length > 1}
-						<p class="step__hint" style="margin-top:12px">{lang === 'it' && cfg.finishTitle ? cfg.finishTitle : t('kit.builder.materiale.lamina')}</p>
-						<div class="kit__chips">{#each FINISHES as f (f.id)}<button type="button" class="chip" class:is-on={finitura === f.id} onclick={() => (finitura = f.id)}>{opz(f.id, 'label', f.label)}</button>{/each}</div>
-					{/if}
-				</div>
+		<div class="xg">
+			<div class="xg__h"><span class="xg__n">1</span><span class="xg__t">{t('kit.builder.materiale.titolo')}</span><span class="xg__v">{material ? opz(material.id, 'label', material.label) : ''}{#if finish && FINISHES.length > 1}, {opz(finish.id, 'label', finish.label)}{/if}</span></div>
+			<div class="xtiles">
+				{#each MATERIALS as m (m.id)}
+					<button type="button" class="xtile" class:is-on={materiale === m.id} aria-pressed={materiale === m.id} onclick={() => (materiale = m.id)}>
+						{#if m.tag}<span class="xtile__tag">{opz(m.id, 'tag', m.tag)}</span>{/if}<img src={m.img} alt="" /><b>{opz(m.id, 'label', m.label)}</b>
+					</button>
+				{/each}
+			</div>
+			<p class="xg__hint xg__hint--sotto">{t('kit.builder.materiale.hint')}</p>
+			{#if FINISHES.length > 1}
+				<p class="xg__sub">{lang === 'it' && cfg.finishTitle ? cfg.finishTitle : t('kit.builder.materiale.lamina')}</p>
+				<div class="xchips">{#each FINISHES as f (f.id)}<button type="button" class="xchip" class:is-on={finitura === f.id} aria-pressed={finitura === f.id} onclick={() => (finitura = f.id)}>{opz(f.id, 'label', f.label)}</button>{/each}</div>
 			{/if}
 		</div>
 
 		<!-- 2 cavallotto -->
-		<div class="step" class:is-open={step === 'cavallotto'}>
-			<button class="step__head" type="button" onclick={() => (step = 'cavallotto')} aria-expanded={step === 'cavallotto'}>
-				<span class="step__n">{#if cav.png}✓{:else}2{/if}</span>
-				<span class="step__title">{t('kit.builder.cavallotto.titolo')} {#if step !== 'cavallotto'}<em>{cav.file ? cav.file.name : t('kit.builder.cavallotto.daCaricare')}</em>{/if}</span>
-				<span class="step__edit">{step === 'cavallotto' ? '' : t('kit.builder.modifica')}</span>
-			</button>
-			{#if step === 'cavallotto'}
-				<div class="step__body">
-					<p class="step__hint">{t('kit.builder.cavallotto.hint', { misura: misure(CAV.w, CAV.h) })}</p>
-					<label class="kit__cav" class:has={!!cav.png}>
-						<input type="file" hidden accept={ACCEPT} onchange={pickCav} />
-						{#if cav.png}<img src={cav.png} alt="" /><span>{cav.file?.name}</span><b>{t('kit.builder.cavallotto.cambia')}</b>{:else}<span class="kit__plus">+</span><span>{t('kit.builder.cavallotto.carica')}</span>{/if}
-					</label>
-					{#if cav.png}<button type="button" class="btn btn--blue btn--sm" style="margin-top:12px" onclick={() => (step = 'adesivi')}>{t('kit.builder.cavallotto.avanti')}</button>{/if}
-				</div>
-			{/if}
+		<div class="xg">
+			<div class="xg__h"><span class="xg__n">2</span><span class="xg__t">{t('kit.builder.cavallotto.titolo')}</span><span class="xg__v">{cav.file ? cav.file.name : t('kit.builder.cavallotto.daCaricare')}</span></div>
+			<p class="xg__hint">{t('kit.builder.cavallotto.hint', { misura: misure(CAV.w, CAV.h) })}</p>
+			<label class="kit__cav" class:has={!!cav.png}>
+				<input type="file" hidden accept={ACCEPT} onchange={pickCav} />
+				{#if cav.png}<img src={cav.png} alt="" /><span>{cav.file?.name}</span><b>{t('kit.builder.cavallotto.cambia')}</b>{:else}<span class="kit__plus">+</span><span>{t('kit.builder.cavallotto.carica')}</span>{/if}
+			</label>
 		</div>
 
 		<!-- 3 adesivi -->
-		<div class="step" class:is-open={step === 'adesivi'}>
-			<button class="step__head" type="button" onclick={() => (step = 'adesivi')} aria-expanded={step === 'adesivi'}>
-				<span class="step__n">{#if n > 0 && step !== 'adesivi'}✓{:else}3{/if}</span>
-				<span class="step__title">{t('kit.builder.adesivi.titolo')} {#if step !== 'adesivi'}<em>{t('kit.builder.adesivi.nDi', { n, max: KIT_MAX })}</em>{/if}</span>
-				<span class="step__edit">{step === 'adesivi' ? '' : t('kit.builder.modifica')}</span>
-			</button>
-			{#if step === 'adesivi'}
-				<div class="step__body">
-					<p class="step__hint">{t('kit.builder.adesivi.hint', { max: KIT_MAX })}</p>
-					<div class="kit__slots">
-						{#each slots as s, i (i)}
-							<label class="slot" class:has={!!s.file} class:busy={s.busy}>
-								<input type="file" hidden accept={ACCEPT} onchange={(e) => pickSlot(e, i)} />
-								{#if s.png}<img src={s.png} alt="" />{:else}<span class="slot__plus">+</span>{/if}
-								<em>{i + 1}</em>
-								{#if s.file}<button type="button" class="slot__x" aria-label={t('kit.builder.adesivi.togli')} onclick={(e) => { e.preventDefault(); removeSticker(i); }}>✕</button>{/if}
-							</label>
-						{/each}
-					</div>
-					{#if flash}<p class="kit__flash">{flash}</p>{/if}
-					{#if n}<button type="button" class="btn btn--blue btn--sm" style="margin-top:12px" onclick={() => (step = 'qty')}>{t('kit.builder.adesivi.avanti')}</button>{/if}
-				</div>
-			{/if}
-		</div>
-
-		<!-- 4 quantita' -->
-		<div class="step step--qty" class:is-open={step === 'qty'}>
-			<button class="step__head" type="button" onclick={() => (step = 'qty')} aria-expanded={step === 'qty'}>
-				<span class="step__n">4</span>
-				<span class="step__title">{t('kit.builder.qty.titolo')} <em>{t('kit.builder.qty.riepilogo', { n: numero(qty), prezzo: prezzo(vatIncluded ? q.gross : q.net, 0) })}</em></span>
-				<span class="step__edit">{step === 'qty' ? '' : t('kit.builder.modifica')}</span>
-			</button>
-			{#if step === 'qty'}
-				<div class="step__body">
-					<div class="qty-grid">
-						{#each KIT_QTY as k (k)}
-							{@const qq = kitQuote(cfg, { materiale, finitura, misura: misuraMedia, n: n || KIT_MAX, qty: k })}
-							<button type="button" class="qty" class:is-active={qty === k} onclick={() => (qty = k)}>
-								<span class="qty__top"><b>{numero(k)}</b><b>{prezzo(vatIncluded ? qq.gross : qq.net, 0)}</b></span>
-								<span class="qty__bottom">{t('kit.builder.qty.perKit', { prezzo: prezzoUnit(vatIncluded ? qq.perKitGross : qq.perKitNet) })}</span>
-							</button>
-						{/each}
-					</div>
-					<p class="step__hint">{t('kit.builder.qty.hint', { n: Math.max(1, n) })}</p>
-				</div>
-			{/if}
-		</div>
-	</aside>
-
-	<!-- RIEPILOGO: spedizione, credito, totale, come negli altri preventivatori -->
-	<div class="cfg__freeship"><FreeShippingBar gross={cartGross + q.gross} compact prefix={cartGross > 0 ? t('kit.builder.riepilogo.conCarrello') : t('kit.builder.riepilogo.conOrdine')} /></div>
-	<div class="cfg__summary">
-		<div class="sum sum--ship"><span class="sum__ico">🚀</span><div class="sum__text"><span class="sum__label">{t('kit.builder.riepilogo.spedizione')}</span><span class="sum__value">{shipDate}</span><span class="sum__sub">{t('kit.builder.riepilogo.spedizioneGratis', { soglia })}</span></div></div>
-		<div class="sum sum--credit"><span class="sum__ico"><img src="/images/coin-sp.png" alt={t('kit.builder.riepilogo.creditoAlt')} /></span><div class="sum__text"><span class="sum__label">{t('kit.builder.riepilogo.credito')}</span><span class="sum__value">{prezzo(q.net * cfg.creditRate)}</span><span class="sum__sub">{t('kit.builder.riepilogo.creditoSub')}</span></div></div>
-		<div class="sum sum--total">
-			<div class="sum__text">
-				<span class="sum__label">{t('kit.builder.riepilogo.totale')} {vatIncluded ? t('kit.builder.riepilogo.ivaInclusa') : t('kit.builder.riepilogo.ivaEsclusa')}</span>
-				<span class="sum__value sum__value--big">{prezzo(vatIncluded ? q.gross : q.net, 0)}</span>
-				{#if sceltaIva(locale)}<div class="vat-toggle"><span class:active={!vatIncluded}>{t('kit.builder.riepilogo.ivaEsclusa')}</span><button type="button" class="switch" class:on={vatIncluded} role="switch" aria-checked={vatIncluded} aria-label={t('kit.builder.riepilogo.mostraIva')} onclick={() => (vatIncluded = !vatIncluded)}><i></i></button><span class:active={vatIncluded}>{t('kit.builder.riepilogo.ivaInclusa')}</span></div>{/if}
+		<div class="xg">
+			<div class="xg__h"><span class="xg__n">3</span><span class="xg__t">{t('kit.builder.adesivi.titolo')}</span><span class="xg__v">{t('kit.builder.adesivi.nDi', { n, max: KIT_MAX })}</span></div>
+			<p class="xg__hint">{t('kit.builder.adesivi.hint', { max: KIT_MAX })}</p>
+			<div class="kit__slots">
+				{#each slots as s, i (i)}
+					<label class="slot" class:has={!!s.file} class:busy={s.busy}>
+						<input type="file" hidden accept={ACCEPT} onchange={(e) => pickSlot(e, i)} />
+						{#if s.png}<img src={s.png} alt="" />{:else}<span class="slot__plus">+</span>{/if}
+						<em>{i + 1}</em>
+						{#if s.file}<button type="button" class="slot__x" aria-label={t('kit.builder.adesivi.togli')} onclick={(e) => { e.preventDefault(); removeSticker(i); }}>✕</button>{/if}
+					</label>
+				{/each}
 			</div>
-			<span class="sum__per">{t('kit.builder.qty.perKit', { prezzo: prezzoUnit(vatIncluded ? q.perKitGross : q.perKitNet) })}</span>
+			{#if flash}<p class="kit__flash">{flash}</p>{/if}
 		</div>
-		<button class="btn btn--green btn--cart" type="button" onclick={addKit} disabled={!ready || adding} title={ready ? '' : t('kit.builder.riepilogo.serve')}>{adding ? t('kit.builder.riepilogo.unAttimo') : ready ? t('kit.builder.riepilogo.aggiungi') : !cav.png ? t('kit.builder.riepilogo.caricaCavallotto') : !n ? t('kit.builder.riepilogo.caricaAdesivo') : t('kit.builder.riepilogo.unAttimo')}</button>
+
+		<!-- 4 quantita': una riga per fascia -->
+		<div class="xg" id="qty-step">
+			<div class="xg__h">
+				<span class="xg__n">4</span><span class="xg__t">{t('kit.builder.qty.titolo')}</span>
+				{#if sceltaIva(locale)}
+					<span class="xvat" role="group" aria-label={t('configuratore.nuovo.prezziIva')}>
+						<button type="button" class:is-on={vatIncluded} aria-pressed={vatIncluded} onclick={() => (vatIncluded = true)}>{t('kit.builder.riepilogo.ivaInclusa')}</button>
+						<button type="button" class:is-on={!vatIncluded} aria-pressed={!vatIncluded} onclick={() => (vatIncluded = false)}>{t('kit.builder.riepilogo.ivaEsclusa')}</button>
+					</span>
+				{/if}
+			</div>
+			<div class="xqlist">
+				{#each KIT_QTY as k (k)}
+					{@const qq = kitQuote(cfg, { materiale, finitura, misura: misuraMedia, n: n || KIT_MAX, qty: k })}
+					{@const disc = Math.max(0, Math.round((1 - qq.perKitGross / baseKit) * 100))}
+					<button type="button" class="xq" class:is-on={qty === k} aria-pressed={qty === k} onclick={() => (qty = k)}>
+						<span class="xq__n">{numero(k)}</span>
+						<span class="xq__mid"><span class="xq__u">{t('kit.builder.qty.perKit', { prezzo: unitP(vatIncluded ? qq.perKitGross : qq.perKitNet) })}</span>{#if disc > 0}<span class="xq__save">{t('configuratore.nuovo.risparmi', { n: disc })}</span>{/if}</span>
+						<span class="xq__tot">{eurT(vatIncluded ? qq.gross : qq.net)}</span>
+					</button>
+				{/each}
+			</div>
+			<p class="xg__hint xg__hint--sotto">{t('kit.builder.qty.hint', { n: Math.max(1, n) })}</p>
+		</div>
+
+		<div class="pvx__ship"><FreeShippingBar gross={cartGross + q.gross} compact prefix={cartGross > 0 ? t('kit.builder.riepilogo.conCarrello') : t('kit.builder.riepilogo.conOrdine')} /></div>
+		<div class="xtrust">
+			<div class="xtc"><span class="xtc__ico">🚀</span><span><span class="xtc__l">{t('kit.builder.riepilogo.spedizione')}</span><b class="xtc__v">{shipDate}</b><span class="xtc__s">{t('kit.builder.riepilogo.spedizioneGratis', { soglia })}</span></span></div>
+			<div class="xtc xtc--y"><span class="xtc__ico"><img src="/images/coin-sp.png" alt={t('kit.builder.riepilogo.creditoAlt')} /></span><span><span class="xtc__l">{t('kit.builder.riepilogo.credito')}</span><b class="xtc__v">{prezzo(q.net * cfg.creditRate)}</b><span class="xtc__s">{t('kit.builder.riepilogo.creditoSub')}</span></span></div>
+			<div class="xtc xtc--g"><span class="xtc__ico">✅</span><span><span class="xtc__l">{t('configuratore.nuovo.controllo')}</span><b class="xtc__v">{t('configuratore.nuovo.controlloTitolo')}</b><span class="xtc__s">{t('configuratore.nuovo.controlloSotto')}</span></span></div>
+		</div>
 	</div>
 </section>
+
+<!-- BARRA D'ACQUISTO: gialla, fissa in basso, con totale e bottone azzurro -->
+<div class="xbuy" class:is-off={barraOff} role="region" aria-label={t('configuratore.riepilogo.barraPrezzo')}>
+	<div class="xbuy__in">
+		<div class="xbuy__sum"><b>{t('kit.builder.qty.riepilogo', { n: numero(qty), prezzo: t('kit.builder.adesivi.nDi', { n, max: KIT_MAX }) })}</b><span>{material ? opz(material.id, 'label', material.label) : ''}{#if finish?.laminate} · {opz(finish.id, 'label', finish.label)}{/if}</span></div>
+		<div class="xbuy__ship"><b>🚀 {shipDate}</b>{t('kit.builder.riepilogo.spedizioneGratis', { soglia })}</div>
+		<div class="xbuy__price"><b>{eurT(vatIncluded ? q.gross : q.net)}</b><span>{t('kit.builder.qty.perKit', { prezzo: unitP(vatIncluded ? q.perKitGross : q.perKitNet) })}{#if sceltaIva(locale)} · {vatIncluded ? t('kit.builder.riepilogo.ivaInclusa') : t('kit.builder.riepilogo.ivaEsclusa')}{/if}</span></div>
+		<button class="xcta" type="button" onclick={addKit} disabled={!ready || adding} title={ready ? '' : t('kit.builder.riepilogo.serve')}>{adding ? t('kit.builder.riepilogo.unAttimo') : ready ? t('kit.builder.riepilogo.aggiungi') : !cav.png ? t('kit.builder.riepilogo.caricaCavallotto') : !n ? t('kit.builder.riepilogo.caricaAdesivo') : t('kit.builder.riepilogo.unAttimo')}</button>
+	</div>
+</div>
 
 <!-- POPUP: il motore per il file appena caricato (bordo, sfondo, zoom dal pannello del motore; misura qui sotto).
      Il contenitore resta nel DOM anche da chiuso: il motore dentro non si ricrea a ogni file. -->
