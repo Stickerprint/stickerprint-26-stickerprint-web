@@ -219,27 +219,28 @@
 
 	<div class="dcard" style="overflow-x:auto">
 		<h3>📦 Articoli <label style="display:flex;gap:8px;align-items:center;font-size:13px;font-weight:700"><input type="checkbox" checked={lordi} onchange={(e) => (d.price_type = (e.currentTarget as HTMLInputElement).checked ? 'lordi' : 'netti')} /> Inserisci prezzi lordi (IVA inclusa)</label></h3>
-		<table class="dtable">
+		<!-- le classi et-* servono al telefono (dashboard-telefono.css): ogni articolo diventa una scheda -->
+		<table class="dtable etable">
 			<thead><tr><th style="width:26px"></th><th>Codice</th><th>Categoria</th><th>Descrizione (misura, materiale, finitura)</th><th>Q.tà</th><th>Prezzo unit.</th><th>Totale</th><th>Laminazione</th><th>Mockup</th><th></th></tr></thead>
 			<tbody>
 				{#each d.items as it, i (i)}
 					<tr class="drow" class:is-over={dragOver === i && dragFrom !== null && dragFrom !== i} class:is-drag={dragFrom === i} ondragover={(e) => { e.preventDefault(); dragOver = i; }} ondragleave={() => { if (dragOver === i) dragOver = null; }} ondrop={(e) => { e.preventDefault(); onDrop(i); }}>
-						<td class="dhandle">
+						<td class="dhandle et-move">
 							<span class="grip" role="button" tabindex="-1" aria-label="Trascina per spostare la riga" draggable="true" title="Trascina per spostare la riga" ondragstart={(e) => { dragFrom = i; e.dataTransfer?.setData('text/plain', String(i)); if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move'; }} ondragend={() => { dragFrom = null; dragOver = null; }}>⠿</span>
 							<span class="arrows"><button type="button" class="ibtn" title="Sposta su" disabled={i === 0} onclick={() => moveItem(i, i - 1)}>▲</button><button type="button" class="ibtn" title="Sposta giù" disabled={i === d.items.length - 1} onclick={() => moveItem(i, i + 1)}>▼</button></span>
 						</td>
-						<td><input type="text" list="codes-list" maxlength="12" placeholder="es. ADR01" bind:value={it.code} onchange={() => applyCode(i)} style="max-width:110px;text-transform:uppercase" />{#if it.number}<div class="osub">{it.number}</div>{/if}</td>
-						<td><span class="cat" class:cat--none={!catOf(it.code)}>{catOf(it.code) || 'Codice non riconosciuto'}</span></td>
-						<td><input type="text" placeholder="es. 10×10 cm, PP lucido" bind:value={it.description} /></td>
-						<td><input type="number" min="1" bind:value={it.qty} style="max-width:90px" /></td>
-						<td><div style="display:flex;gap:4px;align-items:center"><input type="number" min="0" step="0.0001" bind:value={it.price} style="max-width:110px" /><button type="button" class="ibtn" title="Prezzo dal listino del sito (misura, materiale, quantita')" onclick={() => calcOpen(i)}>🧮</button></div></td>
-						<td><b>{money(Number(it.qty || 0) * Number(it.price || 0))}</b></td>
-						<td><select bind:value={it.lamination}><option value="nessuna">Nessuna</option><option value="lucida">Lucida</option><option value="opaca">Opaca</option></select></td>
-						<td>
+						<td class="et-code"><input type="text" list="codes-list" maxlength="12" placeholder="es. ADR01" bind:value={it.code} onchange={() => applyCode(i)} style="max-width:110px;text-transform:uppercase" />{#if it.number}<div class="osub">{it.number}</div>{/if}</td>
+						<td class="et-cat"><span class="cat" class:cat--none={!catOf(it.code)}>{catOf(it.code) || 'Codice non riconosciuto'}</span></td>
+						<td class="et-desc"><input type="text" placeholder="es. 10×10 cm, PP lucido" bind:value={it.description} /></td>
+						<td class="et-qty"><input type="number" min="1" bind:value={it.qty} style="max-width:90px" /></td>
+						<td class="et-price"><div style="display:flex;gap:4px;align-items:center"><input type="number" min="0" step="0.0001" bind:value={it.price} style="max-width:110px" /><button type="button" class="ibtn" title="Prezzo dal listino del sito (misura, materiale, quantita')" onclick={() => calcOpen(i)}>🧮</button></div></td>
+						<td class="et-tot"><b>{money(Number(it.qty || 0) * Number(it.price || 0))}</b></td>
+						<td class="et-lam"><select bind:value={it.lamination}><option value="nessuna">Nessuna</option><option value="lucida">Lucida</option><option value="opaca">Opaca</option></select></td>
+						<td class="et-mock">
 							{#if it.mockup_url || it.preview_url}<div style="display:flex;align-items:center;gap:6px"><img src={it.mockup_url ?? it.preview_url} alt="" style="width:44px;height:44px;border-radius:8px;object-fit:cover;background:#f4f5fa" />{#if it.mockup_url}<button type="button" class="link-btn" onclick={() => (it.mockup_url = null)}>✕</button>{/if}</div>
 							{:else}<label class="btn btn--ghost btn--xs" style="cursor:pointer">📎 Mockup<input type="file" accept="image/*,.pdf" hidden onchange={(e) => mockup(i, e)} /></label>{/if}
 						</td>
-						<td><button type="button" class="ibtn" title="Rimuovi" onclick={() => (d.items = d.items.filter((_, k) => k !== i))}>🗑️</button></td>
+						<td class="et-del"><button type="button" class="ibtn" title="Rimuovi" onclick={() => (d.items = d.items.filter((_, k) => k !== i))}>🗑️</button></td>
 					</tr>
 				{/each}
 			</tbody>

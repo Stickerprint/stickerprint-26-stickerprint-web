@@ -211,21 +211,22 @@
 		<tbody>
 			{#each pageList as g (g.key)}
 				{@const first = g.items[0]}
+				<!-- le classi oc-* servono al telefono (dashboard-telefono.css): le celle si riconoscono dal nome, non dalla posizione -->
 				<tr class="orow-main" class:is-scelto={scelti.has(g.key)}>
-					<td>{#if fatturabile(g, fatturati)}<input type="checkbox" checked={scelti.has(g.key)} disabled={!spuntabile(g)} onchange={() => spunta(g.key)} aria-label="Seleziona l'ordine {g.number} per la fattura" title={spuntabile(g) ? 'Senza fattura: selezionalo per generarla' : 'È di un altro cliente rispetto agli ordini già selezionati'} />{:else if fatturati[g.key]}<span class="osub" title="Fattura {fatturati[g.key]}">🧾</span>{:else if g.status !== 'annullato' && g.channel !== 'ecommerce'}<span class="osub" title={nonFatturabile(g, fatturati) ?? ''}>—</span>{/if}</td>
-					<td>{COUNTRIES[g.country]?.flag ?? '🌍'}</td>
-					<td><a class="oid" href="/dashboard/fatturazione/ordini/{g.key}">{g.number}{#if g.items.length > 1} <small>+{g.items.length - 1}</small>{/if}</a><div class="osub">{dmy(g.created_at)} <span title={CHANNEL_ICON[g.channel]?.label}>{CHANNEL_ICON[g.channel]?.icon ?? ''}</span>{#if g.device}<span title="Ordinato da {g.device}">{DEVICE_ICON[g.device] ?? ''}</span>{/if}{#if g.express} <span title="Produzione express">⚡</span>{/if}</div></td>
-					<td><b>{g.customer}</b><div class="osub">{g.email}</div></td>
-					<td>
+					<td class="oc-sel">{#if fatturabile(g, fatturati)}<input type="checkbox" checked={scelti.has(g.key)} disabled={!spuntabile(g)} onchange={() => spunta(g.key)} aria-label="Seleziona l'ordine {g.number} per la fattura" title={spuntabile(g) ? 'Senza fattura: selezionalo per generarla' : 'È di un altro cliente rispetto agli ordini già selezionati'} />{:else if fatturati[g.key]}<span class="osub" title="Fattura {fatturati[g.key]}">🧾</span>{:else if g.status !== 'annullato' && g.channel !== 'ecommerce'}<span class="osub" title={nonFatturabile(g, fatturati) ?? ''}>—</span>{/if}</td>
+					<td class="oc-flag">{COUNTRIES[g.country]?.flag ?? '🌍'}</td>
+					<td class="oc-num"><a class="oid" href="/dashboard/fatturazione/ordini/{g.key}">{g.number}{#if g.items.length > 1} <small>+{g.items.length - 1}</small>{/if}</a><div class="osub">{dmy(g.created_at)} <span title={CHANNEL_ICON[g.channel]?.label}>{CHANNEL_ICON[g.channel]?.icon ?? ''}</span>{#if g.device}<span title="Ordinato da {g.device}">{DEVICE_ICON[g.device] ?? ''}</span>{/if}{#if g.express} <span title="Produzione express">⚡</span>{/if}</div></td>
+					<td class="oc-cust"><b>{g.customer}</b><div class="osub">{g.email}</div></td>
+					<td class="oc-art">
 						<div class="item-cell">
 							{#if first.proof_url || first.preview_url || first.mockup_url}<img src={first.proof_url ?? first.preview_url ?? first.mockup_url} alt="" />{:else}<span class="thumb-ph" style="background:{CATS[first.product_slug]?.soft ?? '#eee'}"></span>{/if}
 							<div><b>{first.product_name}</b><div class="osub">{itemMeta(first)}</div></div>
 						</div>
 						{#if g.items.length > 1}<button type="button" class="link-btn" style="font-size:12px" onclick={() => toggle(g.key)}>{expanded.has(g.key) ? 'Nascondi' : `Mostra altri ${g.items.length - 1}`}</button>{/if}
 					</td>
-					<td><span class="cat" style="background:{CATS[first.product_slug]?.soft};color:{CATS[first.product_slug]?.color}">{CATS[first.product_slug]?.name ?? first.product_slug}</span></td>
-					<td>{g.qty.toLocaleString('it-IT')} pz</td>
-					<td>
+					<td class="oc-cat"><span class="cat" style="background:{CATS[first.product_slug]?.soft};color:{CATS[first.product_slug]?.color}">{CATS[first.product_slug]?.name ?? first.product_slug}</span></td>
+					<td class="oc-qty">{g.qty.toLocaleString('it-IT')} pz</td>
+					<td class="oc-stato">
 						{#if canStart(g)}
 							<form method="POST" action="?/produzione" use:enhance={() => { starting = g.key; return async ({ update }) => { starting = null; await update(); }; }}><input type="hidden" name="group" value={g.key} /><button class="btn btn--green btn--xs" type="submit" disabled={starting === g.key} title="L'ordine va in produzione e compare subito nel reparto Stampa">{starting === g.key ? '…' : '▶ Metti in stampa'}</button></form>
 							{#if g.status === 'attesa_pagamento'}<div class="osub" style="margin-top:4px">in attesa dell'anticipo</div>{/if}
@@ -249,7 +250,7 @@
 							{/if}
 						{/if}
 					</td>
-					<td class="shipcol">
+					<td class="shipcol oc-sped">
 						{#if g.shipBy}
 							{@const late = !['spedito', 'in_consegna', 'consegnato', 'annullato'].includes(g.status) && g.shipBy < new Date().toISOString().slice(0, 10)}
 							<b class:is-late={late} title={late ? 'Doveva partire entro questa data' : 'Deve partire entro questa data'}>{late ? '⚠ ' : ''}{dmy(g.shipBy)}</b>
@@ -257,8 +258,8 @@
 						{:else if g.delivery_date}<b title="Spedizione prevista scritta sull'ordine">{dmy(g.delivery_date)}</b><div class="osub">prevista</div>
 						{:else}<span class="osub">—</span>{/if}
 					</td>
-					<td style="text-align:right"><b>{money(g.net)}</b>{#if g.discount > 0}<div class="osub" style="color:#b45309">sconto {g.discountCode ?? ''} −{money(g.discount)}</div>{/if}<div class="osub">{money(g.gross)} IVA incl.</div>{#if paymentIcon(g.payment_method)}<div class="payrow"><img src={paymentIcon(g.payment_method)} alt={paymentLabel(g.payment_method)} title={paymentLabel(g.payment_method)} /></div>{:else if g.payment_method}<div class="osub">{paymentLabel(g.payment_method)}</div>{/if}</td>
-					<td>
+					<td class="oc-imp" style="text-align:right"><b>{money(g.net)}</b>{#if g.discount > 0}<div class="osub" style="color:#b45309">sconto {g.discountCode ?? ''} −{money(g.discount)}</div>{/if}<div class="osub">{money(g.gross)} IVA incl.</div>{#if paymentIcon(g.payment_method)}<div class="payrow"><img src={paymentIcon(g.payment_method)} alt={paymentLabel(g.payment_method)} title={paymentLabel(g.payment_method)} /></div>{:else if g.payment_method}<div class="osub">{paymentLabel(g.payment_method)}</div>{/if}</td>
+					<td class="oc-act">
 						<div class="row-actions">
 							<form method="POST" action="?/star" use:enhance><input type="hidden" name="group" value={g.key} /><input type="hidden" name="on" value={g.starred ? '0' : '1'} /><button type="submit" class="ibtn" title="Segna ordine">{g.starred ? '⭐' : '☆'}<span class="ibtn__lbl">{g.starred ? 'Segnato' : 'Segna'}</span></button></form>
 							<a class="ibtn" href="/dashboard/fatturazione/ordini/nuovo?da={g.key}" title="Duplica: ordine nuovo con gli stessi dati">⧉<span class="ibtn__lbl">Duplica</span></a>
@@ -269,12 +270,12 @@
 				{#if expanded.has(g.key)}
 					{#each g.items.slice(1) as it (it.id)}
 						<tr class="orow-sub">
-							<td></td><td></td><td><span class="osub">{it.number}</span></td><td></td>
-							<td><div class="item-cell">{#if it.preview_url || it.mockup_url}<img src={it.mockup_url ?? it.preview_url} alt="" />{/if}<div><b>{it.product_name}</b><div class="osub">{itemMeta(it)}</div></div></div></td>
-							<td><span class="cat" style="background:{CATS[it.product_slug]?.soft};color:{CATS[it.product_slug]?.color}">{CATS[it.product_slug]?.name ?? it.product_slug}</span></td>
-							<td>{it.qty.toLocaleString('it-IT')} pz</td>
-							<td><span class="st" style="background:{st(it.status).soft};color:{st(it.status).color}">{st(it.status).label}</span></td><td></td>
-							<td style="text-align:right">{money(Number(it.total_net))}</td><td></td>
+							<td></td><td></td><td class="os-num"><span class="osub">{it.number}</span></td><td></td>
+							<td class="os-art"><div class="item-cell">{#if it.preview_url || it.mockup_url}<img src={it.mockup_url ?? it.preview_url} alt="" />{/if}<div><b>{it.product_name}</b><div class="osub">{itemMeta(it)}</div></div></div></td>
+							<td class="os-cat"><span class="cat" style="background:{CATS[it.product_slug]?.soft};color:{CATS[it.product_slug]?.color}">{CATS[it.product_slug]?.name ?? it.product_slug}</span></td>
+							<td class="os-qty">{it.qty.toLocaleString('it-IT')} pz</td>
+							<td class="os-stato"><span class="st" style="background:{st(it.status).soft};color:{st(it.status).color}">{st(it.status).label}</span></td><td></td>
+							<td class="os-imp" style="text-align:right">{money(Number(it.total_net))}</td><td></td>
 						</tr>
 					{/each}
 				{/if}

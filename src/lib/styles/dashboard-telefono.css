@@ -1,0 +1,161 @@
+/* ==========================================================================
+   Dashboard sul TELEFONO (Mattia, 25/11/2026): «voglio lavorare e controllare l'azienda anche fuori casa».
+   Tutto dentro @media (max-width: 820px): il computer non cambia.
+   Regole:
+   - le celle delle tabelle si riconoscono dalla CLASSE, mai dalla posizione (aggiungere una colonna non deve
+     rompere il telefono: era successo con la casella «fattura» nell'elenco Ordini);
+   - ogni tabella diventa un elenco di schede; l'etichetta di ogni valore e' l'intestazione della colonna,
+     copiata in `data-l` dal layout della dashboard (etichetteTabelle);
+   - niente testo in colonne strette: una cella lunga prende tutta la riga, due corte stanno affiancate;
+   - l'anteprima del file del cliente e' sempre in vista, grande.
+   ========================================================================== */
+@media (max-width: 820px) {
+  /* ---- testi di spiegazione: due righe, si aprono con un tocco ---- */
+  .dash__content .lead { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
+  .dash__content .lead.is-open { display: block; -webkit-line-clamp: unset; line-clamp: unset; }
+  .dash__content .stats5-rif { font-size: 12px; margin: 0; }
+  /* campi: 16 px, altrimenti iPhone ingrandisce la pagina quando si tocca un campo */
+  .dash__content input:not([type=checkbox]):not([type=radio]):not([type=range]), .dash__content select, .dash__content textarea { font-size: 16px !important; }
+  .dash__content .stsel { font-size: 12.5px !important; padding: 6px 24px 6px 10px; }
+  /* barre che scorrono di lato: senza la barra grigia sotto */
+  .month-bar, .tabs, .year-bar, .dash__content [style*="overflow-x:auto"] { scrollbar-width: none; }
+  .month-bar::-webkit-scrollbar, .tabs::-webkit-scrollbar, .year-bar::-webkit-scrollbar { display: none; }
+  .month-bar > .btn { flex: none; }
+  .stat5 { padding: 10px 12px; gap: 10px; min-width: 0; }
+  .stat5 .ico { width: 34px; height: 34px; font-size: 16px; }
+  .stat5 > div { min-width: 0; }
+  .stat5 b { font-size: 18px; overflow-wrap: anywhere; }
+  .pager { gap: 4px; }
+  .selbar { top: 62px !important; }
+
+  /* ================= tabelle → schede (regola generale) ================= */
+  .dcard[style*="overflow-x"] { overflow-x: visible !important; padding: 0 !important; background: none !important; border: 0 !important; }
+  .dcard[style*="overflow-x"] > h3 { padding: 4px 2px 8px !important; margin: 0; }
+  .dtable { display: block; }
+  .dtable thead { display: none; }
+  .dtable tbody, .dtable tfoot { display: block; }
+  .dtable tr { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 10px 12px; padding: 14px; margin-bottom: 10px; background: #fff; border: 1px solid var(--line); border-radius: 14px; }
+  .dtable td, .dtable th { display: block; border: 0; padding: 0; text-align: left !important; white-space: normal !important; overflow-wrap: anywhere; flex: 1 1 auto; min-width: calc(50% - 6px); max-width: 100%; }
+  .dtable td:empty { display: none; }
+  .dtable td[colspan] { flex-basis: 100%; }
+  .dtable td[data-l]:not([data-l=""])::before { content: attr(data-l); display: block; margin-bottom: 2px; font-family: var(--font-display); font-weight: 800; font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  /* la prima cella e' il «titolo» della scheda */
+  .dtable tbody td:first-child:not(:has(> input[type=checkbox]:only-child)) { flex-basis: 100%; font-size: 15px; }
+  /* casella di selezione: piccola, non una colonna intera */
+  .dtable td:has(> input[type=checkbox]:only-child) { flex: 0 0 auto; min-width: 0; }
+  .dtable td:has(> input[type=checkbox]:only-child)::before { content: none !important; }
+  .dtable td input[type=checkbox] { width: 22px; height: 22px; }
+  /* bottoni di riga: in fondo, a tutta larghezza */
+  .dtable td:last-child:has(.btn, .ibtn, .row-actions, form) { flex-basis: 100%; }
+  .dtable td:last-child:has(.btn, .ibtn, .row-actions, form)::before { content: none !important; }
+  .dtable input[type=number] { max-width: none; }
+  .dtable .row-actions { justify-content: flex-start; flex-wrap: wrap; gap: 8px; }
+  .dtable td .btn { white-space: nowrap; }
+  .ibtn { font-size: 20px; padding: 6px 10px; }
+  .row-actions { gap: 10px; }
+  .item-cell { align-items: flex-start; }
+  .item-cell > div { min-width: 0; }
+  .thumbs { align-items: flex-start; }
+  .thumbs__txt { min-width: 0; }
+  .ship-thumbs { width: auto !important; flex-wrap: nowrap !important; }
+
+  /* ================= Ordini: scheda con l'anteprima ================= */
+  .otable tr.orow-main { display: grid; grid-template-columns: 84px minmax(0, 1fr) auto; grid-template-areas: "thumb num num" "thumb cust cust" "thumb art art" "thumb piu piu" "stato stato imp" "sped sped qty" "sel act act"; gap: 0; align-items: start; padding: 14px; }
+  .otable tr.orow-main.is-scelto { border-color: var(--green); box-shadow: 0 0 0 1px var(--green); }
+  .otable tr.orow-main > td { min-width: 0; max-width: none; font-size: 14px; }
+  .otable tr.orow-main > td::before, .otable tr.orow-sub > td::before { content: none !important; }
+  .otable .oc-num { grid-area: num; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; padding-left: 12px; }
+  .otable .oc-num .oid { font-size: 19px; line-height: 1.15; }
+  .otable .oc-num .osub { margin: 0; white-space: nowrap; font-size: 12px; }
+  .otable .oc-cust { grid-area: cust; padding: 4px 30px 0 12px; }
+  .otable .oc-cust b { display: block; font-size: 15px; line-height: 1.25; }
+  .otable .oc-cust .osub { margin-top: 1px; font-size: 12px; }
+  .otable .oc-flag { grid-area: cust; justify-self: end; padding-top: 4px; font-size: 17px; line-height: 1.2; }
+  /* la cella dell'articolo si «scioglie»: l'anteprima va a sinistra, il testo sotto il cliente */
+  .otable .oc-art, .otable .oc-art > .item-cell { display: contents; }
+  .otable .oc-art > .item-cell > img, .otable .oc-art > .item-cell > .thumb-ph { grid-area: thumb; width: 84px; height: 84px; border-radius: 12px; object-fit: contain; background: #f4f5fa; border: 1px solid var(--line); }
+  .otable .oc-art > .item-cell > div { grid-area: art; padding: 6px 0 0 12px; min-width: 0; }
+  .otable .oc-art > .item-cell > div b { font-size: 13.5px; }
+  .otable .oc-art > .item-cell > div .osub { font-size: 12px; margin-top: 1px; }
+  .otable .oc-art > .link-btn { grid-area: piu; justify-self: start; padding: 4px 0 0 12px; font-size: 13px !important; font-weight: 700; }
+  .otable .oc-cat { display: none; }
+  .otable .oc-stato { grid-area: stato; margin-top: 12px; padding: 10px 12px 0 0; border-top: 1px solid var(--line); }
+  .otable .oc-stato .osub { margin-top: 3px; }
+  .otable .oc-stato .btn { white-space: nowrap; }
+  .otable .oc-imp { grid-area: imp; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); text-align: right !important; }
+  .otable .oc-imp > b { font-family: var(--font-display); font-size: 18px; white-space: nowrap; }
+  .otable .oc-imp .osub { margin-top: 0; white-space: nowrap; }
+  .otable .oc-sped { grid-area: sped; padding: 8px 12px 0 0; display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+  .otable .oc-sped::before { content: '🚚' !important; display: inline !important; margin: 0 !important; font-size: 14px !important; letter-spacing: 0 !important; }
+  .otable .oc-sped b { font-size: 14px; }
+  .otable .oc-sped .osub { margin: 0; }
+  .otable .oc-qty { grid-area: qty; padding-top: 8px; text-align: right !important; font-weight: 800; white-space: nowrap !important; }
+  .otable .oc-sel { grid-area: sel; align-self: center; justify-self: center; padding-top: 12px; }
+  .otable .oc-sel input { width: 24px; height: 24px; }
+  .otable .oc-act { grid-area: act; padding-top: 12px; }
+  .otable tr.orow-main:has(> .oc-sel:empty) .oc-act { grid-column: 1 / -1; }
+  .otable .row-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .otable .row-actions form { display: contents; }
+  .otable .ibtn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; width: 100%; min-height: 40px; padding: 8px 6px; border: 1px solid var(--line); border-radius: 10px; background: #fff; font-size: 15px; font-weight: 700; color: var(--ink); text-decoration: none; }
+  .otable .ibtn .ibtn__lbl { display: inline; font-size: 12.5px; }
+  /* gli altri articoli dell'ordine, aperti con «Mostra altri» */
+  .otable tr.orow-sub { display: grid; grid-template-columns: 56px minmax(0, 1fr) auto; grid-template-areas: "thumb num imp" "thumb art qty" "thumb stato stato"; gap: 2px 12px; margin: -6px 0 10px 14px; padding: 10px 12px; background: #fafbfe; border-radius: 12px; }
+  .otable tr.orow-sub > td { min-width: 0; max-width: none; }
+  .otable .os-num { grid-area: num; }
+  .otable .os-art, .otable .os-art > .item-cell { display: contents; }
+  .otable .os-art > .item-cell > img { grid-area: thumb; width: 56px; height: 56px; object-fit: contain; background: #fff; border: 1px solid var(--line); }
+  .otable .os-art > .item-cell > div { grid-area: art; min-width: 0; }
+  .otable .os-cat { display: none; }
+  .otable .os-qty { grid-area: qty; text-align: right !important; white-space: nowrap !important; font-weight: 700; }
+  .otable .os-stato { grid-area: stato; padding-top: 4px; }
+  .otable .os-imp { grid-area: imp; text-align: right !important; white-space: nowrap !important; font-weight: 700; }
+  .otot tr { display: block; }
+  .otot td { background: none; border: 0; padding: 0; }
+  .otot td + td { margin-top: 10px; }
+  .otot__row { justify-content: space-between; }
+
+  /* ================= Spedizioni ================= */
+  .shtable td { flex-basis: 100%; }
+  .shtable td::before { content: none !important; }
+  .shtable .sh-corr { display: none; }
+  .shtable .sh-ord .oid { font-size: 19px; }
+  .shtable .sh-ord .osub { font-size: 12.5px; }
+  .shtable .sh-act .btn { width: 100%; justify-content: center; text-align: center; padding: 12px; font-size: 14px; }
+  .shtable .sh-act form { display: block !important; }
+  .shtable .thumbs--lg .thumbs__stack img, .shtable .thumbs--lg .thumbs__stack .thumb-ph { width: 84px; height: 84px; object-fit: contain; }
+  .sptable .sp-ord::before { content: none !important; }
+  .sptable .ship-ord .oid { font-size: 18px; }
+  .sptable .ship-thumbs img, .sptable .ship-thumbs .thumb-ph { width: 72px !important; height: 72px !important; }
+  .sptable .sp-con { flex-basis: 100%; }
+  .shipcal__day { font-size: 14px; }
+  .trk .btn, .reship .btn { padding: 9px 12px; }
+
+  /* ================= editor di ordini e preventivi: una scheda per articolo ================= */
+  .etable tr.drow { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); grid-template-areas: "code code cat cat move del" "desc desc desc desc desc desc" "qty qty price price tot tot" "lam lam lam mock mock mock"; gap: 10px 8px; align-items: end; }
+  .etable tr.drow > td { min-width: 0; max-width: none; }
+  .etable .et-move { grid-area: move; align-self: center; justify-self: end; }
+  .etable .et-move .grip { display: none; }
+  .etable .et-move { width: auto !important; padding: 0 !important; }
+  .etable .et-move .arrows { display: flex; flex-direction: row; gap: 2px; }
+  .etable .et-move .arrows .ibtn { font-size: 15px; padding: 6px 8px; }
+  .etable .et-code { grid-area: code; }
+  .etable .et-code input { max-width: none !important; }
+  .etable .et-cat { grid-area: cat; align-self: center; }
+  .etable .et-cat::before, .etable .et-move::before, .etable .et-del::before { content: none !important; }
+  .etable .et-cat .cat { white-space: normal; }
+  .etable .et-desc { grid-area: desc; }
+  .etable .et-qty { grid-area: qty; }
+  .etable .et-qty input, .etable .et-price input { max-width: none !important; }
+  .etable .et-price { grid-area: price; }
+  .etable .et-tot { grid-area: tot; text-align: right !important; align-self: center; font-size: 15px; white-space: nowrap !important; }
+  .etable .et-lam { grid-area: lam; }
+  .etable .et-mock { grid-area: mock; }
+  .etable .et-mock img { width: 64px !important; height: 64px !important; object-fit: contain !important; }
+  .etable .et-del { grid-area: del; align-self: center; justify-self: end; }
+  .term-row { grid-template-columns: 1fr 1fr !important; }
+  .term-row > label:first-child { grid-column: 1 / -1; }
+  .editor-actions { justify-content: stretch; }
+  .editor-actions .btn { flex: 1 1 auto; justify-content: center; text-align: center; }
+  .anag__testa { padding: 14px !important; }
+  .anag__corpo { padding: 0 14px 14px !important; }
+}

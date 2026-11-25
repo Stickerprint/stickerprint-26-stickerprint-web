@@ -107,11 +107,25 @@
 	.hm-card__testa .btn { align-self: flex-start; }
 	.hm-riep { grid-template-columns: 1fr; gap: 12px; }
 	.hm-riep__anno { text-align: left; padding-left: 0; border-left: 0; padding-top: 10px; border-top: 1px dashed var(--line); }
-	.hm-riep__sotto { line-height: 1.6; }
-	.hm-riep__riga { display: block; margin-right: 0; }
 	.hm-ordini li.is-late, .hm-ticket li.is-late { margin: 0 -14px; padding: 0 14px; }
-	.hm-ord, .hm-ticket a { gap: 10px; }
-	.hm-ord__stato small { white-space: normal; max-width: 120px; }
+	/* telefono (25/11/2026): niente testo tagliato. Le etichette dei riquadri e le righe del fatturato vanno a capo;
+	   negli elenchi l'anteprima sta a sinistra, numero e cliente su due righe, lo stato sotto */
+	.hm-kpi__box small { white-space: normal; line-height: 1.2; }
+	.hm-kpi__box span { white-space: normal; }
+	.hm-riep__sotto { display: grid; gap: 6px; line-height: 1.35; }
+	.hm-riep__sotto > br { display: none; }
+	.hm-riep__riga { display: block; white-space: normal; margin-right: 0; }
+	.hm-riep__riga em { display: block; padding-left: 16px; }
+	.hm-ord, .hm-ticket a { grid-template-columns: 56px minmax(0, 1fr); grid-template-areas: "thumb testo" "thumb stato"; gap: 4px 12px; align-items: start; padding: 12px 0; }
+	.hm-ticket a { grid-template-columns: 40px minmax(0, 1fr); }
+	.hm-ord > .hm-thumb, .hm-ticket__ico { grid-area: thumb; }
+	.hm-ord > .hm-thumb { width: 56px; height: 56px; }
+	.hm-thumb img { object-fit: contain; }
+	.hm-ord__testo { grid-area: testo; }
+	.hm-ord__testo b { white-space: normal; overflow: visible; font-size: 14.5px; line-height: 1.25; }
+	.hm-ord__testo > span { white-space: normal; overflow: visible; }
+	.hm-ord__stato { grid-area: stato; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; text-align: left; }
+	.hm-ord__stato small { white-space: normal; }
 	.hm-mg { grid-template-columns: 1fr; }
 	.hm-mg__lettera { grid-template-columns: auto 1fr; justify-items: start; text-align: left; column-gap: 12px; }
 	.hm-mg__lettera b { grid-row: 1 / 3; font-size: 34px; }

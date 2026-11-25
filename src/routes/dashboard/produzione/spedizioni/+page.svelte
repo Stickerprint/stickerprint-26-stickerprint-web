@@ -71,18 +71,18 @@
 
 {#if data.view === 'da-spedire'}
 <div class="dcard" style="padding:0;overflow-x:auto">
-	<table class="dtable">
+	<table class="dtable shtable">
 		<thead><tr><th>Ordine</th><th>File</th><th>Destinazione</th><th>Spedizione</th><th></th></tr></thead>
 		<tbody>
 			{#each data.groups as g (g.key)}
 				{@const ship = g.items[0].shipping ?? {}}
 				{@const f = g.items[0]}
 				<tr>
-					<td><a class="oid" href="/dashboard/fatturazione/ordini/{g.key}">{g.number}</a><div class="osub"><b>{g.customer}</b></div><div class="osub">{dmy(g.created_at)} · {g.qty.toLocaleString('it-IT')} pz · {money(g.gross)} · {g.channel === 'manuale' ? '✏️ manuale' : '🛒 e-commerce'}</div></td>
-					<td><ItemsCell items={g.items} size="lg" expanded={expanded.has(g.key)} ontoggle={() => toggleRow(g.key)} /></td>
-					<td>{COUNTRIES[g.country]?.flag ?? ''} {ship.city ?? ''} {ship.province ? `(${ship.province})` : ''}<div class="osub">{ship.street ?? ''}{ship.zip ? ` · ${ship.zip}` : ''}</div><div class="osub">{g.email}</div></td>
-					<td><img class="courier-logo" src={COURIERS.Qapla.logo} alt="Qapla" />{#if f.ddt_id}<div class="osub">DDT già fatto</div>{/if}</td>
-					<td style="white-space:nowrap">
+					<td class="sh-ord"><a class="oid" href="/dashboard/fatturazione/ordini/{g.key}">{g.number}</a><div class="osub"><b>{g.customer}</b></div><div class="osub">{dmy(g.created_at)} · {g.qty.toLocaleString('it-IT')} pz · {money(g.gross)} · {g.channel === 'manuale' ? '✏️ manuale' : '🛒 e-commerce'}</div></td>
+					<td class="sh-file"><ItemsCell items={g.items} size="lg" expanded={expanded.has(g.key)} ontoggle={() => toggleRow(g.key)} /></td>
+					<td class="sh-dest">{COUNTRIES[g.country]?.flag ?? ''} {ship.city ?? ''} {ship.province ? `(${ship.province})` : ''}<div class="osub">{ship.street ?? ''}{ship.zip ? ` · ${ship.zip}` : ''}</div><div class="osub">{g.email}</div></td>
+					<td class="sh-corr"><img class="courier-logo" src={COURIERS.Qapla.logo} alt="Qapla" />{#if f.ddt_id}<div class="osub">DDT già fatto</div>{/if}</td>
+					<td class="sh-act" style="white-space:nowrap">
 						{#if invioSubito(g)}
 							<form method="POST" action="?/qapla" use:enhance={() => { sending = g.key; return async ({ update }) => { sending = null; await update(); }; }} style="display:inline"><input type="hidden" name="group" value={g.key} /><input type="hidden" name="courier" value={qaplaCourier} /><button class="btn btn--blue btn--xs" type="submit" disabled={sending === g.key} title="Invia subito a Qapla (ordine del sito già pagato)">{sending === g.key ? '…' : '📦 Invia a Qapla'}</button></form>
 						{:else}
@@ -124,7 +124,7 @@
 
 	<div class="dcard" style="padding:0;overflow-x:auto">
 		<h3 style="padding:16px 18px 6px;text-transform:capitalize">{dayLabel(data.day)} <small class="osub" style="text-transform:none">· {data.shipped.length} {data.shipped.length === 1 ? 'ordine' : 'ordini'}</small></h3>
-		<table class="dtable">
+		<table class="dtable sptable">
 			<thead><tr><th>Ordine</th><th>Destinazione</th><th>Spedito con</th><th>Stato</th><th>Date</th></tr></thead>
 			<tbody>
 				{#each data.shipped as g (g.key)}
@@ -132,9 +132,9 @@
 					{@const f = g.items[0]}
 					{@const info = shipInfo(g)}
 					<tr>
-						<td><div class="ship-ord"><div class="ship-thumbs">{#each g.items.slice(0, 3) as it (it.id)}{#if thumbOf(it)}<img src={thumbOf(it)} alt="" title="{it.product_name} · {itemMeta(it)}" />{:else}<span class="thumb-ph" style="background:{CATS[it.product_slug]?.soft ?? '#eceef3'}">{CATS[it.product_slug]?.code ?? '?'}</span>{/if}{/each}{#if g.items.length > 3}<span class="osub">+{g.items.length - 3}</span>{/if}</div><div><a class="oid" href="/dashboard/fatturazione/ordini/{g.key}">{g.number}</a><div class="osub"><b>{g.customer}</b></div><div class="osub">{g.qty.toLocaleString('it-IT')} pz · {money(g.gross)} · {g.channel === 'manuale' ? '✏️ manuale' : '🛒 e-commerce'}</div></div></div></td>
+						<td class="sp-ord"><div class="ship-ord"><div class="ship-thumbs">{#each g.items.slice(0, 3) as it (it.id)}{#if thumbOf(it)}<img src={thumbOf(it)} alt="" title="{it.product_name} · {itemMeta(it)}" />{:else}<span class="thumb-ph" style="background:{CATS[it.product_slug]?.soft ?? '#eceef3'}">{CATS[it.product_slug]?.code ?? '?'}</span>{/if}{/each}{#if g.items.length > 3}<span class="osub">+{g.items.length - 3}</span>{/if}</div><div><a class="oid" href="/dashboard/fatturazione/ordini/{g.key}">{g.number}</a><div class="osub"><b>{g.customer}</b></div><div class="osub">{g.qty.toLocaleString('it-IT')} pz · {money(g.gross)} · {g.channel === 'manuale' ? '✏️ manuale' : '🛒 e-commerce'}</div></div></div></td>
 						<td>{COUNTRIES[g.country]?.flag ?? ''} {ship.city ?? ''} {ship.province ? `(${ship.province})` : ''}<div class="osub">{ship.zip ?? ''}</div></td>
-						<td>
+						<td class="sp-con">
 							<b style="display:flex;align-items:center;gap:8px">{#if f.courier === 'Qapla'}<img class="courier-logo" src={COURIERS.Qapla.logo} alt="Qapla" />{/if}{info.how}</b>
 							<div class="osub">{info.sub}</div>
 							{#if f.tracking_url}<div class="trk"><a class="btn btn--ghost btn--xs" href={f.tracking_url} target="_blank" rel="noopener">↗ Tracking</a><button type="button" class="btn btn--xs {copied === g.key ? 'btn--green' : 'btn--ghost'}" onclick={() => copyTracking(g.key, f.tracking_url!)}>{copied === g.key ? '✓ Copiato' : '⧉ Copia link'}</button></div>{/if}

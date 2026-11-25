@@ -1,5 +1,6 @@
 <script lang="ts">
 	import '$lib/styles/dashboard.css';
+	import '$lib/styles/dashboard-telefono.css';
 	import { page } from '$app/state';
 	import { invalidateAll } from '$app/navigation';
 	import LiveClock from '$lib/components/LiveClock.svelte';
@@ -96,6 +97,40 @@
 		closed = s;
 		try { localStorage.setItem('sp-dash-closed', JSON.stringify([...s])); } catch { /* niente */ }
 	}
+
+	/* TELEFONO: ogni tabella diventa un elenco di schede (dashboard-telefono.css) e ogni valore ha bisogno della sua
+	   etichetta. La prendiamo dall'intestazione della colonna e la scriviamo in `data-l` su ogni cella: cosi' vale per
+	   tutte le tabelle della dashboard, anche quelle nuove, senza toccarle una per una. Una cella che ha gia' `data-l`
+	   (anche vuoto, per non avere etichetta) non viene toccata. Sul computer non fa niente. */
+	$effect(() => {
+		if (isLogin || typeof window === 'undefined') return;
+		const radice = document.querySelector('.dash__content');
+		if (!radice) return;
+		const telefono = window.matchMedia('(max-width: 820px)');
+		let inCoda = 0;
+		const etichetteTabelle = () => {
+			inCoda = 0;
+			if (!telefono.matches) return;
+			for (const t of radice.querySelectorAll<HTMLTableElement>('table.dtable')) {
+				const nomi: string[] = [];
+				for (const th of t.querySelectorAll<HTMLTableCellElement>('thead th')) { const n = (th.textContent ?? '').trim(); for (let k = 0; k < (th.colSpan || 1); k++) nomi.push(n); }
+				if (!nomi.length) continue;
+				for (const corpo of t.tBodies) for (const tr of corpo.rows) {
+					let c = 0;
+					for (const td of tr.cells) { if (td.colSpan === 1 && nomi[c] && !td.hasAttribute('data-l')) td.setAttribute('data-l', nomi[c]); c += td.colSpan || 1; }
+				}
+			}
+		};
+		const accoda = () => { if (!inCoda) inCoda = requestAnimationFrame(etichetteTabelle); };
+		const oss = new MutationObserver(accoda);
+		oss.observe(radice, { childList: true, subtree: true });
+		telefono.addEventListener('change', accoda);
+		etichetteTabelle();
+		/* i testi di spiegazione sono tagliati a due righe: un tocco li apre */
+		const apriTesto = (e: Event) => { if (telefono.matches) (e.target as HTMLElement | null)?.closest?.('.lead')?.classList.toggle('is-open'); };
+		radice.addEventListener('click', apriTesto);
+		return () => { oss.disconnect(); telefono.removeEventListener('change', accoda); radice.removeEventListener('click', apriTesto); if (inCoda) cancelAnimationFrame(inCoda); };
+	});
 
 	// nuovi ordini in tempo reale: avviso nella dashboard + notifica del browser
 	let toasts = $state<{ id: string; text: string; href: string }[]>([]);
