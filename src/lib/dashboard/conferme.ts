@@ -24,7 +24,7 @@ export function defaultConfirmEmail(g: Pick<OrderGroup, 'number' | 'customer' | 
 	const due = upfrontDue(payments);
 	const subject = `La tua conferma d'ordine ${g.number}: ${g.items[0].description || g.items[0].product_name}`.slice(0, 120);
 	const pay = due > 0
-		? `\n\nPer far partire la produzione ci serve il pagamento anticipato di ${eur(due)}: dalla pagina trovi come farlo, e appena arriva si parte.`
+		? `\n\nPer far partire la produzione manca il pagamento anticipato di ${eur(due)}. Puoi pagare con carta di credito, PayPal o bonifico bancario dalla pagina qui sotto: una volta saldato, il tuo ordine entrerà automaticamente in produzione.`
 		: '\n\nL\'ordine è già in lavorazione.';
 	const body = `Ciao ${first},\n\nti confermiamo l'ordine ${g.number} per ${what}, totale ${eur(g.gross)} IVA inclusa${g.delivery_date ? `, spedizione prevista ${itLong(g.delivery_date)}` : ''}. Dal bottone qui sotto puoi controllare tutti i dettagli (articoli, indirizzi, scadenze) e scaricare il PDF.${pay}\n\nSe qualcosa non torna, segnalacelo direttamente dalla pagina: lo sistemiamo prima di stampare.\n\nA presto,\nStickerprint-Staff`;
 	return { subject, body };

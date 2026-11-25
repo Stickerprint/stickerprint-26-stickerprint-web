@@ -9,7 +9,7 @@
 
 	export interface PickContact { id: string; kind: 'contact' | 'profile'; name: string; first_name: string; last_name: string; email: string; phone: string; street: string; city: string; zip: string; province: string; country: string; vat: string; fiscal_code: string; sdi: string; pec: string; /** metodo di pagamento abituale dell'azienda (anagrafica) */ payment_method_id?: string | null }
 	export interface EditorLabels { lead?: string; save?: string; send?: string | null; back?: string }
-	let { draft, methods, codes, contacts, supabase, mode, form, title, oncancel, labels = {} }: { draft: OrderDraft; methods: PaymentMethod[]; codes: ProductCode[]; contacts: PickContact[]; supabase: SupabaseClient; mode: 'create' | 'edit'; form: Record<string, unknown> | null | undefined; title: string; oncancel?: () => void; labels?: EditorLabels } = $props();
+	let { draft, methods, codes, contacts, supabase, mode, form, title, oncancel, labels = {}, metodoIniziale = '' }: { draft: OrderDraft; methods: PaymentMethod[]; codes: ProductCode[]; contacts: PickContact[]; supabase: SupabaseClient; mode: 'create' | 'edit'; form: Record<string, unknown> | null | undefined; title: string; oncancel?: () => void; labels?: EditorLabels; /** nome del metodo di pagamento da proporre su una bozza senza scadenze (i preventivi: «Pagamento anticipato») */ metodoIniziale?: string } = $props();
 
 	// svelte-ignore state_referenced_locally
 	let d = $state<OrderDraft>(structuredClone($state.snapshot(draft)));
@@ -67,7 +67,7 @@
 	const picks = $derived(pick.trim().length < 2 ? [] : contacts.filter((c) => `${c.name} ${c.email} ${c.vat}`.toLowerCase().includes(pick.trim().toLowerCase())).slice(0, 12));
 
 	// prima scadenza: metodo di default
-	$effect(() => { if (!d.terms.length && methods.length) d.terms = termsForMethod(methods[0], untrack(() => tot.tot), untrack(() => d.date)); });
+	$effect(() => { if (!d.terms.length && methods.length) d.terms = termsForMethod(methods.find((m) => m.name === metodoIniziale) ?? methods[0], untrack(() => tot.tot), untrack(() => d.date)); });
 	// finché non si tocca un importo, le rate seguono il totale in parti uguali
 	$effect(() => {
 		const total = tot.tot; const n = d.terms.length;

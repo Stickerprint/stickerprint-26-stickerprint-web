@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { METODO_PREVENTIVI } from '$lib/dashboard/payments';
 	import { enhance } from '$app/forms';
 	import OrderEditor from '$lib/components/dashboard/OrderEditor.svelte';
 	import { QUOTE_STATUS, defaultQuoteEmail, puoDiventareOrdine, type QuoteStatus } from '$lib/dashboard/richieste';
@@ -124,7 +125,7 @@
 {/if}
 
 {#if editable}
-	<OrderEditor draft={q.draft} methods={data.methods} codes={data.codes} contacts={data.contacts} supabase={data.supabase} mode="edit" {form} title="Preventivo {q.number}" labels={{ lead: q.status === 'inviato' ? 'Preventivo già inviato: se cambi qualcosa, salva e reinvia; il cliente vede sempre la versione aggiornata allo stesso link.' : 'Bozza: cliente, articoli con prezzi e mockup, spedizione e condizioni di pagamento. Poi "Invia preventivo" per scrivere l\'email.', save: 'Salva preventivo', send: null, back: '/dashboard/aziende/preventivi' }} />
+	<OrderEditor metodoIniziale={METODO_PREVENTIVI} draft={q.draft} methods={data.methods} codes={data.codes} contacts={data.contacts} supabase={data.supabase} mode="edit" {form} title="Preventivo {q.number}" labels={{ lead: q.status === 'inviato' ? 'Preventivo già inviato: se cambi qualcosa, salva e reinvia; il cliente vede sempre la versione aggiornata allo stesso link.' : 'Bozza: cliente, articoli con prezzi e mockup, spedizione e condizioni di pagamento. Poi "Invia preventivo" per scrivere l\'email.', save: 'Salva preventivo', send: null, back: '/dashboard/aziende/preventivi' }} />
 {:else}
 	<div class="dcard">
 		<h3>Contenuto</h3>

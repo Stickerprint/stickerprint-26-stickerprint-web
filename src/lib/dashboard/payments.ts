@@ -43,6 +43,14 @@ export function computeTerms(m: Pick<PaymentMethod, 'name' | 'xml_code' | 'days'
 	});
 }
 
+/** Metodo proposto nei preventivi nuovi (Mattia, 25/11/2026): «Pagamento anticipato», non «Bonifico bancario vista
+ *  fattura». Con il bonifico a vista fattura il cliente aspettava la fattura per pagare e noi il pagamento per partire.
+ *  E' un metodo di Setup > Metodi di pagamento con «incassato prima della spedizione»: il cliente paga con carta,
+ *  PayPal o bonifico dalla pagina dell'ordine. Se in Setup non c'e', vale il primo metodo come prima. */
+export const METODO_PREVENTIVI = 'Pagamento anticipato';
+/** un metodo che si paga prima: lo dice il nome (i testi proposti allo staff non hanno sotto mano i metodi di Setup) */
+export const metodoAnticipato = (nome: string | null | undefined): boolean => /anticipat/i.test(nome ?? '');
+
 /* ---------- metodo di pagamento salvato in anagrafica (Mattia, 25/11/2026) ---------- */
 /** Solo le aziende hanno un metodo di pagamento abituale: in anagrafica e' azienda chi ha la partita IVA */
 export const clienteAzienda = (c: { kind?: string | null; vat?: string | null } | null | undefined): boolean => !!c && (c.kind === 'azienda' || !!String(c.vat ?? '').trim());

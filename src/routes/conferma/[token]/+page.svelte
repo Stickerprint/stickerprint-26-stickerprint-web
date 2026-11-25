@@ -91,8 +91,10 @@
 								{#if bankOpen === p.seq}
 									<div class="qp__bank">
 										<b>{t('account.doc.bonifico', { importo: money(p.amount) })}</b>
-										<span>{t('account.doc.intestato')} <b>{data.bank.name}</b>{#if data.bank.iban} · {t('account.doc.iban')} <b>{data.bank.iban}</b>{/if} · {t('account.doc.causale')} <b>{o.number}</b></span>
-										<small>{t('account.doc.bonificoNota')}{#if p.upfront}{t('account.doc.bonificoProduzione')}{/if}{t('account.doc.bonificoContabile')}</small>
+										<span>{t('account.doc.intestato')} <b>{data.bank.name}</b>{#if data.bank.iban} · {t('account.doc.iban')} <b>{data.bank.iban}</b>{/if} · {t('account.doc.causale')} <b>{t('account.doc.causaleOrdine', { n: o.number })}</b></span>
+										<!-- pagamento anticipato: l'ordine parte all'accredito e la consegna slitta; negli altri casi la nota di sempre -->
+										{#if p.upfront}<small>{@html t('account.doc.bonificoAccredito', { causale: t('account.doc.causaleOrdine', { n: String(o.number).replace(/[<>&]/g, '') }) })}{t('account.doc.bonificoContabile')}</small>
+										{:else}<small>{t('account.doc.bonificoNota')}{t('account.doc.bonificoContabile')}</small>{/if}
 									</div>
 								{/if}
 							{/if}

@@ -1,5 +1,6 @@
 /** Costanti e tipi di richieste aziendali e preventivi (condivisi tra server e browser). */
 import type { OrderDraft } from './orderDraft';
+import { metodoAnticipato } from './payments';
 
 export type RequestStatus = 'new' | 'in_progress' | 'quoted' | 'won' | 'lost' | 'closed';
 export const REQUEST_STATUS: Record<RequestStatus, { label: string; color: string; soft: string }> = {
@@ -54,7 +55,9 @@ export function defaultQuoteEmail(q: Pick<Quote, 'number' | 'draft' | 'total_gro
 	const c = q.draft.customer;
 	const first = c.first_name?.trim() || c.name;
 	const items = q.draft.items.filter((i) => Number(i.qty) > 0);
+	/* pagamento anticipato: si dice subito come si paga e che l'ordine parte da solo a saldo avvenuto */
+	const anticipato = (q.draft.terms ?? []).some((t) => metodoAnticipato(t.method));
 	const subject = `Il tuo preventivo ${q.number}: ${items[0]?.description ?? 'la tua richiesta'}`.slice(0, 120);
-	const body = `Ciao ${first},\n\nti abbiamo finalmente preparato il preventivo richiesto: lo trovi nel link qui sotto, con tutti i dettagli.\nSe qualcosa non torna scrivici pure.\n\nA presto,\n${FIRMA_STAFF}`;
+	const body = `Ciao ${first},\n\nti abbiamo finalmente preparato il preventivo richiesto: lo trovi nel link qui sotto, con tutti i dettagli.${anticipato ? '\nPer confermarlo basta un clic dalla pagina. Puoi pagare con carta di credito, PayPal o bonifico bancario: una volta saldato, il tuo ordine entrerà automaticamente in produzione.' : ''}\nSe qualcosa non torna scrivici pure.\n\nA presto,\n${FIRMA_STAFF}`;
 	return { subject, body };
 }
