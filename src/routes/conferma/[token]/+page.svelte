@@ -2,6 +2,8 @@
 	import '$lib/styles/quote.css';
 	import { enhance } from '$app/forms';
 	import Stars from '$lib/components/Stars.svelte';
+	import DatiFatturazione from '$lib/components/DatiFatturazione.svelte';
+	import type { CampoMancante, DatiFattura } from '$lib/dati-fattura';
 	import { paymentLabelFor } from '$lib/dashboard/payments';
 	import { usaLingua } from '$lib/traduzioni';
 	import { formatAmount } from '$lib/i18n';
@@ -9,12 +11,16 @@
 	/* documenti reali in euro (ordini manuali, preventivi, fatture): formato della lingua, valuta sempre EUR, niente cambio in dollari */
 	const money = (v: number) => formatAmount(v, { ...locale, currency: 'EUR' });
 	let { data, form } = $props();
+	/* risposta del modulo dei dati di fatturazione quando qualcosa non va: i valori scritti e i campi da correggere */
+	const ff = $derived(form as { error?: string; fatturaValori?: DatiFattura; fatturaErrori?: CampoMancante[] } | null);
 	const o = $derived(data.order);
 	const first = $derived(o.first_name?.trim() || o.customer);
 	const it = (d: string | null) => (d ? dataL(d.slice(0, 10) + 'T12:00:00') : '');
 	const due = $derived(data.payments.filter((p) => p.upfront && p.status === 'da_pagare').reduce((a, p) => a + p.amount, 0));
 	const waiting = $derived(o.status === 'attesa_pagamento' || due > 0);
 	const when = (d: string) => new Date(d).toLocaleString(locale.intl, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+	/* dati di fatturazione da completare: finche' mancano, niente bottoni per pagare */
+	const servonoDati = $derived(data.fattura.mancanti.length > 0);
 	let asking = $state(false);
 	let bankOpen = $state<number | null>(null);
 	let reporting = $state(false);
@@ -45,6 +51,17 @@
 			{#if form?.message}<p class="ok">{form.message}</p>{/if}
 		</header>
 
+		{#if servonoDati}
+			<div class="qp__cta" id="fatturazione" style="border-color:var(--blue)">
+				<h2 class="qp__h2">{t('account.datiFattura.titolo')}</h2>
+				<p class="note" style="margin:0">{data.payments.some((p) => p.status !== 'pagato') ? t('account.datiFattura.introPagare') : t('account.datiFattura.intro')}</p>
+				<form method="POST" action="?/fatturazione" use:enhance={submit} style="display:grid;gap:14px">
+					<DatiFatturazione valori={ff?.fatturaValori ?? data.fattura.valori} errori={ff?.fatturaErrori ?? (data.fattura.chiesti ? data.fattura.mancanti : [])} />
+					<button class="btn btn--green btn--lg" type="submit" disabled={sending}>{t('account.datiFattura.salva')}</button>
+				</form>
+			</div>
+		{/if}
+
 		{#if data.payments.length}
 			<div class="qp__cta qp__cta--pay">
 				<h2 class="qp__h2">{data.payments.length === 1 ? t('account.doc.pagamento') : t('account.doc.scadenze')}</h2>
@@ -61,7 +78,9 @@
 								{/if}
 								{#if p.status === 'pagato'}<span class="qp__paid">{t('account.doc.pagato', { data: p.paid_at ? it(p.paid_at) : '' })}</span>{/if}
 							</div>
-							{#if payable}
+							{#if payable && servonoDati}
+								<small class="qp__paynote"><a href="#fatturazione" style="color:inherit;text-decoration:underline">{t('account.datiFattura.pagaDopo')}</a></small>
+							{:else if payable}
 								<div class="qp__paybtns">
 									{#if data.online}<a class="btn btn--green" href={path(`/conferma/${token()}/paga/${p.seq}`)} data-sveltekit-reload>{t('account.doc.pagaCarta')}</a>{/if}
 									{#if data.paypal}<a class="btn btn--paypal" href={path(`/conferma/${token()}/paypal/${p.seq}`)} data-sveltekit-reload><img src="/icons/footer/paypal.webp" alt="" /> {t('account.doc.pagaPaypal')}</a>{/if}

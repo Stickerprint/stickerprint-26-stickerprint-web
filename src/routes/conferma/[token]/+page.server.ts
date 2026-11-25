@@ -10,6 +10,8 @@ import { onlinePaymentsOn, retrieveSession, stripeConfigured } from '$lib/server
 import { setPaymentStatus } from '$lib/server/conferme';
 import { paypalConfigured, settlePayPalReturn } from '$lib/server/paypal';
 import { t } from '$lib/traduzioni';
+import { leggiDatiFattura, type DatiFattura } from '$lib/dati-fattura';
+import { chiedeDatiFattura, salvaDatiFatturaOrdine } from '$lib/server/dati-fattura';
 import type { Actions, PageServerLoad } from './$types';
 
 /** Pagina pubblica della conferma d'ordine: articoli, indirizzi, scadenze con pagamento, PDF, domande e segnalazioni. */
@@ -41,6 +43,8 @@ export const load: PageServerLoad = async ({ params, url, request, locals: { loc
 		order: { number: g.number, status: g.status, created_at: g.created_at, delivery_date: g.delivery_date, ship_by: f.ship_by ?? null, lead_time: f.lead_time ?? null, shipping_method: g.shipping_method, net: g.net, gross: g.gross, customer: g.customer, first_name: f.billing?.first_name || f.shipping?.first_name || '' },
 		items: g.items.map((i) => ({ id: i.id, name: i.product_name, description: i.description || itemMetaFor(i, lang), qty: i.qty, unit: Number(i.unit_net ?? Number(i.total_net) / i.qty), total: Number(i.total_net), image: thumbOf(i) ?? PRODUCTS[i.product_slug]?.gallery?.[0] ?? null, isMockup: !!thumbOf(i), category: catLabel(i.product_slug, lang) ?? i.product_name })),
 		billing: addr(f.billing), shipping: addr(f.shipping), vat: f.billing?.vat ?? null,
+		/* dati di fatturazione ancora da completare (solo ordini inseriti dallo staff): finche' mancano non si paga */
+		fattura: { mancanti: chiedeDatiFattura(g), valori: { company: f.billing?.company ?? '', first_name: f.billing?.first_name ?? '', last_name: f.billing?.last_name ?? '', vat: f.billing?.vat ?? '', fiscal_code: f.billing?.fiscal_code ?? '', sdi: f.billing?.sdi ?? '', pec: f.billing?.pec ?? '', street: f.billing?.street ?? '', zip: f.billing?.zip ?? '', city: f.billing?.city ?? '', province: f.billing?.province ?? '', country: f.billing?.country ?? 'IT' } as DatiFattura, chiesti: url.searchParams.get('dati') === '1' },
 		payments: c.payments.map((p) => ({ seq: p.seq, method: p.method, due: p.due, amount: Number(p.amount), upfront: p.upfront, status: p.status, paid_at: p.paid_at, kind: p.kind ?? 'scadenza', reason: p.reason ?? null })),
 		sender: c.conf.sender_name, messages: c.messages.map((m) => ({ id: m.id, direction: m.direction, kind: m.kind, author: m.author, body: m.body, created_at: m.created_at })),
 		bank: { iban: COMPANY.iban || null, name: COMPANY.name }, online: onlinePaymentsOn(), paypal: paypalConfigured(), simulation: !stripeConfigured() && onlinePaymentsOn(), paid, cancelled, ppError, stats
@@ -49,6 +53,16 @@ export const load: PageServerLoad = async ({ params, url, request, locals: { loc
 
 const withDb = <T>(locale: App.Locals['locale'], fn: (db: NonNullable<ReturnType<typeof adminClient>>) => Promise<T>) => { const db = adminClient(); return db ? fn(db) : Promise.resolve(fail(503, { error: t(locale, 'account.errori.servizio') })); };
 export const actions: Actions = {
+	/** il cliente completa i dati di fatturazione: ordine, indirizzo di spedizione se mancava, anagrafica */
+	fatturazione: async ({ params, request, locals: { locale } }) => withDb(locale, async (db) => {
+		const c = await getByToken(db, params.token);
+		if (!c) return fail(404, { error: t(locale, 'account.errori.confermaNonTrovata') });
+		const f = await request.formData();
+		const r = leggiDatiFattura((k) => f.get(k));
+		if (r.mancanti.length) return fail(400, { error: r.mancanti.map((m) => t(locale, `account.datiFattura.errori.${m}`)).join(' '), fatturaErrori: r.mancanti, fatturaValori: r.dati });
+		const e = await salvaDatiFatturaOrdine(db, c.group, r.dati);
+		return e ? fail(400, { error: e }) : { ok: true, message: t(locale, 'account.datiFattura.salvati') };
+	}),
 	domanda: async ({ params, request, url, locals: { locale } }) => withDb(locale, async (db) => {
 		const e = await customerMessage(db, params.token, String((await request.formData()).get('testo') ?? ''), 'domanda', url.origin, langOf(locale));
 		return e ? fail(400, { error: e }) : { ok: true, message: t(locale, 'account.messaggi.domandaInviata') };

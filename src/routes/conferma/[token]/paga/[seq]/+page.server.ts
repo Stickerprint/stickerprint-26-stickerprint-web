@@ -3,6 +3,7 @@ import { adminClient } from '$lib/server/admin';
 import { getByToken, setPaymentStatus } from '$lib/server/conferme';
 import { createCheckoutSession, simulationOn, stripeConfigured } from '$lib/server/stripe';
 import { t } from '$lib/traduzioni';
+import { chiedeDatiFattura } from '$lib/server/dati-fattura';
 import { LOCALES, localizePath } from '$lib/i18n';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -16,6 +17,8 @@ export const load: PageServerLoad = async ({ params, url, locals: { locale } }) 
 	if (!p) error(404, t(locale, 'account.errori.scadenzaNonTrovata'));
 	const page = localizePath(`/conferma/${params.token}`, locale);
 	if (p.status === 'pagato') redirect(303, `${page}?pagato=1`);
+	/* prima i dati di fatturazione: se mancano si torna alla conferma, al modulo (Mattia, 25/11/2026) */
+	if (chiedeDatiFattura(c.group).length) redirect(303, `${page}?dati=1#fatturazione`);
 	if (!p.upfront && /ricevuta|riba|rid\b|sdd/i.test(p.method)) error(400, t(locale, 'account.errori.scadenzaRiba'));
 	const base = `${url.origin}${page}`;
 	if (stripeConfigured()) {

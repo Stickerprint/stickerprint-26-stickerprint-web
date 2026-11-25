@@ -1,5 +1,7 @@
 import { error, fail } from '@sveltejs/kit';
 import { adminClient } from '$lib/server/admin';
+import { datiFatturaMancanti, leggiDatiFattura } from '$lib/dati-fattura';
+import { clienteComeFattura, salvaDatiFatturaPreventivo } from '$lib/server/dati-fattura';
 import { acceptQuoteByToken, getQuoteByToken, loadQuoteMessages, quoteQuestionByToken, rejectQuoteByToken, trackQuoteOpen } from '$lib/server/richieste';
 import { loadReviews } from '$lib/server/reviews';
 import { categoryOf, type ProductCode } from '$lib/dashboard/orderDraft';
@@ -38,6 +40,8 @@ export const load: PageServerLoad = async ({ params, url, request, locals }) => 
 	return {
 		q: { number: q.number, version: q.version, status: staffPreview ? 'inviato' : q.status, total_net: Number(q.total_net), total_gross: Number(q.total_gross), valid_until: q.valid_until, sent_at: q.sent_at, accepted_at: q.accepted_at, sender_name: q.sender_name ?? previewSender, created_at: q.created_at },
 		customer: { name: d.customer.name, first_name: d.customer.first_name, city: d.customer.city },
+		/* dati di fatturazione che mancano: il cliente li scrive al momento di confermare (Mattia, 25/11/2026) */
+		fattura: { mancanti: datiFatturaMancanti(clienteComeFattura(d.customer)), valori: clienteComeFattura(d.customer) },
 		items, lordi: d.price_type === 'lordi', terms: [...new Set((d.terms ?? []).map((t) => t.method))], shipMethod: d.ship_method, shipDate: d.ship_date || null, leadTime: d.lead_time?.trim() || null,
 		staffPreview,
 		stats, messages: messages.map((m) => ({ id: m.id, direction: m.direction, author: m.author, body: m.body, created_at: m.created_at }))
@@ -48,6 +52,14 @@ const withDb = <T>(locale: App.Locals['locale'], fn: (db: NonNullable<ReturnType
 export const actions: Actions = {
 	accetta: async ({ params, request, url, locals: { locale } }) => withDb(locale, async (db) => {
 		const f = await request.formData();
+		/* se al preventivo mancano i dati di fatturazione, la conferma li deve portare: l'ordine nasce gia' completo */
+		const q0 = await getQuoteByToken(db, params.token);
+		if (q0 && q0.status === 'inviato' && datiFatturaMancanti(clienteComeFattura(q0.draft.customer)).length) {
+			const d = leggiDatiFattura((k) => f.get(k));
+			if (d.mancanti.length) return fail(400, { error: d.mancanti.map((m) => t(locale, `account.datiFattura.errori.${m}`)).join(' '), fatturaErrori: d.mancanti, fatturaValori: d.dati });
+			const e = await salvaDatiFatturaPreventivo(db, q0, d.dati);
+			if (e) return fail(400, { error: e });
+		}
 		const r = await acceptQuoteByToken(db, params.token, String(f.get('nome') ?? '').trim(), url.origin, langOf(locale));
 		return r.ok ? { ok: true, accepted: true, message: r.message, orderNumber: r.orderNumber ?? null, due: r.due ?? 0 } : fail(400, { error: r.message });
 	}),

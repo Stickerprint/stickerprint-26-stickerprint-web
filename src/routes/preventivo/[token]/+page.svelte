@@ -3,11 +3,15 @@
 	import '$lib/styles/quote.css';
 	import { enhance } from '$app/forms';
 	import Stars from '$lib/components/Stars.svelte';
+	import DatiFatturazione from '$lib/components/DatiFatturazione.svelte';
+	import type { CampoMancante, DatiFattura } from '$lib/dati-fattura';
 	import { usaLingua } from '$lib/traduzioni';
 	const { t, path, numero, data: dataL, locale } = usaLingua();
 	/* documenti reali in euro (ordini manuali, preventivi, fatture): formato della lingua, valuta sempre EUR, niente cambio in dollari */
 	const money = (v: number) => formatAmount(v, { ...locale, currency: 'EUR' });
 	let { data, form } = $props();
+	/* risposta del modulo dei dati di fatturazione quando qualcosa non va: i valori scritti e i campi da correggere */
+	const ff = $derived(form as { error?: string; fatturaValori?: DatiFattura; fatturaErrori?: CampoMancante[] } | null);
 	const q = $derived(data.q);
 	const first = $derived(data.customer.first_name?.trim() || data.customer.name);
 	const it = (d: string | null) => (d ? dataL(d + 'T12:00:00') : '');
@@ -89,6 +93,14 @@
 		<div class="qp__cta" id="conferma">
 			{#if open}
 				<form method="POST" action="?/accetta" use:enhance={submit} class="qp__accept">
+					{#if data.fattura.mancanti.length}
+						<!-- mancano i dati di fatturazione: si scrivono qui, insieme alla conferma -->
+						<div style="flex:1 1 100%;display:grid;gap:12px">
+							<p class="note" style="margin:0;text-align:left"><b>{t('account.datiFattura.introPreventivo')}</b></p>
+							{#if ff?.fatturaErrori}<p class="error" style="margin:0">{ff.error}</p>{/if}
+							<DatiFatturazione valori={ff?.fatturaValori ?? data.fattura.valori} errori={ff?.fatturaErrori ?? []} />
+						</div>
+					{/if}
 					<input name="nome" placeholder={t('account.preventivo.nomePlaceholder')} required />
 					<button class="btn btn--green btn--lg" type="submit" disabled={sending}>{t('account.preventivo.confermo')}</button>
 				</form>

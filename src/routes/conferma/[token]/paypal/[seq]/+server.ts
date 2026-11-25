@@ -3,6 +3,7 @@ import { adminClient } from '$lib/server/admin';
 import { getByToken } from '$lib/server/conferme';
 import { createPayPalOrder, paypalConfigured } from '$lib/server/paypal';
 import { t } from '$lib/traduzioni';
+import { chiedeDatiFattura } from '$lib/server/dati-fattura';
 import { LOCALES, localizePath } from '$lib/i18n';
 import type { RequestHandler } from './$types';
 
@@ -17,6 +18,8 @@ export const GET: RequestHandler = async ({ params, url, locals: { locale } }) =
 	if (!p) error(404, t(locale, 'account.errori.scadenzaNonTrovata'));
 	const page = localizePath(`/conferma/${params.token}`, locale);
 	if (p.status === 'pagato') redirect(303, `${page}?pagato=1`);
+	/* prima i dati di fatturazione: se mancano si torna alla conferma, al modulo (Mattia, 25/11/2026) */
+	if (chiedeDatiFattura(c.group).length) redirect(303, `${page}?dati=1#fatturazione`);
 	if (!p.upfront && /ricevuta|riba|rid\b|sdd/i.test(p.method)) error(400, t(locale, 'account.errori.scadenzaRiba'));
 	const base = `${url.origin}${page}`;
 	const o = await createPayPalOrder({ amount: Number(p.amount), locale: LOCALES[locale].intl, description: `${t(locale, 'account.paga.ordine', { n: c.group.number })}${c.payments.length > 1 ? t(locale, 'account.paga.scadenzaDi', { seq: p.seq, tot: c.payments.length }) : ` · ${t(locale, 'account.paga.anticipato')}`}`, reference: c.group.number, customId: `order:${c.group.key}:${p.seq}`, returnUrl: `${base}?pp=1`, cancelUrl: `${base}?annullato=1` });
