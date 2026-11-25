@@ -431,6 +431,20 @@ const it = {
 		pagaDopo: 'I bottoni per pagare compaiono appena salvi i dati di fatturazione qui sopra.',
 		errori: { nome: 'Scrivi la ragione sociale, oppure nome e cognome.', fiscale: 'Partita IVA o codice fiscale non validi: controlla le cifre.', indirizzo: 'Manca la via.', cap: 'Il CAP ha 5 cifre.', citta: 'Manca il comune.', provincia: 'La provincia è una sigla di 2 lettere (es. MI).' }
 	},
+	/* pagina di ringraziamento dopo il pagamento o dopo la conferma del preventivo (flusso unico) */
+	grazie: {
+		titolo: 'Grazie! Ordine {n} | Stickerprint',
+		pagato: 'Abbiamo ricevuto il pagamento. L’ordine <b>{n}</b> entra in lavorazione: ti avvisiamo noi quando parte.',
+		pagatoResta: 'Abbiamo ricevuto il pagamento, grazie. Per far partire l’ordine <b>{n}</b> resta ancora un anticipo di <b>{importo}</b>.',
+		daPagare: 'L’ordine <b>{n}</b> è registrato. Per farlo partire manca il pagamento anticipato di <b>{importo}</b>.',
+		confermato: 'Il preventivo è confermato e l’ordine <b>{n}</b> è già in lavorazione. Non devi fare altro.',
+		registrato: 'L’ordine <b>{n}</b> è registrato e lo stiamo seguendo noi.',
+		email: 'Ti abbiamo mandato la conferma d’ordine via email, con tutti i dettagli.',
+		confermatoPaga: '✅ Preventivo confermato. Per far partire la produzione manca solo il pagamento: lo fai qui sotto.',
+		vediOrdine: 'Vedi il tuo ordine',
+		vaiPagamento: 'Vai al pagamento',
+		nota: 'Da questa pagina puoi sempre controllare a che punto è l’ordine e scriverci.',
+	},
 	paga: {
 		titoloOrdine: 'Pagamento ordine {n} | Stickerprint',
 		titoloFattura: 'Pagamento fattura {n} | Stickerprint',
@@ -893,6 +907,20 @@ const en: Account = {
 		pagaDopo: 'The payment buttons appear as soon as you save the billing details above.',
 		errori: { nome: 'Enter the company name, or first and last name.', fiscale: 'The VAT number or tax code is not valid: please check the digits.', indirizzo: 'The street is missing.', cap: 'The Italian postal code has 5 digits.', citta: 'The city is missing.', provincia: 'The province is a 2-letter code (e.g. MI).' }
 	},
+	/* pagina di ringraziamento dopo il pagamento o dopo la conferma del preventivo (flusso unico) */
+	grazie: {
+		titolo: 'Thank you! Order {n} | Stickerprint',
+		pagato: 'We’ve received your payment. Order <b>{n}</b> is going into production: we’ll let you know when it ships.',
+		pagatoResta: 'We’ve received your payment, thank you. To start order <b>{n}</b> there is still an upfront payment of <b>{importo}</b>.',
+		daPagare: 'Order <b>{n}</b> is registered. To start it we still need the upfront payment of <b>{importo}</b>.',
+		confermato: 'Your quote is confirmed and order <b>{n}</b> is already in production. There’s nothing else you need to do.',
+		registrato: 'Order <b>{n}</b> is registered and we’re looking after it.',
+		email: 'We’ve emailed you the order confirmation with all the details.',
+		confermatoPaga: '✅ Quote confirmed. To start production only the payment is missing: you can pay below.',
+		vediOrdine: 'View your order',
+		vaiPagamento: 'Go to payment',
+		nota: 'From this page you can always check your order status and write to us.',
+	},
 	paga: {
 		titoloOrdine: 'Order payment {n} | Stickerprint',
 		titoloFattura: 'Invoice payment {n} | Stickerprint',
@@ -1354,6 +1382,20 @@ const es: Account = {
 		pagaDopo: 'Los botones de pago aparecen en cuanto guardes los datos de facturación de arriba.',
 		errori: { nome: 'Escribe la razón social, o nombre y apellidos.', fiscale: 'El número de IVA o el código fiscal no es válido: revisa las cifras.', indirizzo: 'Falta la calle.', cap: 'El código postal italiano tiene 5 cifras.', citta: 'Falta la ciudad.', provincia: 'La provincia es una sigla de 2 letras (p. ej. MI).' }
 	},
+	/* pagina di ringraziamento dopo il pagamento o dopo la conferma del preventivo (flusso unico) */
+	grazie: {
+		titolo: '¡Gracias! Pedido {n} | Stickerprint',
+		pagato: 'Hemos recibido el pago. El pedido <b>{n}</b> entra en producción: te avisamos nosotros cuando salga.',
+		pagatoResta: 'Hemos recibido el pago, gracias. Para poner en marcha el pedido <b>{n}</b> queda todavía un anticipo de <b>{importo}</b>.',
+		daPagare: 'El pedido <b>{n}</b> está registrado. Para ponerlo en marcha falta el pago anticipado de <b>{importo}</b>.',
+		confermato: 'El presupuesto está confirmado y el pedido <b>{n}</b> ya está en producción. No tienes que hacer nada más.',
+		registrato: 'El pedido <b>{n}</b> está registrado y nos ocupamos nosotros.',
+		email: 'Te hemos enviado la confirmación de pedido por correo, con todos los detalles.',
+		confermatoPaga: '✅ Presupuesto confirmado. Para empezar la producción solo falta el pago: puedes hacerlo aquí abajo.',
+		vediOrdine: 'Ver tu pedido',
+		vaiPagamento: 'Ir al pago',
+		nota: 'Desde esta página puedes consultar siempre el estado del pedido y escribirnos.',
+	},
 	paga: {
 		titoloOrdine: 'Pago del pedido {n} | Stickerprint',
 		titoloFattura: 'Pago de la factura {n} | Stickerprint',
@@ -1813,6 +1855,20 @@ const fr: Account = {
 		salvati: 'Coordonnées de facturation enregistrées, merci. Vous pouvez continuer.',
 		pagaDopo: 'Les boutons de paiement apparaissent dès que vous enregistrez les coordonnées de facturation ci-dessus.',
 		errori: { nome: 'Indiquez la raison sociale, ou le prénom et le nom.', fiscale: 'Le numéro de TVA ou le code fiscal n’est pas valide : vérifiez les chiffres.', indirizzo: 'La rue est manquante.', cap: 'Le code postal italien comporte 5 chiffres.', citta: 'La ville est manquante.', provincia: 'La province est un sigle de 2 lettres (ex. MI).' }
+	},
+	/* pagina di ringraziamento dopo il pagamento o dopo la conferma del preventivo (flusso unico) */
+	grazie: {
+		titolo: 'Merci ! Commande {n} | Stickerprint',
+		pagato: 'Nous avons bien reçu votre paiement. La commande <b>{n}</b> part en production : nous vous prévenons dès son expédition.',
+		pagatoResta: 'Nous avons bien reçu votre paiement, merci. Pour lancer la commande <b>{n}</b>, il reste un acompte de <b>{importo}</b>.',
+		daPagare: 'La commande <b>{n}</b> est enregistrée. Pour la lancer, il manque le paiement anticipé de <b>{importo}</b>.',
+		confermato: 'Votre devis est confirmé et la commande <b>{n}</b> est déjà en production. Vous n’avez rien d’autre à faire.',
+		registrato: 'La commande <b>{n}</b> est enregistrée et nous nous en occupons.',
+		email: 'Nous vous avons envoyé la confirmation de commande par e-mail, avec tous les détails.',
+		confermatoPaga: '✅ Devis confirmé. Pour lancer la production, il ne manque que le paiement : vous pouvez le faire ci-dessous.',
+		vediOrdine: 'Voir votre commande',
+		vaiPagamento: 'Aller au paiement',
+		nota: 'Depuis cette page, vous pouvez toujours suivre votre commande et nous écrire.',
 	},
 	paga: {
 		titoloOrdine: 'Paiement de la commande {n} | Stickerprint',
@@ -2274,6 +2330,20 @@ const de: Account = {
 		pagaDopo: 'Die Zahlungsschaltflächen erscheinen, sobald Sie die Rechnungsdaten oben gespeichert haben.',
 		errori: { nome: 'Bitte Firmenname oder Vor- und Nachname angeben.', fiscale: 'USt-IdNr. oder Steuernummer ist ungültig: Bitte prüfen Sie die Ziffern.', indirizzo: 'Die Straße fehlt.', cap: 'Die italienische Postleitzahl hat 5 Ziffern.', citta: 'Der Ort fehlt.', provincia: 'Die Provinz ist ein Kürzel aus 2 Buchstaben (z. B. MI).' }
 	},
+	/* pagina di ringraziamento dopo il pagamento o dopo la conferma del preventivo (flusso unico) */
+	grazie: {
+		titolo: 'Danke! Bestellung {n} | Stickerprint',
+		pagato: 'Wir haben deine Zahlung erhalten. Die Bestellung <b>{n}</b> geht in Produktion: Wir melden uns, sobald sie versendet wird.',
+		pagatoResta: 'Wir haben deine Zahlung erhalten, danke. Damit die Bestellung <b>{n}</b> starten kann, fehlt noch eine Vorauszahlung von <b>{importo}</b>.',
+		daPagare: 'Die Bestellung <b>{n}</b> ist erfasst. Damit sie starten kann, fehlt noch die Vorauszahlung von <b>{importo}</b>.',
+		confermato: 'Dein Angebot ist bestätigt und die Bestellung <b>{n}</b> ist bereits in Produktion. Du musst nichts weiter tun.',
+		registrato: 'Die Bestellung <b>{n}</b> ist erfasst und wir kümmern uns darum.',
+		email: 'Wir haben dir die Auftragsbestätigung mit allen Details per E-Mail geschickt.',
+		confermatoPaga: '✅ Angebot bestätigt. Damit die Produktion starten kann, fehlt nur noch die Zahlung: Du kannst sie hier unten erledigen.',
+		vediOrdine: 'Deine Bestellung ansehen',
+		vaiPagamento: 'Zur Zahlung',
+		nota: 'Auf dieser Seite kannst du jederzeit den Stand deiner Bestellung sehen und uns schreiben.',
+	},
 	paga: {
 		titoloOrdine: 'Zahlung Bestellung {n} | Stickerprint',
 		titoloFattura: 'Zahlung Rechnung {n} | Stickerprint',
@@ -2733,6 +2803,20 @@ const nl: Account = {
 		salvati: 'Factuurgegevens opgeslagen, bedankt. Je kunt nu verdergaan.',
 		pagaDopo: 'De betaalknoppen verschijnen zodra je de factuurgegevens hierboven opslaat.',
 		errori: { nome: 'Vul de bedrijfsnaam in, of voor- en achternaam.', fiscale: 'Het btw-nummer of fiscaal nummer is ongeldig: controleer de cijfers.', indirizzo: 'De straat ontbreekt.', cap: 'De Italiaanse postcode heeft 5 cijfers.', citta: 'De plaats ontbreekt.', provincia: 'De provincie is een afkorting van 2 letters (bijv. MI).' }
+	},
+	/* pagina di ringraziamento dopo il pagamento o dopo la conferma del preventivo (flusso unico) */
+	grazie: {
+		titolo: 'Bedankt! Bestelling {n} | Stickerprint',
+		pagato: 'We hebben je betaling ontvangen. Bestelling <b>{n}</b> gaat in productie: we laten het weten zodra ze verzonden wordt.',
+		pagatoResta: 'We hebben je betaling ontvangen, bedankt. Om bestelling <b>{n}</b> te starten is er nog een aanbetaling van <b>{importo}</b> nodig.',
+		daPagare: 'Bestelling <b>{n}</b> is geregistreerd. Om te starten ontbreekt nog de vooruitbetaling van <b>{importo}</b>.',
+		confermato: 'Je offerte is bevestigd en bestelling <b>{n}</b> is al in productie. Je hoeft verder niets te doen.',
+		registrato: 'Bestelling <b>{n}</b> is geregistreerd en wij zorgen ervoor.',
+		email: 'We hebben je de orderbevestiging met alle details per e-mail gestuurd.',
+		confermatoPaga: '✅ Offerte bevestigd. Om de productie te starten ontbreekt alleen nog de betaling: dat kan hieronder.',
+		vediOrdine: 'Bekijk je bestelling',
+		vaiPagamento: 'Naar betaling',
+		nota: 'Op deze pagina kun je altijd de status van je bestelling bekijken en ons schrijven.',
 	},
 	paga: {
 		titoloOrdine: 'Betaling bestelling {n} | Stickerprint',

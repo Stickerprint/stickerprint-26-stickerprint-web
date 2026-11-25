@@ -1,4 +1,4 @@
-import { error, fail } from '@sveltejs/kit';
+import { error, fail, redirect } from '@sveltejs/kit';
 import { adminClient } from '$lib/server/admin';
 import { datiFatturaMancanti, leggiDatiFattura } from '$lib/dati-fattura';
 import { clienteComeFattura, salvaDatiFatturaPreventivo } from '$lib/server/dati-fattura';
@@ -7,7 +7,8 @@ import { loadReviews } from '$lib/server/reviews';
 import { categoryOf, type ProductCode } from '$lib/dashboard/orderDraft';
 import { PRODUCTS } from '$lib/products';
 import { catLabel, laminaLabel } from '$lib/dashboard/orders';
-import { langOf } from '$lib/i18n';
+import { langOf, localizePath } from '$lib/i18n';
+import { getConfirmation } from '$lib/server/conferme';
 import { t } from '$lib/traduzioni';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -20,6 +21,12 @@ export const load: PageServerLoad = async ({ params, url, request, locals }) => 
 	/* anteprima dello staff su una bozza: la pagina si mostra come la vedra' il cliente dopo l'invio
 	   (bottoni di conferma, PDF, domanda) con il nome di chi la sta guardando come mittente */
 	const staffPreview = url.searchParams.get('anteprima') === '1' && q.status === 'bozza' && !!locals.user;
+	/* preventivo gia' diventato ordine: il link del preventivo porta alla pagina dell'ordine (stato, pagamenti, PDF).
+	   Non per l'anteprima dello staff. */
+	if (q.order_group && url.searchParams.get('anteprima') !== '1') {
+		const conf = await getConfirmation(db, q.order_group);
+		if (conf?.token) redirect(303, localizePath(`/conferma/${conf.token}`, locals.locale));
+	}
 	// l'anteprima dello staff (?anteprima=1) non conta come apertura del cliente
 	// (il ricaricamento dopo una domanda o una conferma e' una POST: non conta)
 	if (request.method === 'GET' && url.searchParams.get('anteprima') !== '1' && (q.status === 'inviato' || q.status === 'accettato')) await trackQuoteOpen(db, q);
@@ -59,7 +66,11 @@ export const actions: Actions = {
 			if (e) return fail(400, { error: e });
 		}
 		const r = await acceptQuoteByToken(db, params.token, String(f.get('nome') ?? '').trim(), url.origin, langOf(locale));
-		return r.ok ? { ok: true, accepted: true, message: r.message, orderNumber: r.orderNumber ?? null, due: r.due ?? 0 } : fail(400, { error: r.message });
+		if (!r.ok) return fail(400, { error: r.message });
+		/* flusso unico: con un anticipo da pagare si va alla pagina dell'ordine, dove ci sono i bottoni per pagare;
+		   senza (ricevuta bancaria, bonifico a scadenza) si va dritti al ringraziamento */
+		if (r.confToken) redirect(303, `${localizePath(`/conferma/${r.confToken}${(r.due ?? 0) > 0 ? '' : '/grazie'}`, locale)}?dal=preventivo`);
+		return { ok: true, accepted: true, message: r.message, orderNumber: r.orderNumber ?? null, due: r.due ?? 0 };
 	}),
 	rifiuta: async ({ params, request, locals: { locale } }) => withDb(locale, async (db) => {
 		const f = await request.formData();

@@ -31,6 +31,8 @@ export const load: PageServerLoad = async ({ params, url, request, locals: { loc
 	let ppError: string | null = null;
 	if (ppToken && paypalConfigured()) { const r = await settlePayPalReturn(db, ppToken, `order:${c.group.key}:`); if (r.ok) redirect(303, `${localizePath(`/conferma/${params.token}`, locale)}?pagato=1`); ppError = r.error ?? null; }
 	const paid = url.searchParams.get('pagato') === '1';
+	/* dopo il pagamento: pagina di ringraziamento (flusso unico, Mattia 25/11/2026) */
+	if (paid) redirect(303, `${localizePath(`/conferma/${params.token}/grazie`, locale)}?pagato=1`);
 	const cancelled = url.searchParams.get('annullato') === '1';
 	const fresh = paid ? await getByToken(db, params.token) : null;
 	if (fresh) { c.payments = fresh.payments; c.group = fresh.group; }
@@ -47,7 +49,7 @@ export const load: PageServerLoad = async ({ params, url, request, locals: { loc
 		fattura: { mancanti: chiedeDatiFattura(g), valori: { company: f.billing?.company ?? '', first_name: f.billing?.first_name ?? '', last_name: f.billing?.last_name ?? '', vat: f.billing?.vat ?? '', fiscal_code: f.billing?.fiscal_code ?? '', sdi: f.billing?.sdi ?? '', pec: f.billing?.pec ?? '', street: f.billing?.street ?? '', zip: f.billing?.zip ?? '', city: f.billing?.city ?? '', province: f.billing?.province ?? '', country: f.billing?.country ?? 'IT' } as DatiFattura, chiesti: url.searchParams.get('dati') === '1' },
 		payments: c.payments.map((p) => ({ seq: p.seq, method: p.method, due: p.due, amount: Number(p.amount), upfront: p.upfront, status: p.status, paid_at: p.paid_at, kind: p.kind ?? 'scadenza', reason: p.reason ?? null })),
 		/* mai il nome di chi segue: la pagina firma sempre «Stickerprint-Staff» */ sender: null as string | null, messages: c.messages.map((m) => ({ id: m.id, direction: m.direction, kind: m.kind, author: m.direction === 'out' ? null : m.author, body: m.body, created_at: m.created_at })),
-		bank: { iban: COMPANY.iban || null, name: COMPANY.name }, online: onlinePaymentsOn(), paypal: paypalConfigured(), simulation: !stripeConfigured() && onlinePaymentsOn(), paid, cancelled, ppError, stats
+		bank: { iban: COMPANY.iban || null, name: COMPANY.name }, online: onlinePaymentsOn(), paypal: paypalConfigured(), simulation: !stripeConfigured() && onlinePaymentsOn(), paid, cancelled, ppError, stats, dalPreventivo: url.searchParams.get('dal') === 'preventivo'
 	};
 };
 

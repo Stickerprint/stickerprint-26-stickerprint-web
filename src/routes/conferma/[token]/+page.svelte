@@ -44,6 +44,7 @@
 				{:else}{t('account.conferma.leadOk')}{/if}
 				<b class="qp__valid">{t('account.conferma.stato', { stato })}</b>
 			</p>
+			{#if data.dalPreventivo && due > 0}<p class="ok">{t('account.grazie.confermatoPaga')}</p>{/if}
 			{#if data.paid}<p class="ok">{t('account.doc.pagamentoRicevuto')} {due > 0 ? t('account.conferma.restaAnticipo') : t('account.conferma.entraLavorazione')}</p>{/if}
 			{#if data.cancelled}<p class="error">{t('account.conferma.annullatoRiprova')}</p>{/if}
 			{#if data.ppError}<p class="error">PayPal: {data.ppError}</p>{/if}

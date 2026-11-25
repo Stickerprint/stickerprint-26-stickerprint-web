@@ -12,7 +12,7 @@ import { adminClient } from './admin';
 import { sendEmail } from './email';
 import { OWNER_EMAIL, ownerNotifyEmail, quoteEmail, quoteReminderEmail, quoteReplyEmail, requestReplyEmail } from './email-templates';
 import { loadEditorData, saveOrderDraft, upsertContact } from './orders';
-import { applyPaymentGate, defaultConfirmEmail, loadGroup, sendAutoConfirmation, sendConfirmation, syncPayments } from './conferme';
+import { applyPaymentGate, defaultConfirmEmail, getConfirmation, loadGroup, sendAutoConfirmation, sendConfirmation, syncPayments, upfrontDue } from './conferme';
 import { pushStaff } from './push';
 import { ensurePlan } from './produzione';
 import type { OrderRow } from '$lib/dashboard/orders';
@@ -333,7 +333,7 @@ export async function setQuoteStatus(db: DB, id: string, status: QuoteStatus, re
 	return error?.message ?? null;
 }
 /** Accettazione dal link pubblico (client di servizio): stato, avviso allo staff, conferma al cliente. `lang`: lingua della pagina del preventivo (messaggi, email di conferma automatica, lingua salvata sull'ordine) */
-export async function acceptQuoteByToken(db: DB, token: string, who: string, origin: string, lang: Lang = 'it'): Promise<{ ok: boolean; message: string; orderNumber?: string | null; due?: number }> {
+export async function acceptQuoteByToken(db: DB, token: string, who: string, origin: string, lang: Lang = 'it'): Promise<{ ok: boolean; message: string; orderNumber?: string | null; due?: number; confToken?: string | null }> {
 	const T = (k: string) => tradotto(perLingua(lang), `account.${k}`);
 	const q = await getQuoteByToken(db, token);
 	if (!q) return { ok: false, message: T('errori.preventivoNonTrovato') };
@@ -342,16 +342,24 @@ export async function acceptQuoteByToken(db: DB, token: string, who: string, ori
 	await db.from('quotes').update({ status: 'accettato', accepted_at: new Date().toISOString(), accepted_by: who || q.draft.customer.email, updated_at: new Date().toISOString() }).eq('id', q.id);
 	const owner = ownerNotifyEmail({ title: `Preventivo ${q.number} accettato da ${q.draft.customer.name}`, lines: [`Totale ${money(Number(q.total_gross))} IVA inclusa`, `Cliente: ${q.draft.customer.name} · ${q.draft.customer.email}`, 'L’ordine è stato creato in automatico e il cliente ha ricevuto la conferma d’ordine.'], href: `${origin}/dashboard/aziende/preventivi/${q.id}` });
 	/* l'ordine nasce subito e il cliente riceve la conferma d'ordine automatica (con l'anticipo da pagare, se c'e') */
-	let orderNumber: string | null = null, due = 0;
+	/* `confToken`: la pagina dell'ordine. Dopo la conferma il cliente ci viene portato per pagare, oppure al
+	   ringraziamento se non c'e' niente da pagare subito (flusso unico, Mattia 25/11/2026) */
+	let orderNumber: string | null = null, due = 0, confToken: string | null = null;
 	try {
 		const made = await orderFromQuote(db, q.id, false, origin, lang);
-		if (made.group) { const r = await sendAutoConfirmation(db, made.group, origin, { quoteNumber: q.number, senderName: q.sender_name ?? null }, lang); orderNumber = r.number ?? made.number; due = r.due; }
+		if (made.group) {
+			const r = await sendAutoConfirmation(db, made.group, origin, { quoteNumber: q.number, senderName: q.sender_name ?? null }, lang);
+			orderNumber = r.number ?? made.number;
+			/* senza email del cliente la conferma non parte, ma l'anticipo da pagare c'e' lo stesso */
+			due = r.ok ? r.due : upfrontDue(await syncPayments(db, made.group));
+			confToken = (await getConfirmation(db, made.group))?.token ?? null;
+		}
 	} catch (e) { console.error('[preventivo] ordine automatico', e); }
 	await Promise.all([
 		sendEmail({ to: OWNER_EMAIL, ...owner }),
 		pushStaff({ title: `Preventivo ${q.number} accettato`, body: `${q.draft.customer.name} · ${money(Number(q.total_gross))}${orderNumber ? ` · ordine ${orderNumber}` : ''}`, url: orderNumber ? `/dashboard/fatturazione/ordini` : `/dashboard/aziende/preventivi/${q.id}`, tag: `quote-${q.id}` })
 	]);
-	return { ok: true, message: T('messaggi.preventivoConfermato'), orderNumber, due };
+	return { ok: true, message: T('messaggi.preventivoConfermato'), orderNumber, due, confToken };
 }
 export async function rejectQuoteByToken(db: DB, token: string, reason: string, lang: Lang = 'it'): Promise<{ ok: boolean; message: string }> {
 	const T = (k: string) => tradotto(perLingua(lang), `account.${k}`);
