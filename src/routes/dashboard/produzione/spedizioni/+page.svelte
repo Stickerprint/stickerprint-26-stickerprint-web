@@ -59,7 +59,7 @@
 	<!-- le due viste sono due voci del menu' Spedizioni (In spedizione e Spediti): qui niente linguette (Mattia, 25/11/2026) -->
 	<div><h1>{#if data.view === 'spediti'}📦 Spediti{:else}🚀 In spedizione <span class="tabbtn__n">{data.groups.length}</span>{/if}</h1>
 		{#if data.view === 'da-spedire'}
-			<p class="lead" style="margin-top:12px">Qui trovi gli ordini nello stato <b>in spedizione</b>. Con <b>Invia a Qapla</b> l'ordine passa al corriere: l'etichetta si stampa dal pannello Qapla, il cliente riceve l'email "in attesa di ritiro", poi spedito, in consegna e consegnato arrivano da soli, e l'ordine si sposta in <b>Spediti</b>. Da qui non nasce più nessun DDT: se serve lo generi dalla scheda dell'ordine. Un ordine consegnato a mano si chiude dalla sua scheda, cambiando lo stato.</p>
+			<p class="lead" style="margin-top:12px">Qui trovi tutti gli ordini che metti nello stato <b>in spedizione</b>, del sito o inseriti a mano: da qui in poi seguono lo stesso percorso e le stesse email. Con <b>Invia a Qapla</b> l'ordine passa al corriere: l'etichetta si stampa dal pannello Qapla, il cliente riceve l'email "in attesa di ritiro", poi spedito, in consegna e consegnato arrivano da soli, e l'ordine si sposta in <b>Spediti</b>. Da qui non nasce più nessun DDT: se serve lo generi dalla scheda dell'ordine. Un ordine che non parte con Qapla (consegnato a mano, ritirato dal cliente) mettilo su <b>consegnato</b> dalla tendina dello stato, in Ordini o nella sua scheda: esce dagli ordini da fare.</p>
 		{:else}
 			<p class="lead" style="margin-top:12px">Il calendario degli ordini partiti: clicca un giorno per vedere cosa è stato spedito, con quale corriere e a che punto è. Gli stati delle spedizioni Qapla si aggiornano da soli.</p>
 		{/if}

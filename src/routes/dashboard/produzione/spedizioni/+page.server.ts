@@ -4,6 +4,7 @@ import { groupOrders, itemMeta, thumbOf, type OrderRow } from '$lib/dashboard/or
 import { generateLabels } from '$lib/server/shipping';
 import { sendEmail } from '$lib/server/email';
 import { shippingUpdateEmail } from '$lib/server/email-templates';
+import { getConfirmation } from '$lib/server/conferme';
 import { env } from '$env/dynamic/private';
 
 /* stati Qapla': oltre al webhook, quando lo staff apre questa pagina si rileggono le spedizioni in viaggio
@@ -84,7 +85,11 @@ export const actions: Actions = {
 		const first = g.items[0];
 		let emailed = false;
 		if (g.email) {
-			const mail = shippingUpdateEmail({ kind: 'affidato', name: first.shipping?.first_name || g.customer, number: g.number, trackingUrl: `${url.origin}/account/ordini`, items: g.items.map((i) => ({ name: i.product_name, qty: i.qty, meta: itemMeta(i) || null, preview: thumbOf(i) })), accountUrl: first.user_id ? `${url.origin}/account/ordini` : null });
+			/* dove il cliente rivede l'ordine: l'area personale se ha un account. Chi ha un ordine inserito da noi di solito non
+			   ce l'ha: il bottone lo porta alla pagina della sua conferma d'ordine, non alla pagina di accesso (25/11/2026) */
+			let paginaOrdine: string | null = first.user_id ? `${url.origin}/account/ordini` : null;
+			if (!paginaOrdine && g.channel !== 'ecommerce') { const conf = await getConfirmation(supabase, group); if (conf?.token) paginaOrdine = `${url.origin}/conferma/${conf.token}`; }
+			const mail = shippingUpdateEmail({ kind: 'affidato', name: first.shipping?.first_name || g.customer, number: g.number, trackingUrl: paginaOrdine ?? `${url.origin}/account/ordini`, items: g.items.map((i) => ({ name: i.product_name, qty: i.qty, meta: itemMeta(i) || null, preview: thumbOf(i) })), accountUrl: paginaOrdine });
 			const res = await sendEmail({ to: g.email, subject: mail.subject, html: mail.html, tag: mail.tag, metadata: { order: g.number } });
 			emailed = res.ok;
 			if (res.ok) await supabase.from('orders').update({ shipping_notified: ['affidato'] }).eq('checkout_group', group);
