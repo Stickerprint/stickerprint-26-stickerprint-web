@@ -32,13 +32,33 @@
 	/* barra d'acquisto fissa: compare quando il preventivatore entra nello schermo */
 	let sezione = $state<HTMLElement | undefined>();
 	let barraOff = $state(true);
+	let aggiornaFisso: () => void = () => {};
+	$effect(() => { void regola; void file; aggiornaFisso(); });
+	/* TELEFONO: l'anteprima resta ferma in alto mentre si scorre. Si usa `position: fixed` comandata da qui e non
+	   `sticky`: lo sticky smette di funzionare appena un antenato ha `overflow` (il popup di Klaviyo lo mette sul
+	   body, e i Safari vecchi non conoscono `overflow: clip`), e l'anteprima scorreva via con la pagina. */
+	let segnaposto = $state<HTMLElement | undefined>(); // tiene il posto dell'anteprima nella pagina
+	let fisso = $state<{ left: number; width: number; top: number } | null>(null);
 	onMount(() => {
 		stretto = matchMedia('(max-width: 900px)').matches;
 		altoV = window.innerHeight;
-		const on = () => { if (sezione) barraOff = sezione.getBoundingClientRect().top > window.innerHeight - 160; };
+		const on = () => {
+			if (!sezione) return;
+			const rs = sezione.getBoundingClientRect();
+			barraOff = rs.top > window.innerHeight - 160;
+			if (!stretto || regola || !segnaposto) { if (fisso) fisso = null; return; }
+			const top = (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--header-h')) || 64) + 6;
+			const r = segnaposto.getBoundingClientRect();
+			/* ferma in alto da quando il suo posto supera l'intestazione fino alla fine del preventivatore */
+			const attiva = r.top < top && rs.bottom > top + r.height + 90;
+			if (!attiva) { if (fisso) fisso = null; }
+			else if (!fisso || fisso.left !== r.left || fisso.width !== r.width || fisso.top !== top) fisso = { left: r.left, width: r.width, top };
+		};
+		aggiornaFisso = on;
 		on();
-		addEventListener('scroll', on, { passive: true }); addEventListener('resize', on);
-		return () => { removeEventListener('scroll', on); removeEventListener('resize', on); };
+		/* in cattura: si sente lo scorrimento anche quando a scorrere e' il body e non la finestra */
+		addEventListener('scroll', on, { passive: true, capture: true }); addEventListener('resize', on);
+		return () => { removeEventListener('scroll', on, { capture: true }); removeEventListener('resize', on); };
 	});
 	let {
 		shipDate,
@@ -330,8 +350,10 @@
 		<!-- ANTEPRIMA: il motore di sempre (static/preprint) con i suoi comandi; sotto, sfondo · rimuovi sfondo · cambia file · linea di taglio -->
 		<div class="pv__stage" class:is-regola={regola} style="--palco:{stageH}px">
 			{#if file}
-				<div class="pv__box">
+				<div class="pv__posto" bind:this={segnaposto}>
+				<div class="pv__box" class:is-fisso={!!fisso} style={fisso ? `left:${fisso.left}px;width:${fisso.width}px;top:${fisso.top}px` : undefined}>
 					<EnginePreview bind:this={engine} {file} {forma} {materiale} finitura={showFinish ? finitura : 'lucida'} prodotto={engineProduct} {foglio} {rilievo} {vetro} {w} {h} {showCut} panel nuovo dimLabel={misure(w, h)} stage={stageH} onrender={onRender} />
+				</div>
 				</div>
 				{#if fileUrl}<img src={fileUrl} alt="" hidden onload={onImgLoad} />{/if}
 				<div class="pv__tools">
@@ -691,7 +713,10 @@
 	@media (max-width: 900px) {
 		.pv { display: block; margin-top: 14px; }
 		/* l'anteprima resta in alto mentre si scorre: del motore si vede solo il palco; i suoi comandi si aprono con "Regola" */
-		.pv__box { position: sticky; top: calc(var(--header-h, 64px) + 6px); z-index: 30; height: var(--palco); overflow: hidden; border-radius: 22px; box-shadow: 0 6px 16px rgba(5, 5, 56, .12); background: #eef0f6; }
+		.pv__posto { height: var(--palco); }
+		.pv__stage.is-regola .pv__posto { height: auto; }
+		.pv__box.is-fisso { position: fixed; }
+		.pv__box { z-index: 30; height: var(--palco); overflow: hidden; border-radius: 22px; box-shadow: 0 6px 16px rgba(5, 5, 56, .12); background: #eef0f6; }
 		.pv__stage.is-regola .pv__box { position: relative; top: auto; height: auto; overflow: visible; box-shadow: none; background: none; }
 		.pv__stage { display: contents; }   /* cosi' l'anteprima resta agganciata per tutta la lunghezza del preventivatore */
 		.grp__t { font-size: 16.5px; white-space: nowrap; }
