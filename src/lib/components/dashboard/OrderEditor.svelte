@@ -9,12 +9,16 @@
 
 	export interface PickContact { id: string; kind: 'contact' | 'profile'; name: string; first_name: string; last_name: string; email: string; phone: string; street: string; city: string; zip: string; province: string; country: string; vat: string; fiscal_code: string; sdi: string; pec: string; /** metodo di pagamento abituale dell'azienda (anagrafica) */ payment_method_id?: string | null }
 	export interface EditorLabels { lead?: string; save?: string; send?: string | null; back?: string }
-	let { draft, methods, codes, contacts, supabase, mode, form, title, oncancel, labels = {}, metodoIniziale = '' }: { draft: OrderDraft; methods: PaymentMethod[]; codes: ProductCode[]; contacts: PickContact[]; supabase: SupabaseClient; mode: 'create' | 'edit'; form: Record<string, unknown> | null | undefined; title: string; oncancel?: () => void; labels?: EditorLabels; /** nome del metodo di pagamento da proporre su una bozza senza scadenze (i preventivi: «Pagamento anticipato») */ metodoIniziale?: string } = $props();
+	let { draft, methods, codes, contacts, supabase, mode, form, title, oncancel, labels = {}, metodoIniziale = '', ondraft }: { draft: OrderDraft; methods: PaymentMethod[]; codes: ProductCode[]; contacts: PickContact[]; supabase: SupabaseClient; mode: 'create' | 'edit'; form: Record<string, unknown> | null | undefined; title: string; oncancel?: () => void; labels?: EditorLabels; /** nome del metodo di pagamento da proporre su una bozza senza scadenze (i preventivi: «Pagamento anticipato») */ metodoIniziale?: string; /** chiamata a ogni modifica con una copia della bozza: la usa il pannello «Costi e margini» dei preventivi */ ondraft?: (d: OrderDraft) => void } = $props();
 
 	// svelte-ignore state_referenced_locally
 	let d = $state<OrderDraft>(structuredClone($state.snapshot(draft)));
 	let saving = $state(false);
 	let uploadMsg = $state('');
+	/* collegamento col pannello «Costi e margini» dei preventivi: la bozza esce a ogni modifica, e il pannello puo'
+	   scriverci dentro (prezzo consigliato, impostazioni dei costi di una riga) */
+	$effect(() => { ondraft?.($state.snapshot(d) as OrderDraft); });
+	export function modifica(fn: (d: OrderDraft) => void) { fn(d); }
 	/* calcolatore dal listino del sito: si apre sulla riga, chiede misura/materiale/quantita' e scrive prezzo e descrizione */
 	type Opt = { id: string; label: string };
 	let calc = $state<{ i: number; product: string; w: number; h: number; qty: number; forma: string; materiale: string; finitura: string; opts: { shapes: Opt[]; materials: Opt[]; finishes: Opt[]; quantities: number[] } | null; net: number; unitNet: number; description: string; busy: boolean; error: string } | null>(null);

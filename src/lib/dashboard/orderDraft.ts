@@ -1,8 +1,9 @@
 /** Bozza di ordine usata dall'editor (nuovo ordine e modifica): condivisa tra browser e server. */
 import { CATS, categoryFromCode, SHIPPING_METHODS, itemMeta, type OrderGroup } from './orders';
 import { computeTerms, type PaymentMethod } from './payments';
+import type { CostiBozza, VoceCosto } from '$lib/margini/preventivo';
 
-export interface DraftItem { id: string | null; number: string | null; code: string; description: string; qty: number; price: number; lamination: string; mockup_url: string | null; preview_url?: string | null }
+export interface DraftItem { id: string | null; number: string | null; code: string; description: string; qty: number; price: number; lamination: string; mockup_url: string | null; preview_url?: string | null; /** preventivi: impostazioni del pannello «Costi e margini» per questa riga */ costo?: VoceCosto | null }
 export interface DraftTerm { method_id: string; method: string; xml_code: string; due: string; amount: number }
 export interface DraftCustomer { name: string; first_name: string; last_name: string; address: string; city: string; cap: string; province: string; country: string; piva: string; cf: string; sdi: string; pec: string; email: string; phone: string }
 export interface DraftShipping { name: string; address: string; city: string; cap: string; province: string; country: string }
@@ -10,6 +11,8 @@ export interface OrderDraft {
 	customer: DraftCustomer; ship_same: boolean; shipping: DraftShipping; contact_id: string | null;
 	date: string; ship_date: string; lead_time?: string; ship_method: string; notes: string; price_type: 'netti' | 'lordi';
 	items: DraftItem[]; terms: DraftTerm[];
+	/** preventivi: costo orario e margine obiettivo del pannello «Costi e margini» (restano salvati nella bozza) */
+	costi?: CostiBozza | null;
 }
 export interface ProductCode { id: string; code: string; name: string; category: string; description: string | null; unit_net: number | null; active: boolean; sort: number }
 

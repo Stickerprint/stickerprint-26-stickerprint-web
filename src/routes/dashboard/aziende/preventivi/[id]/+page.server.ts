@@ -3,6 +3,7 @@ import { loadEditorData, parseDraft, upsertContact } from '$lib/server/orders';
 import { deleteQuote, getQuote, loadQuoteMessages, markQuoteRead, newQuoteVersion, orderFromQuote, quotePdf, remindQuote, replyQuote, saveQuote, sendQuote, setQuoteStatus, setQuoteValidity, toB64 } from '$lib/server/richieste';
 import { listTemplates } from '$lib/server/helpdesk';
 import { operatorName } from '$lib/server/produzione';
+import { datiCostiPreventivo } from '$lib/server/costi-preventivo';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ params, url, locals: { supabase, user } }) => {
@@ -17,7 +18,7 @@ export const load: PageServerLoad = async ({ params, url, locals: { supabase, us
 		supabase.from('quotes').select('id, version, status, total_gross, created_at').eq('year', q.year).eq('seq', q.seq).order('version'),
 		q.request_id ? supabase.from('contact_requests').select('id, company, name, message').eq('id', q.request_id).maybeSingle() : Promise.resolve({ data: null })
 	]);
-	return { q, messages, templates: templates.filter((t) => t.kind === 'preventivo'), sender, versions: versions ?? [], req, created: url.searchParams.get('creato'), openSend: url.searchParams.get('invia') === '1', ...editor };
+	return { q, messages, templates: templates.filter((t) => t.kind === 'preventivo'), sender, versions: versions ?? [], req, created: url.searchParams.get('creato'), openSend: url.searchParams.get('invia') === '1', costi: await datiCostiPreventivo(supabase), ...editor };
 };
 
 export const actions: Actions = {
