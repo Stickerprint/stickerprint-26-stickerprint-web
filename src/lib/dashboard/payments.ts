@@ -26,13 +26,19 @@ const iso = (d: Date) => d.toISOString().slice(0, 10);
 const r2 = (v: number) => Math.round(v * 100) / 100;
 /** Scadenze secondo la regola del metodo: "f.m." = fine mese della data documento, poi i giorni per ogni rata */
 export function computeTerms(m: Pick<PaymentMethod, 'name' | 'xml_code' | 'days' | 'end_of_month' | 'installments'>, total: number, issued: string | Date): PaymentTerm[] {
-	const d0 = new Date(issued);
-	const base = m.end_of_month ? new Date(d0.getFullYear(), d0.getMonth() + 1, 0) : d0;
+	/* I conti sulle date si fanno in UTC. Prima si mescolavano ora locale e UTC: nel browser (Italia) le scadenze "fine mese"
+	   uscivano un giorno prima di quelle calcolate dal server (30 gg f.m. dal 25/11: 29/12 nell'editor dell'ordine, 30/12
+	   sulla fattura creata dai DDT), e una scadenza a cavallo del cambio dell'ora poteva perdere un giorno.
+	   Una data scritta AAAA-MM-GG e' quel giorno; un Date ("adesso") vale per il giorno di chi guarda. */
+	const d = new Date(issued);
+	const [y, mo, g] = typeof issued === 'string' ? [d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()] : [d.getFullYear(), d.getMonth(), d.getDate()];
+	const d0 = new Date(Date.UTC(y, mo, g));
+	const base = m.end_of_month ? new Date(Date.UTC(y, mo + 1, 0)) : d0;
 	const n = Math.max(1, m.installments || 1);
 	const each = r2(total / n);
 	return Array.from({ length: n }, (_, i) => {
 		const due = new Date(base);
-		due.setDate(due.getDate() + m.days * (i + 1 === 1 && !m.end_of_month && m.days === 0 ? 0 : i + 1));
+		due.setUTCDate(due.getUTCDate() + m.days * (i + 1 === 1 && !m.end_of_month && m.days === 0 ? 0 : i + 1));
 		return { due: iso(m.days === 0 ? d0 : due), amount: i === n - 1 ? r2(total - each * (n - 1)) : each, method: m.name, xml_code: m.xml_code };
 	});
 }
