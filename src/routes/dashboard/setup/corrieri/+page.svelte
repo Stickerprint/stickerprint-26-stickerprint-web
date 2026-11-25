@@ -1,7 +1,9 @@
 <script lang="ts">
 	import { COURIERS, dmy } from '$lib/dashboard/orders';
 	let { data } = $props();
+	/* ogni corriere di `courierStatus()` deve avere la sua voce: senza quella di Qapla la pagina dava errore 500 */
 	const DOCS: Record<string, { vars: string[]; where: string; note: string }> = {
+		Qapla: { vars: ['QAPLA_API_KEY'], where: 'Nel pannello Qapla, nelle impostazioni del canale, trovi la chiave privata delle API. Facoltativi: QAPLA_COURIER (corriere predefinito, GLS-ITA), QAPLA_COURIER_SERVICE, QAPLA_PUBLIC_KEY per la pagina di tracking, QAPLA_SANDBOX=1 per le prove.', note: 'Invia a Qapla = ordine passato al pannello Qapla, dove si stampa l’etichetta · tracking e stati tornano da soli (avvisi di Qapla e controllo ogni ora).' },
 		GLS: { vars: ['GLS_SEDE', 'GLS_CODICE_CLIENTE', 'GLS_PASSWORD', 'GLS_CODICE_CONTRATTO'], where: 'Chiedi alla tua sede GLS l’attivazione del Web Service "Weblabels" (ilswebservice): ti danno sigla sede, codice cliente, password e codice contratto.', note: 'Genera spedizioni = AddParcel (numero GLS + etichetta PDF ufficiale) · Trasmetti = CloseWorkDay (conferma delle spedizioni del giorno).' },
 		FedEx: { vars: ['FEDEX_CLIENT_ID', 'FEDEX_CLIENT_SECRET', 'FEDEX_ACCOUNT_NUMBER'], where: 'Su developer.fedex.com crea un progetto con le API Ship e Track: ottieni Client ID e Secret; il numero di account è quello del contratto FedEx. Facoltativi: FEDEX_SANDBOX=1 per i test, FEDEX_SERVICE (default FEDEX_REGIONAL_ECONOMY), FEDEX_PHONE.', note: 'Genera spedizioni = Ship API (tracking + etichetta 4×6 PDF ufficiale) · Trasmetti = manifest interno (per i servizi Express non serve chiusura giornaliera).' },
 		TNT: { vars: ['TNT_COMPANY', 'TNT_PASSWORD', 'TNT_ACCOUNT'], where: 'Chiedi a TNT/FedEx Italia le credenziali ExpressConnect (utente, password, codice cliente). Facoltativi: TNT_SERVICE (default 48N), TNT_APPID.', note: 'Genera spedizioni = CREATE + BOOK + SHIP (numero consignment) con etichette interne 10×15 · Trasmetti = manifest interno.' }
@@ -14,9 +16,9 @@
 
 <div class="grid3">
 	{#each data.couriers as c (c.id)}
-		{@const d = DOCS[c.id]}
+		{@const d = DOCS[c.id] ?? { vars: c.missing, where: '', note: '' }}
 		<div class="dcard">
-			<h3 style="display:flex;align-items:center;gap:10px"><img src={COURIERS[c.id].logo} alt={c.id} style="height:32px" /> {c.id} <span class="pill {c.configured ? 'pill--on' : 'pill--off'}" style="margin-left:auto">{c.configured ? 'Collegato' : 'Non collegato'}</span></h3>
+			<h3 style="display:flex;align-items:center;gap:10px"><img src={COURIERS[c.id]?.logo} alt={c.id} style="height:32px" /> {c.id} <span class="pill {c.configured ? 'pill--on' : 'pill--off'}" style="margin-left:auto">{c.configured ? 'Collegato' : 'Non collegato'}</span></h3>
 			<p class="small">{d.where}</p>
 			<div class="h4">Variabili su Vercel</div>
 			<ul class="small" style="margin:0;padding-left:18px">{#each d.vars as v (v)}<li><code>{v}</code>{#if c.missing.includes(v)} <span class="osub" style="color:#b3261e;display:inline">mancante</span>{:else} <span class="osub" style="color:#15803d;display:inline">ok</span>{/if}</li>{/each}</ul>
