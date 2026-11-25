@@ -23,6 +23,8 @@ export async function cambiaStato(supabase: SupabaseClient, user: User | null, k
 	const rows = await righeDelGruppo(supabase, key);
 	if (!rows.length) return { ok: false, error: 'Ordine non trovato.', code: 404 };
 	const patch: Record<string, unknown> = { status, prod_stage: status === 'in_produzione' ? 'stampa' : null };
+	/* consegnato a mano: si segna la data, ma la richiesta di recensione NON parte da sola (il giro automatico vuole la
+	   consegna registrata dal corriere): in Ordini compare il bottone per mandarla */
 	if (status === 'consegnato') patch.delivered_at = new Date().toISOString();
 	if (status === 'spedito') patch.shipped_at = new Date().toISOString();
 	const { error } = await aggiornaGruppo(supabase, key, patch, rows);
