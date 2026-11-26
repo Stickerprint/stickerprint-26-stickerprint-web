@@ -2825,6 +2825,111 @@ function rasterImage(file){return new Promise((res,rej)=>{
     c.getContext('2d').drawImage(im,0,0,w,h);URL.revokeObjectURL(url);res({canvas:c,mm:null});};
   im.onerror=()=>{URL.revokeObjectURL(url);rej(new Error('file illeggibile'));};
   im.src=url;});}
+/* ==========================================================================
+   ADESIVI GENERATI DALL'IA (Mattia, 26/11/2026)
+   ChatGPT e simili consegnano il disegno gia' "fatto a sticker": un bordo bianco tutto attorno
+   e un'ombra grigia sotto. Il cliente lo carica cosi', e senza questo passaggio stampavamo bordo
+   e ombra di ChatGPT, con il taglio sul suo contorno: non e' il nostro standard, il file lo
+   sistemiamo noi. Qui lo sticker si riconosce e bordo + ombra si cancellano, prima di qualsiasi
+   altra analisi: per il resto del motore il disegno e' su fondo pulito, e il taglio si ricava
+   dal disegno con il NOSTRO bordo.
+
+   Come si riconosce: attorno al disegno c'e' una fascia CHIARA E NEUTRA (bianco del bordo +
+   grigio dell'ombra) che lo abbraccia tutto e ha spessore QUASI COSTANTE, perche' e' il contorno
+   del disegno allargato. Un riquadro bianco voluto (un tondo, un rettangolo con le scritte dentro)
+   ha invece distanze dal disegno che cambiano molto, e resta com'e'.
+   Tarato su 399 file veri dei clienti: scattano solo i 5 che sono davvero sticker con il bordo
+   bianco, nessun falso allarme. Misure sul caso Suzuki: copertura 1,00, spessore 3,6% del lato,
+   variazione 0,32 (le soglie sono 0,9 / 1,2-12% / 0,4).
+   ========================================================================== */
+function togliCorniceAdesivo(){
+  S.corniceTolta=null;S.corniceMisure=null;
+  const esce=(m,x)=>{S.corniceMisure=Object.assign({esito:m},x||{});};
+  const src=S.src;if(!src)return esce('nessun file');
+  const W0=src.width,H0=src.height,k=Math.min(1,600/Math.max(W0,H0));
+  const w=Math.max(1,Math.round(W0*k)),h=Math.max(1,Math.round(H0*k)),N=w*h;
+  const cv=document.createElement('canvas');cv.width=w;cv.height=h;
+  const cx=cv.getContext('2d',{willReadFrequently:true});cx.imageSmoothingQuality='high';cx.drawImage(src,0,0,w,h);
+  const d=cx.getImageData(0,0,w,h).data;
+  /* 1. il fondo: colore del bordo dell'immagine (o trasparenza), e deve essere uniforme */
+  const bordo=[];
+  for(let x=0;x<w;x++){bordo.push(x,(h-1)*w+x);}for(let y=1;y<h-1;y++){bordo.push(y*w,y*w+w-1);}
+  let trasp=0;for(const i of bordo)if(d[i*4+3]<128)trasp++;
+  const trasparente=trasp>=bordo.length*0.7;
+  let ref=[255,255,255];
+  if(!trasparente){
+    const op=bordo.filter(i=>d[i*4+3]>=128),ch=[0,1,2].map(c=>op.map(i=>d[i*4+c]).sort((a,b)=>a-b));
+    if(!op.length)return esce('bordo vuoto');
+    ref=ch.map(v=>v[v.length>>1]);
+    let ok=0;for(const i of op){const p=i*4;if(Math.max(Math.abs(d[p]-ref[0]),Math.abs(d[p+1]-ref[1]),Math.abs(d[p+2]-ref[2]))<=14)ok++;}
+    if(ok<op.length*0.7)return esce('fondo non uniforme',{uniforme:ok/op.length});}
+  const fondo=i=>{const p=i*4;if(trasparente)return d[p+3]<128;
+    if(d[p+3]<128)return true;
+    return Math.max(Math.abs(d[p]-ref[0]),Math.abs(d[p+1]-ref[1]),Math.abs(d[p+2]-ref[2]))<=10;};
+  /* 2. fuori: tutto il fondo raggiungibile dal bordo */
+  const fuori=new Uint8Array(N),st=[];
+  for(const i of bordo)if(!fuori[i]&&fondo(i)){fuori[i]=1;st.push(i);}
+  while(st.length){const i=st.pop(),x=i%w;
+    if(x>0&&!fuori[i-1]&&fondo(i-1)){fuori[i-1]=1;st.push(i-1);}
+    if(x<w-1&&!fuori[i+1]&&fondo(i+1)){fuori[i+1]=1;st.push(i+1);}
+    if(i>=w&&!fuori[i-w]&&fondo(i-w)){fuori[i-w]=1;st.push(i-w);}
+    if(i<N-w&&!fuori[i+w]&&fondo(i+w)){fuori[i+w]=1;st.push(i+w);}}
+  let nM=0;for(let i=0;i<N;i++)if(!fuori[i])nM++;
+  if(nM<N*0.05)return esce('figura troppo piccola',{figura:nM/N});
+  /* 3. la fascia: pixel chiari e neutri (bianco del bordo, grigio dell'ombra) raggiungibili dal
+     contorno della figura senza attraversare il disegno */
+  const chiaro=i=>{const p=i*4;if(d[p+3]<128)return false;
+    const mx=Math.max(d[p],d[p+1],d[p+2]),mn=Math.min(d[p],d[p+1],d[p+2]);
+    return (d[p]+d[p+1]+d[p+2])/3>=150&&mx-mn<=30;};
+  const confina=i=>{const x=i%w;return (x>0&&fuori[i-1])||(x<w-1&&fuori[i+1])||(i>=w&&fuori[i-w])||(i<N-w&&fuori[i+w]);};
+  const B=new Uint8Array(N),conf=[];
+  for(let i=0;i<N;i++)if(!fuori[i]&&confina(i)){conf.push(i);if(chiaro(i)){B[i]=1;st.push(i);}}
+  if(conf.length<40)return esce('contorno troppo corto');
+  while(st.length){const i=st.pop(),x=i%w;
+    const prova=j=>{if(!B[j]&&!fuori[j]&&chiaro(j)){B[j]=1;st.push(j);}};
+    if(x>0)prova(i-1);if(x<w-1)prova(i+1);if(i>=w)prova(i-w);if(i<N-w)prova(i+w);}
+  const nucleo=new Uint8Array(N);let nN=0,nB=0,nBianco=0;
+  for(let i=0;i<N;i++){if(fuori[i])continue;
+    if(B[i]){nB++;const p=i*4;if((d[p]+d[p+1]+d[p+2])/3>=235)nBianco++;}else{nucleo[i]=1;nN++;}}
+  if(nN<nM*0.25||!nB)return esce('niente dentro la fascia',{nucleo:nN/nM,fascia:nB});
+  /* 4. spessore della fascia: distanza dal disegno, letta lungo il contorno della figura */
+  const dist=edt2d(nucleo,w,h);
+  let somma=0,somma2=0,inB=0;const ds=[];
+  for(const i of conf){const v=Math.sqrt(dist[i]);ds.push(v);somma+=v;somma2+=v*v;if(B[i])inB++;}
+  const n=conf.length,media=somma/n,sd=Math.sqrt(Math.max(0,somma2/n-media*media));
+  const mis={copertura:inB/n,spessore:media/Math.max(w,h)*100,variazione:sd/Math.max(1e-6,media),
+    bianco:nBianco/nB,nucleo:nN/nM};
+  const sticker=mis.copertura>=0.9&&mis.spessore>=1.2&&mis.spessore<=12&&mis.variazione<=0.4&&mis.bianco>=0.6&&mis.nucleo>=0.25;
+  if(!sticker)return esce('non e\' uno sticker',mis);
+  /* 5. si cancella solo la fascia esterna (fino a una volta e mezza lo spessore piu' largo):
+     il bianco che sta DENTRO il disegno, tra un tratto e l'altro, non si tocca */
+  ds.sort((a,b)=>a-b);
+  const largo=Math.max(media*1.5,ds[Math.floor(ds.length*0.95)])+2;
+  const dentroM=edt2d(fuori,w,h);
+  const togli=new Uint8Array(N);
+  for(let i=0;i<N;i++)if(B[i]&&Math.sqrt(dentroM[i])<=largo)togli[i]=1;
+  /* anche 3 px di fuori, dove l'ombra sfuma nel fondo e lascerebbe un filo */
+  const figura=new Uint8Array(N);for(let i=0;i<N;i++)figura[i]=fuori[i]?0:1;
+  const dallaFigura=edt2d(figura,w,h);
+  for(let i=0;i<N;i++)if(fuori[i]&&dallaFigura[i]<=9)togli[i]=1;
+  /* 6. si dipinge sul file a piena risoluzione: solo pixel chiari e neutri dentro la zona trovata */
+  const out=document.createElement('canvas');out.width=W0;out.height=H0;
+  const oc=out.getContext('2d',{willReadFrequently:true});oc.drawImage(src,0,0);
+  const id=oc.getImageData(0,0,W0,H0),D=id.data;
+  const kx=w/W0,ky=h/H0;let dipinti=0;
+  for(let y=0;y<H0;y++){const sy=Math.min(h-1,Math.floor(y*ky));
+    for(let x=0;x<W0;x++){const sx=Math.min(w-1,Math.floor(x*kx));
+      if(!togli[sy*w+sx])continue;
+      const p=(y*W0+x)*4;
+      if(D[p+3]>=128){const mx=Math.max(D[p],D[p+1],D[p+2]),mn=Math.min(D[p],D[p+1],D[p+2]);
+        if((D[p]+D[p+1]+D[p+2])/3<140||mx-mn>40)continue;}
+      if(trasparente){D[p+3]=0;}else{D[p]=ref[0];D[p+1]=ref[1];D[p+2]=ref[2];D[p+3]=255;}
+      dipinti++;}}
+  oc.putImageData(id,0,0);
+  S.src=out;
+  S.corniceTolta=Object.assign(mis,{pixel:dipinti});S.corniceMisure=Object.assign({esito:'tolta'},S.corniceTolta);
+  console.debug('[adesivo IA] bordo e ombra tolti',S.corniceTolta);}
+
 async function loadFile(f){
   const isPdf=f.type==='application/pdf'||/\.pdf$/i.test(f.name);
   if(!isPdf&&!/^image\//.test(f.type)&&!/\.(svg|png|jpe?g|webp)$/i.test(f.name)){
@@ -2837,6 +2942,8 @@ async function loadFile(f){
   try{
     const r=isPdf?await rasterPDF(f):await rasterImage(f);
     S.src=r.canvas;S.srcW=r.canvas.width;S.srcH=r.canvas.height;S.srcMM=r.mm;
+    /* sticker gia' fatto dall'IA: bordo bianco e ombra via prima di tutto il resto */
+    try{togliCorniceAdesivo();}catch(e){console.warn('pulizia sticker saltata',e);}
     S.name=f.name.replace(/\.[^.]+$/,'');S.seeds=[];S.lineSeed=null;S.mask=null;S.Rsafe=null;setWand(false);
     if(!$('job').value)$('job').value=S.name.slice(0,24);
     $('fileinfo').style.display='block';
