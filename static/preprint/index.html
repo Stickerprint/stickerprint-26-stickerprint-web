@@ -2233,6 +2233,29 @@ function despeckle(m,w,h,minFrac){const N=w*h,min=Math.max(24,N*minFrac);
       if(y<h-1&&m[i+w]&&!seen[i+w]){seen[i+w]=1;st.push(i+w);comp.push(i+w);}}
     if(comp.length>=min)for(const i of comp)keep[i]=1;}
   return keep;}
+/* MACCHIOLINE ISOLATE (SP00680, 26/11/2026)
+   despeckle() guarda ogni pezzo da solo: una scritta piccola e' fatta di lettere staccate e ogni
+   lettera, presa da sola, pesa meno di una macchiolina. Con la soglia dello 0,03% sparivano
+   "NUMERO VERDE" e il "CI" di "TECNOLOGICI". Qui i pezzi si raggruppano per vicinanza (meno di
+   un raggio r l'uno dall'altro, circa 0,6% del lato lungo): una scritta e' un gruppo grande e
+   resta, un granello di carta lontano dal disegno e' un gruppo minuscolo e va via. */
+function togliMacchioline(m,w,h,minFrac){
+  const N=w*h,min=Math.max(24,N*minFrac),r=Math.max(2,Math.round(0.006*Math.max(w,h))),r2=r*r;
+  const vic=edt2d(m,w,h);                       /* distanza (al quadrato) dal pixel di disegno piu' vicino */
+  const lab=new Int32Array(N).fill(-1),peso=[],st=[];let n=0;
+  for(let s=0;s<N;s++){
+    if(vic[s]>r2||lab[s]>=0)continue;
+    lab[s]=n;st.length=0;st.push(s);let a=0;
+    while(st.length){const i=st.pop(),x=i%w,y=(i/w)|0;if(m[i])a++;
+      if(x>0&&lab[i-1]<0&&vic[i-1]<=r2){lab[i-1]=n;st.push(i-1);}
+      if(x<w-1&&lab[i+1]<0&&vic[i+1]<=r2){lab[i+1]=n;st.push(i+1);}
+      if(y>0&&lab[i-w]<0&&vic[i-w]<=r2){lab[i-w]=n;st.push(i-w);}
+      if(y<h-1&&lab[i+w]<0&&vic[i+w]<=r2){lab[i+w]=n;st.push(i+w);}}
+    peso.push(a);n++;}
+  let big=0;for(let k=1;k<n;k++)if(peso[k]>peso[big])big=k;
+  const out=Uint8Array.from(m);
+  for(let i=0;i<N;i++)if(m[i]&&lab[i]!==big&&peso[lab[i]]<min)out[i]=0;
+  return out;}
 function largestComponent(bin,w,h){const seen=new Uint8Array(w*h),out=new Uint8Array(w*h);
   let bs=-1,bn=0;const st=[];
   for(let s=0;s<w*h;s++){if(!bin[s]||seen[s])continue;
@@ -3128,7 +3151,7 @@ function autoSegment(){
   S.cands=r.cands;S.ctx0=r.ctx;
   try{verifyAtWork();}catch(e){console.warn('verifica saltata',e);}
   S.chosen=S.cands.length?0:-1;
-  S.sceltaUtente=false;S.cropAuto=false;
+  S.sceltaUtente=false;S.cropAuto=false;S.chosenPrimaCrop=undefined;
   paintAlts();}
 /* Con la SAGOMA lo sfondo va tolto sempre: chi sceglie die-cut non può
    ritrovarsi un rettangolo. La rete di sicurezza "tieni tutto" serve solo
@@ -3145,8 +3168,14 @@ function geoIdx(){
        dalla barra ("Rimetti il file com'era") non si tocca. Con la sagoma non cambia niente. */
     if(!S.sceltaUtente&&S.chosen>=0&&S.cands[S.chosen]&&S.cands[S.chosen].st.kind==='intero'){
       const i=S.cands.findIndex(c=>c.st.kind!=='intero');
-      if(i>=0&&S.cands[i].keptPct<=0.6&&(S.cands[i].borderTouch||0)<=0.05){S.chosen=i;S.cropAuto=true;}}
+      if(i>=0&&S.cands[i].keptPct<=0.6&&(S.cands[i].borderTouch||0)<=0.05){S.chosenPrimaCrop=S.chosen;S.chosen=i;S.cropAuto=true;}}
     return S.chosen;}
+  /* Tornando alla SAGOMA dopo una forma geometrica (SP00680, 26/11/2026): la scelta fatta qui sopra
+     per il rettangolo restava appiccicata — maschera cambiata e pulizia delle macchioline accesa —
+     e il sagomato perdeva le scritte piccole. Si torna alla scelta di partenza del motore. */
+  if(S.cropAuto&&!S.sceltaUtente){
+    if(S.chosenPrimaCrop!==undefined&&S.cands[S.chosenPrimaCrop])S.chosen=S.chosenPrimaCrop;
+    S.cropAuto=false;}
   /* l'operatore ha scelto lui la maschera dalle proposte: comanda la sua, sempre */
   if(S.sceltaUtente&&S.chosen>=0&&S.cands[S.chosen])return S.chosen;
   if(S.chosen>=0&&S.cands[S.chosen]&&S.cands[S.chosen].st.kind!=='intero')return S.chosen;
@@ -3442,7 +3471,7 @@ function computeMask(){
        lascia qualche macchiolina isolata lontano dal disegno, e il riquadro del disegno si allarga
        fino a li' (BOURBON: l'etichetta usciva piccola nel rettangolo). Via i pezzetti sotto lo 0,03%
        dell'immagine (un quadratino di 20 px su un file da 1500): un elemento vero e' piu' grande */
-    if(S.cropAuto)m=despeckle(m,w,h,0.0003);}
+    if(S.cropAuto&&$('shp').value!=='diecut')m=togliMacchioline(m,w,h,0.0003);}
   /* Lo sfondo, per definizione, sta FUORI dal disegno. Se lo scontorno ha
      tolto qualcosa che il disegno racchiude — il tratto nero fra le gambe
      su un fondo nero, le controforme delle lettere — quella non è sfondo,
