@@ -17,10 +17,11 @@ import { account } from './account';
 import { pagine } from './pagine';
 import { email } from './email';
 import { documenti } from './documenti';
+import { proposte } from './proposte';
 
 const LINGUE: Lang[] = ['it', 'en', 'es', 'fr', 'de', 'nl'];
 /** tutte le aree insieme, per lingua */
-export const MESSAGGI = Object.fromEntries(LINGUE.map((l) => [l, { ...comune[l], home: home[l], prodotti: prodotti[l], configuratore: configuratore[l], kit: kit[l], fogli: fogli[l], checkout: checkout[l], account: account[l], pagine: pagine[l], email: email[l], documenti: documenti[l] }])) as unknown as Record<Lang, Record<string, unknown>>;
+export const MESSAGGI = Object.fromEntries(LINGUE.map((l) => [l, { ...comune[l], home: home[l], prodotti: prodotti[l], configuratore: configuratore[l], kit: kit[l], fogli: fogli[l], checkout: checkout[l], account: account[l], pagine: pagine[l], email: email[l], documenti: documenti[l], proposte: proposte[l] }])) as unknown as Record<Lang, Record<string, unknown>>;
 export type Params = Record<string, string | number>;
 export type T = (chiave: string, params?: Params) => string;
 

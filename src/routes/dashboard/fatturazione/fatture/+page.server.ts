@@ -1,4 +1,5 @@
 import type { PageServerLoad } from './$types';
+import { linguaDaPaese } from '$lib/lingua-cliente';
 
 export const load: PageServerLoad = async ({ url, locals: { supabase } }) => {
 	const year = Number(url.searchParams.get('anno')) || new Date().getFullYear();
@@ -8,7 +9,10 @@ export const load: PageServerLoad = async ({ url, locals: { supabase } }) => {
 	const paths = (data ?? []).map((i) => i.pdf_path as string | null).filter((p): p is string => !!p);
 	const signed = new Map<string, string>();
 	if (paths.length) { const { data: s } = await supabase.storage.from('invoices').createSignedUrls(paths, 3600); for (const x of s ?? []) if (x.path && x.signedUrl) signed.set(x.path, x.signedUrl); }
-	const invoices = (data ?? []).map((inv) => ({ ...inv, pdf: inv.pdf_path ? (signed.get(inv.pdf_path) ?? null) : null }));
+	/* cliente estero: il file salvato e' la copia del cliente (la sua lingua, i dollari se ha pagato in dollari); dall'elenco si
+	   apre la nostra, in italiano e in euro, rigenerata dai dati */
+	const estera = (b: unknown) => linguaDaPaese((b as Record<string, string> | null)?.country) !== 'it';
+	const invoices = (data ?? []).map((inv) => ({ ...inv, pdf: estera(inv.billing) ? `/dashboard/fatturazione/fatture/${inv.id}/pdf` : inv.pdf_path ? (signed.get(inv.pdf_path) ?? null) : null }));
 	const years = Array.from({ length: 4 }, (_, i) => new Date().getFullYear() - i);
 	return { invoices, year, years };
 };

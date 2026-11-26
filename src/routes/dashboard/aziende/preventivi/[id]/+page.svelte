@@ -4,8 +4,12 @@
 	import PreventivoConCosti from '$lib/components/dashboard/PreventivoConCosti.svelte';
 	import { QUOTE_STATUS, defaultQuoteEmail, puoDiventareOrdine, type QuoteStatus } from '$lib/dashboard/richieste';
 	import { money, dmy } from '$lib/dashboard/orders';
+	import type { Lang } from '$lib/i18n';
+	import { NOME_LINGUA, linguaPreventivo } from '$lib/lingua-cliente';
 	import { fmtAgo, fmtWhen } from '$lib/dashboard/produzione';
 	let { data, form } = $props();
+	/* lingua in cui il cliente riceve email e documenti (dal paese in anagrafica): si calcola aprendo il popup di invio */
+	let linguaCliente = $state<Lang>('it');
 	/* cancellazione in due passaggi, senza finestrelle del browser */
 	let cancellare = $state(false);
 	/* "Trasforma in ordine" in due passaggi: da un preventivo non ancora accettato l'ordine non deve nascere per un clic sbagliato */
@@ -33,7 +37,8 @@
 		let draft = q.draft;
 		try { const raw = (document.querySelector('#order-editor input[name=payload]') as HTMLInputElement | null)?.value; if (raw) draft = JSON.parse(raw); } catch { /* bozza salvata */ }
 		const totals = draft.items.reduce((a, i) => a + Number(i.qty || 0) * Number(i.price || 0), 0) * (draft.price_type === 'lordi' ? 1 : 1.22);
-		const def = defaultQuoteEmail({ number: q.number, draft, total_gross: Math.round(totals * 100) / 100, valid_until: q.valid_until }, data.sender);
+		linguaCliente = linguaPreventivo(draft).lang;
+		const def = defaultQuoteEmail({ number: q.number, draft, total_gross: Math.round(totals * 100) / 100, valid_until: q.valid_until }, data.sender, linguaCliente);
 		to = draft.customer.email ?? '';
 		subject = q.sent_subject ?? def.subject;
 		message = q.sent_message ?? def.body;
@@ -149,6 +154,7 @@
 					<label class="osub">A <input name="to" type="email" bind:value={to} required /></label>
 					<label class="osub">Copia a (facoltativo) <input name="cc" bind:value={cc} placeholder="altro@azienda.it" /></label>
 					<label class="osub">Oggetto <input name="subject" bind:value={subject} required /></label>
+					{#if linguaCliente !== 'it'}<span class="osub" style="padding:8px 10px;background:#eef4ff;border-radius:8px;color:#1d3a8a">🌍 Questo cliente riceve email e documenti in <b>{NOME_LINGUA[linguaCliente]}</b>: il testo proposto è già in {NOME_LINGUA[linguaCliente]}. Se lo cambi, scrivilo nella sua lingua.</span>{/if}
 					<label class="osub">Testo <textarea name="message" bind:value={message} rows="10" required></textarea></label>
 					<span class="osub">Firma: <b>Stickerprint-Staff</b>, sempre. Scrivi al plurale e non mettere il tuo nome nel testo.</span>
 					<label class="osub qt-check"><input type="checkbox" name="auto_remind" bind:checked={autoRemind} /> Ricordaglielo da solo se non risponde entro 5 giorni</label>

@@ -12,14 +12,18 @@ import { paypalConfigured, settlePayPalReturn } from '$lib/server/paypal';
 import { t } from '$lib/traduzioni';
 import { leggiDatiFattura, type DatiFattura } from '$lib/dati-fattura';
 import { chiedeDatiFattura, salvaDatiFatturaOrdine } from '$lib/server/dati-fattura';
+import { linguaOrdine } from '$lib/lingua-cliente';
+import { vaiAllaLinguaDelCliente } from '$lib/server/lingua-pagina';
 import type { Actions, PageServerLoad } from './$types';
 
 /** Pagina pubblica della conferma d'ordine: articoli, indirizzi, scadenze con pagamento, PDF, domande e segnalazioni. */
-export const load: PageServerLoad = async ({ params, url, request, locals: { locale } }) => {
+export const load: PageServerLoad = async ({ params, url, request, locals: { locale, user } }) => {
 	const db = adminClient();
 	if (!db) error(503, t(locale, 'account.errori.servizio'));
 	const c = await getByToken(db, params.token);
 	if (!c) error(404, t(locale, 'account.errori.confermaNonTrovata'));
+	/* la pagina nella lingua del cliente anche se il link non ha il prefisso (email vecchie, link copiati) */
+	vaiAllaLinguaDelCliente(url, locale, linguaOrdine(c.group.items[0]).locale, !!user);
 	if (request.method === 'GET' && url.searchParams.get('anteprima') !== '1' && c.conf.sent_at) await trackOpen(db, c.conf);
 	// ritorno da Stripe: se il webhook non e' ancora arrivato, si controlla la sessione e si segna il pagamento
 	const sid = url.searchParams.get('session_id');

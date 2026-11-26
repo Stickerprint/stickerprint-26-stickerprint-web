@@ -1,9 +1,11 @@
 /** Salvataggio ordini dalla dashboard (nuovo o modifica), anagrafica e conferma d'ordine. */
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { CATS, SHIPPING_METHODS, catLabel, groupOrders, money, type OrderRow } from '$lib/dashboard/orders';
+import { CATS, SHIPPING_METHODS, catLabel, groupOrders, money, nomeArticolo, type OrderRow } from '$lib/dashboard/orders';
+import { t as tradotto } from '$lib/traduzioni';
+import { dataCliente, formatoValuta, linguaOrdine } from '$lib/lingua-cliente';
 import type { Lang } from '$lib/i18n';
 import { VAT, r2, categoryOf, type OrderDraft, type ProductCode } from '$lib/dashboard/orderDraft';
-import type { PaymentMethod } from '$lib/dashboard/payments';
+import { paymentLabelFor, type PaymentMethod } from '$lib/dashboard/payments';
 import { buildOrderPdf } from './docs';
 import { sendEmail } from './email';
 import { manualOrderEmail } from './email-templates';
@@ -106,10 +108,15 @@ export async function sendOrderConfirmation(supabase: SupabaseClient, group: str
 	const { data } = await supabase.from('orders').select('*').eq('checkout_group', group);
 	const g = data?.length ? groupOrders(data as OrderRow[])[0] : null;
 	if (!g?.email) return { ok: false, message: 'L’ordine non ha un indirizzo email.' };
-	const doc = await orderPdfForGroup(supabase, group);
 	const f = g.items[0];
-	const mail = manualOrderEmail({ name: f.billing?.first_name || g.customer, number: g.number, total: money(g.gross), lines: g.items.map((i) => ({ name: i.product_name, qty: i.qty, meta: i.description ?? null, preview: i.mockup_url ?? i.preview_url ?? null })), shipDate: g.delivery_date ? new Date(g.delivery_date).toLocaleDateString('it-IT') : 'da confermare', terms: (f.payment_terms ?? []).map((t) => `${new Date(t.due).toLocaleDateString('it-IT')} · ${money(Number(t.amount))} · ${t.method}`) });
-	const r = await sendEmail({ to: g.email, ...mail, attachments: doc ? [{ name: `Conferma-ordine-${g.number}.pdf`, content: toB64(doc.pdf), contentType: 'application/pdf' }] : [] });
+	/* email e PDF nella lingua del cliente (26/11/2026): per un ordine inserito da noi decide il paese di fatturazione */
+	const L = linguaOrdine(f);
+	const ita = L.lang === 'it';
+	const doc = await orderPdfForGroup(supabase, group, L.lang);
+	const soldi = (v: number) => (ita ? money(v) : formatoValuta(v, 'EUR', L.lang));
+	const giorno = (d: string) => (ita ? new Date(d).toLocaleDateString('it-IT') : (dataCliente(d, L.lang, 'breve') ?? d));
+	const mail = manualOrderEmail({ name: f.billing?.first_name || g.customer, number: g.number, total: soldi(g.gross), lines: g.items.map((i) => ({ name: nomeArticolo(i, L.lang), qty: i.qty, meta: i.description ?? null, preview: i.mockup_url ?? i.preview_url ?? null })), shipDate: g.delivery_date ? giorno(g.delivery_date) : tradotto(L.locale, 'proposte.daConfermare'), terms: (f.payment_terms ?? []).map((t) => `${giorno(t.due)} · ${soldi(Number(t.amount))} · ${paymentLabelFor(t.method, L.lang)}`) }, L.lang);
+	const r = await sendEmail({ to: g.email, ...mail, attachments: doc ? [{ name: tradotto(L.locale, 'account.doc.fileConferma', { n: g.number }), content: toB64(doc.pdf), contentType: 'application/pdf' }] : [] });
 	if (!r.ok) return { ok: false, message: r.error ?? 'Email non inviata.' };
 	return { ok: true, message: r.skipped ? 'Postmark non configurato: email non inviata (simulata).' : `Conferma inviata a ${g.email}.` };
 }

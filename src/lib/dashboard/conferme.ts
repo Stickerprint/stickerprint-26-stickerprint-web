@@ -1,5 +1,8 @@
 /** Conferma d'ordine come pagina del cliente: tipi e testo email proposto (condivisi tra server e browser). */
 import type { OrderGroup } from './orders';
+import { LOCALES, type Lang } from '$lib/i18n';
+import { perLingua, t as tradotto } from '$lib/traduzioni';
+import { dataCliente, formatoValuta, linguaOrdine } from '$lib/lingua-cliente';
 
 export type PaymentStatus = 'da_pagare' | 'pagato' | 'annullato';
 export interface OrderPayment { id: string; checkout_group: string; seq: number; method: string; due: string; amount: number; upfront: boolean; status: PaymentStatus; paid_at: string | null; provider: string | null; provider_ref: string | null; note: string | null; created_at: string; kind?: 'scadenza' | 'integrazione'; reason?: string | null; changes?: IntegrationChange[] | null; invoice_id?: string | null }
@@ -16,16 +19,21 @@ const itLong = (d: string | null) => (d ? new Date(d + 'T12:00:00').toLocaleDate
 /** somma delle scadenze anticipate ancora da pagare */
 export const upfrontDue = (payments: OrderPayment[]) => payments.filter((p) => p.upfront && p.status === 'da_pagare').reduce((a, p) => a + Number(p.amount), 0);
 
-/** Email proposta: si modifica nel popup prima dell'invio */
-export function defaultConfirmEmail(g: Pick<OrderGroup, 'number' | 'customer' | 'items' | 'gross' | 'delivery_date'>, payments: OrderPayment[], _sender?: string | null): { subject: string; body: string } {
+/** Email proposta: si modifica nel popup prima dell'invio. Nella lingua del cliente (26/11/2026): quella dell'ordine,
+ *  cioe' il sito da cui ha ordinato o, per gli ordini inseriti da noi, il paese di fatturazione. */
+export function defaultConfirmEmail(g: Pick<OrderGroup, 'number' | 'customer' | 'items' | 'gross' | 'delivery_date'>, payments: OrderPayment[], _sender?: string | null, lang: Lang = linguaOrdine(g.items[0]).lang): { subject: string; body: string } {
+	const P = (k: string, params?: Record<string, string | number>) => tradotto(perLingua(lang), `proposte.${k}`, params);
+	const soldi = (v: number) => (lang === 'it' ? eur(v) : formatoValuta(v, 'EUR', lang));
 	const f = g.items[0];
 	const first = (f.billing?.first_name || f.shipping?.first_name || '').trim() || g.customer;
-	const what = g.items.length === 1 ? `${g.items[0].qty.toLocaleString('it-IT')} ${g.items[0].description || g.items[0].product_name}` : `${g.items.length} articoli`;
+	const cosa = g.items[0].description || g.items[0].product_name;
+	const what = g.items.length === 1 ? `${g.items[0].qty.toLocaleString(LOCALES[perLingua(lang)].intl)} ${cosa}` : P('conferma.articoli', { n: g.items.length });
 	const due = upfrontDue(payments);
-	const subject = `La tua conferma d'ordine ${g.number}: ${g.items[0].description || g.items[0].product_name}`.slice(0, 120);
-	const pay = due > 0
-		? `\n\nPer far partire la produzione manca il pagamento anticipato di ${eur(due)}. Puoi pagare con carta di credito, PayPal o bonifico bancario dalla pagina qui sotto: una volta saldato, il tuo ordine entrerà automaticamente in produzione.`
-		: '\n\nL\'ordine è già in lavorazione.';
-	const body = `Ciao ${first},\n\nti confermiamo l'ordine ${g.number} per ${what}, totale ${eur(g.gross)} IVA inclusa${g.delivery_date ? `, spedizione prevista ${itLong(g.delivery_date)}` : ''}. Dal bottone qui sotto puoi controllare tutti i dettagli (articoli, indirizzi, scadenze) e scaricare il PDF.${pay}\n\nSe qualcosa non torna, segnalacelo direttamente dalla pagina: lo sistemiamo prima di stampare.\n\nA presto,\nStickerprint-Staff`;
+	const subject = P('conferma.oggetto', { n: g.number, cosa }).slice(0, 120);
+	const pay = due > 0 ? P('conferma.daPagare', { importo: soldi(due) }) : P('conferma.inLavorazione');
+	/* senza IVA (cliente estero con partita IVA valida, fuori UE) non si scrive "IVA inclusa" */
+	const iva = Number((f as { vat_rate?: number | null }).vat_rate ?? 0.22) === 0 ? '' : P('ivaInclusa');
+	const spedizione = g.delivery_date ? P('conferma.spedizione', { data: (lang === 'it' ? itLong(g.delivery_date) : dataCliente(g.delivery_date, lang)) ?? '' }) : '';
+	const body = `${P('conferma.corpo', { nome: first, n: g.number, cosa: what, totale: soldi(g.gross), iva, spedizione })}${pay}${P('conferma.chiusura', { firma: 'Stickerprint-Staff' })}`;
 	return { subject, body };
 }

@@ -2,6 +2,7 @@ import { error, fail, redirect } from '@sveltejs/kit';
 import { groupOrders, type OrderRow } from '$lib/dashboard/orders';
 import { upsertContact } from '$lib/server/orders';
 import { anteprimaAreaPersonale, creaAreaPersonale, eliminaAccount } from '$lib/server/area-personale';
+import { linguaDaEmail } from '$lib/server/lingua-db';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ params, locals: { supabase } }) => {
@@ -49,14 +50,17 @@ export const actions: Actions = {
 	areaAnteprima: async ({ params, locals: { supabase } }) => {
 		const c = await clienteArea(supabase, params.id);
 		if (!c) return fail(400, { error: 'Cliente senza email: aggiungila prima nell\'anagrafica.' });
-		const mail = anteprimaAreaPersonale({ email: c.email, name: c.name, orders: c.orders });
+		/* nella lingua del cliente: quella del suo ultimo ordine (26/11/2026) */
+		const L = await linguaDaEmail(supabase, c.email);
+		const mail = anteprimaAreaPersonale({ email: c.email, name: c.name, orders: c.orders, lang: L.lang });
 		return { anteprima: { subject: mail.subject, html: mail.html, to: c.email } };
 	},
 	areaCrea: async ({ request, params, locals: { supabase } }) => {
 		const c = await clienteArea(supabase, params.id);
 		if (!c) return fail(400, { error: 'Cliente senza email: aggiungila prima nell\'anagrafica.' });
 		const altre = String((await request.formData()).get('altre_email') ?? '').split(/[,;\s]+/).filter(Boolean);
-		const r = await creaAreaPersonale({ email: c.email, name: c.name, phone: c.phone, altreEmail: altre });
+		const L = await linguaDaEmail(supabase, c.email);
+		const r = await creaAreaPersonale({ email: c.email, name: c.name, phone: c.phone, altreEmail: altre, lang: L.lang });
 		if (!r.ok) return fail(400, { error: r.error });
 		return { area: r.esito };
 	},

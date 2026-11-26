@@ -4,7 +4,9 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { money } from '$lib/dashboard/orders';
-import type { Lang } from '$lib/i18n';
+import { localizePath, type Lang } from '$lib/i18n';
+import { dataCliente, linguaPreventivo } from '$lib/lingua-cliente';
+import { linguaContatto } from './lingua-db';
 import { perLingua, t as tradotto } from '$lib/traduzioni';
 import { draftTotals, emptyDraft, type OrderDraft } from '$lib/dashboard/orderDraft';
 import { buildOrderPdf } from './docs';
@@ -23,7 +25,6 @@ type DB = SupabaseClient;
 export const toB64 = (bytes: Uint8Array) => { let s = ''; for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000)); return btoa(s); };
 const today = () => new Date().toISOString().slice(0, 10);
 const addDays = (d: string, n: number) => { const x = new Date(d + 'T12:00:00'); x.setDate(x.getDate() + n); return x.toISOString().slice(0, 10); };
-const itDate = (d: string | null) => (d ? new Date(d + 'T12:00:00').toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' }) : null);
 
 /* ---------- richieste ---------- */
 export async function listRequests(db: DB): Promise<ContactRequest[]> {
@@ -87,7 +88,9 @@ export async function replyRequest(db: DB, id: string, body: string, author: str
 		attachments.push({ name: f.name, content: btoa(bin), contentType: f.type || blob.type || 'application/octet-stream' });
 		tot += bytes.length;
 	}
-	const mail = requestReplyEmail({ name: r.name, body: text, author, attachments: links }, 'it');
+	/* cornice dell'email nella lingua del cliente: quella del modulo da cui ha scritto, altrimenti del suo ultimo ordine */
+	const L = await linguaContatto(adminClient() ?? db, r as { lang?: string | null; email: string });
+	const mail = requestReplyEmail({ name: r.name, body: text, author, attachments: links }, L.lang);
 	const bcc = r.email.trim().toLowerCase() === COPIA_RISPOSTE ? undefined : COPIA_RISPOSTE;
 	const sent = await sendEmail({ to: r.email, subject: mail.subject, html: mail.html, tag: mail.tag, replyTo: OWNER_EMAIL, bcc, attachments: attachments.length ? attachments : undefined, metadata: { request: r.id } });
 	if (!sent.ok) return { ok: false, error: sent.error ?? 'Email non inviata.' };
@@ -239,7 +242,9 @@ export async function sendQuote(db: DB, id: string, origin: string, o: { to?: st
 	if (!q.draft.items.some((i) => Number(i.qty) > 0)) return { ok: false, message: 'Aggiungi almeno un articolo.' };
 	if (!o.subject.trim() || !o.message.trim()) return { ok: false, message: 'Oggetto e testo dell\'email sono obbligatori.' };
 	const validUntil = q.valid_until ?? addDays(today(), QUOTE_VALID_DAYS);
-	const mail = quoteEmail({ subject: o.subject.trim(), message: o.message.trim(), senderName: o.sender, number: q.number, validUntil: itDate(validUntil), href: `${origin}/preventivo/${q.token}` });
+	/* cornice dell'email, scadenza e pagina nella lingua del cliente (paese in anagrafica); il testo proposto e' gia' in lingua */
+	const L = linguaPreventivo(q.draft);
+	const mail = quoteEmail({ subject: o.subject.trim(), message: o.message.trim(), senderName: o.sender, number: q.number, validUntil: dataCliente(validUntil, L.lang), href: `${origin}${localizePath(`/preventivo/${q.token}`, L.locale)}` }, L.lang);
 	const cc = (o.cc || '').split(/[,;\s]+/).map((x) => x.trim().toLowerCase()).filter((x) => /^[^@]+@[^@]+\.[^@]+$/.test(x));
 	const r = await sendEmail({ to: [email, ...cc], ...mail, metadata: { quote: q.number } });
 	if (!r.ok) return { ok: false, message: r.error ?? 'Email non inviata.' };
@@ -250,7 +255,8 @@ export async function sendQuote(db: DB, id: string, origin: string, o: { to?: st
 export async function remindQuote(db: DB, id: string, origin: string): Promise<{ ok: boolean; message: string }> {
 	const q = await getQuote(db, id);
 	if (!q || q.status !== 'inviato') return { ok: false, message: 'Solo i preventivi inviati si possono sollecitare.' };
-	const mail = quoteReminderEmail({ name: q.draft.customer.first_name || q.draft.customer.name, number: q.number, validUntil: itDate(q.valid_until), href: `${origin}/preventivo/${q.token}`, senderName: q.sender_name });
+	const L = linguaPreventivo(q.draft);
+	const mail = quoteReminderEmail({ name: q.draft.customer.first_name || q.draft.customer.name, number: q.number, validUntil: dataCliente(q.valid_until, L.lang), href: `${origin}${localizePath(`/preventivo/${q.token}`, L.locale)}`, senderName: q.sender_name }, L.lang);
 	const r = await sendEmail({ to: q.draft.customer.email, ...mail });
 	if (!r.ok) return { ok: false, message: r.error ?? 'Email non inviata.' };
 	await db.from('quotes').update({ reminded_at: new Date().toISOString() }).eq('id', id);
@@ -303,7 +309,8 @@ export async function replyQuote(db: DB, id: string, body: string, author: strin
 	const q = await getQuote(db, id);
 	if (!q) return 'Preventivo non trovato.';
 	await db.from('quote_messages').insert({ quote_id: id, direction: 'out', author, body: body.trim() });
-	const r = await sendEmail({ to: q.draft.customer.email, ...quoteReplyEmail({ name: q.draft.customer.first_name || q.draft.customer.name, number: q.number, body: body.trim(), author, href: `${origin}/preventivo/${q.token}` }) });
+	const L = linguaPreventivo(q.draft);
+	const r = await sendEmail({ to: q.draft.customer.email, ...quoteReplyEmail({ name: q.draft.customer.first_name || q.draft.customer.name, number: q.number, body: body.trim(), author, href: `${origin}${localizePath(`/preventivo/${q.token}`, L.locale)}` }, L.lang) });
 	if (!r.ok) return r.error ?? 'Email non inviata.';
 	await db.from('quotes').update({ unread: false, updated_at: new Date().toISOString() }).eq('id', id);
 	return null;

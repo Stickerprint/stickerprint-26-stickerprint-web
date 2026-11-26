@@ -36,7 +36,7 @@ const it = {
 		ddtRiga: 'DDT {n}', ddtDel: ' del {data}', express: 'Produzione express (+30%)', spedizione: 'Spedizione', spedizioneRemota: 'Spedizione (isole e zone remote)',
 		ivaAliquota: 'IVA {p}%', ivaZero: 'IVA 0% ({natura})', totale: 'Totale',
 		n31: 'Non imponibile art. 8 DPR 633/72', n32: 'Non imponibile art. 41 DL 331/93', nonImponibile: 'Operazione non imponibile IVA',
-		addebitato: 'Addebitato nella tua valuta: {importo}',
+		controvalore: 'Importo registrato in euro ai fini fiscali: {importo}',
 		prova: 'Prova automatica immediata inviata via email. Spedizione con corriere espresso tracciato.', generato: 'Documento generato automaticamente da stickerprint.it',
 		carta: 'Carta di credito (Stripe)', bonifico: 'Bonifico bancario'
 	},
@@ -55,7 +55,7 @@ const en: Documenti = {
 		ddtRiga: 'Delivery note {n}', ddtDel: ' dated {data}', express: 'Express production (+30%)', spedizione: 'Shipping', spedizioneRemota: 'Shipping (islands and remote areas)',
 		ivaAliquota: 'VAT {p}%', ivaZero: 'VAT 0% ({natura})', totale: 'Total',
 		n31: 'VAT not applicable: export of goods (art. 8 DPR 633/72, art. 146 Directive 2006/112/EC)', n32: 'VAT exempt: intra-Community supply of goods (art. 41 DL 331/93, art. 138 Directive 2006/112/EC)', nonImponibile: 'Transaction not subject to VAT',
-		addebitato: 'Charged in your currency: {importo}',
+		controvalore: 'Amount recorded in euros for Italian tax purposes: {importo}',
 		prova: 'Automatic proof sent by email right away. Shipped by tracked express courier.', generato: 'Document generated automatically by stickerprint.it',
 		carta: 'Credit card (Stripe)', bonifico: 'Bank transfer'
 	},
@@ -73,7 +73,7 @@ const es: Documenti = {
 		ddtRiga: 'Albarán {n}', ddtDel: ' del {data}', express: 'Producción exprés (+30%)', spedizione: 'Envío', spedizioneRemota: 'Envío (islas y zonas remotas)',
 		ivaAliquota: 'IVA {p}%', ivaZero: 'IVA 0% ({natura})', totale: 'Total',
 		n31: 'Operación no sujeta a IVA: exportación de bienes (art. 8 DPR 633/72, art. 146 Directiva 2006/112/CE)', n32: 'Exenta de IVA: entrega intracomunitaria de bienes (art. 41 DL 331/93, art. 138 Directiva 2006/112/CE)', nonImponibile: 'Operación no sujeta a IVA',
-		addebitato: 'Cobrado en tu moneda: {importo}',
+		controvalore: 'Importe registrado en euros a efectos fiscales: {importo}',
 		prova: 'Prueba automática enviada por correo al instante. Envío con mensajería exprés con seguimiento.', generato: 'Documento generado automáticamente por stickerprint.it',
 		carta: 'Tarjeta de crédito (Stripe)', bonifico: 'Transferencia bancaria'
 	},
@@ -91,7 +91,7 @@ const fr: Documenti = {
 		ddtRiga: 'Bon de livraison {n}', ddtDel: ' du {data}', express: 'Production express (+30 %)', spedizione: 'Livraison', spedizioneRemota: 'Livraison (îles et zones éloignées)',
 		ivaAliquota: 'TVA {p} %', ivaZero: 'TVA 0 % ({natura})', totale: 'Total',
 		n31: 'TVA non applicable : exportation de biens (art. 8 DPR 633/72, art. 146 Directive 2006/112/CE)', n32: 'Exonération de TVA : livraison intracommunautaire de biens (art. 41 DL 331/93, art. 138 Directive 2006/112/CE)', nonImponibile: 'Opération non soumise à la TVA',
-		addebitato: 'Débité dans votre devise : {importo}',
+		controvalore: 'Montant enregistré en euros à des fins fiscales : {importo}',
 		prova: 'Épreuve automatique envoyée immédiatement par e-mail. Expédition par transporteur express avec suivi.', generato: 'Document généré automatiquement par stickerprint.it',
 		carta: 'Carte bancaire (Stripe)', bonifico: 'Virement bancaire'
 	},
@@ -109,7 +109,7 @@ const de: Documenti = {
 		ddtRiga: 'Lieferschein {n}', ddtDel: ' vom {data}', express: 'Express-Produktion (+30 %)', spedizione: 'Versand', spedizioneRemota: 'Versand (Inseln und abgelegene Gebiete)',
 		ivaAliquota: 'MwSt. {p} %', ivaZero: 'MwSt. 0 % ({natura})', totale: 'Gesamt',
 		n31: 'Nicht steuerbar: Ausfuhrlieferung (Art. 8 DPR 633/72, Art. 146 Richtlinie 2006/112/EG)', n32: 'Steuerfreie innergemeinschaftliche Lieferung (Art. 41 DL 331/93, Art. 138 Richtlinie 2006/112/EG)', nonImponibile: 'Umsatz nicht mehrwertsteuerpflichtig',
-		addebitato: 'In deiner Währung belastet: {importo}',
+		controvalore: 'Für steuerliche Zwecke in Euro erfasster Betrag: {importo}',
 		prova: 'Automatischer Korrekturabzug sofort per E-Mail. Versand per Express-Kurier mit Sendungsverfolgung.', generato: 'Dokument automatisch erstellt von stickerprint.it',
 		carta: 'Kreditkarte (Stripe)', bonifico: 'Banküberweisung'
 	},
@@ -127,7 +127,7 @@ const nl: Documenti = {
 		ddtRiga: 'Pakbon {n}', ddtDel: ' van {data}', express: 'Expresproductie (+30%)', spedizione: 'Verzending', spedizioneRemota: 'Verzending (eilanden en afgelegen gebieden)',
 		ivaAliquota: 'Btw {p}%', ivaZero: 'Btw 0% ({natura})', totale: 'Totaal',
 		n31: 'Geen btw: uitvoer van goederen (art. 8 DPR 633/72, art. 146 Richtlijn 2006/112/EG)', n32: 'Vrijgesteld van btw: intracommunautaire levering van goederen (art. 41 DL 331/93, art. 138 Richtlijn 2006/112/EG)', nonImponibile: 'Handeling niet onderworpen aan btw',
-		addebitato: 'Afgeschreven in jouw valuta: {importo}',
+		controvalore: 'Voor de belasting in euro geboekt bedrag: {importo}',
 		prova: 'Automatische drukproef direct per e-mail verstuurd. Verzending met expreskoerier met track & trace.', generato: 'Document automatisch gegenereerd door stickerprint.it',
 		carta: 'Creditcard (Stripe)', bonifico: 'Bankoverschrijving'
 	},

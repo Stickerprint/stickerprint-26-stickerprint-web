@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { inflateSync } from 'node:zlib';
-import { buildInvoicePdf, aliquotaFattura, type InvoiceData } from './invoice';
+import { buildInvoicePdf, aliquotaFattura, importiFattura, type InvoiceData } from './invoice';
 
 /** testo disegnato nel PDF: i flussi di pdf-lib sono compressi e le stringhe sono in esadecimale (WinAnsi) */
 function testoPdf(bytes: Uint8Array): string {
@@ -67,5 +67,38 @@ describe('PDF della fattura', () => {
 		expect(aliquotaFattura(null)).toBe(0.22);
 		expect(aliquotaFattura(undefined)).toBe(0.22);
 		expect(aliquotaFattura(0.22)).toBe(0.22);
+	});
+	/* Regola di Mattia del 26/11/2026: «il cliente ricevera' la sua fattura in dollari»; da noi e allo SDI resta in euro */
+	it('pagata in dollari: la copia del cliente e\' tutta in dollari, con l\'importo registrato in euro', async () => {
+		const t = testoPdf(await buildInvoicePdf({ ...base, vat_rate: 0, natura: 'N3.1', lang: 'en', paid_currency: { currency: 'USD', amount: 94.06 } }));
+		expect(t).toContain('$0.9406'); // prezzo unitario
+		expect(t.match(/\$94\.06/g)?.length).toBeGreaterThanOrEqual(3); // riga, imponibile, totale (e la scadenza)
+		expect(t).toContain('Amount recorded in euros for Italian tax purposes');
+		/* l'unico importo in euro e' quello registrato: nessuna riga e nessun totale in euro */
+		expect(t.match(/87\.09/g)?.length).toBe(1);
+		expect(t).not.toContain('0.8709');
+	});
+	it('la nostra copia della stessa fattura resta in italiano e in euro', async () => {
+		const t = testoPdf(await buildInvoicePdf({ ...base, vat_rate: 0, natura: 'N3.1' }));
+		expect(t).toContain('FATTURA');
+		expect(t).toContain('87,09');
+		expect(t).not.toContain('$');
+		expect(t).not.toContain('94');
+	});
+	it('importi in valuta: righe, express e totale tornano al centesimo con quanto addebitato', () => {
+		const I = importiFattura({ lines: [{ description: 'A', qty: 3, unit_net: 3.3333, total_net: 10 }, { description: 'B', qty: 7, unit_net: 2.8571, total_net: 20 }, { description: 'C', qty: 1, unit_net: 33.33, total_net: 33.33 }], express_net: 19, vat_rate: 0, vat_amount: 0, paid_currency: { currency: 'USD', amount: 101.45 }, payment_terms: [{ due: '2026-11-08', amount: 82.33, method: 'Carta' }] });
+		expect(I.currency).toBe('USD');
+		const somma = Math.round((I.righe.reduce((s, r) => s + r.total, 0) + I.express) * 100) / 100;
+		expect(somma).toBe(101.45);
+		expect(I.imponibile).toBe(101.45);
+		expect(I.iva).toBe(0);
+		expect(I.totale).toBe(101.45);
+		expect(I.scadenze).toEqual([101.45]);
+		expect(I.euro.totale).toBe(82.33);
+	});
+	it('importi in euro: quelli registrati, senza toccarli', () => {
+		const I = importiFattura({ lines: [{ description: 'A', qty: 100, unit_net: 0.8709, total_net: 87.09 }], express_net: 0, vat_rate: 0.22, vat_amount: 19.16, paid_currency: null, payment_terms: [{ due: '2026-11-08', amount: 106.25, method: 'Bonifico' }] });
+		expect(I).toMatchObject({ currency: 'EUR', estera: false, imponibile: 87.09, iva: 19.16, totale: 106.25, scadenze: [106.25] });
+		expect(I.righe[0]).toEqual({ unit: 0.8709, total: 87.09 });
 	});
 });

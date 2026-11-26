@@ -6,8 +6,9 @@ import { getConfirmation, loadMessages, markConfirmationRead, remindPayment, rep
 import { sendEmail } from '$lib/server/email';
 import { previewIntegration, requestIntegration, cancelIntegration, type ChangeInput } from '$lib/server/integrazioni';
 import { shippingUpdateEmail } from '$lib/server/email-templates';
-import { thumbOf } from '$lib/dashboard/orders';
-import { langOf } from '$lib/i18n';
+import { nomeArticolo, thumbOf } from '$lib/dashboard/orders';
+import { localizePath } from '$lib/i18n';
+import { dataCliente, linguaOrdine } from '$lib/lingua-cliente';
 import { creaDdt } from '$lib/server/ddt';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -127,7 +128,9 @@ export const actions: Actions = {
 		if (!g?.email) return fail(400, { error: "L'ordine non ha un'email." });
 		const newDate = String(f.get('nuova_data') ?? '').trim() || null;
 		const first = g.items[0];
-		const mail = shippingUpdateEmail({ kind: 'ritardo_nostro', name: first.billing?.first_name || first.shipping?.first_name || g.customer, number: g.number, trackingUrl: `${url.origin}`, reason: String(f.get('motivo') ?? '').trim() || null, newDate: newDate ? new Date(newDate + 'T12:00:00').toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' }) : null, items: g.items.map((i) => ({ name: i.product_name, qty: i.qty, meta: i.description ?? null, preview: thumbOf(i) })), accountUrl: first.user_id ? `${url.origin}/account/ordini` : null });
+		/* nella lingua del cliente: testi, data nuova, nomi dei prodotti, link (il motivo lo scrive lo staff) */
+		const L = linguaOrdine(first);
+		const mail = shippingUpdateEmail({ kind: 'ritardo_nostro', name: first.billing?.first_name || first.shipping?.first_name || g.customer, number: g.number, trackingUrl: `${url.origin}${localizePath('/', L.locale)}`, reason: String(f.get('motivo') ?? '').trim() || null, newDate: dataCliente(newDate, L.lang, 'giorno'), items: g.items.map((i) => ({ name: nomeArticolo(i, L.lang), qty: i.qty, meta: i.description ?? null, preview: thumbOf(i) })), accountUrl: first.user_id ? `${url.origin}${localizePath('/account/ordini', L.locale)}` : null }, L.lang);
 		const r = await sendEmail({ to: g.email, ...mail, metadata: { order: g.number } });
 		if (!r.ok) return fail(400, { error: r.error ?? 'Email non inviata.' });
 		const patch: Record<string, unknown> = { shipping_notified: [...new Set([...(first.shipping_notified ?? []), 'ritardo_nostro'])] };
@@ -230,7 +233,8 @@ export const actions: Actions = {
 			await ensurePlan(supabase, (upd ?? []) as OrderRow[], await operatorName(supabase, locals.user));
 		}
 		const ship = first.shipping ?? {};
-		const mail = shippingUpdateEmail({ kind: 'spedito', name: ship.first_name || first.customer_name || null, number: g.number, trackingUrl: link, courier, shippedAt: new Date().toLocaleDateString('it-IT'), items: g.items.map((i) => ({ name: i.product_name, qty: i.qty, preview: thumbOf(i) })), accountUrl: first.user_id ? `${url.origin}/account/ordini` : null }, langOf(first.locale));
+		const L = linguaOrdine(first);
+		const mail = shippingUpdateEmail({ kind: 'spedito', name: ship.first_name || first.customer_name || null, number: g.number, trackingUrl: link, courier, shippedAt: dataCliente(new Date(), L.lang, 'breve'), items: g.items.map((i) => ({ name: nomeArticolo(i, L.lang), qty: i.qty, preview: thumbOf(i) })), accountUrl: first.user_id ? `${url.origin}${localizePath('/account/ordini', L.locale)}` : null }, L.lang);
 		const r = await sendEmail({ to: g.email, subject: mail.subject, html: mail.html, tag: mail.tag, metadata: { order: g.number } });
 		if (!r.ok) return fail(400, { error: `Tracking salvato ma l'email non è partita: ${r.error ?? 'errore Postmark'}.` });
 		const sent: string[] = Array.isArray(first.shipping_notified) ? first.shipping_notified : [];

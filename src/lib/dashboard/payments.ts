@@ -12,13 +12,39 @@ export const ECOMMERCE_METHODS: Record<string, { label: string; xml_code: string
 	test: { label: 'Test (nessun addebito)', xml_code: 'MP08', icon: '' }
 };
 export const paymentLabel = (m: string | null | undefined) => (m ? (ECOMMERCE_METHODS[m]?.label ?? m) : '—');
-/** etichetta nella lingua del cliente (pagine pubbliche): i metodi e-commerce dal catalogo, i nomi dei metodi manuali (dati del DB) restano come sono */
+/* I metodi inseriti a mano sono nomi scritti da noi nel database (Bonifico 30 gg f.m., Ricevuta bancaria 60 gg f.m....):
+   non hanno una chiave di traduzione, ma sono fatti sempre degli stessi pezzi. Si traducono quelli, nell'ordine. */
+type Estera = Exclude<Lang, 'it'>;
+const PEZZI_METODO: [RegExp, Record<Estera, string>][] = [
+	[/pagamento anticipato/gi, { en: 'Upfront payment', es: 'Pago por adelantado', fr: 'Paiement anticipé', de: 'Vorauskasse', nl: 'Vooruitbetaling' }],
+	[/bonifico bancario|bonifico/gi, { en: 'Bank transfer', es: 'Transferencia bancaria', fr: 'Virement bancaire', de: 'Banküberweisung', nl: 'Bankoverschrijving' }],
+	[/ricevuta bancaria/gi, { en: 'Bank receipt (RiBa)', es: 'Recibo bancario (RiBa)', fr: 'Effet bancaire (RiBa)', de: 'Bankeinzug (RiBa)', nl: 'Bankincasso (RiBa)' }],
+	[/vista fattura/gi, { en: 'on receipt of invoice', es: 'a la recepción de la factura', fr: 'à réception de la facture', de: 'bei Rechnungserhalt', nl: 'bij ontvangst van de factuur' }],
+	[/anticipato/gi, { en: 'in advance', es: 'por adelantado', fr: 'à l’avance', de: 'im Voraus', nl: 'vooraf' }],
+	[/carta di credito/gi, { en: 'Credit card', es: 'Tarjeta de crédito', fr: 'Carte bancaire', de: 'Kreditkarte', nl: 'Creditcard' }],
+	[/contrassegno/gi, { en: 'Cash on delivery', es: 'Contra reembolso', fr: 'Contre remboursement', de: 'Nachnahme', nl: 'Rembours' }],
+	[/contanti/gi, { en: 'Cash', es: 'Efectivo', fr: 'Espèces', de: 'Barzahlung', nl: 'Contant' }],
+	[/personalizzato/gi, { en: 'Agreed terms', es: 'Condiciones acordadas', fr: 'Conditions convenues', de: 'Vereinbarte Bedingungen', nl: 'Afgesproken voorwaarden' }],
+	[/\bgg\b\.?/gi, { en: 'days', es: 'días', fr: 'jours', de: 'Tage', nl: 'dagen' }],
+	[/\bd\.\s?f\.\s?f\.\s?m\./gi, { en: 'invoice date, end of month', es: 'fecha de factura, fin de mes', fr: 'date de facture, fin de mois', de: 'ab Rechnungsdatum, Monatsende', nl: 'na factuurdatum, einde maand' }],
+	[/\bf\.\s?m\./gi, { en: 'end of month', es: 'fin de mes', fr: 'fin de mois', de: 'Monatsende', nl: 'einde maand' }],
+	[/\bd\.\s?f\./gi, { en: 'from invoice date', es: 'desde la fecha de factura', fr: 'date de facture', de: 'ab Rechnungsdatum', nl: 'na factuurdatum' }]
+];
+/** nome di un metodo scritto in italiano → nella lingua del cliente, pezzo per pezzo; quello che non si riconosce resta com'e' */
+export function metodoTradotto(nome: string, lang: Lang): string {
+	if (lang === 'it' || !nome) return nome;
+	let s = nome;
+	for (const [re, v] of PEZZI_METODO) s = s.replace(re, v[lang]);
+	return s;
+}
+/** etichetta nella lingua del cliente (pagine pubbliche, email, PDF): i metodi e-commerce dal catalogo; i nomi dei metodi
+ *  manuali (dati del database, scritti in italiano) tradotti pezzo per pezzo con `metodoTradotto` */
 export function paymentLabelFor(m: string | null | undefined, lang: Lang): string {
 	if (!m) return '—';
 	if (lang === 'it') return paymentLabel(m);
 	const k = `account.doc.metodi.${m}`;
 	const s = tradotto(perLingua(lang), k);
-	return s === k ? paymentLabel(m) : s;
+	return s === k ? metodoTradotto(paymentLabel(m), lang) : s;
 }
 export const paymentIcon = (m: string | null | undefined) => (m ? (ECOMMERCE_METHODS[m]?.icon ?? '') : '');
 

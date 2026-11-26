@@ -4,6 +4,8 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { LOCALES, isLocale, langOf, localizePath, type LocaleCode } from '$lib/i18n';
+import { linguaOrdine } from '$lib/lingua-cliente';
+import { nomeArticolo } from '$lib/dashboard/orders';
 import { dataIn, t } from '$lib/traduzioni';
 import { sendEmail } from './email';
 import { reviewRequestEmail, reviewThanksEmail } from './email-templates';
@@ -35,8 +37,9 @@ export async function submitReview(db: DB, o: { orderId: string; userId: string 
 	locale?: LocaleCode | null }): Promise<{ ok: true; code: string | null } | { ok: false; error: string }> {
 	const rating = Math.max(1, Math.min(5, Math.round(o.rating)));
 	/* lingua dell'ordine (colonna locale, migrazione 0059): email e, se la pagina non la indica, i messaggi */
-	const { data: ord } = await db.from('orders').select('locale').eq('id', o.orderId).maybeSingle();
-	const localeOrdine: LocaleCode = isLocale(ord?.locale) ? ord.locale : 'it';
+	const { data: ord } = await db.from('orders').select('locale, channel, billing, shipping').eq('id', o.orderId).maybeSingle();
+	/* per un ordine inserito da noi la colonna locale vale 'it' di default: decide il paese di fatturazione (linguaOrdine) */
+	const localeOrdine: LocaleCode = linguaOrdine(ord as Parameters<typeof linguaOrdine>[0]).locale;
 	const localePagina: LocaleCode = isLocale(o.locale) ? o.locale : localeOrdine;
 	const doppia = t(localePagina, 'api.recensioneDoppia');
 	/* una recensione per ordine (numero), anche se l'ordine ha piu' articoli */
@@ -114,8 +117,10 @@ export async function inviaRichiestaRecensione(db: DB, rows: RigaOrdine[], origi
 	const k = f.checkout_group ?? f.id;
 	const reqId = await createReviewRequest(db, { orderId: f.id, checkoutGroup: f.checkout_group ?? null, number: f.number, email: f.email, name: f.shipping?.first_name ?? null });
 	const q = reqId ? `?r=${reqId}` : '';
-	const href = f.user_id ? `${origin}/account/recensioni${q}` : `${origin}/recensione/${f.checkout_group ?? f.id}${q}`;
-	const mail = reviewRequestEmail({ name: f.shipping?.first_name ?? null, number: f.number, items: rows.map((r) => ({ name: r.product_name, qty: r.qty, preview: r.proof_url ?? r.preview_url ?? r.mockup_url ?? null })), href }, langOf((f as { locale?: string | null }).locale));
+	/* nella lingua del cliente: testi, nomi dei prodotti e pagina della recensione */
+	const L = linguaOrdine(f as Parameters<typeof linguaOrdine>[0]);
+	const href = `${origin}${localizePath(f.user_id ? '/account/recensioni' : `/recensione/${f.checkout_group ?? f.id}`, L.locale)}${q}`;
+	const mail = reviewRequestEmail({ name: f.shipping?.first_name ?? null, number: f.number, items: rows.map((r) => ({ name: nomeArticolo(r as unknown as Parameters<typeof nomeArticolo>[0], L.lang), qty: r.qty, preview: r.proof_url ?? r.preview_url ?? r.mockup_url ?? null })), href }, L.lang);
 	const html = reqId ? mail.html.replace('</body>', `<img src="${origin}/api/track/open/${reqId}" width="1" height="1" alt="" style="display:block;width:1px;height:1px;border:0;"></body>`) : mail.html;
 	const r = await sendEmail({ to: f.email, subject: mail.subject, html, tag: mail.tag, metadata: { order: f.number } });
 	if (!r.ok) {

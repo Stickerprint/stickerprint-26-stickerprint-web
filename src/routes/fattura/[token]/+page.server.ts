@@ -1,8 +1,9 @@
 import { error, fail, redirect } from '@sveltejs/kit';
 import { adminClient } from '$lib/server/admin';
-import { getInvoiceByToken, invoiceQuestion, setInvoicePaymentStatus, trackInvoiceOpen } from '$lib/server/fatture';
+import { getInvoiceByToken, invoiceQuestion, linguaFattura, setInvoicePaymentStatus, trackInvoiceOpen } from '$lib/server/fatture';
+import { vaiAllaLinguaDelCliente } from '$lib/server/lingua-pagina';
 import { COMPANY } from '$lib/server/company';
-import { aliquotaFattura } from '$lib/server/invoice';
+import { aliquotaFattura, importiFattura } from '$lib/server/invoice';
 import { docT } from '$lib/server/docs';
 import { onlinePaymentsOn, retrieveSession, stripeConfigured } from '$lib/server/stripe';
 import { paypalConfigured, settlePayPalReturn } from '$lib/server/paypal';
@@ -11,11 +12,14 @@ import { langOf, localizePath } from '$lib/i18n';
 import type { Actions, PageServerLoad } from './$types';
 
 /** Pagina pubblica della fattura: righe, totali, scadenze (pagabili o informative), PDF, domande. Ogni apertura viene registrata. */
-export const load: PageServerLoad = async ({ params, url, request, locals: { locale } }) => {
+export const load: PageServerLoad = async ({ params, url, request, locals: { locale, user } }) => {
 	const db = adminClient();
 	if (!db) error(503, t(locale, 'account.errori.servizio'));
 	let c = await getInvoiceByToken(db, params.token);
 	if (!c) error(404, t(locale, 'account.errori.fatturaNonTrovata'));
+	/* la pagina nella lingua del cliente anche se il link non ha il prefisso (email vecchie, link copiati) */
+	const cliente = await linguaFattura(db, c.inv);
+	vaiAllaLinguaDelCliente(url, locale, cliente.locale, !!user);
 	if (request.method === 'GET' && url.searchParams.get('anteprima') !== '1' && c.inv.sent_at) await trackInvoiceOpen(db, c.inv);
 	const sid = url.searchParams.get('session_id');
 	if (sid && stripeConfigured()) {
@@ -34,11 +38,17 @@ export const load: PageServerLoad = async ({ params, url, request, locals: { loc
 	const D = docT(langOf(locale));
 	const rate = aliquotaFattura(c.inv.vat_rate);
 	const natura = c.inv.natura ?? 'N3.1';
-	if (Number(c.inv.express_net) > 0) lines.push({ description: t(locale, 'account.doc.express'), qty: 1, unit_net: Number(c.inv.express_net), total_net: Number(c.inv.express_net) });
+	/* importi come nel PDF del cliente: in dollari se ha pagato in dollari (stessa funzione del PDF: i numeri coincidono) */
+	const I = importiFattura({ lines: c.inv.lines ?? [], express_net: Number(c.inv.express_net), vat_rate: c.inv.vat_rate, vat_amount: Number(c.inv.vat_amount), paid_currency: cliente.pagato, payment_terms: null });
+	if (I.estera) lines.forEach((l, i) => { l.unit_net = I.righe[i].unit; l.total_net = I.righe[i].total; });
+	if (Number(c.inv.express_net) > 0) lines.push({ description: t(locale, 'account.doc.express'), qty: 1, unit_net: I.express, total_net: I.express });
+	/* le scadenze in valuta: una fattura in dollari e' gia' pagata al checkout, l'importo e' quello addebitato */
+	const inValuta = (eur: number) => (I.estera && I.euro.totale > 0 ? Math.round((eur / I.euro.totale) * I.totale * 100) / 100 : eur);
 	return {
-		inv: { number: c.inv.number, issued_at: c.inv.issued_at, orders: c.inv.order_numbers ?? [], net: Number(c.inv.subtotal_net) - Number(c.inv.discount_net) + Number(c.inv.express_net), vat: Number(c.inv.vat_amount), ivaLabel: rate === 0 ? D('fattura.ivaZero', { natura }) : D('fattura.ivaAliquota', { p: Math.round(rate * 100) }), ivaNota: rate === 0 ? (natura === 'N3.2' ? D('fattura.n32') : natura === 'N3.1' ? D('fattura.n31') : D('fattura.nonImponibile')) : null, gross: Number(c.inv.amount_gross), first_name: b.first_name || b.company || '', /* mai il nome di chi segue: la pagina firma sempre «Stickerprint-Staff» */ sender: null as string | null, notes: c.inv.notes },
+		currency: I.currency, euroRegistrato: I.estera ? I.euro.totale : null,
+		inv: { number: c.inv.number, issued_at: c.inv.issued_at, orders: c.inv.order_numbers ?? [], net: I.estera ? I.imponibile : Number(c.inv.subtotal_net) - Number(c.inv.discount_net) + Number(c.inv.express_net), vat: I.estera ? I.iva : Number(c.inv.vat_amount), ivaLabel: rate === 0 ? D('fattura.ivaZero', { natura }) : D('fattura.ivaAliquota', { p: Math.round(rate * 100) }), ivaNota: rate === 0 ? (natura === 'N3.2' ? D('fattura.n32') : natura === 'N3.1' ? D('fattura.n31') : D('fattura.nonImponibile')) : null, gross: I.estera ? I.totale : Number(c.inv.amount_gross), first_name: b.first_name || b.company || '', /* mai il nome di chi segue: la pagina firma sempre «Stickerprint-Staff» */ sender: null as string | null, notes: c.inv.notes },
 		addr, lines,
-		payments: c.payments.map((p) => ({ seq: p.seq, method: p.method, due: p.due, amount: Number(p.amount), payable: p.payable, status: p.status, paid_at: p.paid_at })),
+		payments: c.payments.map((p) => ({ seq: p.seq, method: p.method, due: p.due, amount: inValuta(Number(p.amount)), payable: p.payable, status: p.status, paid_at: p.paid_at })),
 		messages: c.messages.map((m) => ({ id: m.id, direction: m.direction, author: m.direction === 'out' ? null : m.author, body: m.body, created_at: m.created_at })),
 		bank: { iban: COMPANY.iban || null, name: COMPANY.name }, online: onlinePaymentsOn(), paypal: paypalConfigured(), simulation: !stripeConfigured() && onlinePaymentsOn(), paid, ppError, cancelled: url.searchParams.get('annullato') === '1'
 	};

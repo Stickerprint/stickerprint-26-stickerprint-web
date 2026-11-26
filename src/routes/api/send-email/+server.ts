@@ -8,6 +8,7 @@ import {
 	ownerNotifyEmail,
 	welcomeEmail
 } from '$lib/server/email-templates';
+import { langOf } from '$lib/i18n';
 import type { RequestHandler } from './$types';
 
 /**
@@ -38,7 +39,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			if (!user && !internal) error(401, 'Non autorizzato');
 			const to = user?.email;
 			if (!to) error(400, 'Email utente mancante');
-			const tpl = welcomeEmail({ name: user?.user_metadata?.full_name, email: to });
+			const tpl = welcomeEmail({ name: user?.user_metadata?.full_name, email: to }, langOf(locals.locale));
 			return json(await sendEmail({ to, ...tpl }));
 		}
 
@@ -51,7 +52,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 			const [owner, reply] = await Promise.all([
 				sendEmail({ to: OWNER_EMAIL, replyTo: email, ...contactRequestEmail({ name, email, message, kind }) }),
-				sendEmail({ to: email, ...contactAutoReplyEmail({ name }) })
+				sendEmail({ to: email, ...contactAutoReplyEmail({ name }, langOf(locals.locale)) })
 			]);
 			return json({ ok: owner.ok && reply.ok });
 		}

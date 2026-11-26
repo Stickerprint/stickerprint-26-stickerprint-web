@@ -5,9 +5,10 @@
 	import { paymentLabelFor } from '$lib/dashboard/payments';
 	import { usaLingua } from '$lib/traduzioni';
 	const { t, path, numero, data: dataL, locale, lang } = usaLingua();
-	/* documenti reali in euro (ordini manuali, preventivi, fatture): formato della lingua, valuta sempre EUR, niente cambio in dollari */
-	const money = (v: number) => formatAmount(v, { ...locale, currency: 'EUR' });
 	let { data, form } = $props();
+	/* importi gia' nella valuta della fattura (euro, oppure dollari per chi ha pagato in dollari): solo il formato, niente cambio */
+	const money = (v: number) => (data.currency === 'USD' ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(v) : formatAmount(v, { ...locale, currency: 'EUR' }));
+	const euro = (v: number) => formatAmount(v, { ...locale, currency: 'EUR' });
 	const inv = $derived(data.inv);
 	const it = (d: string | null) => (d ? dataL(d.slice(0, 10) + 'T12:00:00') : '');
 	const open = $derived(data.payments.filter((p) => p.status !== 'pagato'));
@@ -85,6 +86,7 @@
 				<div class="qp__row"><span>{inv.ivaLabel}</span><b>{money(inv.vat)}</b></div>
 				<div class="qp__row qp__row--tot"><span>{t('account.doc.totale')}</span><b>{money(inv.gross)}</b></div>
 				{#if inv.ivaNota}<p class="qp__terms" style="margin-top:12px">{inv.ivaNota}</p>{/if}
+				{#if data.euroRegistrato != null}<p class="qp__terms" style="margin-top:12px">{t('account.fattura.euroRegistrato', { importo: euro(data.euroRegistrato) })}</p>{/if}
 				{#if inv.notes}<p class="qp__terms" style="margin-top:12px">{inv.notes}</p>{/if}
 			</div>
 			<aside class="qp__why">

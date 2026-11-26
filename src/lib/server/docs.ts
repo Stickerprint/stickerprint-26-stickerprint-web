@@ -3,6 +3,7 @@ import { COMPANY } from './company';
 import { LOGO_PNG_B64 } from './logo-b64';
 import { LOCALES, type Lang } from '$lib/i18n';
 import { t as tradotto, perLingua, numeroIn } from '$lib/traduzioni';
+import { paymentLabelFor } from '$lib/dashboard/payments';
 
 export interface LabelOrder { number: string; customer: string; shipping: Record<string, string>; email?: string | null; phone?: string | null; items: { qty: number; name: string; meta?: string }[] }
 const b64 = (s: string) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
@@ -19,7 +20,7 @@ export async function buildLabelsPdf(orders: (LabelOrder & { parcels: number; co
 		const s = o.shipping ?? {};
 		const parcels = Math.max(1, o.parcels || 1);
 		for (let n = 1; n <= parcels; n++) {
-			const page = pdf.addPage([W, H]);
+			const page = paginaSicura(pdf.addPage([W, H]));
 			const t = (txt: string, x: number, y: number, size = 9, f: PDFFont = font, color = navy) => page.drawText(txt, { x, y, size, font: f, color });
 			const ld = logo.scale(58 / logo.height);
 			page.drawImage(logo, { x: M, y: H - M - ld.height, width: ld.width, height: ld.height });
@@ -52,20 +53,29 @@ export async function buildLabelsPdf(orders: (LabelOrder & { parcels: number; co
 
 export interface DdtData { number: string; issued_at: string; order_number: string; customer: Record<string, string>; shipping: Record<string, string>; lines: { code?: string | null; description: string; qty: number; unit_net: number; total_net: number }[]; parcels: number; weight_kg: number | null; causale: string; trasporto: string; subtotal_net: number; vat_amount: number; total_gross: number; notes?: string | null }
 
-function docHeader(page: PDFPage, font: PDFFont, bold: PDFFont, logo: Awaited<ReturnType<PDFDocument['embedPng']>>, title: string, number: string, date: string, numLabel = 'N.') {
+function docHeader(page: PDFPage, font: PDFFont, bold: PDFFont, logo: Awaited<ReturnType<PDFDocument['embedPng']>>, title: string, number: string, date: string, numLabel = 'N.', riga3?: string) {
 	const M = 48; const top = 800;
 	const ld = logo.scale(52 / logo.height);
 	page.drawImage(logo, { x: M, y: top - ld.height + 8, width: ld.width, height: ld.height });
-	const [l1, l2, l3] = COMPANY.headerLines;
+	const [l1, l2, l3it] = COMPANY.headerLines;
+	/* per i documenti in lingua la terza riga arriva gia' tradotta (partita IVA col prefisso IT) */
+	const l3 = riga3 ? winAnsi(riga3) : l3it;
 	page.drawText(l1, { x: 547 - bold.widthOfTextAtSize(l1, 13), y: top - 4, size: 13, font: bold, color: navy });
 	page.drawText(l2, { x: 547 - font.widthOfTextAtSize(l2, 9.5), y: top - 19, size: 9.5, font, color: gray });
 	page.drawText(l3, { x: 547 - font.widthOfTextAtSize(l3, 9.5), y: top - 32, size: 9.5, font, color: gray });
 	page.drawLine({ start: { x: M, y: top - 56 }, end: { x: 547, y: top - 56 }, thickness: 1, color: rgb(0.85, 0.87, 0.92) });
 	page.drawText(title, { x: M, y: top - 76, size: 15, font: bold, color: navy });
-	const nd = `${numLabel} ${number} · ${date}`;
+	const nd = winAnsi(`${numLabel} ${number} · ${date}`);
 	page.drawText(nd, { x: 547 - bold.widthOfTextAtSize(nd, 11), y: top - 76, size: 11, font: bold, color: navy });
 }
-const addrLines = (a: Record<string, string>, l = { paese: 'Italia', piva: 'P.IVA {v}', cf: 'C.F. {v}' }) => [a.company, [a.first_name, a.last_name].filter(Boolean).join(' '), [a.street, a.street2].filter(Boolean).join(', '), [a.zip, a.city, a.province ? `(${a.province})` : ''].filter(Boolean).join(' '), a.country && a.country !== 'IT' ? a.country : l.paese, a.vat ? l.piva.replace('{v}', a.vat) : '', a.fiscal_code ? l.cf.replace('{v}', a.fiscal_code) : ''].filter(Boolean);
+/** nome del paese nella lingua del documento (FR → France, Francia, Frankreich); un codice non riconosciuto resta com'e' */
+export function nomePaese(country: string | null | undefined, intl: string, italia: string): string {
+	const c = (country || 'IT').trim();
+	if (c.toUpperCase() === 'IT') return italia;
+	if (!/^[A-Za-z]{2}$/.test(c)) return c;
+	try { return new Intl.DisplayNames([intl], { type: 'region' }).of(c.toUpperCase()) ?? c; } catch { return c; }
+}
+const addrLines = (a: Record<string, string>, l: { paese: string; piva: string; cf: string; intl?: string } = { paese: 'Italia', piva: 'P.IVA {v}', cf: 'C.F. {v}' }) => [a.company, [a.first_name, a.last_name].filter(Boolean).join(' '), [a.street, a.street2].filter(Boolean).join(', '), [a.zip, a.city, a.province ? `(${a.province})` : ''].filter(Boolean).join(' '), nomePaese(a.country, l.intl ?? 'it-IT', l.paese), a.vat ? l.piva.replace('{v}', a.vat) : '', a.fiscal_code ? l.cf.replace('{v}', a.fiscal_code) : ''].filter(Boolean);
 // Numeri all'italiana: punto per le migliaia, virgola per i decimali (141.400,00 €)
 const fmtIt = (v: number, min: number, max: number) => new Intl.NumberFormat('it-IT', { minimumFractionDigits: min, maximumFractionDigits: max, useGrouping: 'always' }).format(v);
 export const qtyFmt = (v: number) => new Intl.NumberFormat('it-IT', { useGrouping: 'always', maximumFractionDigits: 0 }).format(v);
@@ -78,7 +88,9 @@ export interface TableCol { label: string; width: number; align?: 'left' | 'righ
 export interface TableOpts { page: PDFPage; x: number; y: number; cols: TableCol[]; rows: string[][]; font: PDFFont; bold: PDFFont; size?: number; headSize?: number; minRowH?: number }
 export const PAD = 6;
 /** spezza il testo in righe che stanno nella larghezza (le parole troppo lunghe vengono tagliate con …) */
-export function wrapText(font: PDFFont, text: string, size: number, maxWidth: number, maxLines = 2): string[] {
+export function wrapText(font: PDFFont, testo: string, size: number, maxWidth: number, maxLines = 2): string[] {
+	/* prima di misurare: font.widthOfTextAtSize lancia un errore sui caratteri fuori da WinAnsi */
+	const text = winAnsi(testo ?? '');
 	const words = (text ?? '').replace(/\s+/g, ' ').trim().split(' ');
 	const lines: string[] = [];
 	let cur = '';
@@ -136,8 +148,9 @@ export function drawTable(o: TableOpts): number {
 export function drawTotals(page: PDFPage, font: PDFFont, bold: PDFFont, y: number, rows: [string, string, boolean?][], xLabel = 460, xValue = 547): number {
 	for (const [label, value, strong] of rows) {
 		const f = strong ? bold : font; const sz = strong ? 12 : 10;
-		page.drawText(label, { x: xLabel - f.widthOfTextAtSize(label, 10), y, size: 10, font: f, color: strong ? navy : gray });
-		page.drawText(value, { x: xValue - f.widthOfTextAtSize(value, sz), y, size: sz, font: f, color: navy });
+		const l = winAnsi(label), v = winAnsi(value);
+		page.drawText(l, { x: xLabel - f.widthOfTextAtSize(l, 10), y, size: 10, font: f, color: strong ? navy : gray });
+		page.drawText(v, { x: xValue - f.widthOfTextAtSize(v, sz), y, size: sz, font: f, color: navy });
 		y -= strong ? 18 : 16;
 	}
 	return y;
@@ -150,8 +163,34 @@ export const DOC_COLS = (font?: PDFFont, lang: Lang = 'it'): TableCol[] => {
 };
 /* ---------- lingua del cliente per conferma d'ordine e preventivo: etichette dal catalogo "documenti", numeri col formato della lingua ---------- */
 export const docT = (lang: Lang) => (chiave: string, params?: Record<string, string | number>) => tradotto(perLingua(lang), `documenti.${chiave}`, params);
-/** Helvetica di pdf-lib e' WinAnsi: gli spazi stretti (fr-FR) diventano spazi normali */
-export const winAnsi = (s: string) => s.replace(/[\u202F\u2009]/g, ' ');
+/* Helvetica di pdf-lib scrive solo i caratteri WinAnsi (Latin-1 piu' pochi altri): con una lettera fuori da li' pdf-lib
+   lancia un errore e il documento NON nasce. Con i clienti esteri capita davvero: Łódź, Dvořák, Αθήνα in un nome o in un
+   indirizzo. Prima passavano solo gli spazi stretti; ora ogni carattere fuori dal set viene portato al piu' vicino
+   (ł → l, ř → r, ″ → ") e, se non ce n'e' uno, diventa «?»: il documento esce sempre. */
+const WIN_ALTRI = '€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•–—˜™š›œžŸ';
+const WIN_CAMBI: Record<string, string> = { 'Ł': 'L', 'ł': 'l', 'Đ': 'D', 'đ': 'd', 'ı': 'i', 'İ': 'I', '″': '"', '′': "'", '−': '-', '→': '->', '←': '<-', '≤': '<=', '≥': '>=', '‐': '-', '‑': '-', '―': '-', '\t': ' ' };
+const inWinAnsi = (ch: string) => { const c = ch.codePointAt(0) ?? 0; return (c >= 0x20 && c <= 0x7e) || (c >= 0xa0 && c <= 0xff) || WIN_ALTRI.includes(ch); };
+export function winAnsi(s: string): string {
+	/* anche lo spazio non separabile (U+00A0, lo mette Intl fra il numero e «€» in tedesco e francese) diventa uno spazio normale:
+	   WinAnsi lo avrebbe, ma le metriche di Helvetica lo misurano largo zero e il testo allineato a destra usciva dal margine */
+	const t = String(s ?? '').replace(/[\u00A0\u202F\u2009\u2007\u200A]/g, ' ').replace(/[\u200B-\u200D\uFEFF]/g, '');
+	let out = '';
+	for (const ch of t) {
+		if (inWinAnsi(ch)) { out += ch; continue; }
+		if (ch === '\n' || ch === '\r') { out += ' '; continue; }
+		if (WIN_CAMBI[ch] != null) { out += WIN_CAMBI[ch]; continue; }
+		/* lettera con un segno che WinAnsi non ha (ř, ő, ą): resta la lettera */
+		const base = ch.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+		out += base && [...base].every(inWinAnsi) ? base : '?';
+	}
+	return out;
+}
+/** da chiamare su ogni pagina appena creata: tutto quello che si scrive passa da winAnsi, cosi' un carattere strano non ferma il documento */
+export function paginaSicura<P extends PDFPage>(page: P): P {
+	const scrivi = page.drawText.bind(page);
+	page.drawText = ((txt: string, o?: Parameters<PDFPage['drawText']>[1]) => scrivi(winAnsi(txt), o)) as PDFPage['drawText'];
+	return page;
+}
 /** importi sempre in euro (documento fiscale italiano), ma col formato numerico della lingua: 1.234,50 €, €1,234.50, 1 234,50 € */
 export const eurIn = (lang: Lang, v: number, max = 2) => winAnsi(new Intl.NumberFormat(LOCALES[perLingua(lang)].intl, { style: 'currency', currency: 'EUR', useGrouping: 'always', minimumFractionDigits: 2, maximumFractionDigits: max }).format(v));
 export const dataBreve = (lang: Lang, d: string) => new Date(d).toLocaleDateString(LOCALES[perLingua(lang)].intl);
@@ -161,7 +200,7 @@ const DDT_COLS: TableCol[] = [{ label: 'Codice', width: 70, bold: true }, { labe
 /** Documento di trasporto A4 */
 export async function buildDdtPdf(d: DdtData): Promise<Uint8Array> {
 	const pdf = await PDFDocument.create();
-	const page = pdf.addPage([595.28, 841.89]);
+	const page = paginaSicura(pdf.addPage([595.28, 841.89]));
 	const font = await pdf.embedFont(StandardFonts.Helvetica); const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
 	const logo = await pdf.embedPng(b64(LOGO_PNG_B64));
 	docHeader(page, font, bold, logo, 'DOCUMENTO DI TRASPORTO', d.number, new Date(d.issued_at).toLocaleDateString('it-IT'));
@@ -193,20 +232,23 @@ export async function buildOrderPdf(d: OrderDocData, lang: Lang = 'it'): Promise
 	const qty = (v: number) => numeroIn(L, v);
 	const data = (x: string) => dataBreve(lang, x);
 	const pdf = await PDFDocument.create();
-	const page = pdf.addPage([595.28, 841.89]);
+	const page = paginaSicura(pdf.addPage([595.28, 841.89]));
 	const font = await pdf.embedFont(StandardFonts.Helvetica); const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
 	const logo = await pdf.embedPng(b64(LOGO_PNG_B64));
 	const quote = d.kind === 'preventivo';
-	docHeader(page, font, bold, logo, quote ? D('preventivo') : D('confermaOrdine'), d.number, data(d.issued_at), D('numero'));
+	/* fuori dall'italiano: partita IVA col prefisso del paese, come sulla fattura */
+	docHeader(page, font, bold, logo, quote ? D('preventivo') : D('confermaOrdine'), d.number, data(d.issued_at), D('numero'), lang === 'it' ? undefined : `${D('piva', { v: `IT${COMPANY.vat}` })} - ${COMPANY.email} - ${COMPANY.site}`);
 	const M = 48; let y = 700;
 	const t = (txt: string, x: number, yy: number, size = 10, f: PDFFont = font, color = navy) => page.drawText(winAnsi(txt), { x, y: yy, size, font: f, color });
 	t(D('cliente'), M, y, 8.5, bold, gray); t(D('spedizione'), 320, y, 8.5, bold, gray); y -= 14;
-	const etichette = { paese: D('paese'), piva: D('piva'), cf: D('cf') };
+	const etichette = { paese: D('paese'), piva: D('piva'), cf: D('cf'), intl: L.intl };
+	/* metodo di spedizione: i tre nomi italiani scelti in dashboard, nella lingua del cliente */
+	const comeSpediamo = (m: string) => (lang === 'it' || !m ? m : tradotto(perLingua(lang), /diretta/i.test(m) ? 'account.doc.consegnaDiretta' : /destinatario/i.test(m) ? 'account.doc.ritiroCorriere' : 'account.doc.corriereEspresso'));
 	const Lc = addrLines(d.customer, etichette), R = addrLines(d.shipping, etichette);
 	if (d.email) Lc.push(d.email);
 	for (let i = 0; i < Math.max(Lc.length, R.length); i++) { if (Lc[i]) t(Lc[i], M, y, i === 0 ? 11 : 10, i === 0 ? bold : font); if (R[i]) t(R[i], 320, y, i === 0 ? 11 : 10, i === 0 ? bold : font); y -= 13; }
 	y -= 8;
-	for (const line of wrapText(font, `${D('spedizioneRiga', { metodo: d.shipping_method })}${d.delivery_date ? D('previstaIl', { data: data(d.delivery_date) }) : ''}${d.lead_time ? D('tempi', { tempi: d.lead_time }) : ''}`, 9, 499, 3)) { t(line, M, y, 9, font, gray); y -= 12; }
+	for (const line of wrapText(font, `${D('spedizioneRiga', { metodo: comeSpediamo(d.shipping_method) })}${d.delivery_date ? D('previstaIl', { data: data(d.delivery_date) }) : ''}${d.lead_time ? D('tempi', { tempi: d.lead_time }) : ''}`, 9, 499, 3)) { t(line, M, y, 9, font, gray); y -= 12; }
 	y -= 10;
 	y = drawTable({ page, x: M, y: y + 6, cols: DOC_COLS(undefined, lang), rows: d.lines.map((l) => [l.code ?? '', l.description, qty(l.qty), moneyUnit(l.unit_net), money(l.total_net)]), font, bold });
 	y -= 14;
@@ -218,7 +260,9 @@ export async function buildOrderPdf(d: OrderDocData, lang: Lang = 'it'): Promise
 	// in fondo alla pagina: metodo di pagamento e scadenze a sinistra, imponibile / IVA / totale a destra
 	const base = Math.min(y - 10, 200);
 	t(quote ? D('condizioniPagamento') : D('scadenzePagamento'), M, base, 9, bold, gray);
-	const terms = d.payment_terms.length ? d.payment_terms.map((p) => [data(p.due), money(p.amount), p.method]) : [['—', '—', d.payment_method || '—']];
+	/* i metodi di pagamento sono nomi scritti da noi in italiano: nel documento del cliente vanno nella sua lingua */
+	const metodo = (m: string) => (lang === 'it' ? m : paymentLabelFor(m, lang));
+	const terms = d.payment_terms.length ? d.payment_terms.map((p) => [data(p.due), money(p.amount), metodo(p.method)]) : [['—', '—', d.payment_method ? d.payment_method.split(' + ').map(metodo).join(' + ') : '—']];
 	let yl = drawTable({ page, x: M, y: base - 8, cols: [{ label: D('colScadenza'), width: 70 }, { label: D('colImporto'), width: 70, align: 'right' }, { label: D('colMetodo'), width: 160 }], rows: terms, font, bold, size: 9, headSize: 8, minRowH: 18 });
 	yl -= 12;
 	if (COMPANY.iban) t(`IBAN ${COMPANY.iban} · ${COMPANY.name}`, M, yl, 9, font, gray);
@@ -235,7 +279,7 @@ export async function buildManifestPdf(m: ManifestData): Promise<Uint8Array> {
 	const logo = await pdf.embedPng(b64(LOGO_PNG_B64));
 	const M = 48; const perPage = 28;
 	for (let p = 0; p < Math.max(1, Math.ceil(m.shipments.length / perPage)); p++) {
-		const page = pdf.addPage([595.28, 841.89]);
+		const page = paginaSicura(pdf.addPage([595.28, 841.89]));
 		docHeader(page, font, bold, logo, `MANIFEST SPEDIZIONI ${m.courier.toUpperCase()}`, m.number, new Date(m.day).toLocaleDateString('it-IT'));
 		const t = (txt: string, x: number, yy: number, size = 9, f: PDFFont = font, color = navy) => page.drawText(txt, { x, y: yy, size, font: f, color });
 		let y = 700;
@@ -267,9 +311,9 @@ export async function buildDistintaPdf(d: { date: string; rows: DistintaRow[] })
 	const PER_PAGE = 24;
 	const total = d.rows.reduce((s, r) => s + r.importo, 0);
 	const pages = Math.max(1, Math.ceil(d.rows.length / PER_PAGE));
-	let y = 0; let page = pdf.addPage([595.28, 841.89]);
+	let y = 0; let page = paginaSicura(pdf.addPage([595.28, 841.89]));
 	for (let p = 0; p < pages; p++) {
-		if (p > 0) page = pdf.addPage([595.28, 841.89]);
+		if (p > 0) page = paginaSicura(pdf.addPage([595.28, 841.89]));
 		docHeader(page, font, bold, logo, 'DISTINTA RICEVUTE BANCARIE', `${d.rows.length} ${d.rows.length === 1 ? 'scadenza' : 'scadenze'}`, new Date(d.date).toLocaleDateString('it-IT'));
 		y = 700;
 		if (p === 0) { page.drawText(`Fatture da presentare in banca · ${d.rows.length} ${d.rows.length === 1 ? 'riga' : 'righe'} · totale ${eur(total)}`, { x: M, y, size: 10, font, color: gray }); y -= 18; }

@@ -7,12 +7,13 @@
  * 95 rientrato, 99 consegnato.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { langOf } from '$lib/i18n';
+import { localizePath } from '$lib/i18n';
+import { dataCliente, linguaOrdine } from '$lib/lingua-cliente';
 import { sendEmail } from './email';
 import { shippingUpdateEmail } from './email-templates';
 import { pushStaff } from './push';
 import { trackingPageUrl } from './couriers/qapla';
-import { thumbOf } from '$lib/dashboard/orders';
+import { nomeArticolo, thumbOf } from '$lib/dashboard/orders';
 
 export interface QaplaUpdate { trackingNumber: string; reference?: string | null; courier?: string | null; date?: string | null; place?: string | null; qaplaStatusID: number | string; qaplaStatus?: string | null; statusDetails?: { id: number; detail: string }[] | null }
 
@@ -59,7 +60,9 @@ export async function applyQaplaUpdate(db: SupabaseClient, u: QaplaUpdate, origi
 	let emailed: string | null = null;
 	if (kind && !sent.includes(kind) && first.email) {
 		const ship = first.shipping ?? {};
-		const mail = shippingUpdateEmail({ kind, name: ship.first_name || first.customer_name || null, number: first.number, trackingUrl: first.tracking_url || trackingPageUrl(u.trackingNumber), courier: u.courier ?? first.courier ?? null, detail, place: u.place ?? null, shippedAt: first.shipped_at ? new Date(first.shipped_at).toLocaleDateString('it-IT') : null, items: rows.map((r) => ({ name: r.product_name, qty: r.qty, preview: thumbOf(r) })), accountUrl: first.user_id ? `${origin}/account/ordini` : null }, langOf((first as { locale?: string | null }).locale));
+		/* tutto nella lingua del cliente: testi, data di partenza, nomi dei prodotti, link all'area personale */
+		const L = linguaOrdine(first);
+		const mail = shippingUpdateEmail({ kind, name: ship.first_name || first.customer_name || null, number: first.number, trackingUrl: first.tracking_url || trackingPageUrl(u.trackingNumber), courier: u.courier ?? first.courier ?? null, /* lo stato scritto dal corriere e' in italiano («GIACENZA», «In ritardo»): fuori dall'italiano non si mostra, il testo dell'email spiega gia' cosa succede */ detail: L.lang === 'it' ? detail : '', place: u.place ?? null, shippedAt: dataCliente(first.shipped_at, L.lang, 'breve'), items: rows.map((r) => ({ name: nomeArticolo(r, L.lang), qty: r.qty, preview: thumbOf(r) })), accountUrl: first.user_id ? `${origin}${localizePath('/account/ordini', L.locale)}` : null }, L.lang);
 		const r = await sendEmail({ to: first.email, subject: mail.subject, html: mail.html, tag: mail.tag, metadata: { order: first.number } });
 		if (r.ok) { emailed = kind; for (const k of keys) await db.from('orders').update({ shipping_notified: [...sent, kind] }).eq(first.checkout_group ? 'checkout_group' : 'id', k); }
 	}

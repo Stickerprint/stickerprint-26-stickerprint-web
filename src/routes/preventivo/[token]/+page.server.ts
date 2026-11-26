@@ -10,6 +10,8 @@ import { catLabel, laminaLabel } from '$lib/dashboard/orders';
 import { langOf, localizePath } from '$lib/i18n';
 import { getConfirmation } from '$lib/server/conferme';
 import { t } from '$lib/traduzioni';
+import { linguaPreventivo } from '$lib/lingua-cliente';
+import { vaiAllaLinguaDelCliente } from '$lib/server/lingua-pagina';
 import type { Actions, PageServerLoad } from './$types';
 
 /** Pagina pubblica del preventivo: anteprima con i mockup, riepilogo, conferma con un clic, PDF, domande. Ogni apertura viene registrata. */
@@ -18,6 +20,8 @@ export const load: PageServerLoad = async ({ params, url, request, locals }) => 
 	if (!db) error(503, t(locals.locale, 'account.errori.servizio'));
 	const q = await getQuoteByToken(db, params.token);
 	if (!q) error(404, t(locals.locale, 'account.errori.preventivoNonTrovato'));
+	/* la pagina nella lingua del cliente anche se il link non ha il prefisso (email vecchie, link copiati) */
+	vaiAllaLinguaDelCliente(url, locals.locale, linguaPreventivo(q.draft).locale, !!locals.user);
 	/* anteprima dello staff su una bozza: la pagina si mostra come la vedra' il cliente dopo l'invio
 	   (bottoni di conferma, PDF, domanda) con il nome di chi la sta guardando come mittente */
 	const staffPreview = url.searchParams.get('anteprima') === '1' && q.status === 'bozza' && !!locals.user;

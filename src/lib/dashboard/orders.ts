@@ -198,6 +198,9 @@ export function itemMetaFor(i: OrderRow, lang: Lang = 'it'): string {
 	return parts.join(' · ');
 }
 
+/** nome dell'articolo nelle email al cliente: per gli ordini del sito il nome del prodotto nella sua lingua (il nome salvato
+ *  e' in italiano); per quelli inseriti a mano resta quello scritto da noi */
+export const nomeArticolo = (i: Pick<OrderRow, 'product_name' | 'product_slug' | 'channel'>, lang: Lang = 'it'): string => (lang === 'it' || i.channel === 'manuale' ? i.product_name : (catLabel(i.product_slug, lang) ?? i.product_name));
 /** Immagine da mostrare per un articolo: prova generata, anteprima o mockup */
 export const thumbOf = (i: Pick<OrderRow, 'proof_url' | 'preview_url' | 'mockup_url'>) => i.proof_url ?? i.preview_url ?? i.mockup_url ?? null;
 export const DEVICE_ICON: Record<string, string> = { mobile: '📱', tablet: '📱', desktop: '💻' };

@@ -4,7 +4,8 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { money } from '$lib/dashboard/orders';
-import { LOCALES, isLocale, langOf, localizePath, type Lang, type LocaleCode } from '$lib/i18n';
+import { localizePath, type Currency, type Lang, type LocaleCode } from '$lib/i18n';
+import { linguaDaPaese, linguaOrdine, pagatoInValuta, formatoValuta } from '$lib/lingua-cliente';
 import { perLingua, t as tradotto } from '$lib/traduzioni';
 import { dueNow, isRiba, type InvoiceMessage, type InvoicePayment } from '$lib/dashboard/fatture';
 import { sendEmail } from './email';
@@ -21,32 +22,37 @@ export async function getInvoice(db: DB, id: string): Promise<InvoiceRow | null>
 	return (data as InvoiceRow | null) ?? null;
 }
 /* ---------- lingua del cliente e PDF: UN SOLO punto da cui passano pagina del cliente, invio, reinvio e modifica ---------- */
-/** Lingua dal paese di fatturazione: Italia (e paesi del sito italiano) = italiano; un paese con la sua lingua sul sito = quella; ogni altro paese = inglese */
-export function linguaDaPaese(country?: string | null): Lang {
-	const c = (country || 'IT').trim().toUpperCase();
-	return Object.values(LOCALES).find((l) => l.countries.includes(c))?.lang ?? 'en';
-}
-/** Lingua della fattura per il cliente: quella del sito da cui ha ordinato (orders.locale); senza un ordine del sito (ordini manuali, DDT)
- *  il paese di fatturazione. Insieme, quanto ha pagato nella sua valuta se non e' l'euro (sito USA). */
-export async function linguaFattura(db: DB, inv: Pick<InvoiceRow, 'order_numbers' | 'billing'>): Promise<{ lang: Lang; locale: LocaleCode; pagato: { currency: string; amount: number } | null }> {
-	let code: LocaleCode | null = null; let pagato: { currency: string; amount: number } | null = null;
+export { linguaDaPaese };
+/** Lingua della fattura per il cliente: quella del sito da cui ha ordinato; per ordini manuali e fatture dai DDT il paese
+ *  di fatturazione (regole in $lib/lingua-cliente). Insieme, quanto ha pagato nella sua valuta se non e' l'euro (sito USA). */
+export async function linguaFattura(db: DB, inv: Pick<InvoiceRow, 'order_numbers' | 'billing'> & { currency?: string | null; amount_gross?: number | null }): Promise<{ lang: Lang; locale: LocaleCode; pagato: { currency: Currency; amount: number } | null }> {
 	const nums = (inv.order_numbers ?? []).filter(Boolean);
+	type Riga = { locale: string | null; channel: string | null; currency: string | null; fx_rate: number | null; total_paid_currency: number | null; billing: Record<string, string> | null; shipping: Record<string, string> | null };
+	let rows: Riga[] = [];
 	if (nums.length) {
-		const { data, error } = await db.from('orders').select('locale, currency, total_paid_currency').in('number', nums);
-		if (!error && data?.length) {
-			const rows = data as { locale: string | null; currency: string | null; total_paid_currency: number | null }[];
-			const loc = rows.map((r) => r.locale).find((l) => isLocale(l));
-			if (isLocale(loc)) code = loc;
-			const cur = rows.map((r) => r.currency).find((c) => c && c !== 'EUR');
-			if (cur) { const amount = Math.round(rows.filter((r) => r.currency === cur).reduce((s, r) => s + Number(r.total_paid_currency ?? 0), 0) * 100) / 100; if (amount > 0) pagato = { currency: cur, amount }; }
-		}
+		const { data, error } = await db.from('orders').select('locale, channel, currency, fx_rate, total_paid_currency, billing, shipping').in('number', nums);
+		if (!error && data?.length) rows = data as Riga[];
 	}
-	const lang = code ? langOf(code) : linguaDaPaese(inv.billing?.country);
-	return { lang, locale: code ?? perLingua(lang), pagato };
+	/* la riga che decide: una del sito con la sua lingua, se c'e'; l'intestazione della fattura vale piu' di quella dell'ordine */
+	const guida = rows.find((r) => r.channel && r.channel !== 'manuale') ?? rows[0] ?? null;
+	const l = linguaOrdine({ locale: guida?.locale, channel: guida?.channel, billing: inv.billing ?? guida?.billing, shipping: guida?.shipping });
+	/* Valuta: solo le fatture registrate in valuta (`invoices.currency`, scritta al checkout dal sito USA). L'integrazione di un
+	   ordine USA si paga in euro dalla pagina di conferma: la sua fattura resta in euro. L'importo e' quanto e' stato addebitato
+	   (somma delle righe dell'ordine); se la fattura e' stata corretta a mano e non torna piu', il suo totale al cambio dell'ordine. */
+	let pagato: { currency: Currency; amount: number } | null = null;
+	if (inv.currency && inv.currency !== 'EUR') {
+		const somma = pagatoInValuta(rows);
+		const fx = Number(rows.find((r) => r.currency === inv.currency)?.fx_rate ?? 0);
+		const stima = inv.amount_gross != null && fx > 0 ? Math.round(Number(inv.amount_gross) * fx * 100) / 100 : null;
+		if (somma && (stima == null || Math.abs(somma.amount - stima) <= 0.05 + 0.01 * rows.length)) pagato = somma;
+		else if (stima != null && stima > 0) pagato = { currency: inv.currency as Currency, amount: stima };
+	}
+	return { ...l, pagato };
 }
-/** Dati del PDF a partire dalla fattura registrata: aliquota e natura REGISTRATE (0% per l'estero), lingua del cliente. `over` = valori appena modificati. */
-export async function datiPdfFattura(db: DB, inv: InvoiceRow, over: Partial<InvoiceData> = {}): Promise<InvoiceData> {
-	const l = await linguaFattura(db, { order_numbers: inv.order_numbers, billing: (over.billing as Record<string, string> | undefined) ?? inv.billing });
+/** Dati del PDF a partire dalla fattura registrata: aliquota e natura REGISTRATE (0% per l'estero), lingua e valuta del cliente.
+ *  `over` = valori appena modificati. `interna` = la copia per noi (dashboard): in italiano e in euro, come l'XML per lo SDI. */
+export async function datiPdfFattura(db: DB, inv: InvoiceRow, over: Partial<InvoiceData> = {}, interna = false): Promise<InvoiceData> {
+	const l = interna ? { lang: 'it' as Lang, pagato: null } : await linguaFattura(db, { order_numbers: inv.order_numbers, billing: (over.billing as Record<string, string> | undefined) ?? inv.billing, currency: inv.currency, amount_gross: over.total_gross ?? Number(inv.amount_gross) });
 	return {
 		number: inv.number, issued_at: inv.issued_at, email: inv.email ?? '', billing: inv.billing ?? {}, lines: inv.lines ?? [],
 		vat_rate: aliquotaFattura(inv.vat_rate), natura: inv.natura ?? null, lang: l.lang, paid_currency: l.pagato,
@@ -56,9 +62,11 @@ export async function datiPdfFattura(db: DB, inv: InvoiceRow, over: Partial<Invo
 		...over
 	};
 }
-/** PDF della fattura rigenerato dai dati registrati (sempre l'ultima versione del layout), con il nome del file nella lingua del cliente */
-export async function pdfFattura(db: DB, inv: InvoiceRow, over: Partial<InvoiceData> = {}): Promise<{ bytes: Uint8Array; nome: string; lang: Lang; locale: LocaleCode }> {
-	const dati = await datiPdfFattura(db, inv, over);
+/** PDF della fattura rigenerato dai dati registrati (sempre l'ultima versione del layout), con il nome del file nella lingua del cliente.
+ *  Senza `interna` e' la copia DEL CLIENTE (la sua lingua, la sua valuta): email, pagina della fattura, area personale.
+ *  Con `interna: true` e' la nostra: italiano ed euro, quella che si apre dalla dashboard. */
+export async function pdfFattura(db: DB, inv: InvoiceRow, over: Partial<InvoiceData> = {}, o: { interna?: boolean } = {}): Promise<{ bytes: Uint8Array; nome: string; lang: Lang; locale: LocaleCode }> {
+	const dati = await datiPdfFattura(db, inv, over, !!o.interna);
 	const lang = dati.lang ?? 'it';
 	return { bytes: await buildInvoicePdf(dati), nome: tradotto(perLingua(lang), 'account.doc.fileFattura', { n: inv.number }), lang, locale: perLingua(lang) };
 }
@@ -96,7 +104,7 @@ export async function sendInvoice(db: DB, id: string, origin: string, o: { to?: 
 	const due = dueNow(payments);
 	/* lingua del cliente: cornice dell'email, pagina (link col prefisso della lingua) e PDF allegato */
 	const lingua = await linguaFattura(db, inv);
-	const mail = invoiceEmail({ subject: o.subject.trim(), message: o.message.trim(), senderName: o.sender, number: inv.number, href: `${origin}${localizePath(`/fattura/${inv.token}`, lingua.locale)}`, toPay: due > 0 ? money(due) : null }, lingua.lang);
+	const mail = invoiceEmail({ subject: o.subject.trim(), message: o.message.trim(), senderName: o.sender, number: inv.number, href: `${origin}${localizePath(`/fattura/${inv.token}`, lingua.locale)}`, toPay: due > 0 ? formatoValuta(due, 'EUR', lingua.lang) : null }, lingua.lang);
 	const cc = (o.cc || '').split(/[,;\s]+/).map((x) => x.trim().toLowerCase()).filter((x) => /^[^@]+@[^@]+\.[^@]+$/.test(x));
 	/* il PDF della fattura viaggia sempre in allegato (rigenerato dai dati, cosi' e' sempre l'ultima versione) */
 	let attachments: { name: string; content: string; contentType: string }[] | undefined;
@@ -153,7 +161,9 @@ export async function replyInvoice(db: DB, id: string, body: string, author: str
 	const inv = await getInvoice(db, id);
 	if (!inv?.email) return "La fattura non ha un'email.";
 	await db.from('invoice_messages').insert({ invoice_id: id, direction: 'out', author, body: body.trim() });
-	const r = await sendEmail({ to: inv.email, ...invoiceReplyEmail({ name: inv.billing?.first_name || inv.billing?.company, number: inv.number, body: body.trim(), author, href: `${origin}/fattura/${inv.token}` }) });
+	/* la cornice dell'email e la pagina nella lingua del cliente (il testo lo scrive lo staff) */
+	const lingua = await linguaFattura(db, inv);
+	const r = await sendEmail({ to: inv.email, ...invoiceReplyEmail({ name: inv.billing?.first_name || inv.billing?.company, number: inv.number, body: body.trim(), author, href: `${origin}${localizePath(`/fattura/${inv.token}`, lingua.locale)}` }, lingua.lang) });
 	if (!r.ok) return r.error ?? 'Email non inviata.';
 	await db.from('invoices').update({ unread: false }).eq('id', id);
 	return null;

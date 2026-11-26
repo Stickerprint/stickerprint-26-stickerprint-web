@@ -1,9 +1,11 @@
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import { COMPANY } from './company';
 import { LOGO_PNG_B64 } from './logo-b64';
-import { DOC_COLS, drawTable, drawTotals, wrapText, eur, eurUnit, qtyFmt, docT, winAnsi, eurIn } from './docs';
-import { LOCALES, type Lang } from '$lib/i18n';
+import { DOC_COLS, drawTable, drawTotals, wrapText, eur, eurUnit, qtyFmt, docT, winAnsi, eurIn, paginaSicura } from './docs';
+import { paymentLabelFor } from '$lib/dashboard/payments';
+import { LOCALES, type Currency, type Lang } from '$lib/i18n';
 import { perLingua } from '$lib/traduzioni';
+import { convertitore, formatoValuta, ripartisci } from '$lib/lingua-cliente';
 
 /** `description_c`: la stessa riga nella lingua del cliente (solo ordini esteri). La descrizione italiana resta quella fiscale (XML, dashboard). */
 export interface InvoiceLine { code?: string | null; description: string; description_c?: string | null; qty: number; unit_net: number; total_net: number; ddt?: string | null; ddt_date?: string | null }
@@ -15,9 +17,11 @@ export interface InvoiceData {
 	lines: InvoiceLine[];
 	/** aliquota applicata (default 22%) e natura quando e' 0 (N3.1 export, N3.2 cessione UE) */
 	vat_rate?: number | null; natura?: string | null;
-	/** lingua del cliente: etichette, date e formato dei numeri del PDF (importi sempre in euro). Default italiano. */
+	/** lingua del cliente: etichette, date e formato dei numeri del PDF. Default italiano. */
 	lang?: Lang | null;
-	/** quanto e' stato addebitato al cliente nella sua valuta, se non e' l'euro (ordini dal sito USA) */
+	/** quanto e' stato addebitato al cliente nella sua valuta, se non e' l'euro (ordini dal sito USA): con questo dato
+	 *  TUTTO il documento esce in quella valuta (regola di Mattia, 26/11/2026: «il cliente ricevera' la sua fattura in
+	 *  dollari»), con una riga che riporta l'importo registrato in euro. La copia per noi si genera senza: resta in euro. */
 	paid_currency?: { currency: string; amount: number } | null;
 	subtotal_net: number;
 	discount_net: number; // codice sconto (imponibile)
@@ -53,20 +57,50 @@ export const aliquotaFattura = (v: unknown): number => (v != null && v !== '' &&
 /** metodi di pagamento scritti in italiano nelle scadenze → chiave di traduzione (gli altri restano come sono) */
 const METODO_CHIAVE: Record<string, string> = { 'Carta di credito (Stripe)': 'fattura.carta', 'Bonifico bancario': 'fattura.bonifico' };
 
-/** Genera il PDF della fattura (A4). `inv.lang`: lingua del cliente (estero); importi sempre in euro, IVA con l'aliquota registrata. */
+/**
+ * Importi della fattura come li vede il cliente. In euro sono quelli registrati. Se ha pagato in un'altra valuta
+ * (`paid_currency`, sito USA) ogni importo e' in quella valuta: le righe si ripartiscono sull'imponibile convertito,
+ * cosi' righe, imponibile, IVA e totale tornano al centesimo con quanto gli e' stato addebitato.
+ * Lo usano il PDF e la pagina della fattura: i due devono dire gli stessi numeri.
+ */
+export function importiFattura(inv: Pick<InvoiceData, 'lines' | 'express_net' | 'vat_rate' | 'vat_amount' | 'paid_currency' | 'payment_terms'>): { currency: Currency; estera: boolean; righe: { unit: number; total: number }[]; express: number; imponibile: number; iva: number; totale: number; scadenze: number[]; euro: { imponibile: number; iva: number; totale: number } } {
+	const r2 = (v: number) => Math.round(v * 100) / 100;
+	const expressEur = Number(inv.express_net) || 0;
+	const taxable = r2(inv.lines.reduce((s, l) => s + Number(l.total_net), 0) + expressEur);
+	/* IVA: quella registrata sulla fattura (scorporo dal prezzo IVA inclusa: totale = incassato al centesimo); se manca, l'aliquota sull'imponibile */
+	const rate = aliquotaFattura(inv.vat_rate);
+	const vat = rate === 0 ? 0 : Number.isFinite(Number(inv.vat_amount)) && Math.abs(Number(inv.vat_amount) - taxable * rate) < 0.05 ? r2(Number(inv.vat_amount)) : r2(taxable * rate);
+	const euro = { imponibile: taxable, iva: vat, totale: r2(taxable + vat) };
+	const scadEur = (inv.payment_terms ?? []).map((t) => Number(t.amount));
+	const V = convertitore(inv.paid_currency && inv.paid_currency.currency !== 'EUR' ? { currency: inv.paid_currency.currency as Currency, amount: Number(inv.paid_currency.amount) } : null, euro.totale);
+	if (V.currency === 'EUR') return { currency: 'EUR', estera: false, righe: inv.lines.map((l) => ({ unit: Number(l.unit_net), total: Number(l.total_net) })), express: expressEur, imponibile: taxable, iva: vat, totale: euro.totale, scadenze: scadEur, euro };
+	const totale = r2(Number(inv.paid_currency!.amount));
+	const imponibile = rate === 0 ? totale : r2(totale / (1 + rate));
+	const parti = ripartisci([...inv.lines.map((l) => Number(l.total_net)), ...(expressEur > 0 ? [expressEur] : [])], imponibile);
+	return {
+		currency: V.currency, estera: true,
+		righe: inv.lines.map((l, i) => ({ unit: Number(l.qty) > 0 ? Math.round((parti[i] / Number(l.qty)) * 10000) / 10000 : parti[i], total: parti[i] })),
+		express: expressEur > 0 ? parti[parti.length - 1] : 0, imponibile, iva: r2(totale - imponibile), totale,
+		scadenze: scadEur.length === 1 ? [totale] : ripartisci(scadEur, totale), euro
+	};
+}
+
+/** Genera il PDF della fattura (A4). `inv.lang`: lingua del cliente; `inv.paid_currency`: valuta in cui ha pagato (tutto il documento in quella valuta). IVA con l'aliquota registrata. */
 export async function buildInvoicePdf(inv: InvoiceData): Promise<Uint8Array> {
 	const lang: Lang = inv.lang ?? 'it';
 	const ita = lang === 'it';
 	const D = docT(lang);
-	/* in italiano i formati restano quelli di sempre; nelle altre lingue numeri e date col formato della lingua */
-	const money = (v: number) => (ita ? eur(v) : eurIn(lang, v));
-	const moneyUnit = (v: number) => (ita ? eurUnit(v) : eurIn(lang, v, 4));
+	const I = importiFattura(inv);
+	/* in italiano i formati restano quelli di sempre; nelle altre lingue numeri e date col formato della lingua; in valuta, quello della valuta */
+	const money = (v: number) => (I.estera ? winAnsi(formatoValuta(v, I.currency, lang)) : ita ? eur(v) : eurIn(lang, v));
+	const moneyUnit = (v: number) => (I.estera ? winAnsi(formatoValuta(v, I.currency, lang, 4)) : ita ? eurUnit(v) : eurIn(lang, v, 4));
 	const qty = (v: number) => (ita ? qtyFmt(v) : winAnsi(new Intl.NumberFormat(LOCALES[perLingua(lang)].intl, { useGrouping: 'always', maximumFractionDigits: 0 }).format(v)));
 	/* fuori dall'italiano la data ha il mese scritto (8 Nov 2026): 8/11 per un americano e' l'11 agosto */
 	const data = (d: string) => (ita ? new Date(d).toLocaleDateString('it-IT') : winAnsi(new Date(d).toLocaleDateString(LOCALES[perLingua(lang)].intl, { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })));
-	const metodo = (m: string) => (ita || !METODO_CHIAVE[m] ? m : D(METODO_CHIAVE[m]));
+	/* metodi del sito dal catalogo; quelli inseriti a mano (nomi italiani del database) tradotti pezzo per pezzo */
+	const metodo = (m: string) => (ita ? m : METODO_CHIAVE[m] ? D(METODO_CHIAVE[m]) : paymentLabelFor(m, lang));
 	const pdf = await PDFDocument.create();
-	const page = pdf.addPage([595.28, 841.89]);
+	const page = paginaSicura(pdf.addPage([595.28, 841.89]));
 	const font = await pdf.embedFont(StandardFonts.Helvetica);
 	const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
 	const navy = rgb(0.04, 0.04, 0.23);
@@ -108,8 +142,8 @@ export async function buildInvoicePdf(inv: InvoiceData): Promise<Uint8Array> {
 	y -= 12;
 
 	// tabella righe (colonne fisse, testo a capo, righe centrate)
-	const rows: [string, string, string, string, string, string | null][] = inv.lines.map((l) => [l.code ?? '', (!ita && l.description_c) || l.description, qty(l.qty), moneyUnit(l.unit_net), money(l.total_net), l.ddt ? `${D('fattura.ddtRiga', { n: l.ddt })}${l.ddt_date ? D('fattura.ddtDel', { data: data(l.ddt_date) }) : ''}` : null]);
-	if (inv.express_net > 0) rows.push(['', D('fattura.express'), '1', money(inv.express_net), money(inv.express_net), null]);
+	const rows: [string, string, string, string, string, string | null][] = inv.lines.map((l, i) => [l.code ?? '', (!ita && l.description_c) || l.description, qty(l.qty), moneyUnit(I.righe[i].unit), money(I.righe[i].total), l.ddt ? `${D('fattura.ddtRiga', { n: l.ddt })}${l.ddt_date ? D('fattura.ddtDel', { data: data(l.ddt_date) }) : ''}` : null]);
+	if (inv.express_net > 0) rows.push(['', D('fattura.express'), '1', money(I.express), money(I.express), null]);
 	const multiDdt = new Set(rows.map((r) => r[4]).filter(Boolean)).size > 1;
 	y = drawTable({ page, x: M, y: y + 6, cols: DOC_COLS(undefined, lang), rows: rows.map(([c, d, q, u, t, ddt]) => [c, winAnsi(multiDdt && ddt ? `${d} (${ddt})` : d), q, u, t]), font, bold });
 	y -= 14;
@@ -120,10 +154,7 @@ export async function buildInvoicePdf(inv: InvoiceData): Promise<Uint8Array> {
 		y -= 2;
 	}
 	// in fondo alla pagina: pagamento e scadenze a sinistra, totali a destra
-	const taxable = Math.round((inv.lines.reduce((s, l) => s + l.total_net, 0) + inv.express_net) * 100) / 100;
-	/* IVA: quella registrata sulla fattura (scorporo dal prezzo IVA inclusa: totale = incassato al centesimo); se manca, il 22% dell'imponibile */
 	const rate = aliquotaFattura(inv.vat_rate);
-	const vat = rate === 0 ? 0 : Number.isFinite(inv.vat_amount) && Math.abs(inv.vat_amount - taxable * rate) < 0.05 ? Math.round(inv.vat_amount * 100) / 100 : Math.round(taxable * rate * 100) / 100;
 	const natura = inv.natura ?? 'N3.1';
 	const base = Math.min(y - 10, 200);
 	const pm = PAYMENT_TEXT[inv.payment_method] ?? inv.payment_method;
@@ -135,18 +166,14 @@ export async function buildInvoicePdf(inv: InvoiceData): Promise<Uint8Array> {
 	if (inv.orders.length) para(D('fattura.ordini'), inv.orders.join(', '));
 	if (inv.ddt_numbers?.length) para(D('fattura.ddt'), inv.ddt_numbers.join(', '));
 	if (inv.payment_terms?.length) {
-		yl = drawTable({ page, x: M, y: yl - 2, cols: [{ label: D('colScadenza'), width: 70 }, { label: D('colImporto'), width: 70, align: 'right' }, { label: D('colMetodo'), width: 200, maxLines: 2 }], rows: inv.payment_terms.map((t) => [data(t.due), money(t.amount), winAnsi(metodo(t.method))]), font, bold, size: 9, headSize: 8, minRowH: 18 });
+		yl = drawTable({ page, x: M, y: yl - 2, cols: [{ label: D('colScadenza'), width: 70 }, { label: D('colImporto'), width: 70, align: 'right' }, { label: D('colMetodo'), width: 200, maxLines: 2 }], rows: inv.payment_terms.map((t, i) => [data(t.due), money(I.scadenze[i] ?? t.amount), winAnsi(metodo(t.method))]), font, bold, size: 9, headSize: 8, minRowH: 18 });
 		yl -= 12;
 		if (COMPANY.iban) { text(`IBAN ${COMPANY.iban} · ${COMPANY.name}`, M, yl, 9, font, gray); yl -= 12; }
 	}
-	/* pagato in un'altra valuta (sito USA): il documento resta in euro, ma si dice quanto e' stato addebitato */
-	if (inv.paid_currency && inv.paid_currency.currency !== 'EUR' && inv.paid_currency.amount > 0) {
-		let importo = `${inv.paid_currency.amount.toFixed(2)} ${inv.paid_currency.currency}`;
-		try { importo = new Intl.NumberFormat(inv.paid_currency.currency === 'USD' ? 'en-US' : LOCALES[perLingua(lang)].intl, { style: 'currency', currency: inv.paid_currency.currency }).format(inv.paid_currency.amount); } catch { /* resta il formato semplice */ }
-		text(D('fattura.addebitato', { importo }), M, yl, 9, font, gray); yl -= 12;
-	}
+	/* documento in valuta (sito USA): si riporta l'importo registrato in euro, che e' quello della fattura elettronica */
+	if (I.estera) { text(D('fattura.controvalore', { importo: eurIn(lang, I.euro.totale) }), M, yl, 9, font, gray); yl -= 12; }
 	if (['paypal', 'stripe', 'test'].includes(inv.payment_method)) text(D('fattura.prova'), M, 56, 8.5, font, gray);
-	drawTotals(page, font, bold, base - 4, [[D('imponibile'), money(taxable)], [rate === 0 ? D('fattura.ivaZero', { natura }) : D('fattura.ivaAliquota', { p: Math.round(rate * 100) }), money(vat)], [D('fattura.totale'), money(Math.round((taxable + vat) * 100) / 100), true]]);
+	drawTotals(page, font, bold, base - 4, [[D('imponibile'), money(I.imponibile)], [rate === 0 ? D('fattura.ivaZero', { natura }) : D('fattura.ivaAliquota', { p: Math.round(rate * 100) }), money(I.iva)], [D('fattura.totale'), money(I.totale), true]]);
 	/* nota di non imponibilita' sopra la riga della prova: una o due righe secondo la lingua */
 	if (rate === 0) {
 		const nota = wrapText(font, winAnsi(natura === 'N3.2' ? D('fattura.n32') : natura === 'N3.1' ? D('fattura.n31') : D('fattura.nonImponibile')), 8.5, 499, 2);

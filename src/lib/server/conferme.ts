@@ -6,6 +6,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { groupOrders, itemMetaFor, money, thumbOf, type OrderGroup, type OrderRow } from '$lib/dashboard/orders';
 import { LOCALES, formatAmount, localizePath, type Lang } from '$lib/i18n';
 import { perLingua, t as tradotto } from '$lib/traduzioni';
+import { formatoValuta, linguaOrdine } from '$lib/lingua-cliente';
 import type { PaymentMethod } from '$lib/dashboard/payments';
 import { upfrontDue, type OrderConfirmation, type OrderMessage, type OrderPayment } from '$lib/dashboard/conferme';
 import { sendEmail } from './email';
@@ -109,7 +110,9 @@ export async function sendConfirmation(db: DB, group: string, origin: string, o:
 	const payments = await syncPayments(db, group);
 	const conf = await getConfirmation(db, group);
 	const due = upfrontDue(payments);
-	const mail = orderConfirmEmail({ subject: o.subject.trim(), message: o.message.trim(), senderName: o.sender, number: g.number, href: `${origin}/conferma/${conf.token}`, toPay: due > 0 ? money(due) : null });
+	/* cornice dell'email, importo e pagina nella lingua del cliente (il testo lo scrive lo staff, proposto gia' in lingua) */
+	const L = linguaOrdine(g.items[0]);
+	const mail = orderConfirmEmail({ subject: o.subject.trim(), message: o.message.trim(), senderName: o.sender, number: g.number, href: `${origin}${localizePath(`/conferma/${conf.token}`, L.locale)}`, toPay: due > 0 ? (L.lang === 'it' ? money(due) : formatoValuta(due, 'EUR', L.lang)) : null }, L.lang);
 	const cc = (o.cc || '').split(/[,;\s]+/).map((x) => x.trim().toLowerCase()).filter((x) => /^[^@]+@[^@]+\.[^@]+$/.test(x));
 	const r = await sendEmail({ to: [email, ...cc], ...mail, metadata: { order: g.number } });
 	if (!r.ok) return { ok: false, message: r.error ?? 'Email non inviata.' };
@@ -178,7 +181,8 @@ export async function replyCustomer(db: DB, group: string, body: string, author:
 	if (!g?.email) return "L'ordine non ha un'email.";
 	const conf = await getConfirmation(db, group);
 	await db.from('order_messages').insert({ checkout_group: group, direction: 'out', kind: 'risposta', author, body: body.trim() });
-	const r = await sendEmail({ to: g.email, ...orderReplyEmail({ name: g.items[0].billing?.first_name || g.customer, number: g.number, body: body.trim(), author, href: `${origin}/conferma/${conf.token}` }) });
+	const L = linguaOrdine(g.items[0]);
+	const r = await sendEmail({ to: g.email, ...orderReplyEmail({ name: g.items[0].billing?.first_name || g.customer, number: g.number, body: body.trim(), author, href: `${origin}${localizePath(`/conferma/${conf.token}`, L.locale)}` }, L.lang) });
 	if (!r.ok) return r.error ?? 'Email non inviata.';
 	await db.from('order_confirmations').update({ unread: false }).eq('checkout_group', group);
 	return null;
@@ -191,7 +195,8 @@ export async function remindPayment(db: DB, group: string, origin: string): Prom
 	const due = upfrontDue(payments);
 	if (due <= 0) return { ok: false, message: 'Non ci sono anticipi da incassare.' };
 	const conf = await getConfirmation(db, group);
-	const r = await sendEmail({ to: g.email, ...orderPaymentReminderEmail({ name: g.items[0].billing?.first_name || g.customer, number: g.number, amount: money(due), href: `${origin}/conferma/${conf.token}`, senderName: conf.sender_name }) });
+	const L = linguaOrdine(g.items[0]);
+	const r = await sendEmail({ to: g.email, ...orderPaymentReminderEmail({ name: g.items[0].billing?.first_name || g.customer, number: g.number, amount: L.lang === 'it' ? money(due) : formatoValuta(due, 'EUR', L.lang), href: `${origin}${localizePath(`/conferma/${conf.token}`, L.locale)}`, senderName: conf.sender_name }, L.lang) });
 	return r.ok ? { ok: true, message: 'Promemoria inviato.' } : { ok: false, message: r.error ?? 'Email non inviata.' };
 }
 export async function confirmCounts(db: DB): Promise<number> {

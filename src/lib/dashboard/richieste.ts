@@ -1,6 +1,9 @@
 /** Costanti e tipi di richieste aziendali e preventivi (condivisi tra server e browser). */
 import type { OrderDraft } from './orderDraft';
 import { metodoAnticipato } from './payments';
+import type { Lang } from '$lib/i18n';
+import { perLingua, t as tradotto } from '$lib/traduzioni';
+import { linguaPreventivo } from '$lib/lingua-cliente';
 
 export type RequestStatus = 'new' | 'in_progress' | 'quoted' | 'won' | 'lost' | 'closed';
 export const REQUEST_STATUS: Record<RequestStatus, { label: string; color: string; soft: string }> = {
@@ -51,13 +54,15 @@ const eur = (v: number) => new Intl.NumberFormat('it-IT', { style: 'currency', c
 /** Email di invio proposta dallo staff: si modifica prima di mandarla (mai a freddo) */
 /** firma di tutto quello che arriva al cliente: mai il nome di chi segue (Mattia, 25/11/2026) */
 export const FIRMA_STAFF = 'Stickerprint-Staff';
-export function defaultQuoteEmail(q: Pick<Quote, 'number' | 'draft' | 'total_gross' | 'valid_until'>, _sender?: string | null): { subject: string; body: string } {
+export function defaultQuoteEmail(q: Pick<Quote, 'number' | 'draft' | 'total_gross' | 'valid_until'>, _sender?: string | null, lang: Lang = linguaPreventivo(q.draft).lang): { subject: string; body: string } {
+	/* nella lingua del cliente (26/11/2026): di norma quella del paese in anagrafica */
+	const P = (k: string, params?: Record<string, string | number>) => tradotto(perLingua(lang), `proposte.preventivo.${k}`, params);
 	const c = q.draft.customer;
 	const first = c.first_name?.trim() || c.name;
 	const items = q.draft.items.filter((i) => Number(i.qty) > 0);
 	/* pagamento anticipato: si dice subito come si paga e che l'ordine parte da solo a saldo avvenuto */
 	const anticipato = (q.draft.terms ?? []).some((t) => metodoAnticipato(t.method));
-	const subject = `Il tuo preventivo ${q.number}: ${items[0]?.description ?? 'la tua richiesta'}`.slice(0, 120);
-	const body = `Ciao ${first},\n\nti abbiamo finalmente preparato il preventivo richiesto: lo trovi nel link qui sotto, con tutti i dettagli.${anticipato ? '\nPer confermarlo basta un clic dalla pagina. Puoi pagare con carta di credito, PayPal o bonifico bancario: una volta saldato, il tuo ordine entrerà automaticamente in produzione.' : ''}\nSe qualcosa non torna scrivici pure.\n\nA presto,\n${FIRMA_STAFF}`;
+	const subject = P('oggetto', { n: q.number, cosa: items[0]?.description ?? P('cosaDefault') }).slice(0, 120);
+	const body = `${P('corpo', { nome: first })}${anticipato ? P('anticipato') : ''}${P('chiusura', { firma: FIRMA_STAFF })}`;
 	return { subject, body };
 }

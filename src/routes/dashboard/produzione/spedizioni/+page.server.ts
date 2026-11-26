@@ -1,6 +1,8 @@
 import { qaplaCouriers } from '$lib/server/couriers/qapla';
 import { fail } from '@sveltejs/kit';
-import { groupOrders, itemMeta, thumbOf, type OrderRow } from '$lib/dashboard/orders';
+import { groupOrders, itemMetaFor, nomeArticolo, thumbOf, type OrderRow } from '$lib/dashboard/orders';
+import { localizePath } from '$lib/i18n';
+import { linguaOrdine } from '$lib/lingua-cliente';
 import { generateLabels } from '$lib/server/shipping';
 import { sendEmail } from '$lib/server/email';
 import { shippingUpdateEmail } from '$lib/server/email-templates';
@@ -87,9 +89,11 @@ export const actions: Actions = {
 		if (g.email) {
 			/* dove il cliente rivede l'ordine: l'area personale se ha un account. Chi ha un ordine inserito da noi di solito non
 			   ce l'ha: il bottone lo porta alla pagina della sua conferma d'ordine, non alla pagina di accesso (25/11/2026) */
-			let paginaOrdine: string | null = first.user_id ? `${url.origin}/account/ordini` : null;
-			if (!paginaOrdine && g.channel !== 'ecommerce') { const conf = await getConfirmation(supabase, group); if (conf?.token) paginaOrdine = `${url.origin}/conferma/${conf.token}`; }
-			const mail = shippingUpdateEmail({ kind: 'affidato', name: first.shipping?.first_name || g.customer, number: g.number, trackingUrl: paginaOrdine ?? `${url.origin}/account/ordini`, items: g.items.map((i) => ({ name: i.product_name, qty: i.qty, meta: itemMeta(i) || null, preview: thumbOf(i) })), accountUrl: paginaOrdine });
+			/* nella lingua del cliente (26/11/2026): testi, nomi dei prodotti e link col prefisso della sua lingua */
+			const L = linguaOrdine(first);
+			let paginaOrdine: string | null = first.user_id ? `${url.origin}${localizePath('/account/ordini', L.locale)}` : null;
+			if (!paginaOrdine && g.channel !== 'ecommerce') { const conf = await getConfirmation(supabase, group); if (conf?.token) paginaOrdine = `${url.origin}${localizePath(`/conferma/${conf.token}`, L.locale)}`; }
+			const mail = shippingUpdateEmail({ kind: 'affidato', name: first.shipping?.first_name || g.customer, number: g.number, trackingUrl: paginaOrdine ?? `${url.origin}${localizePath('/account/ordini', L.locale)}`, items: g.items.map((i) => ({ name: nomeArticolo(i, L.lang), qty: i.qty, meta: itemMetaFor(i, L.lang) || null, preview: thumbOf(i) })), accountUrl: paginaOrdine }, L.lang);
 			const res = await sendEmail({ to: g.email, subject: mail.subject, html: mail.html, tag: mail.tag, metadata: { order: g.number } });
 			emailed = res.ok;
 			if (res.ok) await supabase.from('orders').update({ shipping_notified: ['affidato'] }).eq('checkout_group', group);

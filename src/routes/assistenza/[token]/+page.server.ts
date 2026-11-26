@@ -3,14 +3,18 @@ import { adminClient } from '$lib/server/admin';
 import { customerReply, getTicketByToken, signedFiles } from '$lib/server/helpdesk';
 import { t } from '$lib/traduzioni';
 import { langOf } from '$lib/i18n';
+import { linguaContatto } from '$lib/server/lingua-db';
+import { vaiAllaLinguaDelCliente } from '$lib/server/lingua-pagina';
 import type { Actions, PageServerLoad } from './$types';
 
 /** Pagina pubblica della richiesta: il cliente vede la conversazione e risponde (anche con un allegato) */
-export const load: PageServerLoad = async ({ params, locals: { locale } }) => {
+export const load: PageServerLoad = async ({ params, url, locals: { locale, user } }) => {
 	const db = adminClient();
 	if (!db) error(503, t(locale, 'account.errori.servizio'));
 	const c = await getTicketByToken(db, params.token);
 	if (!c) error(404, t(locale, 'account.errori.richiestaNonTrovata'));
+	/* la conversazione nella lingua del cliente anche se il link non ha il prefisso */
+	vaiAllaLinguaDelCliente(url, locale, (await linguaContatto(db, c.ticket as { lang?: string | null; email: string })).locale, !!user);
 	const files = await signedFiles(db, c.messages, 3600, true);
 	return { ticket: { number: c.ticket.number, status: c.ticket.status, name: c.ticket.name, order_number: c.ticket.order_number, created_at: c.ticket.created_at }, messages: c.messages, files };
 };

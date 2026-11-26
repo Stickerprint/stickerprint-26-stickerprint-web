@@ -49,8 +49,8 @@ export const GET: RequestHandler = async ({ request, url, locals }) => {
 	   7/11/2026) la consegna non arriva da sola, e la richiesta stessa vale come conferma: l'ordine passa a Consegnato.
 	   Le colonne portano anche `locale`: l'email esce nella lingua dell'ordine (prima usciva sempre in italiano). */
 	const { data, error } = explicit.length
-		? await db.from('orders').select('id, number, checkout_group, user_id, email, shipping, product_name, qty, delivered_at, preview_url, proof_url, mockup_url, locale, status').in('status', ['spedito', 'in_consegna', 'consegnato']).in('number', explicit).not('email', 'is', null)
-		: await db.from('orders').select('id, number, checkout_group, user_id, email, shipping, product_name, qty, delivered_at, preview_url, proof_url, mockup_url, locale, status').eq('status', 'consegnato').eq('channel', 'ecommerce').eq('shipping_status_id', CONSEGNATO_DAL_CORRIERE).is('review_asked_at', null).is('legacy_id', null).not('email', 'is', null).lte('delivered_at', limit).gte('delivered_at', oldest).limit(100);
+		? await db.from('orders').select('id, number, checkout_group, user_id, email, shipping, billing, channel, product_name, product_slug, qty, delivered_at, preview_url, proof_url, mockup_url, locale, status').in('status', ['spedito', 'in_consegna', 'consegnato']).in('number', explicit).not('email', 'is', null)
+		: await db.from('orders').select('id, number, checkout_group, user_id, email, shipping, billing, channel, product_name, product_slug, qty, delivered_at, preview_url, proof_url, mockup_url, locale, status').eq('status', 'consegnato').eq('channel', 'ecommerce').eq('shipping_status_id', CONSEGNATO_DAL_CORRIERE).is('review_asked_at', null).is('legacy_id', null).not('email', 'is', null).lte('delivered_at', limit).gte('delivered_at', oldest).limit(100);
 	if (error) return json({ error: error.message }, { status: 500 });
 	const groups = new Map<string, typeof data>();
 	for (const o of data ?? []) { const k = o.checkout_group ?? o.id; if (!groups.has(k)) groups.set(k, []); groups.get(k)!.push(o); }

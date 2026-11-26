@@ -7,7 +7,7 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { PUBLIC_SITE_URL } from '$env/static/public';
-import { groupOrders, CATS, type OrderRow } from '$lib/dashboard/orders';
+import { groupOrders, CATS, itemMetaFor, nomeArticolo, type OrderRow } from '$lib/dashboard/orders';
 import type { IntegrationChange, OrderPayment } from '$lib/dashboard/conferme';
 import { MATERIAL_LABEL } from '$lib/account';
 import { eur } from './docs';
@@ -16,8 +16,8 @@ import { quoteWith, PRODUCT_ENGINES } from '$lib/pricing/engine';
 import { getConfirmation, loadGroup, loadPayments } from './conferme';
 import { blockPhase, unblockPhase, loadJob, recalcAll, ensurePlan, logEvent } from './produzione';
 import { buildInvoicePdf, aliquotaFattura } from './invoice';
-import { isLocale, langOf } from '$lib/i18n';
-import { linguaDaPaese } from './fatture';
+import { localizePath, type Lang } from '$lib/i18n';
+import { formatoValuta, linguaOrdine } from '$lib/lingua-cliente';
 import { sendEmail } from './email';
 import { pushStaff } from './push';
 import { integrationRequestEmail, integrationInvoiceEmail, OWNER_EMAIL, ownerNotifyEmail } from './email-templates';
@@ -32,6 +32,13 @@ function describe(row: OrderRow, c: { width_mm: number | null; height_mm: number
 	const size = c.width_mm && c.height_mm ? `${c.width_mm}×${c.height_mm} mm` : '';
 	const fin = c.finitura && c.finitura !== 'nessuna' ? `lamina ${c.finitura}` : '';
 	return [`${c.qty} × ${row.product_name}`, row.forma, MATERIAL_LABEL[c.materiale ?? ''] ?? c.materiale, fin, size].filter(Boolean).join(' · ');
+}
+/** la stessa riga per l'email al cliente, nella sua lingua (in italiano resta `label`, quella che si legge in dashboard) */
+function descriviPer(rows: OrderRow[], c: IntegrationChange, lang: Lang): string {
+	const row = rows.find((r) => r.id === c.order_id);
+	if (!row || lang === 'it') return c.label;
+	const nuova = { ...row, width_mm: c.width_mm, height_mm: c.height_mm, materiale: c.materiale, finitura: c.finitura } as OrderRow;
+	return [`${c.qty} × ${nomeArticolo(row, lang)}`, itemMetaFor(nuova, lang)].filter(Boolean).join(' · ');
 }
 
 /** Ricalcola le righe con i valori nuovi: prezzo dal listino quando c'e' un motore, altrimenti proporzionale alla quantita' */
@@ -95,9 +102,11 @@ export async function requestIntegration(db: DB, group: string, inputs: ChangeIn
 	await db.from('orders').update({ status: 'attesa_integrazione' }).eq('checkout_group', group).neq('status', 'annullato');
 	await holdProduction(db, group, true, operator);
 	const conf = await getConfirmation(db, group);
-	const href = `${(origin || PUBLIC_SITE_URL || 'https://stickerprint.it').replace(/\/$/, '')}/conferma/${conf.token}`;
+	/* email e pagina nella lingua del cliente; l'integrazione si chiede e si paga in euro (anche per gli ordini in dollari) */
+	const L = linguaOrdine(g.items[0]);
+	const href = `${(origin || PUBLIC_SITE_URL || 'https://stickerprint.it').replace(/\/$/, '')}${localizePath(`/conferma/${conf.token}`, L.locale)}`;
 	if (g.email) {
-		const mail = integrationRequestEmail({ name: g.items[0].shipping?.first_name || g.customer, number: g.number, amount: eur(amount), reason: why, lines: pv.changes.map((c) => c.label), href, senderName: operator });
+		const mail = integrationRequestEmail({ name: g.items[0].shipping?.first_name || g.customer, number: g.number, amount: L.lang === 'it' ? eur(amount) : formatoValuta(amount, 'EUR', L.lang), reason: reason.trim() || pv.changes.filter((c) => inputs.some((i) => i.order_id === c.order_id)).map((c) => descriviPer(g.items, c, L.lang)).join('; '), lines: pv.changes.map((c) => descriviPer(g.items, c, L.lang)), href, senderName: operator }, L.lang);
 		await sendEmail({ to: g.email, subject: mail.subject, html: mail.html, tag: mail.tag, metadata: { order: g.number } }).catch(() => {});
 	}
 	pushStaff({ title: `Integrazione richiesta · ${g.number}`, body: `${eur(amount)} · ${why}`.slice(0, 120), url: `/dashboard/fatturazione/ordini/${group}`, tag: `integr-${group}` });
@@ -136,10 +145,12 @@ export async function settleIntegration(db: DB, group: string, payment: OrderPay
 	const number = (invNum as string) ?? `SPF-${Date.now()}`;
 	const today = new Date().toISOString().slice(0, 10);
 	const bill = (first.billing ?? first.shipping ?? {}) as Record<string, string>;
+	/* lingua del cliente per fattura ed email; la fattura dell'integrazione resta in euro: e' in euro che e' stata pagata */
+	const L = linguaOrdine(first);
 	const lines = [{ code: first.product_code ?? CATS[first.product_slug]?.code ?? null, description: `Integrazione ordine ${g.number}: ${payment.reason ?? 'modifica dell’ordine'}`.slice(0, 200), qty: 1, unit_net: net, total_net: net }];
 	const method = payment.provider === 'paypal' ? 'PayPal' : payment.provider === 'stripe' ? 'Carta di credito (Stripe)' : 'Bonifico bancario';
 	const terms = [{ due: today, amount, method, xml_code: payment.provider === 'stripe' || payment.provider === 'paypal' ? 'MP08' : 'MP05' }];
-	const inv = { vat_rate: rate, natura, lang: isLocale(first.locale) ? langOf(first.locale) : linguaDaPaese(bill.country), number, issued_at: today, email: g.email, billing: bill, lines, subtotal_net: net, discount_net: 0, express_net: 0, credit_used: 0, vat_amount: vat, total_gross: amount, to_pay: amount, payment_method: method, orders: g.numbers, payment_terms: terms, notes: null };
+	const inv = { vat_rate: rate, natura, lang: L.lang, number, issued_at: today, email: g.email, billing: bill, lines, subtotal_net: net, discount_net: 0, express_net: 0, credit_used: 0, vat_amount: vat, total_gross: amount, to_pay: amount, payment_method: method, orders: g.numbers, payment_terms: terms, notes: null };
 	let pdfPath: string | null = null; let b64: string | null = null;
 	try {
 		const bytes = await buildInvoicePdf(inv);
@@ -150,7 +161,7 @@ export async function settleIntegration(db: DB, group: string, payment: OrderPay
 	const { data: created } = await db.from('invoices').insert({ vat_rate: rate, natura, user_id: first.user_id, order_id: first.id, number, issued_at: today, amount_gross: amount, pdf_path: pdfPath, email: g.email, billing: bill, lines, payment_terms: terms, order_numbers: g.numbers, subtotal_net: net, discount_net: 0, express_net: 0, credit_used: 0, vat_amount: vat, payment_method: payment.provider ?? 'manuale', paid_at: new Date().toISOString(), checkout_group: group, sent_at: g.email ? new Date().toISOString() : null }).select('id').single();
 	if (created?.id) await db.from('order_payments').update({ invoice_id: created.id }).eq('id', payment.id);
 	if (g.email) {
-		const mail = integrationInvoiceEmail({ name: first.shipping?.first_name || g.customer, number: g.number, invoice: number, amount: eur(amount), lines: changes.map((c) => c.label) });
+		const mail = integrationInvoiceEmail({ name: first.shipping?.first_name || g.customer, number: g.number, invoice: number, amount: L.lang === 'it' ? eur(amount) : formatoValuta(amount, 'EUR', L.lang), lines: changes.map((c) => descriviPer(g.items, c, L.lang)) }, L.lang);
 		await sendEmail({ to: g.email, subject: mail.subject, html: mail.html, tag: mail.tag, metadata: { order: g.number }, attachments: b64 ? [{ name: `${number}.pdf`, content: b64, contentType: 'application/pdf' }] : undefined }).catch(() => {});
 	}
 	pushStaff({ title: `Integrazione pagata · ${g.number}`, body: `${eur(amount)} · fattura ${number} · ordine ripartito`, url: `/dashboard/fatturazione/ordini/${group}`, tag: `integr-${group}` });

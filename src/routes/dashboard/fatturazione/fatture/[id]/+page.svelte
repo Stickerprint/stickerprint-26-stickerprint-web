@@ -33,13 +33,15 @@
 	/* fattura come pagina del cliente: popup dell'email, scadenze con stato, conversazione */
 	import { PAYMENT_STATUS } from '$lib/dashboard/conferme';
 	import { defaultInvoiceEmail, dueNow } from '$lib/dashboard/fatture';
+	import { NOME_LINGUA } from '$lib/lingua-cliente';
+	const linguaCliente = $derived(data.copiaCliente?.lang ?? 'it');
 	import { fmtAgo, fmtWhen } from '$lib/dashboard/produzione';
 	let sendOpen = $state(false);
 	let to = $state(''); let cc = $state(''); let subject = $state(''); let message = $state(''); let sender = $state('');
 	let sending = $state(false);
 	const due = $derived(dueNow(data.payments));
 	function openSend() {
-		const def = defaultInvoiceEmail(inv, data.payments, data.sender);
+		const def = defaultInvoiceEmail(inv, data.payments, data.sender, data.copiaCliente ?? { lang: 'it' });
 		to = inv.email ?? ''; subject = inv.sent_subject ?? def.subject; message = inv.sent_message ?? def.body; sender = inv.sender_name ?? data.sender ?? '';
 		sendOpen = true;
 	}
@@ -61,7 +63,8 @@
 		{#if data.locked}<p class="readonly-note">🔒 XML generato il {dmy(inv.xml_generated_at)}: la fattura è solo consultabile.</p>{/if}
 		<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
 			{#if !data.locked && !editing}<button type="button" class="btn btn--yellow btn--xs" onclick={startEdit}>✏️ Modifica</button>{/if}
-			{#if data.pdf}<a class="btn btn--ghost btn--xs" href={data.pdf} target="_blank" rel="noopener">⬇ PDF</a>{/if}
+			{#if data.pdf}<a class="btn btn--ghost btn--xs" href={data.pdf} target="_blank" rel="noopener" title="La nostra copia: in italiano e in euro, come la fattura elettronica">⬇ PDF</a>{/if}
+			{#if data.copiaCliente}<a class="btn btn--ghost btn--xs" href="/dashboard/fatturazione/fatture/{inv.id}/pdf?cliente=1" target="_blank" rel="noopener" title="Quella che riceve il cliente: nella sua lingua{data.copiaCliente.valuta !== 'EUR' ? ' e in ' + data.copiaCliente.valuta : ''}">⬇ PDF del cliente ({data.copiaCliente.lang.toUpperCase()}{data.copiaCliente.valuta !== 'EUR' ? ' · ' + data.copiaCliente.valuta : ''})</a>{/if}
 			{#if !editing}<button type="button" class="btn btn--blue btn--xs" onclick={openSend}>✉️ {inv.sent_at ? 'Reinvia al cliente' : 'Invia al cliente'}</button><a class="btn btn--ghost btn--xs" href="/fattura/{inv.token}?anteprima=1" target="_blank" rel="noopener">🔗 Pagina del cliente</a>{/if}
 			{#if !data.locked}<a class="btn btn--ghost btn--xs" href="/dashboard/fatturazione/fatture/xml?ids={inv.id}" target="_blank" rel="noopener" onclick={() => setTimeout(invalidateAll, 1500)}>📤 Genera XML</a>{/if}
 		</div>
@@ -219,6 +222,7 @@
 					<label class="osub">A <input name="to" type="email" bind:value={to} required /></label>
 					<label class="osub">Copia a (facoltativo) <input name="cc" bind:value={cc} placeholder="amministrazione@azienda.it" /></label>
 					<label class="osub">Oggetto <input name="subject" bind:value={subject} required /></label>
+					{#if linguaCliente !== 'it'}<span class="osub" style="padding:8px 10px;background:#eef4ff;border-radius:8px;color:#1d3a8a">🌍 Questo cliente riceve email e documenti in <b>{NOME_LINGUA[linguaCliente]}</b>: il testo proposto è già in {NOME_LINGUA[linguaCliente]}. Se lo cambi, scrivilo nella sua lingua.</span>{/if}
 					<label class="osub">Testo <textarea name="message" bind:value={message} rows="11" required></textarea></label>
 					<span class="osub">Firma: <b>Stickerprint-Staff</b>, sempre. Scrivi al plurale e non mettere il tuo nome nel testo.</span>
 				</div>

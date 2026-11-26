@@ -2,7 +2,8 @@
  * Helpdesk: ticket (supporto, resi, lamentele) con conversazione via email e pagina pubblica per il cliente.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Lang } from '$lib/i18n';
+import { localizePath, type Lang } from '$lib/i18n';
+import { linguaContatto } from './lingua-db';
 import { perLingua, t as tradotto } from '$lib/traduzioni';
 import { adminClient } from './admin';
 import { sendEmail } from './email';
@@ -19,7 +20,10 @@ export async function createTicket(db: DB, kind: TicketKind, f: { name?: string;
 	const admin = adminClient() ?? db;
 	const subject = f.message.trim().split('\n')[0].slice(0, 80);
 	const row = { kind, name: f.name?.trim() || null, email: f.email.trim().toLowerCase(), phone: f.phone?.trim() || null, order_number: f.order_number?.trim() || null, subject };
-	const { data: t, error } = await admin.from('tickets').insert(row).select('*').single();
+	/* la lingua del modulo resta sul ticket: le risposte dello staff partiranno in quella (colonna `lang`, migrazione 0065;
+	   finche' non c'e' si salva senza) */
+	let { data: t, error } = await admin.from('tickets').insert({ ...row, lang }).select('*').single();
+	if (error && /lang/.test(error.message)) ({ data: t, error } = await admin.from('tickets').insert(row).select('*').single());
 	if (error || !t) {
 		// senza chiave di servizio la RLS non lascia rileggere: si inserisce alla cieca
 		const { error: e2 } = await db.from('tickets').insert(row);
@@ -28,7 +32,7 @@ export async function createTicket(db: DB, kind: TicketKind, f: { name?: string;
 	}
 	const ticket = t as Ticket;
 	await admin.from('ticket_messages').insert({ ticket_id: ticket.id, direction: 'in', author: ticket.name ?? ticket.email, body: f.message.trim(), file_path: f.file_path ?? null });
-	const href = `${origin}/assistenza/${ticket.token}`;
+	const href = `${origin}${localizePath(`/assistenza/${ticket.token}`, perLingua(lang))}`;
 	await Promise.all([
 		sendEmail({ to: ticket.email, ...ticketReceivedEmail({ name: ticket.name, number: ticket.number, href }, lang) }),
 		sendEmail({ to: OWNER_EMAIL, ...ownerNotifyEmail({ title: `Nuova richiesta ${ticket.number} (${TICKET_KIND[kind].label})`, lines: [`${ticket.name ?? ''} · ${ticket.email}`, ticket.order_number ? `Ordine ${ticket.order_number}` : 'Nessun ordine indicato', f.message.slice(0, 300)], href: `${origin}/dashboard/supporto/ticket/${ticket.id}` }) }),
@@ -107,7 +111,9 @@ export async function replyTicket(db: DB, id: string, body: string, author: stri
 			if (blob) { const bytes = new Uint8Array(await blob.arrayBuffer()); let bin = ''; for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000)); attachments.push({ name: f.name, content: btoa(bin), contentType: f.type || blob.type || 'application/octet-stream' }); tot += bytes.length; }
 		}
 	}
-	const r = await sendEmail({ to: c.ticket.email, ...ticketReplyEmail({ name: c.ticket.name, number: c.ticket.number, body: body.trim(), author, href: `${origin}/assistenza/${c.ticket.token}`, attachments: links }), attachments: attachments.length ? attachments : undefined });
+	/* cornice dell'email e pagina della conversazione nella lingua del cliente (il testo lo scrive lo staff) */
+	const L = await linguaContatto(adminClient() ?? db, c.ticket as { lang?: string | null; email: string });
+	const r = await sendEmail({ to: c.ticket.email, ...ticketReplyEmail({ name: c.ticket.name, number: c.ticket.number, body: body.trim(), author, href: `${origin}${localizePath(`/assistenza/${c.ticket.token}`, L.locale)}`, attachments: links }, L.lang), attachments: attachments.length ? attachments : undefined });
 	if (!r.ok) return r.error ?? 'Email non inviata.';
 	await db.from('tickets').update({ status: nextStatus, unread: false, last_message_at: new Date().toISOString(), updated_at: new Date().toISOString(), assigned: c.ticket.assigned ?? author, closed_at: nextStatus === 'chiuso' ? new Date().toISOString() : null }).eq('id', id);
 	return null;

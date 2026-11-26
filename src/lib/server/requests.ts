@@ -33,7 +33,9 @@ export async function saveRequest(
 		const r = await createTicket(supabase, kind === 'reso' ? 'reso' : 'domanda', { ...fields, file_path }, origin, lang);
 		return r.ok ? { ok: true } : { ok: false, error: r.error };
 	}
-	const { error } = await supabase.from('contact_requests').insert({ kind, ...fields, file_path });
+	/* la lingua del modulo resta sulla richiesta (colonna `lang`, migrazione 0065; finche' non c'e' si salva senza) */
+	let { error } = await supabase.from('contact_requests').insert({ kind, ...fields, file_path, lang });
+	if (error && /lang/.test(error.message)) ({ error } = await supabase.from('contact_requests').insert({ kind, ...fields, file_path }));
 	if (error) return { ok: false, error: m('nonSalvata') };
 	await Promise.all([
 		sendEmail({ to: fields.email, ...aziendeReceivedEmail({ name: fields.name, company: fields.company }, lang) }),

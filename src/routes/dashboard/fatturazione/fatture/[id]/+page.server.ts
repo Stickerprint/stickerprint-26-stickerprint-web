@@ -1,7 +1,7 @@
 import { error, fail, redirect } from '@sveltejs/kit';
 import { aliquotaFattura, type InvoiceLine } from '$lib/server/invoice';
 import type { PaymentMethod } from '$lib/dashboard/payments';
-import { getInvoice, pdfFattura, loadInvoiceMessages, markInvoiceRead, replyInvoice, sendInvoice, setInvoicePaymentStatus, syncInvoicePayments, type InvoiceRow } from '$lib/server/fatture';
+import { getInvoice, linguaFattura, pdfFattura, loadInvoiceMessages, markInvoiceRead, replyInvoice, sendInvoice, setInvoicePaymentStatus, syncInvoicePayments, type InvoiceRow } from '$lib/server/fatture';
 import { operatorName } from '$lib/server/produzione';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -16,11 +16,16 @@ export const load: PageServerLoad = async ({ params, url, locals: { supabase, us
 		ddtIds.length ? supabase.from('ddts').select('id, number, issued_at, order_number, checkout_group').in('id', ddtIds) : Promise.resolve({ data: [] }),
 		supabase.from('payment_methods').select('*').eq('active', true).order('sort')
 	]);
-	let pdf: string | null = null;
-	if (inv.pdf_path) { const { data: s } = await supabase.storage.from('invoices').createSignedUrl(inv.pdf_path, 3600); pdf = s?.signedUrl ?? null; }
+	/* PDF dalla dashboard. Cliente italiano: il file salvato, come sempre (e' uguale a quello che ha ricevuto).
+	   Cliente estero: il file salvato e' la SUA copia (la sua lingua, i dollari se ha pagato in dollari), quindi qui si apre
+	   la nostra, rigenerata dai dati in italiano e in euro come la fattura elettronica; un secondo bottone mostra la sua. */
+	const cliente = await linguaFattura(supabase, inv as InvoiceRow);
+	const copiaCliente = cliente.lang !== 'it' || cliente.pagato ? { lang: cliente.lang, locale: cliente.locale, valuta: cliente.pagato?.currency ?? 'EUR', importo: cliente.pagato?.amount ?? null } : null;
+	let pdf: string | null = copiaCliente ? `/dashboard/fatturazione/fatture/${inv.id}/pdf` : null;
+	if (!pdf && inv.pdf_path) { const { data: s } = await supabase.storage.from('invoices').createSignedUrl(inv.pdf_path, 3600); pdf = s?.signedUrl ?? null; }
 	await markInvoiceRead(supabase, inv.id);
 	const [payments, messages, sender] = await Promise.all([syncInvoicePayments(supabase, inv as InvoiceRow), loadInvoiceMessages(supabase, inv.id), operatorName(supabase, user)]);
-	return { inv, ddts: ddts ?? [], methods: (methods ?? []) as PaymentMethod[], pdf, locked: !!inv.xml_generated_at, payments, messages, sender, openSend: url.searchParams.get('invia') === '1' };
+	return { inv, ddts: ddts ?? [], methods: (methods ?? []) as PaymentMethod[], pdf, copiaCliente, locked: !!inv.xml_generated_at, payments, messages, sender, openSend: url.searchParams.get('invia') === '1' };
 };
 
 export const actions: Actions = {

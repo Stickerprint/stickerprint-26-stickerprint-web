@@ -34,6 +34,9 @@
 
 	/* conferma d'ordine: popup dell'email (si scrive prima di inviare), scadenze, conversazione */
 	import { PAYMENT_STATUS, defaultConfirmEmail, upfrontDue } from '$lib/dashboard/conferme';
+	import { NOME_LINGUA, linguaOrdine } from '$lib/lingua-cliente';
+	/* lingua in cui il cliente riceve email e documenti: il sito da cui ha ordinato o, per gli ordini inseriti da noi, il paese di fatturazione */
+	const linguaCliente = $derived(linguaOrdine(data.group.items[0]).lang);
 	import { fmtAgo, fmtWhen } from '$lib/dashboard/produzione';
 	let sendOpen = $state(false);
 	let to = $state(''); let cc = $state(''); let subject = $state(''); let message = $state(''); let sender = $state('');
@@ -303,6 +306,7 @@
 						<label class="osub">A <input name="to" type="email" bind:value={to} required /></label>
 						<label class="osub">Copia a (facoltativo) <input name="cc" bind:value={cc} placeholder="altro@azienda.it" /></label>
 						<label class="osub">Oggetto <input name="subject" bind:value={subject} required /></label>
+						{#if linguaCliente !== 'it'}<span class="osub" style="padding:8px 10px;background:#eef4ff;border-radius:8px;color:#1d3a8a">🌍 Questo cliente riceve email e documenti in <b>{NOME_LINGUA[linguaCliente]}</b>: il testo proposto è già in {NOME_LINGUA[linguaCliente]}. Se lo cambi, scrivilo nella sua lingua.</span>{/if}
 						<label class="osub">Testo <textarea name="message" bind:value={message} rows="11" required></textarea></label>
 						<span class="osub">Firma: <b>Stickerprint-Staff</b>, sempre. Scrivi al plurale e non mettere il tuo nome nel testo.</span>
 					</div>
