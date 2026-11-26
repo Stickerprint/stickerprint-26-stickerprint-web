@@ -2239,8 +2239,19 @@ function despeckle(m,w,h,minFrac){const N=w*h,min=Math.max(24,N*minFrac);
    "NUMERO VERDE" e il "CI" di "TECNOLOGICI". Qui i pezzi si raggruppano per vicinanza (meno di
    un raggio r l'uno dall'altro, circa 0,6% del lato lungo): una scritta e' un gruppo grande e
    resta, un granello di carta lontano dal disegno e' un gruppo minuscolo e va via. */
-function togliMacchioline(m,w,h,minFrac){
-  const N=w*h,min=Math.max(24,N*minFrac),r=Math.max(2,Math.round(0.006*Math.max(w,h))),r2=r*r;
+function togliMacchioline(m,w,h,minFrac,rFrac,polvere){
+  const N=w*h,min=Math.max(24,N*minFrac),r=Math.max(2,Math.round((rFrac||0.006)*Math.max(w,h))),r2=r*r;
+  /* la polvere (pezzi di pochi pixel, rumore del JPEG) va via sempre, anche se tocca il disegno */
+  if(polvere>0){const pulito=Uint8Array.from(m),seen=new Uint8Array(N),st=[];
+    for(let s=0;s<N;s++){if(!m[s]||seen[s])continue;
+      st.length=0;st.push(s);seen[s]=1;const comp=[s];
+      while(st.length){const i=st.pop(),x=i%w,y=(i/w)|0;
+        if(x>0&&m[i-1]&&!seen[i-1]){seen[i-1]=1;st.push(i-1);comp.push(i-1);}
+        if(x<w-1&&m[i+1]&&!seen[i+1]){seen[i+1]=1;st.push(i+1);comp.push(i+1);}
+        if(y>0&&m[i-w]&&!seen[i-w]){seen[i-w]=1;st.push(i-w);comp.push(i-w);}
+        if(y<h-1&&m[i+w]&&!seen[i+w]){seen[i+w]=1;st.push(i+w);comp.push(i+w);}}
+      if(comp.length<polvere)for(const i of comp)pulito[i]=0;}
+    m=pulito;}
   const vic=edt2d(m,w,h);                       /* distanza (al quadrato) dal pixel di disegno piu' vicino */
   const lab=new Int32Array(N).fill(-1),peso=[],st=[];let n=0;
   for(let s=0;s<N;s++){
@@ -2865,6 +2876,162 @@ function rasterImage(file){return new Promise((res,rej)=>{
    bianco, nessun falso allarme. Misure sul caso Suzuki: copertura 1,00, spessore 3,6% del lato,
    variazione 0,32 (le soglie sono 0,9 / 1,2-12% / 0,4).
    ========================================================================== */
+/* TRATTEGGIO DEL CLIENTE (SP00680, 26/11/2026, regola di Mattia: "il tratteggio non ci deve essere,
+   deve essere rimosso, come il contorno")
+   Molti clienti disegnano nel file la linea di taglio come la vedono loro: trattini neri o fucsia
+   attorno al disegno, a volte anche dentro (i rombi dentro il fiocco di neve). Non e' grafica e non va
+   stampata: il taglio lo facciamo noi. Qui si cancella dal file prima di ogni analisi.
+   Un pezzo e' un TRATTINO se e' piccolo, sottile (meno dello 0,5% del lato lungo) e allungato, e se ha
+   accanto un altro trattino NEL SUO PROLUNGAMENTO, orientato come lui. Le coppie si collegano in catene
+   e serve almeno una CATENA vera: 10 trattini o piu', lunga almeno un quarto dell'immagine, con trattini
+   di lunghezza regolare. Una lettera sottile (la I, la l) ha le vicine di fianco, non in fila; le
+   texture e i dettagli non fanno catene lunghe e regolari. Poi, sul modello delle catene lunghe, si
+   prendono le catene corte, gli angoli e i pezzetti spezzati: stesso stile, stesso colore e NEL VUOTO
+   (lontani da altro disegno). Provato su SP00680, su 8 tratteggi disegnati apposta (cerchio fucsia,
+   rettangolo nero, contorno) e su 2.084 file dei clienti del vecchio sito: zero falsi allarmi.
+   Prototipo e banco: impaginazione/lavori/tratteggio. */
+function togliTratteggio(){
+  S.tratteggioTolto=null;S.tratteggioMisure=null;
+  const esce=(m,x)=>{S.tratteggioMisure=Object.assign({esito:m},x||{});};
+  const src=S.src;if(!src)return esce('nessun file');
+  const W0=src.width,H0=src.height,k=Math.min(1,1100/Math.max(W0,H0));
+  const w=Math.max(1,Math.round(W0*k)),h=Math.max(1,Math.round(H0*k)),N=w*h,D=Math.max(w,h);
+  const cv=document.createElement('canvas');cv.width=w;cv.height=h;
+  const cx=cv.getContext('2d',{willReadFrequently:true});cx.imageSmoothingQuality='high';cx.drawImage(src,0,0,w,h);
+  const d=cx.getImageData(0,0,w,h).data;
+  /* 1. il fondo: colore del bordo (o trasparenza), uniforme */
+  const bordo=[];
+  for(let x=0;x<w;x++){bordo.push(x,(h-1)*w+x);}for(let y=1;y<h-1;y++){bordo.push(y*w,y*w+w-1);}
+  let tr0=0;for(const i of bordo)if(d[i*4+3]<128)tr0++;
+  const trasparente=tr0>=bordo.length*0.7;
+  let ref=[255,255,255];
+  if(!trasparente){
+    const op=bordo.filter(i=>d[i*4+3]>=128);if(!op.length)return esce('bordo vuoto');
+    ref=[0,1,2].map(c=>{const v=op.map(i=>d[i*4+c]).sort((a,b)=>a-b);return v[v.length>>1];});
+    let ok=0;for(const i of op){const p=i*4;if(Math.max(Math.abs(d[p]-ref[0]),Math.abs(d[p+1]-ref[1]),Math.abs(d[p+2]-ref[2]))<=14)ok++;}
+    if(ok<op.length*0.7)return esce('fondo non uniforme');}
+  const fg=new Uint8Array(N),bg=new Uint8Array(N);
+  for(let i=0,p=0;i<N;i++,p+=4){
+    const f=trasparente?d[p+3]>=128:(d[p+3]>=128&&Math.max(Math.abs(d[p]-ref[0]),Math.abs(d[p+1]-ref[1]),Math.abs(d[p+2]-ref[2]))>40);
+    fg[i]=f?1:0;bg[i]=f?0:1;}
+  /* 2. i pezzi (8 vicini) con area, momenti, colore medio e spessore */
+  const lab=new Int32Array(N).fill(-1),st=[];
+  const A=[],SX=[],SY=[],SXX=[],SYY=[],SXY=[],R=[],G=[],B=[];let n=0;
+  for(let s0=0;s0<N;s0++){
+    if(!fg[s0]||lab[s0]>=0)continue;
+    lab[s0]=n;st.length=0;st.push(s0);
+    let a=0,sx=0,sy=0,sxx=0,syy=0,sxy=0,r=0,g=0,b=0;
+    while(st.length){const i=st.pop(),x=i%w,y=(i/w)|0,p=i*4;
+      a++;sx+=x;sy+=y;sxx+=x*x;syy+=y*y;sxy+=x*y;r+=d[p];g+=d[p+1];b+=d[p+2];
+      for(let dy=-1;dy<=1;dy++){const yy=y+dy;if(yy<0||yy>=h)continue;
+        for(let dx=-1;dx<=1;dx++){const xx=x+dx;if((!dx&&!dy)||xx<0||xx>=w)continue;
+          const j=yy*w+xx;if(fg[j]&&lab[j]<0){lab[j]=n;st.push(j);}}}}
+    A.push(a);SX.push(sx);SY.push(sy);SXX.push(sxx);SYY.push(syy);SXY.push(sxy);R.push(r/a);G.push(g/a);B.push(b/a);n++;}
+  if(n<12)return esce('pochi pezzi',{pezzi:n});
+  const e2=edt2d(bg,w,h),sp2=new Float32Array(n);
+  for(let i=0;i<N;i++){const L=lab[i];if(L>=0&&e2[i]>sp2[L])sp2[L]=e2[i];}
+  const spess=L=>2*Math.sqrt(sp2[L]);
+  const CX=new Float64Array(n),CY=new Float64Array(n),AXx=new Float64Array(n),AXy=new Float64Array(n);
+  for(let L=0;L<n;L++){const a=A[L];CX[L]=SX[L]/a;CY[L]=SY[L]/a;
+    const cxx=SXX[L]/a-CX[L]*CX[L],cyy=SYY[L]/a-CY[L]*CY[L],cxy=SXY[L]/a-CX[L]*CY[L];
+    const t=0.5*Math.atan2(2*cxy,cxx-cyy);AXx[L]=Math.cos(t);AXy[L]=Math.sin(t);}
+  const pmin=new Float64Array(n).fill(1e9),pmax=new Float64Array(n).fill(-1e9);
+  for(let i=0;i<N;i++){const L=lab[i];if(L<0)continue;
+    const pr=(i%w-CX[L])*AXx[L]+(((i/w)|0)-CY[L])*AXy[L];if(pr<pmin[L])pmin[L]=pr;if(pr>pmax[L])pmax[L]=pr;}
+  const lung=L=>pmax[L]-pmin[L]+1;
+  /* 3. i candidati trattino: piccoli, sottili, allungati */
+  const maxT=Math.max(5,0.005*D),maxA=0.0006*N,cand=[],isCand=new Uint8Array(n);
+  for(let L=0;L<n;L++){
+    if(A[L]<6||A[L]>maxA)continue;const t=spess(L);if(t>maxT)continue;
+    const l=lung(L);if(l>0.06*D||l<2.2*t)continue;cand.push(L);isCand[L]=1;}
+  if(cand.length<12)return esce('pochi trattini',{candidati:cand.length});
+  if(cand.length>5000)return esce('troppi pezzi',{candidati:cand.length});
+  /* 4. coppie in fila (uno dei due vicini piu' prossimi sta nel prolungamento, orientato uguale)
+     e CATENE: un tratteggio vero e' una fila lunga di trattini uguali */
+  const nc=cand.length,coppie=[],par=new Int32Array(nc);for(let i=0;i<nc;i++)par[i]=i;
+  const rad=x=>{while(par[x]!==x){par[x]=par[par[x]];x=par[x];}return x;};
+  for(let a=0;a<nc;a++){const L=cand[a];let b1=-1,d1=1e18,b2=-1,d2=1e18;
+    for(let b=0;b<nc;b++){if(b===a)continue;const M=cand[b];
+      const dd=(CX[M]-CX[L])**2+(CY[M]-CY[L])**2;
+      if(dd<d1){b2=b1;d2=d1;b1=b;d1=dd;}else if(dd<d2){b2=b;d2=dd;}}
+    for(const [b,dd] of [[b1,d1],[b2,d2]]){if(b<0)continue;const M=cand[b],dist=Math.sqrt(dd);
+      if(dist>2.2*lung(L)+2*spess(L)+4)continue;
+      const vx=(CX[M]-CX[L])/dist,vy=(CY[M]-CY[L])/dist;
+      if(Math.abs(vx*AXx[L]+vy*AXy[L])>0.8&&Math.abs(vx*AXx[M]+vy*AXy[M])>0.8){coppie.push([a,b]);par[rad(a)]=rad(b);}}}
+  const gruppi=new Map();
+  for(const [a,b] of coppie)for(const t of [a,b]){const r=rad(t);if(!gruppi.has(r))gruppi.set(r,new Set());gruppi.get(r).add(t);}
+  const med=v=>{const s=[...v].sort((x,y)=>x-y);return s[s.length>>1];};
+  const fila=new Set();let catene=0;
+  for(const g of gruppi.values()){if(g.size<10)continue;
+    let x0=1e9,x1=-1e9,y0=1e9,y1=-1e9,sl=0,sl2=0;
+    for(const t of g){const L=cand[t];x0=Math.min(x0,CX[L]);x1=Math.max(x1,CX[L]);y0=Math.min(y0,CY[L]);y1=Math.max(y1,CY[L]);
+      const l=lung(L);sl+=l;sl2+=l*l;}
+    const mu=sl/g.size,cv=Math.sqrt(Math.max(0,sl2/g.size-mu*mu))/mu;
+    if(Math.max(x1-x0,y1-y0)<0.25*D||cv>0.35)continue;
+    for(const t of g)fila.add(t);catene++;}
+  if(fila.size<12)return esce('nessuna catena di trattini',{candidati:nc});
+  /* 5. le catene corte (i rombi dentro il disegno) e i trattini rimasti soli in fondo a una linea si
+     prendono se sono uguali a quelli delle catene lunghe e stanno NEL VUOTO: una lettera ha sempre
+     altre lettere attaccate, un trattino ha attorno solo fondo e trattini */
+  const Lr=med([...fila].map(t=>lung(cand[t]))),Sr=med([...fila].map(t=>spess(cand[t])));
+  const altro=new Uint8Array(N);for(let i=0;i<N;i++){const L=lab[i];if(L>=0&&!isCand[L])altro[i]=1;}
+  const dA=edt2d(altro,w,h),minA=new Float32Array(n).fill(1e20);
+  for(let i=0;i<N;i++){const L=lab[i];if(L>=0&&dA[i]<minA[L])minA[L]=dA[i];}
+  const stile=L=>Math.abs(lung(L)-Lr)<=0.35*Lr&&Math.abs(spess(L)-Sr)<=Math.max(1.5,0.5*Sr);
+  const isolato=(L,ref)=>minA[L]>=(0.5*ref)*(0.5*ref);
+  for(const g of gruppi.values()){if(g.size<2)continue;
+    const arr=[...g];if(arr.every(t=>fila.has(t)))continue;
+    const Lg=med(arr.map(t=>lung(cand[t]))),Sg=med(arr.map(t=>spess(cand[t])));
+    if(Math.abs(Lg-Lr)<=0.35*Lr&&Math.abs(Sg-Sr)<=Math.max(1.5,0.5*Sr))
+      for(const t of arr)if(isolato(cand[t],Lr))fila.add(t);}
+  for(let it=0;it<6;it++){let nuovi=0;
+    for(const [a,b] of coppie)for(const [x,y] of [[a,b],[b,a]])
+      if(fila.has(y)&&!fila.has(x)&&stile(cand[x])&&isolato(cand[x],Lr)){fila.add(x);nuovi++;}
+    if(!nuovi)break;}
+  /* 6. un colore solo: stessa tinta (lo scarto dal grigio) e chiarezza simile */
+  const filaL=[...fila].map(t=>cand[t]);
+  const cT=[med(filaL.map(L=>R[L])),med(filaL.map(L=>G[L])),med(filaL.map(L=>B[L]))],mT=(cT[0]+cT[1]+cT[2])/3;
+  const vicinoCol=L=>{const m=(R[L]+G[L]+B[L])/3;
+    return Math.max(Math.abs((R[L]-m)-(cT[0]-mT)),Math.abs((G[L]-m)-(cT[1]-mT)),Math.abs((B[L]-m)-(cT[2]-mT)))<=25&&Math.abs(m-mT)<=90;};
+  const presi=filaL.filter(vicinoCol);
+  if(presi.length<12)return esce('trattini di colori diversi',{inFila:filaL.length});
+  const preso=new Uint8Array(n);for(const L of presi)preso[L]=1;
+  /* 7. angoli e pezzetti spezzati: stesso colore, nel vuoto, con trattini presi su due lati diversi
+     (almeno 60 gradi) o nel prolungamento di uno di loro */
+  const Lmed=med(presi.map(lung)),spMed=med(presi.map(spess));
+  const extra=[],R1=2.5*Lmed+8,R2=2*Lmed+6;
+  for(let L=0;L<n;L++){
+    if(preso[L]||A[L]<3||A[L]>maxA)continue;
+    if(spess(L)>Math.max(maxT,1.8*spMed)||!vicinoCol(L)||!isolato(L,Lmed))continue;
+    const vic=[];
+    for(const M of presi){const dx=CX[M]-CX[L],dy=CY[M]-CY[L],dist=Math.hypot(dx,dy);
+      if(dist<=R1&&dist>0)vic.push([dx/dist,dy/dist,dist,M]);}
+    if(!vic.length)continue;
+    let ok=false;
+    for(let i=0;i<vic.length&&!ok;i++)for(let j=i+1;j<vic.length;j++)
+      if(vic[i][0]*vic[j][0]+vic[i][1]*vic[j][1]<0.5){ok=true;break;}
+    if(!ok)for(const [ux,uy,dist,M] of vic)if(dist<=R2&&Math.abs(ux*AXx[M]+uy*AXy[M])>0.85){ok=true;break;}
+    if(ok)extra.push(L);}
+  for(const L of extra)preso[L]=1;
+  /* 8. si cancella: i pezzi presi piu' un pixel e mezzo attorno (la sfumatura del tratto), sul file vero */
+  const via=new Uint8Array(N);for(let i=0;i<N;i++)if(lab[i]>=0&&preso[lab[i]])via[i]=1;
+  const dv=edt2d(via,w,h);
+  const out=document.createElement('canvas');out.width=W0;out.height=H0;
+  const og=out.getContext('2d',{willReadFrequently:true});og.drawImage(src,0,0);
+  const id=og.getImageData(0,0,W0,H0),od=id.data;let tolti=0;
+  const tintaT=[cT[0]-mT,cT[1]-mT,cT[2]-mT];
+  for(let Y=0;Y<H0;Y++){const y=Math.min(h-1,(Y*k)|0);
+    for(let X=0;X<W0;X++){const x=Math.min(w-1,(X*k)|0),i=y*w+x;if(dv[i]>2.25)continue;
+      const p=(Y*W0+X)*4;
+      /* solo il colore del tratteggio o la sua sfumatura verso il fondo: il disegno accanto resta */
+      const m=(od[p]+od[p+1]+od[p+2])/3;
+      const tinta=Math.max(Math.abs(od[p]-m-tintaT[0]),Math.abs(od[p+1]-m-tintaT[1]),Math.abs(od[p+2]-m-tintaT[2]));
+      if(tinta>40&&od[p+3]>=128)continue;
+      if(trasparente)od[p+3]=0;else{od[p]=ref[0];od[p+1]=ref[1];od[p+2]=ref[2];od[p+3]=255;}
+      tolti++;}}
+  og.putImageData(id,0,0);
+  S.src=out;S.tratteggioTolto={trattini:presi.length+extra.length,colore:cT.map(Math.round)};
+  esce('tolto',{trattini:presi.length,catene,angoli:extra.length,candidati:cand.length,spessore:+spMed.toFixed(2),colore:cT.map(Math.round),pixel:tolti});}
 function togliCorniceAdesivo(){
   S.corniceTolta=null;S.corniceMisure=null;
   const esce=(m,x)=>{S.corniceMisure=Object.assign({esito:m},x||{});};
@@ -2965,6 +3132,8 @@ async function loadFile(f){
   try{
     const r=isPdf?await rasterPDF(f):await rasterImage(f);
     S.src=r.canvas;S.srcW=r.canvas.width;S.srcH=r.canvas.height;S.srcMM=r.mm;
+    /* linea di taglio disegnata dal cliente a trattini: via prima di tutto il resto */
+    try{togliTratteggio();}catch(e){console.warn('pulizia tratteggio saltata',e);}
     /* sticker gia' fatto dall'IA: bordo bianco e ombra via prima di tutto il resto */
     try{togliCorniceAdesivo();}catch(e){console.warn('pulizia sticker saltata',e);}
     S.name=f.name.replace(/\.[^.]+$/,'');S.seeds=[];S.lineSeed=null;S.mask=null;S.Rsafe=null;setWand(false);
@@ -3122,7 +3291,7 @@ function autoSegment(){
       const dr=d[q]-dom.col[0],dg=d[q+1]-dom.col[1],db=d[q+2]-dom.col[2];
       if(dr*dr+dg*dg+db*db>TOL)m[i]=1;
     }
-    const mm=despeckle(m,w,h,SPECK_GEO);
+    const mm=despeckleGeo(m,w,h);
     let k=0;for(let i=0;i<w*h;i++)k+=mm[i];
     S.giaScont=false;
     S.cands=[{mask:mm,st:{kind:'dominante',tol:14},w,h,
@@ -3139,7 +3308,7 @@ function autoSegment(){
   if(S.giaScont){
     const st={kind:'alpha',at:16};
     const d=S.work.data,w=S.work.w,h=S.work.h;
-    const m=despeckle(applyStrategy(d,w,h,st,{ref:[255,255,255],km:{},bgm:{C:[],dRef:10}}),w,h,SPECK_GEO);
+    const m=despeckleGeo(applyStrategy(d,w,h,st,{ref:[255,255,255],km:{},bgm:{C:[],dRef:10}}),w,h);
     let k=0;for(let i=0;i<w*h;i++)k+=m[i];
     S.cands=[{mask:m,st,w,h,label:tr('file già scontornato'),score:1,keptPct:k/(w*h),
       edge:1,contrast:1,bgFit:1,borderTouch:0,bgStd:0,compact:1,comps:1,holeFrac:0,edgeIsBg:0,eaten:0}];
@@ -3216,11 +3385,16 @@ function bordoUniforme(){
    tolgo quelle e non tocco lettere, trattini e dettagli veri, che prima
    sparivano dal tracciato. */
 const SPECK_GEO=0.00006;
+/* SCRITTE PICCOLE (SP00680, 26/11/2026): la soglia qui sopra si applicava pezzo per pezzo, e le
+   lettere di "NUMERO VERDE" alte un millimetro (30-40 px l'una) stavano sotto i 51 px di un file
+   da 1100: sparivano dalla maschera e restava "N. V". Ora i pezzi vicini (entro lo 0,4% del lato
+   lungo, 4 px) fanno gruppo: una parola resta, un puntino isolato no. Sotto i 6 px e' polvere. */
+function despeckleGeo(m,w,h){return togliMacchioline(m,w,h,SPECK_GEO,0.004,6);}
 function applyChosen(){
   const d=S.work.data,w=S.work.w,h=S.work.h;
   const gi=geoIdx();
   if(gi>=0&&S.cands[gi])
-    return despeckle(applyStrategy(d,w,h,S.cands[gi].st,S.ctx0),w,h,SPECK_GEO);
+    return despeckleGeo(applyStrategy(d,w,h,S.cands[gi].st,S.ctx0),w,h);
   return maskFlood(d,w,h,S.ctx0?S.ctx0.ref:[255,255,255],Math.pow(0.12*255*Math.sqrt(3),2));}
 function manualMask(){
   const d=S.work.data,w=S.work.w,h=S.work.h;
@@ -3237,7 +3411,7 @@ function manualMask(){
       if(x>0)push(i-1);if(x<w-1)push(i+1);if(y>0)push(i-w);if(y<h-1)push(i+w);}}
   const m=new Uint8Array(w*h);
   for(let i=0,p=3;i<w*h;i++,p+=4)m[i]=(!bgFlag[i]&&d[p]>16)?1:0;
-  return despeckle(m,w,h,SPECK_GEO);}
+  return despeckleGeo(m,w,h);}
 function lineMask(){
   const d=S.work.data,w=S.work.w,h=S.work.h;
   const tol2=Math.pow(+$('tol').value/100*255*Math.sqrt(3),2);
@@ -3607,7 +3781,7 @@ function computeMask(){
       const dr=d[p]-S.bgCol[0],dg=d[p+1]-S.bgCol[1],db=d[p+2]-S.bgCol[2];
       if(dr*dr+dg*dg+db*db>lim){m[i]=1;add++;}}
     if(add>0){
-      m=despeckle(m,w,h,SPECK_GEO);
+      m=despeckleGeo(m,w,h);
       S.mask=m;
       let x0=w,y0=h,x1=-1,y1=-1,kept=0;
       for(let i=0;i<w*h;i++)if(m[i]){kept++;const x=i%w,y=(i/w)|0;
