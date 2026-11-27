@@ -41,6 +41,9 @@
 	/* base di bianco sotto la grafica (materiali speciali): la sceglie il cliente sul sito, arriva con l'ordine */
 	let baseBianco = $state(false);
 	const conBase = $derived(offreBaseBianco(materiale, P.engineSlug));
+	/* come sul sito: con la base di bianco (non sui resinati) niente lamina opaca, la lucida e' "Vernice protettiva lucida" */
+	const vernice = $derived(conBase && baseBianco && P.engineSlug !== 'adesivi_resinati');
+	const FIN_VIS = $derived(vernice ? FINISHES.filter((f) => f.id !== 'opaca') : FINISHES);
 	let finitura = $state('');
 	/* misura: STESSE regole del configuratore del sito (partenza dal minimo della sagoma, proposte,
 	   minimi e massimi del listino, mezzo millimetro), cosi' lo stesso file da' lo stesso pezzo */
@@ -61,7 +64,7 @@
 	$effect(() => {
 		if (!SHAPES.some((s) => s.id === forma)) forma = SHAPES[0]?.id ?? 'sagomato';
 		if (!MATERIALS.some((m) => m.id === materiale)) materiale = MATERIALS[0]?.id ?? 'bianco';
-		if (!FINISHES.some((f) => f.id === finitura)) finitura = FINISHES.find((f) => !f.laminate)?.id ?? FINISHES[0]?.id ?? 'nessuna';
+		if (!FIN_VIS.some((f) => f.id === finitura)) finitura = finitura === 'opaca' && FIN_VIS.some((f) => f.id === 'lucida') ? 'lucida' : (FIN_VIS.find((f) => !f.laminate)?.id ?? FIN_VIS[0]?.id ?? 'nessuna');
 	});
 
 	const shape = $derived(SHAPES.find((s) => s.id === forma));
@@ -1412,8 +1415,8 @@
 					<div class="st-block">
 						<p class="st-label">{cfg.finishTitle ?? 'Finitura'}</p>
 						<div class="st-chips">
-							{#each FINISHES as f (f.id)}
-								<button type="button" class="st-chip" class:is-on={finitura === f.id} onclick={() => (finitura = f.id)}>{f.label}</button>
+							{#each FIN_VIS as f (f.id)}
+								<button type="button" class="st-chip" class:is-on={finitura === f.id} onclick={() => (finitura = f.id)}>{vernice && f.id === 'lucida' ? 'Vernice protettiva lucida' : f.label}</button>
 							{/each}
 						</div>
 					</div>

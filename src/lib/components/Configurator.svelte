@@ -138,6 +138,10 @@
 	const BASE_METAL = new Set(['olografico', 'glitterato', 'argento', 'oro']);
 	/* la lampadina della lamina: su tutti tranne resinati e vetrofanie, quando fra le scelte c'e' "nessuna" */
 	const luceLamina = $derived(product !== 'adesivi_resinati' && product !== 'vetrofanie');
+	/* con la base di bianco (non sui resinati) la lamina opaca non c'e' e la lucida diventa "Vernice protettiva lucida" */
+	const vernice = $derived(conBase && baseBianco && product !== 'adesivi_resinati');
+	const FIN_VIS = $derived(vernice ? FINISHES.filter((f) => f.id !== 'opaca') : FINISHES);
+	const nomeFinitura = (f: { id: string; label: string }) => (vernice && f.id === 'lucida' ? t('configuratore.hint.vernice') : opz('finiture', f.id, 'label', f.label));
 	// svelte-ignore state_referenced_locally
 	let w = $state(cfg.size.defaultMm ?? 50);
 	// svelte-ignore state_referenced_locally
@@ -178,13 +182,13 @@
 		if (!SHAPES.some((s) => s.id === forma)) forma = SHAPES[0]?.id ?? 'sagomato';
 		if (!MATERIALS.some((m) => m.id === materiale)) materiale = MATERIALS[0]?.id ?? 'bianco';
 		/* la prima scelta e' SENZA lamina: il prezzo che il cliente vede all'inizio e' il piu' basso */
-		if (!FINISHES.some((f) => f.id === finitura)) finitura = FINISHES.find((f) => !f.laminate)?.id ?? FINISHES[0]?.id ?? 'nessuna';
+		if (!FIN_VIS.some((f) => f.id === finitura)) finitura = finitura === 'opaca' && FIN_VIS.some((f) => f.id === 'lucida') ? 'lucida' : (FIN_VIS.find((f) => !f.laminate)?.id ?? FIN_VIS[0]?.id ?? 'nessuna');
 		if (!custom && !cfg.quantities.includes(qty)) qty = cfg.quantities[0];
 	});
 
 	const shape = $derived(SHAPES.find((s) => s.id === forma) ?? SHAPES[0]);
 	const material = $derived(MATERIALS.find((m) => m.id === materiale) ?? cfg.materials[0]);
-	const finish = $derived(FINISHES.find((f) => f.id === finitura));
+	const finish = $derived(FIN_VIS.find((f) => f.id === finitura));
 	const fin = $derived(promoOnly ? finitura : showFinish ? finitura : 'nessuna');
 	const ratio = $derived(shape?.equal ? 1 : (shape?.ratio ?? cutRatio ?? fileRatio ?? 1));
 	/* sagomato, rettangolo e ovale: le misure sono solo proposte, il cliente scrive la sua con i due lati
@@ -347,7 +351,7 @@
 	const stageH = $derived(stretto ? (foglio ? 300 : 250) : Math.max(280, Math.min(foglio ? 520 : 480, altoV - 454)));
 	/* etichetta sulla riga della quantita': "Consigliato" sui 100 pezzi, "Più conveniente" sulla quantita' consigliata dal listino */
 	const tagQty = (n: number) => (n === 100 ? 'cons' : n === cfg.recommendedQty ? 'conv' : null);
-	const riga = $derived([opz(tipoSagome, shape?.id ?? '', 'label', shape?.label), misure(w, h), ...(showMaterials ? [opz('materiali', material?.id ?? '', 'label', material?.label)] : []), ...(showFinish && finish?.laminate ? [t('configuratore.nuovo.lamina', { finitura: opz('finiture', finish.id, 'label', finish.label).toLowerCase() })] : []), ...(conBase && baseBianco ? [t('configuratore.hint.baseBianco').toLowerCase()] : [])].filter(Boolean).join(' · '));
+	const riga = $derived([opz(tipoSagome, shape?.id ?? '', 'label', shape?.label), misure(w, h), ...(showMaterials ? [opz('materiali', material?.id ?? '', 'label', material?.label)] : []), ...(showFinish && finish?.laminate ? [vernice && finish.id === 'lucida' ? t('configuratore.hint.vernice').toLowerCase() : t('configuratore.nuovo.lamina', { finitura: opz('finiture', finish.id, 'label', finish.label).toLowerCase() })] : []), ...(conBase && baseBianco ? [t('configuratore.hint.baseBianco').toLowerCase()] : [])].filter(Boolean).join(' · '));
 	const gratis = $derived(toCurrency(cartGross + q.gross, locale.currency) >= locale.freeShipping);
 	const ACCEPT = 'image/png,image/jpeg,image/svg+xml,application/pdf';
 </script>
@@ -444,13 +448,13 @@
 		<!-- finitura (solo prodotti con lamina) -->
 		{#if showFinish && !promoOnly}
 			<div class="grp">
-				<div class="grp__h"><span class="grp__n">{stepNo('finitura')}</span><span class="grp__t">{finishTitle}</span><span class="grp__v">{opz('finiture', finish?.id ?? '', 'label', finish?.label)}</span></div>
+				<div class="grp__h"><span class="grp__n">{stepNo('finitura')}</span><span class="grp__t">{finishTitle}</span><span class="grp__v">{finish ? nomeFinitura(finish) : ''}</span></div>
 				<div class="tiles">
-					{#each FINISHES as f (f.id)}
+					{#each FIN_VIS as f (f.id)}
 						<button type="button" class="tile" class:is-on={finitura === f.id} aria-pressed={finitura === f.id} onclick={() => (finitura = f.id)}>
 							{#if f.tag}<span class="tile__tag">{opz('finiture', f.id, 'tag', f.tag)}</span>{/if}
 							<img src={f.img} alt="" />
-							<b>{opz('finiture', f.id, 'label', f.label)}</b>
+							<b>{nomeFinitura(f)}</b>
 							<small>{opz('finiture', f.id, 'description', f.description ?? '')}</small>
 						</button>
 					{/each}
