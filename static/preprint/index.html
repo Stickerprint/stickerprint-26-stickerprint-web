@@ -6157,6 +6157,7 @@ function biancoSoloColore(){return S.vetro?!vetroFondoPieno():true;}
    - occhielli di una lettera nera: una lettera ha al massimo 2 buchi -> niente bianco;
    - riquadro bianco incorniciato (numero verde SP00680): la cornice ha un buco solo -> niente bianco;
    - campi bianchi grandi (tondo "Motocicli Pavone"): troppo grandi rispetto all'anello -> resta il materiale.
+   Solo nelle vetrofanie: sugli altri adesivi con la base di bianco gli occhielli restano sempre vuoti.
    Ritorna 1 dove il pixel e' inchiostro (colore, o bianco di una placca). */
 function inchiostro(d,W,H,ppm){
   const N=W*H,K=new Uint8Array(N);              /* 0 fuori, 1 colore, 2 bianco del file */
@@ -6185,19 +6186,19 @@ function inchiostro(d,W,H,ppm){
   /* 4. bianco di una placca -> inchiostro; e i buchini dentro un tratto (i riflessi dell'oro, sotto
      0,08 mm2, circa 0,3 mm di diametro) si riempiono: non sono occhielli, sarebbero buchi nel bianco.
      Gli occhielli veri, anche delle lettere piccole, sono piu' grandi e restano senza bianco. */
-  const k2=(ppm||12)*(ppm||12),buchino=0.08*k2;
-  /* riflessi lunghi e sottili dentro i tratti (la "u" di Tiramisu'): area bianca chiusa larga meno di 0,25 mm
-     (mezza larghezza sotto 0,12 mm). Un occhiello vero e' piu' largo e resta senza bianco */
-  const noW=new Uint8Array(N);for(let i=0;i<N;i++)noW[i]=K[i]===2?0:1;
-  const dW=edt2d(noW,W,H),wMax=new Float64Array(nw+1);
-  for(let i=0;i<N;i++){const w=L[i];if(w>0&&dW[i]>wMax[w])wMax[w]=dW[i];}
-  const sottile=Math.pow(0.12*(ppm||12)+0.5,2);
+  /* GLI OCCHIELLI RESTANO VUOTI (Mattia, 27/11/2026: "i buchi devono essere vuoti quando viene stampata la
+     base di bianco"): un'area bianca chiusa nel colore non prende il bianco, di qualunque misura (ci si vede
+     il materiale). Si riempiono solo i puntini bianchi microscopici, sotto 0,006 mm2 (meno di 0,09 mm):
+     sporco della compressione dentro il colore, che lascerebbe un buco nel bianco. */
+  const k2=(ppm||12)*(ppm||12),buchino=0.006*k2;
   const si=new Uint8Array(nw+1);let quanti=0;
   for(let w=1;w<=nw;w++){const c=wC[w];if(wF[w]||!c)continue;
-    if((cF[c]&&cH[c]>=3&&wA[w]<=0.15*cA[c])||wA[w]<buchino||wMax[w]<sottile){si[w]=1;quanti++;}}
+    /* l'eccezione della placca (scritte bianche in una placca scura) vale SOLO per le vetrofanie: sugli altri
+       adesivi con la base di bianco gli occhielli restano vuoti anche nelle scritte attaccate (corsivo) */
+    if((S.vetro&&cF[c]&&cH[c]>=3&&wA[w]<=0.15*cA[c])||wA[w]<buchino){si[w]=1;quanti++;}}
   if(quanti)for(let i=0;i<N;i++){const w=L[i];if(w>0&&si[w])out[i]=1;}
-  /* 4-bis. buchini TRASPARENTI chiusi dentro il colore: riflessi bianchi che lo scontorno ha tolto insieme al
-     fondo (Tiramisu'). Erano bianchi nel file: come i riflessi, prendono il bianco */
+  /* 4-bis. buchini TRASPARENTI chiusi dentro il colore: come i puntini bianchi, si riempiono solo se
+     microscopici (sotto 0,006 mm2); quelli piu' grandi restano vuoti come gli occhielli */
   {const v=new Uint8Array(N);for(let i=0;i<N;i++)v[i]=K[i]===0?1:0;
    const t=etichette(v,W,H,true),bordo=new Uint8Array(t.n+1);
    for(let x=0;x<W;x++){bordo[t.L[x]]=1;bordo[t.L[(H-1)*W+x]]=1;}for(let y=0;y<H;y++){bordo[t.L[y*W]]=1;bordo[t.L[y*W+W-1]]=1;}
