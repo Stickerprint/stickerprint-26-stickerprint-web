@@ -165,6 +165,8 @@
 	function onRender(s: { w: number; h: number; palette?: { hex: string; img?: string }[]; palIdx?: number; rimuovi?: boolean; shape?: string | null }) {
 		rendered = true;
 		renders++;
+		/* motore ricaricato (nuovo iframe): gli si riaccende il bottone «Stampa del bianco» */
+		if (P.vetro) engine?.post('biancoStudio', { rientro: VETRO_RIENTRO });
 		/* foglio composto sul sito: misure e tagli vengono dal layout dell'ordine, non dal motore */
 		if (composto) return;
 		if (s.w > 0 && s.h > 0) engCut = { w: s.w, h: s.h };
@@ -649,6 +651,11 @@
 
 	/** vetrofanie: di quanto il bianco rientra dentro il colore (mm, Mattia 27/11/2026) */
 	const VETRO_RIENTRO = 0.1;
+	/* vetrofanie: nello studio (non sul sito) il motore mostra il bottone «Stampa del bianco», come
+	   «Effetto rilievo» per il rilievo: si vede esattamente dove va RDG_WHITE (solo vista, il file non cambia) */
+	$effect(() => {
+		if (P.vetro) engine?.post('biancoStudio', { rientro: VETRO_RIENTRO });
+	});
 
 	async function artwork() {
 		if (MULTI) return artworkFoglio();

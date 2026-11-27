@@ -5554,6 +5554,9 @@ function resinDome(core,ppm){
    ========================================================================== */
 S.rilievo=false; S.rilGen=0; S.ril=null;
 S.vetro=false; /* [sito] vetrofanie: scena con finestra, vetro e riflessi */
+/* [studio] vetrofanie: 'Dove va il bianco' (solo dallo Studio, messaggio 'vistaBianco'): al posto della
+   grafica si vede la base di RDG_WHITE, con la stessa regola del file di stampa (biancoVettoriale) */
+S.vistaBianco=false; S.vistaRientro=0.1; S.biancoStudio=false;   /* biancoStudio: bottone acceso dallo Studio, mai sul sito */
 function vetroUI(){ for(const id of ['ppSfondoSec','ppBordoSec']){ const sec=document.getElementById(id); if(sec)sec.style.display=S.vetro?'none':''; } }
 /* [sito] 'Dettagli rilievo': solo sagoma e zone in rilievo in tinta piatta RDG_GLOSS (#86a7b3) */
 S.rilDettagli=false; const RDG_GLOSS='#86a7b3';
@@ -6257,8 +6260,23 @@ function rilievoDettagli(c,ppm){
   /* la tinta RDG_GLOSS resta PIATTA: il cliente deve vedere esattamente dove va il rilievo */
   o.globalCompositeOperation='destination-in';o.drawImage(c,0,0);o.globalCompositeOperation='source-over';
   return out;}
+/* [studio] vetrofanie, vista del bianco: dove la Roland stampera' RDG_WHITE. Stessa sagoma del file di
+   stampa: cio' che ha colore (alfa >= 50%) stretto di `S.vistaRientro` mm. Bianco pieno; il resto del pezzo
+   resta vinile trasparente (si vede la vetrina dietro). */
+function vistaBianco(c,ppm){
+  const W=c.width,H=c.height,N=W*H;
+  const d=c.getContext('2d',{willReadFrequently:true}).getImageData(0,0,W,H).data;
+  const M=new Uint8Array(N),fuori=new Uint8Array(N);
+  for(let i=0;i<N;i++){const on=d[i*4+3]>=128;M[i]=on?1:0;fuori[i]=on?0:1;}
+  const rientro=S.vistaRientro||0;
+  if(rientro>0){const d2=edt2d(fuori,W,H),r=rientro*ppm+0.5,r2=r*r;for(let i=0;i<N;i++)if(M[i]&&d2[i]<r2)M[i]=0;}
+  const out=document.createElement('canvas');out.width=W;out.height=H;
+  const g=out.getContext('2d'),id=g.createImageData(W,H),q=id.data;
+  for(let i=0,p=0;i<N;i++,p+=4)if(M[i]){q[p]=255;q[p+1]=255;q[p+2]=255;q[p+3]=255;}
+  g.putImageData(id,0,0);return out;}
 function renderCore(ppm,withMat){
   let c=renderCoreRaw(ppm,withMat);
+  if(withMat&&S.vetro&&S.vistaBianco){try{c=vistaBianco(c,ppm);}catch(e){console.error('[bianco]',e);}}
   if(withMat&&S.lamina==='opaca'&&S.prod!=='resin'){
     const o=document.createElement('canvas');o.width=c.width;o.height=c.height;
     const g=o.getContext('2d');g.drawImage(c,0,0);
@@ -8041,7 +8059,8 @@ function ppGeoUI(){
   const FOGLIO_SVG='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h3M13 8h3M8 12h3M13 12h3M8 16h3M13 16h3"/></svg>';
   const DETT_SVG='<span style="display:inline-block;width:14px;height:14px;border-radius:4px;background:'+RDG_GLOSS+';border:1.5px solid rgba(11,11,59,.25)"></span>';
   const ART_SVG='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 16l5-5 4 4 3-3 6 6"/><circle cx="16" cy="9" r="1.6"/></svg>';
-  let lente=null, dett=null, dettLeg=null;
+  let lente=null, dett=null, dettLeg=null, bianco=null, biancoLeg=null;
+  const BIANCO_SVG='<span style="display:inline-block;width:14px;height:14px;border-radius:4px;background:#fff;border:1.5px solid rgba(11,11,59,.35)"></span>';
   const aggiornaLente=()=>{
     try{
       const st=document.getElementById('ppStage'); if(!st)return;
@@ -8063,6 +8082,25 @@ function ppGeoUI(){
       dett.title=S.rilDettagli?tr('Torna al tuo file'):tr('Guarda dove andra\' l\'effetto rilievo');
       if(S.rilDettagli){dett.style.background='#0b0b3b';dett.style.color='#fff';dett.style.borderColor='#0b0b3b';}else{dett.style.background='#fff';dett.style.color='#0b0b3b';dett.style.borderColor='#dfe3ea';}
       dettLeg.style.display=(onD&&S.rilAI&&S.rilAI.stato==='pending')?'block':'none'; dettLeg.innerHTML='🔎 Sto studiando il disegno per decidere dove mettere il rilievo…';
+      /* [studio] VETROFANIE: «Stampa del bianco» a sinistra, come «Effetto rilievo». Solo nello Studio
+         (lo accende il messaggio 'biancoStudio'): al posto della grafica si vede ESATTAMENTE dove la Roland
+         stampa RDG_WHITE (stessa regola del file di stampa), il resto e' vinile trasparente. */
+      if(!bianco){
+        bianco=document.createElement('button'); bianco.type='button'; bianco.id='ppBianco';
+        bianco.style.cssText='position:absolute;left:10px;top:10px;z-index:6;display:none;align-items:center;gap:7px;padding:9px 12px;border-radius:999px;border:1.5px solid #dfe3ea;background:#fff;color:#0b0b3b;font:700 12.5px Montserrat,system-ui,sans-serif;cursor:pointer;box-shadow:0 4px 14px rgba(11,11,59,.12)';
+        bianco.onclick=()=>{S.vistaBianco=!S.vistaBianco; aggiornaLente(); if(S.src&&S.bbox){try{draw();computeLayout();}catch(e){}} };
+        biancoLeg=document.createElement('div'); biancoLeg.id='ppBiancoLeg';
+        biancoLeg.style.cssText='position:absolute;left:10px;bottom:8px;z-index:6;display:none;padding:6px 10px;border-radius:10px;background:rgba(255,255,255,.92);color:#3d3f63;font:600 11.5px Montserrat,system-ui,sans-serif;line-height:1.35;text-align:center;box-shadow:0 4px 14px rgba(11,11,59,.10)';
+        st.style.position='relative'; st.appendChild(bianco); st.appendChild(biancoLeg);
+      }
+      const onB=!!(S.biancoStudio&&S.vetro&&!S.foglio&&S.src&&S.bbox);
+      if(!onB)S.vistaBianco=false;
+      bianco.style.display=onB?'inline-flex':'none';
+      bianco.innerHTML=S.vistaBianco?(ART_SVG+'<span>Torna alla grafica</span>'):(BIANCO_SVG+'<span>Stampa del bianco</span>');
+      bianco.title=S.vistaBianco?'Torna alla grafica':'Guarda dove si stampa il bianco RDG_WHITE';
+      if(S.vistaBianco){bianco.style.background='#0b0b3b';bianco.style.color='#fff';bianco.style.borderColor='#0b0b3b';}else{bianco.style.background='#fff';bianco.style.color='#0b0b3b';bianco.style.borderColor='#dfe3ea';}
+      biancoLeg.style.display=(onB&&S.vistaBianco)?'block':'none';
+      biancoLeg.innerHTML='In bianco: <b>RDG_WHITE</b>, '+String(S.vistaRientro).replace('.',',')+' mm dentro il colore';
       if(!lente){
         lente=document.createElement('button'); lente.type='button'; lente.id='ppLente';
         lente.style.cssText='position:absolute;right:10px;top:10px;z-index:6;display:none;align-items:center;gap:7px;padding:9px 12px;border-radius:999px;border:1.5px solid #dfe3ea;background:#fff;color:#0b0b3b;font:700 12.5px Montserrat,system-ui,sans-serif;cursor:pointer;box-shadow:0 4px 14px rgba(11,11,59,.12)';
@@ -8090,7 +8128,7 @@ function ppGeoUI(){
   let lastH=0; const sendSize=()=>{const app=document.querySelector('.pp-app'); const h=Math.ceil(app?app.getBoundingClientRect().height+8:document.documentElement.scrollHeight); if(h!==lastH){lastH=h;send('size',{h});}};
   setInterval(()=>{ if(!document.hidden)sendSize(); },400); addEventListener('load',sendSize);
   const snapshot=()=>{
-    if(S.rilDettagli)return;
+    if(S.rilDettagli||S.vistaBianco)return;
     const t0=performance.now();
     fitEmbed();
     try{
@@ -8191,7 +8229,9 @@ function ppGeoUI(){
            vengono disegnati su quello, cosi' bordo bianco, stampa e taglio coincidono */
         const pathSito=S.pathD; if(d.pathD)S.pathD=String(d.pathD);
         try{
-        if(d.what==='mockup'){ send('studio',{id:d.id,ok:true,blob:await mockupBlob(+d.px||6000)}); return; }
+        /* il mockup e' sempre la vetrofania vera, anche se lo studio sta guardando il bianco */
+        if(d.what==='mockup'){ const vb=S.vistaBianco; S.vistaBianco=false;
+          try{ send('studio',{id:d.id,ok:true,blob:await mockupBlob(+d.px||6000)}); } finally { S.vistaBianco=vb; } return; }
         /* 'bianco' = vetrofanie: la base di bianco sotto la grafica, in tracciato (tinta RDG_WHITE) */
         if(d.what==='bianco'){ send('studio',{id:d.id,ok:true,...biancoVettoriale({rientro:d.rientro})}); return; }
         /* risoluzione: quella chiesta, oppure 'auto' = la piu' alta fra 600 dpi e quella vera
@@ -8226,6 +8266,9 @@ function ppGeoUI(){
       busy(true,'Aggiorno…'); setTimeout(()=>{try{buildCut();draw();}catch(e){} window.__busyOff=performance.now(); snapshot(); busy(false);},0); }
     /* [sito] nuova grafica: la targhetta con la misura, scritta dal sito (nella lingua e nell'unita' giuste) */
     if(d.type==='misura'&&NUOVO){ try{ const st=document.getElementById('ppStage'); if(st){ let m=document.getElementById('ppMisura'); if(!m){m=document.createElement('div');m.id='ppMisura';st.style.position='relative';st.appendChild(m);} m.textContent=String(d.text||''); m.style.display=d.text?'':'none'; m.className=(S.rilievo&&!S.foglio)?'giu':''; /* rilievo: in alto a sinistra c'e' gia' il suo bottone */ } }catch(e){} }
+    /* [studio] vetrofanie: lo Studio accende il bottone «Stampa del bianco» (sul sito non arriva mai) */
+    if(d.type==='biancoStudio'){ S.biancoStudio=true; if(d.rientro!==undefined)S.vistaRientro=Math.max(0,+d.rientro||0);
+      try{ if(window.__ppAggiorna)window.__ppAggiorna(); }catch(e){} }
     if(d.type==='cut'){S.showCut=!!d.on;try{ridipingi();if(window.__anWake)window.__anWake(6000);}catch(e){}}
     /* [sito] zoom del disegno dentro la sagoma (il kit: il cavallotto va riempito tutto) */
     if(d.type==='zoom'&&S.src){ const z=$('lvZoom'); if(z){ z.value=String(Math.max(+z.min,Math.min(+z.max,Math.round(+d.value||100)))); z.dispatchEvent(new Event('input')); } }
