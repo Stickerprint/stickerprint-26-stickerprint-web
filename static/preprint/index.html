@@ -4482,8 +4482,16 @@ function layerBianco(ppm){
 /* anteprima con la base di bianco: dentro la sagoma del bianco l'inchiostro si vede com'e' (come su
    bianco), fuori resta il materiale */
 function sovrapponiBaseBianco(c,ink,ppm){
-  const L0=layerBianco(ppm),L=biancoSoloColore()?soloColore(L0):L0,o=document.createElement('canvas');o.width=c.width;o.height=c.height;
-  const go=o.getContext('2d');go.drawImage(ink,0,0);go.globalCompositeOperation='destination-in';go.drawImage(L,0,0);
+  /* la stessa sagoma del bianco del file di stampa (rientro di 0,1 mm compreso): dentro l'inchiostro si vede
+     come su bianco, fuori resta sul materiale. Prima si usava tutto il colore e il bordo sfumato delle lettere
+     usciva come un alone chiaro sopra l'argento (Tiramisu', 27/11). */
+  const L=layerBianco(ppm),W=L.width,H=L.height;
+  const M=mascheraBianco(L.getContext('2d',{willReadFrequently:true}).getImageData(0,0,W,H).data,W,H,ppm,S.vistaRientro||0.1,biancoSoloColore());
+  const mk=document.createElement('canvas');mk.width=W;mk.height=H;const gm=mk.getContext('2d'),im=gm.createImageData(W,H);
+  for(let i=0;i<W*H;i++)if(M[i])im.data[i*4+3]=255;
+  gm.putImageData(im,0,0);
+  const o=document.createElement('canvas');o.width=c.width;o.height=c.height;
+  const go=o.getContext('2d');go.drawImage(ink,0,0);go.globalCompositeOperation='destination-in';go.drawImage(mk,0,0);
   const g=c.getContext('2d');g.globalCompositeOperation='source-over';g.drawImage(o,0,0);return c;}
 function inkLayer(ppm){
   const W=Math.max(1,Math.round(S.cutW*ppm)),H=Math.max(1,Math.round(S.cutH*ppm));
@@ -6135,7 +6143,11 @@ function rilievoVettoriale(){
    Unica eccezione, solo nelle vetrofanie: forma geometrica col fondo pieno (vetroFondoPieno), li' tutta la
    forma e' la vetrofania e il bianco va sotto tutta la forma, testi compresi. */
 const BIANCO_CARTA=245;
-const eColore=(d,p)=>d[p+3]>=128&&Math.min(d[p],d[p+1],d[p+2])<BIANCO_CARTA;
+/* carta = bianco, oppure bianco "sporco" senza tinta (il grigino della compressione JPEG attorno alle
+   lettere: Tiramisu' 27/11, granelli di bianco fra le due "l" di Pallonetto). Un bordo sfumato verso la
+   carta ha la tinta del colore e resta colore. */
+const eCarta=(d,p)=>{const mn=Math.min(d[p],d[p+1],d[p+2]);return mn>=BIANCO_CARTA||(mn>=228&&Math.max(d[p],d[p+1],d[p+2])-mn<=14);};
+const eColore=(d,p)=>d[p+3]>=128&&!eCarta(d,p);
 function biancoSoloColore(){return S.vetro?!vetroFondoPieno():true;}
 /* ECCEZIONE: SCRITTE BIANCHE DENTRO UNA PLACCA (Mattia, 27/11/2026: "gestiscila come eccezione").
    Un'area bianca CHIUSA dentro il colore (non collegata al fondo del file) prende il bianco come fosse colore
@@ -6146,7 +6158,7 @@ function biancoSoloColore(){return S.vetro?!vetroFondoPieno():true;}
    - riquadro bianco incorniciato (numero verde SP00680): la cornice ha un buco solo -> niente bianco;
    - campi bianchi grandi (tondo "Motocicli Pavone"): troppo grandi rispetto all'anello -> resta il materiale.
    Ritorna 1 dove il pixel e' inchiostro (colore, o bianco di una placca). */
-function inchiostro(d,W,H){
+function inchiostro(d,W,H,ppm){
   const N=W*H,K=new Uint8Array(N);              /* 0 fuori, 1 colore, 2 bianco del file */
   for(let i=0,p=0;i<N;i++,p+=4)K[i]=d[p+3]<128?0:(eColore(d,p)?1:2);
   const out=new Uint8Array(N);for(let i=0;i<N;i++)if(K[i]===1)out[i]=1;
@@ -6161,7 +6173,6 @@ function inchiostro(d,W,H){
   let nw=0;
   for(let s0=0;s0<N;s0++){if(K[s0]!==2||L[s0])continue;nw++;wA.push(0);wF.push(0);wC.push(0);const w=nw;
     giro(s0,2,w,(i,x,y)=>{wA[w]++;if(!wF[w]){if(x===0||y===0||x===W-1||y===H-1||K[i-1]===0||K[i+1]===0||K[i-W]===0||K[i+W]===0)wF[w]=1;}});}
-  if(!nw)return out;
   /* 2. parti di colore: area e se toccano il fuori (direttamente o attraverso il fondo bianco del file) */
   let nc=0;
   for(let s0=0;s0<N;s0++){if(K[s0]!==1||L[s0])continue;nc++;cA.push(0);cF.push(0);cH.push(0);const c=nc;
@@ -6171,23 +6182,93 @@ function inchiostro(d,W,H){
   /* 3. ogni area bianca chiusa: chi la racchiude */
   for(let i=W;i<N-W;i++){const w=L[i];if(w<=0||wF[w]||wC[w])continue;
     for(const j of [i-1,i+1,i-W,i+W]){if(L[j]<0){wC[w]=-L[j];cH[-L[j]]++;break;}}}
-  /* 4. bianco di una placca -> inchiostro */
+  /* 4. bianco di una placca -> inchiostro; e i buchini dentro un tratto (i riflessi dell'oro, sotto
+     0,08 mm2, circa 0,3 mm di diametro) si riempiono: non sono occhielli, sarebbero buchi nel bianco.
+     Gli occhielli veri, anche delle lettere piccole, sono piu' grandi e restano senza bianco. */
+  const k2=(ppm||12)*(ppm||12),buchino=0.08*k2;
+  /* riflessi lunghi e sottili dentro i tratti (la "u" di Tiramisu'): area bianca chiusa larga meno di 0,25 mm
+     (mezza larghezza sotto 0,12 mm). Un occhiello vero e' piu' largo e resta senza bianco */
+  const noW=new Uint8Array(N);for(let i=0;i<N;i++)noW[i]=K[i]===2?0:1;
+  const dW=edt2d(noW,W,H),wMax=new Float64Array(nw+1);
+  for(let i=0;i<N;i++){const w=L[i];if(w>0&&dW[i]>wMax[w])wMax[w]=dW[i];}
+  const sottile=Math.pow(0.12*(ppm||12)+0.5,2);
   const si=new Uint8Array(nw+1);let quanti=0;
   for(let w=1;w<=nw;w++){const c=wC[w];if(wF[w]||!c)continue;
-    if(cF[c]&&cH[c]>=3&&wA[w]<=0.15*cA[c]){si[w]=1;quanti++;}}
+    if((cF[c]&&cH[c]>=3&&wA[w]<=0.15*cA[c])||wA[w]<buchino||wMax[w]<sottile){si[w]=1;quanti++;}}
   if(quanti)for(let i=0;i<N;i++){const w=L[i];if(w>0&&si[w])out[i]=1;}
+  /* 4-bis. buchini TRASPARENTI chiusi dentro il colore: riflessi bianchi che lo scontorno ha tolto insieme al
+     fondo (Tiramisu'). Erano bianchi nel file: come i riflessi, prendono il bianco */
+  {const v=new Uint8Array(N);for(let i=0;i<N;i++)v[i]=K[i]===0?1:0;
+   const t=etichette(v,W,H,true),bordo=new Uint8Array(t.n+1);
+   for(let x=0;x<W;x++){bordo[t.L[x]]=1;bordo[t.L[(H-1)*W+x]]=1;}for(let y=0;y<H;y++){bordo[t.L[y*W]]=1;bordo[t.L[y*W+W-1]]=1;}
+   /* solo se attorno c'e' colore: un buchino trasparente in mezzo alla carta fra due lettere resta fuori */
+   const nCol=new Float64Array(t.n+1),nTot=new Float64Array(t.n+1);
+   for(let i=W;i<N-W;i++){const q=t.L[i];if(!q||bordo[q]||t.A[q]>=buchino)continue;
+     for(const j of [i-1,i+1,i-W,i+W]){if(K[j]!==0){nTot[q]++;if(K[j]===1)nCol[q]++;}}}
+   for(let i=0;i<N;i++){const q=t.L[i];if(q&&!bordo[q]&&t.A[q]<buchino&&nTot[q]>0&&nCol[q]>=0.9*nTot[q])out[i]=1;}}
+  /* 5. granelli di colore isolati piu' piccoli di un punto stampabile (0,006 mm2): sporco del file */
+  const polvere=0.006*k2;let via=0;const piccolo=new Uint8Array(nc+1);
+  for(let c=1;c<=nc;c++)if(cA[c]<polvere){piccolo[c]=1;via++;}
+  if(via)for(let i=0;i<N;i++){const c=L[i];if(c<0&&piccolo[-c])out[i]=0;}
+  /* parti di colore CHIUSE dentro un'altra parte del disegno (non toccano il fondo): i puntini di colore in
+     mezzo ai riflessi bianchi delle lettere. pulisciBianco toglie il loro bianco se e' un granello */
+  const ann=new Uint8Array(N);for(let i=0;i<N;i++){const c=L[i];if(c<0&&!cF[-c])ann[i]=1;}
+  out.annidato=ann;
   return out;}
 /* copia della tela con trasparente dove non c'e' inchiostro (per le anteprime: si vede quello che si stampa) */
-function soloColore(c){
+function soloColore(c,ppm){
   const o=document.createElement('canvas');o.width=c.width;o.height=c.height;
   const g=o.getContext('2d',{willReadFrequently:true});g.drawImage(c,0,0);
   const id=g.getImageData(0,0,o.width,o.height),d=id.data;
-  const I=inchiostro(d,o.width,o.height);
+  const I=inchiostro(d,o.width,o.height,ppm);
   for(let i=0,p=3;i<I.length;i++,p+=4)if(!I[i]&&d[p]>=128)d[p]=0;
   g.putImageData(id,0,0);return o;}
+/* componenti a 8 vicini di una maschera: etichette (Int32), numero, aree */
+function etichette(B,W,H,quattro){
+  const N=W*H,L=new Int32Array(N),st=new Int32Array(N),A=[0];let n=0;
+  for(let s0=0;s0<N;s0++){if(!B[s0]||L[s0])continue;n++;A.push(0);let top=0;st[top++]=s0;L[s0]=n;
+    while(top){const i=st[--top];A[n]++;const x=i%W,y=(i/W)|0;
+      for(let dy=-1;dy<=1;dy++){const yy=y+dy;if(yy<0||yy>=H)continue;
+        for(let dx=-1;dx<=1;dx++){if(quattro&&dx&&dy)continue;const xx=x+dx;if(xx<0||xx>=W)continue;const j=yy*W+xx;if(B[j]&&!L[j]){L[j]=n;st[top++]=j;}}}}}
+  return {L,n,A};}
+/* NIENTE GRANELLI E NIENTE BUCHI NEL BIANCO (Mattia, 27/11/2026, logo Tiramisu': "i granellini di bianco non ci
+   devono essere minimamente ... nessun buco nelle lettere").
+   1. dove un tratto sottile si attacca a uno spesso il bianco del tratto sottile restava staccato (il bordo del
+      tratto spesso rientra, quello sottile no): una chiusura di raggio rientro+1 px lo ricollega, ma solo sopra
+      il colore e ad almeno un pixel dal suo bordo, mai sulla carta;
+   2. i buchi nel bianco che cadono tutti sul colore (non sono occhielli) si riempiono;
+   3. un frammento di bianco sotto 0,02 mm2 rimasto staccato dentro la stessa parte di colore di un pezzo piu'
+      grande si toglie. Un dettaglio a se' (il punto dopo una G) ha il suo colore e resta. */
+function pulisciBianco(out,M,d2,W,H,ppm,r,annidato){
+  const N=W*H,k=Math.ceil(r)+1,k2=k*k;
+  const vuoto=new Uint8Array(N);for(let i=0;i<N;i++)vuoto[i]=out[i]?0:1;
+  const a=edt2d(out,W,H);                       /* distanza dal bianco */
+  const fuoriDil=new Uint8Array(N);for(let i=0;i<N;i++)fuoriDil[i]=a[i]<=k2?0:1;
+  const b=edt2d(fuoriDil,W,H);                  /* distanza dal fuori della dilatazione */
+  for(let i=0;i<N;i++)if(!out[i]&&M[i]&&d2[i]>=2&&b[i]>k2)out[i]=1;
+  /* 2. buchi del bianco tutti su colore */
+  const fori=etichette((()=>{const v=new Uint8Array(N);for(let i=0;i<N;i++)v[i]=out[i]?0:1;return v;})(),W,H,true);   /* i buchi di un bianco a 8 vicini si contano a 4 */
+  const tocca=new Uint8Array(fori.n+1),carta=new Uint8Array(fori.n+1);
+  for(let y=0,i=0;y<H;y++)for(let x=0;x<W;x++,i++){const f=fori.L[i];if(!f)continue;
+    if(x===0||y===0||x===W-1||y===H-1)tocca[f]=1;if(!M[i])carta[f]=1;}
+  for(let i=0;i<N;i++){const f=fori.L[i];if(f&&!tocca[f]&&!carta[f])out[i]=1;}
+  /* 3. frammenti staccati dentro la stessa parte di colore */
+  const pz=etichette(out,W,H),col=etichette(M,W,H),maxA=new Float64Array(col.n+1),suo=new Int32Array(pz.n+1);
+  const chiuso=new Uint8Array(pz.n+1);
+  for(let i=0;i<N;i++){const q=pz.L[i];if(q&&!suo[q]){suo[q]=col.L[i];if(annidato&&annidato[i])chiuso[q]=1;}}
+  for(let q=1;q<=pz.n;q++){const c=suo[q];if(c&&pz.A[q]>maxA[c])maxA[c]=pz.A[q];}
+  const minA=0.02*ppm*ppm,via=new Uint8Array(pz.n+1);let nv=0;
+  /* e qualunque isola sotto 0,006 mm2 (meno di 0,09 mm di diametro): sotto la risoluzione dell'inchiostro
+     bianco, in macchina sarebbe solo un granello */
+  const minStampa=0.006*ppm*ppm;
+  /* e il granello che nasce da un puntino di colore piu' piccolo di 0,04 mm2 (sotto 0,2 mm di diametro) */
+  const colMin=0.04*ppm*ppm;
+  for(let q=1;q<=pz.n;q++){const c=suo[q];if((c&&pz.A[q]<minA&&(pz.A[q]<maxA[c]||chiuso[q]||col.A[c]<colMin))||pz.A[q]<minStampa){via[q]=1;nv++;}}
+  if(nv)for(let i=0;i<N;i++){const q=pz.L[i];if(q&&via[q])out[i]=0;}
+  return out;}
 function mascheraBianco(dd,W,H,ppm,rientro,solo){
   const N=W*H,M=new Uint8Array(N),fuori=new Uint8Array(N);
-  const I=solo?inchiostro(dd,W,H):null;
+  const I=solo?inchiostro(dd,W,H,ppm):null;
   for(let i=0;i<N;i++){const on=solo?I[i]===1:dd[i*4+3]>=128;M[i]=on?1:0;fuori[i]=on?0:1;}
   if(!(rientro>0))return M;
   const d2=edt2d(fuori,W,H),r=rientro*ppm+0.5,r2=r*r;    /* + mezzo pixel: misurato sul PDF, il bordo cade a `rientro` */
@@ -6203,7 +6284,7 @@ function mascheraBianco(dd,W,H,ppm,rientro,solo){
     for(let k=0;k<off.length;k++){const o=off[k];if(o[2]>KK)break;
       const xx=x+o[0],yy=y+o[1];if(xx<0||yy<0||xx>=W||yy>=H)continue;
       const w=d2[yy*W+xx];if(w>v4&&o[2]<=w){out[i]=0;break;}}}
-  return out;}
+  return solo?pulisciBianco(out,M,d2,W,H,ppm,r,I&&I.annidato):out;}
 function biancoVettoriale(o){
   o=o||{};
   const rientro=Math.max(0,+o.rientro||0), b=S.bleed||0;
@@ -6225,7 +6306,11 @@ function biancoVettoriale(o){
   /* scarto 0,025 mm: il bianco deve combaciare col colore, piu' preciso del rilievo */
   const dev=Math.max(0.5,0.025*ppm);
   const parts=[];
+  /* contorni sotto 0,006 mm2 (isole o buchini) fuori dal tracciato: un buchino a ridosso del bordo, lisciato,
+     incrociava il contorno esterno e l'incrocio usciva come granello di bianco (Tiramisu') */
+  const minLoop=0.006*ppm*ppm;
   for(const L of loops){
+    if(Math.abs(L.area)<minLoop)continue;
     /* lisciatura di un pixel solo (non tre come il taglio): le scritte piccole non si arrotondano */
     let c=null;try{c=contourOne(L,{maxDevPx:dev,cornerDeg:50,smooth:0.7,preSmoothPx:1});}catch(e){}
     /* un contorno minuscolo che non si liscia entra com'e' (bordo dei pixel): nessun dettaglio resta senza bianco */
@@ -6420,7 +6505,7 @@ function renderCoreRaw(ppm,withMat){
     /* [sito] vetrofanie: si stampa con la base bianca sotto la grafica, i colori restano pieni;
        solo il contorno oltre il disegno e' vinile trasparente */
     /* il bianco del file non ha base di bianco: sul vetro resta trasparente */
-    if(S.vetro)return biancoSoloColore()?soloColore(ink):ink;
+    if(S.vetro)return biancoSoloColore()?soloColore(ink,ppm):ink;
     /* [sito] trasparente: i colori si vedono sbiaditi, come inchiostro su vinile
        trasparente senza fondo bianco. Opacità ridotta e un velo chiaro sopra. */
     g.globalAlpha=0.62;g.drawImage(ink,0,0);
