@@ -4482,7 +4482,7 @@ function layerBianco(ppm){
 /* anteprima con la base di bianco: dentro la sagoma del bianco l'inchiostro si vede com'e' (come su
    bianco), fuori resta il materiale */
 function sovrapponiBaseBianco(c,ink,ppm){
-  const L=layerBianco(ppm),o=document.createElement('canvas');o.width=c.width;o.height=c.height;
+  const L0=layerBianco(ppm),L=biancoSoloColore()?soloColore(L0):L0,o=document.createElement('canvas');o.width=c.width;o.height=c.height;
   const go=o.getContext('2d');go.drawImage(ink,0,0);go.globalCompositeOperation='destination-in';go.drawImage(L,0,0);
   const g=c.getContext('2d');g.globalCompositeOperation='source-over';g.drawImage(o,0,0);return c;}
 function inkLayer(ppm){
@@ -6125,9 +6125,30 @@ function rilievoVettoriale(){
    Si toglie il punto q (distanza d dal fuori, sotto rientro) se un cerchio nel colore lo contiene ed e'
    largo piu' del doppio di d: basta cercarne il centro entro 2d+1 pixel (lungo il raggio verso un centro
    lontano ce n'e' sempre uno piu' vicino che lo contiene ancora). */
-function mascheraBianco(dd,W,H,ppm,rientro){
+/* SOTTO OGNI COLORE (Mattia, 27/11/2026: "il bianco deve essere esattamente sotto ogni dettaglio, ogni
+   colore"). Un pixel prende il bianco se ha COLORE: il bianco del file (carta, occhielli delle lettere,
+   l'interno di un riquadro bianco) non e' inchiostro e resta senza base: trasparente sulla vetrofania,
+   materiale sui materiali speciali. Bianco = tutti i canali a 245 o piu'.
+   Sui materiali speciali la SAGOMA NON COMANDA il bianco (Mattia: "qualsiasi cosa si veda con sfondo bianco
+   non va colorata di bianco ... lo sfondo resta olografico"): anche in un cerchio o in un rettangolo il bianco
+   va solo sotto il colore; un fondo colorato scelto dal cliente e' colore e lo prende per la stessa regola.
+   Unica eccezione, solo nelle vetrofanie: forma geometrica col fondo pieno (vetroFondoPieno), li' tutta la
+   forma e' la vetrofania e il bianco va sotto tutta la forma, testi compresi. */
+const BIANCO_CARTA=245;
+const eColore=(d,p)=>d[p+3]>=128&&Math.min(d[p],d[p+1],d[p+2])<BIANCO_CARTA;
+function biancoSoloColore(){return S.vetro?!vetroFondoPieno():true;}
+/* copia della tela con trasparente dove non c'e' colore (per le anteprime: si vede quello che si stampa) */
+function soloColore(c){
+  const o=document.createElement('canvas');o.width=c.width;o.height=c.height;
+  const g=o.getContext('2d',{willReadFrequently:true});g.drawImage(c,0,0);
+  const id=g.getImageData(0,0,o.width,o.height),d=id.data;
+  for(let p=0;p<d.length;p+=4)if(d[p+3]&&!eColore(d,p)){
+    /* il bordo sfumato verso la carta resta, con l'alfa di quanto colore porta */
+    const k=255-Math.min(d[p],d[p+1],d[p+2]);d[p+3]=d[p+3]>=128&&k>0?Math.min(d[p+3],Math.round(k*255/(255-BIANCO_CARTA+1))>>4):0;}
+  g.putImageData(id,0,0);return o;}
+function mascheraBianco(dd,W,H,ppm,rientro,solo){
   const N=W*H,M=new Uint8Array(N),fuori=new Uint8Array(N);
-  for(let i=0;i<N;i++){const on=dd[i*4+3]>=128;M[i]=on?1:0;fuori[i]=on?0:1;}
+  for(let i=0;i<N;i++){const on=solo?eColore(dd,i*4):dd[i*4+3]>=128;M[i]=on?1:0;fuori[i]=on?0:1;}
   if(!(rientro>0))return M;
   const d2=edt2d(fuori,W,H),r=rientro*ppm+0.5,r2=r*r;    /* + mezzo pixel: misurato sul PDF, il bordo cade a `rientro` */
   const out=M.slice();
@@ -6158,7 +6179,7 @@ function biancoVettoriale(o){
   const bp=b>0.001?1:0;                                /* tela con l'abbondanza (come in renderTile) */
   const dd=cv.getContext('2d',{willReadFrequently:true}).getImageData(0,0,W,H).data;
   /* niente sfocatura e niente pulizia dei puntini: un filetto da un pixel si perderebbe */
-  const M=mascheraBianco(dd,W,H,ppm,rientro);
+  const M=mascheraBianco(dd,W,H,ppm,rientro,biancoSoloColore());
   const loops=traceLoops(M,W,H);
   if(!loops.length)throw new Error('Nessuna grafica da coprire col bianco');
   /* scarto 0,025 mm: il bianco deve combaciare col colore, piu' preciso del rilievo */
@@ -6325,7 +6346,7 @@ function rilievoDettagli(c,ppm){
    resta vinile trasparente (si vede la vetrina dietro). */
 function vistaBianco(c,ppm){
   const W=c.width,H=c.height,N=W*H;
-  const M=mascheraBianco(c.getContext('2d',{willReadFrequently:true}).getImageData(0,0,W,H).data,W,H,ppm,S.vistaRientro||0);
+  const M=mascheraBianco(c.getContext('2d',{willReadFrequently:true}).getImageData(0,0,W,H).data,W,H,ppm,S.vistaRientro||0,biancoSoloColore());
   const out=document.createElement('canvas');out.width=W;out.height=H;
   const g=out.getContext('2d'),id=g.createImageData(W,H),q=id.data;
   for(let i=0,p=0;i<N;i++,p+=4)if(M[i]){q[p]=255;q[p+1]=255;q[p+2]=255;q[p+3]=255;}
@@ -6358,7 +6379,8 @@ function renderCoreRaw(ppm,withMat){
   if(m==='clear'){
     /* [sito] vetrofanie: si stampa con la base bianca sotto la grafica, i colori restano pieni;
        solo il contorno oltre il disegno e' vinile trasparente */
-    if(S.vetro)return ink;
+    /* il bianco del file non ha base di bianco: sul vetro resta trasparente */
+    if(S.vetro)return biancoSoloColore()?soloColore(ink):ink;
     /* [sito] trasparente: i colori si vedono sbiaditi, come inchiostro su vinile
        trasparente senza fondo bianco. Opacità ridotta e un velo chiaro sopra. */
     g.globalAlpha=0.62;g.drawImage(ink,0,0);
