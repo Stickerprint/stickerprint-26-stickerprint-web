@@ -6175,9 +6175,13 @@ function inchiostro(d,W,H,ppm){
     giro(s0,1,-c,(i,x,y)=>{cA[c]++;if(cF[c])return;
       if(x===0||y===0||x===W-1||y===H-1){cF[c]=1;return;}
       for(const j of [i-1,i+1,i-W,i+W]){if(K[j]===0||(K[j]===2&&wF[L[j]])){cF[c]=1;return;}}});}
-  /* 3. ogni area bianca chiusa: chi la racchiude */
-  for(let i=W;i<N-W;i++){const w=L[i];if(w<=0||wF[w]||wC[w])continue;
-    for(const j of [i-1,i+1,i-W,i+W]){if(L[j]<0){wC[w]=-L[j];cH[-L[j]]++;break;}}}
+  /* 3. ogni area bianca chiusa: chi la racchiude, e tutte le parti di colore che la toccano (il contorno
+     bianco di una lettera tocca la placca fuori e la lettera dentro) */
+  const vic=new Array(nw+1);
+  for(let i=W;i<N-W;i++){const w=L[i];if(w<=0||wF[w])continue;
+    for(const j of [i-1,i+1,i-W,i+W]){const c=L[j];if(c>=0)continue;
+      if(!wC[w]){wC[w]=-c;cH[-c]++;}
+      const v=vic[w]||(vic[w]=[]);if(v.length<8&&v.indexOf(-c)<0)v.push(-c);}}
   /* 4. bianco di una placca -> inchiostro; e i buchini dentro un tratto (i riflessi dell'oro, sotto
      0,08 mm2, circa 0,3 mm di diametro) si riempiono: non sono occhielli, sarebbero buchi nel bianco.
      Gli occhielli veri, anche delle lettere piccole, sono piu' grandi e restano senza bianco. */
@@ -6198,9 +6202,15 @@ function inchiostro(d,W,H,ppm){
   const si=new Uint8Array(nw+1);let quanti=0;
   for(let w=1;w<=nw;w++){const c=wC[w];if(wF[w]||!c)continue;
     if(wA[w]<buchino){si[w]=1;quanti++;continue;}
-    if(!cF[c]||wA[w]>0.25*cA[c])continue;
-    const R=Math.ceil(3*Math.sqrt(wMax[w])+2),x0=Math.max(0,wX0[w]-R),x1=Math.min(W-1,wX1[w]+R),y0=Math.max(0,wY0[w]-R),y1=Math.min(H-1,wY1[w]+R);
-    let T=0;for(let y=y0;y<=y1;y++){const row=y*W;for(let x=x0;x<=x1;x++){const v=dC[row+x];if(v>T)T=v;}}
+    /* la placca e' la parte di colore piu' grande fra quelle che toccano l'area bianca e arrivano al fuori del
+       disegno (per il contorno di una lettera: il magenta, non la lettera blu che sta dentro) */
+    let cp=0;for(const q of (vic[w]||[]))if(cF[q]&&(!cp||cA[q]>cA[cp]))cp=q;
+    if(!cp||wA[w]>0.25*cA[cp])continue;
+    /* spessore della campitura: SOLO sulle parti di colore che toccano l'area bianca, e cercando abbastanza
+       lontano (almeno 1 mm) da vederne la pienezza: col contorno sottile delle lettere SIMIN la finestra di
+       prima (3 volte il contorno) non arrivava mai agli 0,6 mm del magenta */
+    const v=vic[w]||[],R=Math.ceil(Math.max(3*Math.sqrt(wMax[w]),1.0*(ppm||12))+2),x0=Math.max(0,wX0[w]-R),x1=Math.min(W-1,wX1[w]+R),y0=Math.max(0,wY0[w]-R),y1=Math.min(H-1,wY1[w]+R);
+    let T=0;for(let y=y0;y<=y1;y++){const row=y*W;for(let x=x0;x<=x1;x++){const i=row+x,lc=L[i];if(lc>=0||v.indexOf(-lc)<0)continue;const dv=dC[i];if(dv>T)T=dv;}}
     if(T>=spessoMin&&T>=6.25*wMax[w]){si[w]=1;quanti++;}}
   if(quanti)for(let i=0;i<N;i++){const w=L[i];if(w>0&&si[w])out[i]=1;}
   /* 4-bis. buchini TRASPARENTI chiusi dentro il colore: come i puntini bianchi, si riempiono solo se
