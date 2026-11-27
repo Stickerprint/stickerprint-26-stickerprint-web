@@ -17,6 +17,7 @@
 		foglio = false,
 		rilievo = false,
 		vetro = false,
+		baseBianco = false,
 		w = 0,
 		h = 0,
 		panel = false,
@@ -40,6 +41,8 @@
 		foglio?: boolean;
 		rilievo?: boolean;
 		vetro?: boolean;
+		/** base di bianco sotto la grafica (materiali speciali): l'anteprima mostra il disegno acceso */
+		baseBianco?: boolean;
 		w?: number;
 		h?: number;
 		panel?: boolean;
@@ -78,6 +81,7 @@
 		if (foglio) q.set('foglio', '1');
 		if (rilievo) q.set('rilievo', '1');
 		if (vetro) q.set('vetro', '1');
+		if (baseBianco) q.set('baseBianco', '1');
 		if (noang) q.set('noang', '1');
 		if (hires) q.set('hires', '1');
 		if (noombra) q.set('noombra', '1');
@@ -153,7 +157,7 @@
 		if (cfg !== postedCfg) postCfg(cfg);
 	}
 	let srcCfg = ''; // la combinazione con cui il motore e' stato caricato (nell'indirizzo)
-	const cfgNow = () => JSON.stringify({ forma, materiale, lamina: finitura, w, h, prodotto, foglio, rilievo, vetro, noang });
+	const cfgNow = () => JSON.stringify({ forma, materiale, lamina: finitura, w, h, prodotto, foglio, rilievo, vetro, baseBianco, noang });
 	let cfgTimer: ReturnType<typeof setTimeout> | undefined;
 	let cfgSentAt = 0;
 	let sentCfg = '';
@@ -170,7 +174,7 @@
 		});
 	});
 	$effect(() => {
-		const cfg = JSON.stringify({ forma, materiale, lamina: finitura, w, h, prodotto, foglio, rilievo, vetro, noang });
+		const cfg = JSON.stringify({ forma, materiale, lamina: finitura, w, h, prodotto, foglio, rilievo, vetro, baseBianco, noang });
 		untrack(() => {
 			if (!file || !src || cfg === sentCfg) return;
 			clearTimeout(cfgTimer);

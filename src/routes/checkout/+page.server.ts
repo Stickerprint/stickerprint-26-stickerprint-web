@@ -1,3 +1,4 @@
+import { rigaConBaseBianco } from '$lib/base-bianco';
 import { renewedEndsAt, normalizePromo } from '$lib/server/promos';
 import { fail } from '@sveltejs/kit';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
@@ -234,7 +235,7 @@ export const actions: Actions = {
 				preview_url: l.previewUrl ?? null, proof_url: l.previewUrl ?? null,
 				device, user_agent: ua.slice(0, 500),
 				file_path: l.filePath?.startsWith('riordino:') || l.filePath === 'campioni' ? null : l.filePath,
-				notes: [l.reorderOf ? `Riordino di ${l.reorderOf}` : '', l.note ?? ''].filter(Boolean).join(' · ') || null,
+				notes: [rigaConBaseBianco(l.materiale, l.product, l.engineState) ? 'Base di bianco RDG_WHITE sotto la grafica' : '', l.reorderOf ? `Riordino di ${l.reorderOf}` : '', l.note ?? ''].filter(Boolean).join(' · ') || null,
 				email, shipping: ship, billing: bill, country,
 				payment_method: payment === 'card' ? 'stripe' : payment, payment_status: online ? 'pending' : payment === 'credito' ? 'paid' : 'test',
 				discount_code: discountCode, discount_amount: r2(discount * share),
@@ -265,7 +266,7 @@ export const actions: Actions = {
 			}
 			if (error) return fail(400, { error: msg('ordineNonRegistrato', { errore: error.message }) });
 			if (!numbers.includes(row.number)) numbers.push(row.number);
-			invLines.push({ code: CATS[l.product]?.code ?? null, description: l.product === 'campioni' ? `Kit campioni` : l.product === 'kit_adesivi' ? `Kit di adesivi (${kitN(l.forma)} adesivi da ${mm1(l.w)} mm, ${MATERIAL_LABEL[l.materiale] ?? l.materiale}${l.finitura && l.finitura !== 'nessuna' ? ', lamina ' + l.finitura : ''})` : `${name} ${l.forma} ${MATERIAL_LABEL[l.materiale] ?? l.materiale}${l.finitura && l.finitura !== 'nessuna' ? ' lamina ' + l.finitura : ''} ${mm1(l.w)}×${mm1(l.h)} mm`, qty: l.qty, unit_net: r2(l.baseNet / l.qty), total_net: l.baseNet });
+			invLines.push({ code: CATS[l.product]?.code ?? null, description: l.product === 'campioni' ? `Kit campioni` : l.product === 'kit_adesivi' ? `Kit di adesivi (${kitN(l.forma)} adesivi da ${mm1(l.w)} mm, ${MATERIAL_LABEL[l.materiale] ?? l.materiale}${l.finitura && l.finitura !== 'nessuna' ? ', lamina ' + l.finitura : ''})` : `${name} ${l.forma} ${MATERIAL_LABEL[l.materiale] ?? l.materiale}${rigaConBaseBianco(l.materiale, l.product, l.engineState) ? ' con base di bianco' : ''}${l.finitura && l.finitura !== 'nessuna' ? ' lamina ' + l.finitura : ''} ${mm1(l.w)}×${mm1(l.h)} mm`, qty: l.qty, unit_net: r2(l.baseNet / l.qty), total_net: l.baseNet });
 			{
 				const lam = nomeLamina(l.finitura);
 				const descr = l.product === 'campioni' ? t(locale, 'checkout.riepilogo.kitCampioni') : l.product === 'kit_adesivi' ? t(locale, 'checkout.carrello.kitRiga', { n: kitN(l.forma), mm: `${mm1(l.w)} mm`, materiale: materialLabel(l.materiale, lingua), lamina: lam ? `, ${lam}` : '' }) : t(locale, 'checkout.carrello.riga', { prodotto: productFor(l.product, lingua)?.name ?? name, sagoma: nomeSagoma(l.product, l.forma), materiale: materialLabel(l.materiale, lingua), lamina: lam ? ` ${lam}` : '', misura: `${mm1(l.w)}×${mm1(l.h)} mm` }); /* descrizione dell'ordine SEMPRE in mm: la legge la produzione */

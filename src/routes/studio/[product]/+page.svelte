@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { offreBaseBianco } from '$lib/base-bianco';
 	import { onMount } from 'svelte';
 	import EnginePreview from '$lib/components/EnginePreview.svelte';
 	import StudioLente from '$lib/components/StudioLente.svelte';
@@ -37,6 +38,9 @@
 
 	let forma = $state('');
 	let materiale = $state('');
+	/* base di bianco sotto la grafica (materiali speciali): la sceglie il cliente sul sito, arriva con l'ordine */
+	let baseBianco = $state(false);
+	const conBase = $derived(offreBaseBianco(materiale, P.engineSlug));
 	let finitura = $state('');
 	/* misura: STESSE regole del configuratore del sito (partenza dal minimo della sagoma, proposte,
 	   minimi e massimi del listino, mezzo millimetro), cosi' lo stesso file da' lo stesso pezzo */
@@ -125,6 +129,7 @@
 			if (o.forma && SHAPES.some((x) => x.id === o.forma)) forma = o.forma;
 			if (o.materiale && MATERIALS.some((x) => x.id === o.materiale)) materiale = o.materiale;
 			if (o.finitura && FINISHES.some((x) => x.id === o.finitura)) finitura = o.finitura;
+			baseBianco = !!(o.engineState && (o.engineState as { baseBianco?: unknown }).baseBianco);
 			pick(f);
 			jobName = `${o.number}${o.fileName ? '_' + o.fileName.replace(/\.[^.]+$/, '') : ''}`;
 			w = o.w; h = o.h;
@@ -166,7 +171,7 @@
 		rendered = true;
 		renders++;
 		/* motore ricaricato (nuovo iframe): gli si riaccende il bottone «Stampa del bianco» */
-		if (P.vetro) engine?.post('biancoStudio', { rientro: VETRO_RIENTRO });
+		engine?.post('biancoStudio', { rientro: VETRO_RIENTRO });
 		/* foglio composto sul sito: misure e tagli vengono dal layout dell'ordine, non dal motore */
 		if (composto) return;
 		if (s.w > 0 && s.h > 0) engCut = { w: s.w, h: s.h };
@@ -654,7 +659,7 @@
 	/* vetrofanie: nello studio (non sul sito) il motore mostra il bottone «Stampa del bianco», come
 	   «Effetto rilievo» per il rilievo: si vede esattamente dove va RDG_WHITE (solo vista, il file non cambia) */
 	$effect(() => {
-		if (P.vetro) engine?.post('biancoStudio', { rientro: VETRO_RIENTRO });
+		engine?.post('biancoStudio', { rientro: VETRO_RIENTRO });
 	});
 
 	async function artwork() {
@@ -688,7 +693,15 @@
 			traceInfo += ` · bianco RDG_WHITE: ${b.zone} zone, ${b.nodi} punti, ${String(VETRO_RIENTRO).replace('.', ',')} mm dentro il colore · specchiata`;
 			return { png, cutW: r.cutW, cutH: r.cutH, bleed: r.bleed ?? 0, pathD: specchiaPath(t.d, r.cutW), whiteD: specchiaPath(b.whiteD, r.cutW) };
 		}
-		return { png, cutW: r.cutW, cutH: r.cutH, bleed: r.bleed ?? 0, pathD: t.d, glossD };
+		/* base di bianco (materiali speciali): RDG_WHITE sotto la grafica, dritto (si stampa prima del colore) */
+		let whiteD: string | undefined;
+		if (conBase && baseBianco) {
+			const b = await engine!.studio('bianco', { pathD: t.d, rientro: VETRO_RIENTRO });
+			if (!b.whiteD) throw new Error('Il motore non ha restituito la base di bianco.');
+			whiteD = b.whiteD;
+			traceInfo += ` · base di bianco RDG_WHITE: ${b.zone} zone, ${b.nodi} punti`;
+		}
+		return { png, cutW: r.cutW, cutH: r.cutH, bleed: r.bleed ?? 0, pathD: t.d, glossD, whiteD };
 	}
 
 	const scaricaAnteprima = () => run('mockup', async () => {
@@ -1315,7 +1328,7 @@
 	{:else}
 		<div class="st-bench">
 			<div class="st-stage">
-				<EnginePreview bind:this={engine} {file} forma={eForma} {materiale} finitura={showFinish ? finitura : 'lucida'} prodotto={P.engineProduct} foglio={!!P.foglio} rilievo={!!P.rilievo} vetro={!!P.vetro} noang={cavallotto} w={eW} h={eH} {showCut} panel stage={560} onrender={onRender} />
+				<EnginePreview bind:this={engine} {file} forma={eForma} {materiale} finitura={showFinish ? finitura : 'lucida'} prodotto={P.engineProduct} foglio={!!P.foglio} rilievo={!!P.rilievo} vetro={!!P.vetro} baseBianco={conBase && baseBianco} noang={cavallotto} w={eW} h={eH} {showCut} panel stage={560} onrender={onRender} />
 				<div class="st-bar">
 					<button type="button" class="st-tool" disabled={!rendered} onclick={apriLente}>🔍 Tracciato da vicino</button>
 					{#if !P.vetro}
@@ -1387,6 +1400,12 @@
 								<button type="button" class="st-chip" class:is-on={materiale === m.id} onclick={() => (materiale = m.id)}>{m.label}</button>
 							{/each}
 						</div>
+						{#if conBase}
+							<div class="st-chips" style="margin-top:8px">
+								<button type="button" class="st-chip" class:is-on={baseBianco} onclick={() => (baseBianco = !baseBianco)}>{baseBianco ? '✓ ' : ''}Stampa base di bianco</button>
+							</div>
+							{#if baseBianco}<p class="st-note">RDG_WHITE sotto la grafica, 0,1 mm dentro il colore (stessa regola delle vetrofanie). In VersaWorks: bianco PRIMA del colore.</p>{/if}
+						{/if}
 					</div>
 				{/if}
 				{#if showFinish}

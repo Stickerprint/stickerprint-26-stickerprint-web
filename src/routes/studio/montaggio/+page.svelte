@@ -11,6 +11,7 @@
 	 * testa di resinatura da 10 aghi, stacco fra i pezzi sciolti, 8% di pezzi in piu' per gli scarti.
 	 * Quello che il montatore sceglie in piu' e' la GRIGLIA di ogni foglio (vedi `montaggio.ts`).
 	 */
+	import { offreBaseBianco } from '$lib/base-bianco';
 	import EnginePreview from '$lib/components/EnginePreview.svelte';
 	import { STUDIO_PRODUCTS, studioProduct } from '$lib/studio/products';
 	import { SHEET_RULES, STRIP_MATERIALS, type Placement, type Strip } from '$lib/studio/layout';
@@ -45,8 +46,10 @@
 		stato: 'vuota' | 'attesa' | 'pronta' | 'errore';
 		err: string;
 		pathD: string;
-		/** vetrofanie: base di bianco RDG_WHITE (gia' specchiata come pathD) */
+		/** vetrofanie (gia' specchiata come pathD) o base di bianco sui materiali speciali: RDG_WHITE */
 		whiteD?: string;
+		/** base di bianco sotto la grafica (materiali speciali) */
+		baseBianco?: boolean;
 		png: Uint8Array | null;
 		cutW: number;
 		cutH: number;
@@ -119,6 +122,11 @@
 			const p = await engine!.studio('print', { dpi: 600, pathD: t.d, specchio: vetro });
 			if (!p.blob || !p.cutW || !p.cutH) throw new Error('Il motore non ha restituito la grafica di stampa.');
 			r.pathD = t.d; r.nodi = t.nodes; r.whiteD = undefined;
+			if (!vetro && r.baseBianco && offreBaseBianco(r.materiale, pDi(r).engineSlug)) {
+				const b = await engine!.studio('bianco', { pathD: t.d, rientro: 0.1 });
+				if (!b.whiteD) throw new Error('Il motore non ha restituito la base di bianco.');
+				r.whiteD = b.whiteD;
+			}
 			if (vetro) {
 				const { specchiaPath } = await import('$lib/studio/path');
 				const b = await engine!.studio('bianco', { pathD: t.d, rientro: 0.1 });
@@ -299,6 +307,9 @@
 						<select class="input" bind:value={r.materiale} onchange={() => (r.stato = 'vuota')}>
 							{#each MATERIALI as m (m)}<option value={m}>{m}</option>{/each}
 						</select></label>
+					{#if offreBaseBianco(r.materiale, pDi(r).engineSlug)}
+						<label class="mo-f" style="flex-direction:row;align-items:center;gap:6px"><input type="checkbox" bind:checked={r.baseBianco} onchange={() => (r.stato = 'vuota')} /><span>Base di bianco</span></label>
+					{/if}
 				</div>
 
 				<div class="mo-row">
@@ -412,6 +423,7 @@
 		foglio={!!(attiva && pDi(attiva).foglio)}
 		rilievo={!!(attiva && pDi(attiva).rilievo)}
 		vetro={!!(attiva && pDi(attiva).vetro)}
+		baseBianco={!!(attiva && attiva.baseBianco && offreBaseBianco(attiva.materiale, pDi(attiva).engineSlug))}
 		w={typeof attiva?.w === 'number' ? attiva.w : 0}
 		h={typeof attiva?.h === 'number' ? attiva.h : 0}
 		showCut={false} stage={120} onrender={onRender} />

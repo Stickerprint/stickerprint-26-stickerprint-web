@@ -4464,6 +4464,27 @@ function matKind(){return $('mat')?$('mat').value:'white';}
 function inkBase(){return contourColor();}
 /* vetrofanie: la forma e' piena del fondo del file (forma geometrica + file con un fondo vero) */
 function vetroFondoPieno(){return !!(S.vetro&&CL.shape!=='diecut'&&S.bgOpaque);}
+/* BASE DI BIANCO (Mattia, 27/11/2026): sui materiali speciali (olografico, oro, argento, glitter,
+   trasparente) il cliente puo' chiedere il bianco RDG_WHITE sotto la grafica. Il disegno esce acceso come
+   su vinile bianco e non prende l'effetto del materiale; il materiale resta solo dove non c'e' inchiostro
+   (il fondo "niente inchiostro"). Stessa regola del bianco delle vetrofanie: il bianco nasce dal colore;
+   se il fondo scelto e' un colore, e' inchiostro anche lui e il bianco va sotto tutta la forma. */
+const BASE_BIANCO_MAT=['gold','silver','clear','glitter','holo'];
+function baseBiancoAttiva(){return !!(S.baseBianco&&!S.vetro&&BASE_BIANCO_MAT.indexOf(matKind())>=0);}
+/* il fondo del pezzo e' "niente inchiostro": si vede il materiale (primo campione della tavolozza) */
+function fondoSenzaInchiostro(){return matKind()!=='white'&&S.palIdx===0;}
+/* tela con l'alfa dove va il bianco (senza abbondanza): disegno da solo se il fondo e' senza inchiostro,
+   altrimenti tutta la forma */
+function layerBianco(ppm){
+  if(S.vetro)return inkLayer(ppm);
+  if(!fondoSenzaInchiostro())return inkLayer(ppm);
+  S._soloDisegno=true; try{return inkLayer(ppm);} finally{S._soloDisegno=false;}}
+/* anteprima con la base di bianco: dentro la sagoma del bianco l'inchiostro si vede com'e' (come su
+   bianco), fuori resta il materiale */
+function sovrapponiBaseBianco(c,ink,ppm){
+  const L=layerBianco(ppm),o=document.createElement('canvas');o.width=c.width;o.height=c.height;
+  const go=o.getContext('2d');go.drawImage(ink,0,0);go.globalCompositeOperation='destination-in';go.drawImage(L,0,0);
+  const g=c.getContext('2d');g.globalCompositeOperation='source-over';g.drawImage(o,0,0);return c;}
 function inkLayer(ppm){
   const W=Math.max(1,Math.round(S.cutW*ppm)),H=Math.max(1,Math.round(S.cutH*ppm));
   const c=document.createElement('canvas');c.width=W;c.height=H;
@@ -4476,7 +4497,7 @@ function inkLayer(ppm){
      e un file che ha davvero un fondo (bordi del file pieni, S.bgOpaque) il fondo fa parte del disegno:
      tutta la forma si stampa col colore di fondo del file, come negli adesivi normali, e il bianco
      RDG_WHITE va sotto tutta la forma. File trasparente = trasparente voluto; sagomato = solo il disegno. */
-  if(S.vetro){
+  if(S.vetro||S._soloDisegno){
     if(vetroFondoPieno()){g.fillStyle=inkBase();g.fill(p,'evenodd');}
     g.save(); g.clip(p,'evenodd');
     const A=artRect(); g.imageSmoothingQuality='high';
@@ -5564,7 +5585,7 @@ S.rilievo=false; S.rilGen=0; S.ril=null;
 S.vetro=false; /* [sito] vetrofanie: scena con finestra, vetro e riflessi */
 /* [studio] vetrofanie: 'Dove va il bianco' (solo dallo Studio, messaggio 'vistaBianco'): al posto della
    grafica si vede la base di RDG_WHITE, con la stessa regola del file di stampa (biancoVettoriale) */
-S.vistaBianco=false; S.vistaRientro=0.1; S.biancoStudio=false;   /* biancoStudio: bottone acceso dallo Studio, mai sul sito */
+S.vistaBianco=false; S.vistaRientro=0.1; S.biancoStudio=false; S.baseBianco=false; S._soloDisegno=false;   /* biancoStudio: bottone acceso dallo Studio, mai sul sito */
 function vetroUI(){ for(const id of ['ppSfondoSec','ppBordoSec']){ const sec=document.getElementById(id); if(sec)sec.style.display=S.vetro?'none':''; } }
 /* [sito] 'Dettagli rilievo': solo sagoma e zone in rilievo in tinta piatta RDG_GLOSS (#86a7b3) */
 S.rilDettagli=false; const RDG_GLOSS='#86a7b3';
@@ -6129,7 +6150,10 @@ function biancoVettoriale(o){
   /* 1200 dpi (a 600 il bianco delle scritte da 1 mm usciva dal tratto di qualche centesimo), al massimo
      6000 px sul lato lungo */
   const ppm=Math.min(1200/MM,6000/lato);
-  const cv=renderTile(ppm,false);
+  /* base di bianco su un fondo senza inchiostro: la stampa "solo disegno" (come le vetrofanie), cosi' il
+     bianco segue il disegno e non la forma intera */
+  const solo=!S.vetro&&fondoSenzaInchiostro();
+  let cv; if(solo)S._soloDisegno=true; try{cv=renderTile(ppm,false);} finally{S._soloDisegno=false;}
   const W=cv.width,H=cv.height,N=W*H;
   const bp=b>0.001?1:0;                                /* tela con l'abbondanza (come in renderTile) */
   const dd=cv.getContext('2d',{willReadFrequently:true}).getImageData(0,0,W,H).data;
@@ -6308,7 +6332,7 @@ function vistaBianco(c,ppm){
   g.putImageData(id,0,0);return out;}
 function renderCore(ppm,withMat){
   let c=renderCoreRaw(ppm,withMat);
-  if(withMat&&S.vetro&&S.vistaBianco){try{c=vistaBianco(c,ppm);}catch(e){console.error('[bianco]',e);}}
+  if(withMat&&S.vistaBianco&&(S.vetro||baseBiancoAttiva())){try{c=vistaBianco(S.vetro?c:layerBianco(ppm),ppm);}catch(e){console.error('[bianco]',e);}}
   if(withMat&&S.lamina==='opaca'&&S.prod!=='resin'){
     const o=document.createElement('canvas');o.width=c.width;o.height=c.height;
     const g=o.getContext('2d');g.drawImage(c,0,0);
@@ -6341,6 +6365,7 @@ function renderCoreRaw(ppm,withMat){
     g.globalAlpha=1;g.globalCompositeOperation='source-atop';
     g.fillStyle='rgba(255,255,255,0.22)';g.fillRect(0,0,c.width,c.height);
     g.globalCompositeOperation='source-over';
+    if(withMat&&baseBiancoAttiva())sovrapponiBaseBianco(c,ink,ppm);
     return (withMat&&res)?resinDome(c,ppm):c;}
   let tex=materialTexture(ink.width,ink.height,m);
   /* La lamina opaca spegne il supporto: oro e argento diventano metalli
@@ -6364,6 +6389,7 @@ function renderCoreRaw(ppm,withMat){
   g.globalCompositeOperation='destination-in';
   g.drawImage(ink,0,0);
   g.globalCompositeOperation='source-over';
+  if(withMat&&baseBiancoAttiva())sovrapponiBaseBianco(c,ink,ppm);
   return (withMat&&res)?resinDome(c,ppm):c;}
 /* colore rappresentativo del supporto, per l'anello di abbondanza */
 function matRingColor(){
@@ -6403,7 +6429,7 @@ function renderTile(ppm,withMat,bleedMM){
      vetrina (withMat). Nel file di stampa il disegno resta com'e' dentro il taglio (il contorno e'
      vinile trasparente, niente inchiostro) e l'abbondanza normale c'e' solo FUORI dal taglio,
      dove il disegno arriva al tracciato: vedi la fine della funzione. */
-  const vetroVista=S.vetro&&withMat, vetroStampa=S.vetro&&!withMat;
+  const vetroVista=S.vetro&&withMat, vetroStampa=(S.vetro||S._soloDisegno)&&!withMat;
   const bp=Math.max(1,Math.round(b*ppm)),W=core.width+bp*2,H=core.height+bp*2;
   const out=document.createElement('canvas');out.width=W;out.height=H;
   const go=out.getContext('2d',{willReadFrequently:true});
@@ -7351,7 +7377,7 @@ const U_MATER={bianco:'white',white:'white',olografico:'holo',holo:'holo',
 function uLeggiConfig(){
   const q=new URLSearchParams(location.search);
   const c=Object.assign({},window.SPPS_CONFIG||{});
-  ['forma','materiale','w','h','qta','prodotto','lamina','foglio','rilievo','vetro'].forEach(k=>{
+  ['forma','materiale','w','h','qta','prodotto','lamina','foglio','rilievo','vetro','baseBianco'].forEach(k=>{
     if(c[k]===undefined&&q.get(k)!==null)c[k]=q.get(k);});
   return c;
 }
@@ -7367,6 +7393,7 @@ function uBloccaCombinazione(){
   if(c.foglio!==undefined){const v=String(c.foglio).toLowerCase(); S.foglio=!(v===''||v==='0'||v==='false'||v==='no');}
   if(c.rilievo!==undefined){const v=String(c.rilievo).toLowerCase(); S.rilievo=!(v===''||v==='0'||v==='false'||v==='no');}
   if(c.vetro!==undefined){const v=String(c.vetro).toLowerCase(); S.vetro=!(v===''||v==='0'||v==='false'||v==='no'); vetroUI();}
+  if(c.baseBianco!==undefined){const v=String(c.baseBianco).toLowerCase(); S.baseBianco=!(v===''||v==='0'||v==='false'||v==='no');}
   try{const qq=new URLSearchParams(location.search); if(qq.get('rildebug')==='1')S.rilDebug=true;}catch(e){}
   const f=U_FORMA[String(c.forma||'').toLowerCase()];
   if(f){
@@ -8133,14 +8160,14 @@ function ppGeoUI(){
         biancoLeg.style.cssText='position:absolute;left:10px;bottom:8px;z-index:6;display:none;padding:6px 10px;border-radius:10px;background:rgba(255,255,255,.92);color:#3d3f63;font:600 11.5px Montserrat,system-ui,sans-serif;line-height:1.35;text-align:center;box-shadow:0 4px 14px rgba(11,11,59,.10)';
         st.style.position='relative'; st.appendChild(bianco); st.appendChild(biancoLeg);
       }
-      const onB=!!(S.biancoStudio&&S.vetro&&!S.foglio&&S.src&&S.bbox);
+      const onB=!!(S.biancoStudio&&(S.vetro||baseBiancoAttiva())&&!S.foglio&&S.src&&S.bbox);
       if(!onB)S.vistaBianco=false;
       bianco.style.display=onB?'inline-flex':'none';
       bianco.innerHTML=S.vistaBianco?(ART_SVG+'<span>Torna alla grafica</span>'):(BIANCO_SVG+'<span>Stampa del bianco</span>');
       bianco.title=S.vistaBianco?'Torna alla grafica':'Guarda dove si stampa il bianco RDG_WHITE';
       if(S.vistaBianco){bianco.style.background='#0b0b3b';bianco.style.color='#fff';bianco.style.borderColor='#0b0b3b';}else{bianco.style.background='#fff';bianco.style.color='#0b0b3b';bianco.style.borderColor='#dfe3ea';}
       biancoLeg.style.display=(onB&&S.vistaBianco)?'block':'none';
-      biancoLeg.innerHTML='In bianco: <b>RDG_WHITE</b>, '+String(S.vistaRientro).replace('.',',')+' mm dentro il colore';
+      biancoLeg.innerHTML='In bianco: <b>RDG_WHITE</b>, '+String(S.vistaRientro).replace('.',',')+' mm dentro il colore'+(S.vetro?'':' · il resto e\' materiale');
       if(!lente){
         lente=document.createElement('button'); lente.type='button'; lente.id='ppLente';
         lente.style.cssText='position:absolute;right:10px;top:10px;z-index:6;display:none;align-items:center;gap:7px;padding:9px 12px;border-radius:999px;border:1.5px solid #dfe3ea;background:#fff;color:#0b0b3b;font:700 12.5px Montserrat,system-ui,sans-serif;cursor:pointer;box-shadow:0 4px 14px rgba(11,11,59,.12)';
@@ -8201,7 +8228,7 @@ function ppGeoUI(){
        pelle con scritta rossa, rettangolo) tirava via lo sfondo che il cliente aveva voluto tenere. */
     const cand=(S.chosen>=0&&S.cands&&S.cands[S.chosen])?S.cands[S.chosen]:null;
     return {v:1,prod:S.prod,shape:CL.shape,bord:CL.bord,corner:CL.corner,rrad:CL.rrad,arad:CL.arad,inp,lamina:S.lamina,palIdx:S.palIdx,custom,
-      rimuovi:!!S.rimuoviSfondo,senzaResina:!!S.senzaResina,autoBordFrac:S.autoBordFrac||null,
+      rimuovi:!!S.rimuoviSfondo,senzaResina:!!S.senzaResina,autoBordFrac:S.autoBordFrac||null,baseBianco:!!S.baseBianco,
       chosen:S.chosen,chosenKind:cand?cand.st.kind:null,chosenLabel:cand?cand.label:null,sceltaUtente:!!S.sceltaUtente,
       cutW:S.cutW,cutH:S.cutH,pathD:S.pathD};
   }
@@ -8219,6 +8246,7 @@ function ppGeoUI(){
     try{$('brdV').textContent=(+$('brd').value/10).toFixed(1);}catch(e){}
     if(st.lamina)S.lamina=st.lamina;
     S.senzaResina=!!st.senzaResina;
+    if(st.baseBianco!=null)S.baseBianco=!!st.baseBianco;
     if(st.autoBordFrac)S.autoBordFrac=st.autoBordFrac;
     if(cambiaScontorno){buildWork();autoSegment();}
     /* la scelta fatta dal cliente (o dall'operatore) sullo scontorno comanda: per etichetta della proposta,
@@ -8321,6 +8349,7 @@ function ppGeoUI(){
         if(c.foglio!==undefined){const fg=!!c.foglio; if(fg!==S.foglio){S.foglio=fg;geom=true;}}
         if(c.rilievo!==undefined){const rl=!!c.rilievo; if(rl!==S.rilievo){S.rilievo=rl;mat=true;}}
         if(c.vetro!==undefined){const vt=!!c.vetro; if(vt!==S.vetro){S.vetro=vt;mat=true;vetroUI();}}
+        if(c.baseBianco!==undefined){const bb=!!c.baseBianco; if(bb!==S.baseBianco){S.baseBianco=bb;mat=true;}}
         /* cavallotto del kit (spigoli vivi, niente angoli) e adesivi passano dallo stesso motore */
         if(c.noombra!==undefined&&(!!c.noombra)!==NOOMBRA){NOOMBRA=!!c.noombra;mat=true;}
         if(c.noang!==undefined&&(!!c.noang)!==NOANG){NOANG=!!c.noang;try{applyPreset(false);ppGeoUI();}catch(e){}geom=true;}

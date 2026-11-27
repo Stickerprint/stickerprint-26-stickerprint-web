@@ -16,6 +16,7 @@
 	import EnginePreview from './EnginePreview.svelte';
 	import { loadDraft, saveDraft, saveCartFile, saveCartPreview } from '$lib/utils/draftStore';
 	import { addToCart } from '$lib/cart';
+	import { offreBaseBianco } from '$lib/base-bianco';
 	import { quoteWith, minForShape, startSize, sizeProposals, proportionalSize, sizeRule, showFinishStep, showMaterialStep, type EngineConfig } from '$lib/pricing/engine';
 	import { MM_PER_IN, mmToUnit, unitToMm, snapMm } from '$lib/i18n';
 	import { usaLingua } from '$lib/traduzioni';
@@ -131,6 +132,12 @@
 	const MIN_MM = $derived(usSize && forma === 'tondo' ? US_TONDO_MIN : sizeRule(cfg, forma).short);
 	let materiale = $state('bianco');
 	let finitura = $state(''); // la prima scelta e' senza lamina (vedi effetto sotto)
+	/* base di bianco sotto la grafica: solo sui materiali speciali (olografico, glitter, trasparente, argento, oro) */
+	let baseBianco = $state(false);
+	const conBase = $derived(offreBaseBianco(materiale, product));
+	const BASE_METAL = new Set(['olografico', 'glitterato', 'argento', 'oro']);
+	/* la lampadina della lamina: su tutti tranne resinati e vetrofanie, quando fra le scelte c'e' "nessuna" */
+	const luceLamina = $derived(product !== 'adesivi_resinati' && product !== 'vetrofanie');
 	// svelte-ignore state_referenced_locally
 	let w = $state(cfg.size.defaultMm ?? 50);
 	// svelte-ignore state_referenced_locally
@@ -340,7 +347,7 @@
 	const stageH = $derived(stretto ? (foglio ? 300 : 250) : Math.max(280, Math.min(foglio ? 520 : 480, altoV - 454)));
 	/* etichetta sulla riga della quantita': "Consigliato" sui 100 pezzi, "Più conveniente" sulla quantita' consigliata dal listino */
 	const tagQty = (n: number) => (n === 100 ? 'cons' : n === cfg.recommendedQty ? 'conv' : null);
-	const riga = $derived([opz(tipoSagome, shape?.id ?? '', 'label', shape?.label), misure(w, h), ...(showMaterials ? [opz('materiali', material?.id ?? '', 'label', material?.label)] : []), ...(showFinish && finish?.laminate ? [t('configuratore.nuovo.lamina', { finitura: opz('finiture', finish.id, 'label', finish.label).toLowerCase() })] : [])].filter(Boolean).join(' · '));
+	const riga = $derived([opz(tipoSagome, shape?.id ?? '', 'label', shape?.label), misure(w, h), ...(showMaterials ? [opz('materiali', material?.id ?? '', 'label', material?.label)] : []), ...(showFinish && finish?.laminate ? [t('configuratore.nuovo.lamina', { finitura: opz('finiture', finish.id, 'label', finish.label).toLowerCase() })] : []), ...(conBase && baseBianco ? [t('configuratore.hint.baseBianco').toLowerCase()] : [])].filter(Boolean).join(' · '));
 	const gratis = $derived(toCurrency(cartGross + q.gross, locale.currency) >= locale.freeShipping);
 	const ACCEPT = 'image/png,image/jpeg,image/svg+xml,application/pdf';
 </script>
@@ -352,7 +359,7 @@
 			{#if file}
 				<div class="pv__posto" bind:this={segnaposto}>
 				<div class="pv__box" class:is-fisso={!!fisso} style={fisso ? `left:${fisso.left}px;width:${fisso.width}px;top:${fisso.top}px` : undefined}>
-					<EnginePreview bind:this={engine} {file} {forma} {materiale} finitura={showFinish ? finitura : 'lucida'} prodotto={engineProduct} {foglio} {rilievo} {vetro} {w} {h} {showCut} panel nuovo dimLabel={misure(w, h)} stage={stageH} onrender={onRender} />
+					<EnginePreview bind:this={engine} {file} {forma} {materiale} finitura={showFinish ? finitura : 'lucida'} prodotto={engineProduct} {foglio} {rilievo} {vetro} baseBianco={conBase && baseBianco} {w} {h} {showCut} panel nuovo dimLabel={misure(w, h)} stage={stageH} onrender={onRender} />
 				</div>
 				</div>
 				{#if fileUrl}<img src={fileUrl} alt="" hidden onload={onImgLoad} />{/if}
@@ -424,6 +431,12 @@
 						</button>
 					{/each}
 				</div>
+				{#if conBase}
+					<button type="button" class="bb" class:is-on={baseBianco} aria-pressed={baseBianco} onclick={() => (baseBianco = !baseBianco)}>
+						<span class="bb__box" aria-hidden="true">{baseBianco ? '✓' : ''}</span>{t('configuratore.hint.baseBianco')}
+					</button>
+					<p class="luce"><span aria-hidden="true">💡</span>{baseBianco ? t('configuratore.hint.baseBiancoSi') : BASE_METAL.has(materiale) ? t('configuratore.hint.baseBiancoNoMetal') : t('configuratore.hint.baseBiancoNoTrasp')}</p>
+				{/if}
 				<p class="grp__hint">{t('configuratore.hint.materiale')}</p>
 			</div>
 		{/if}
@@ -442,7 +455,9 @@
 						</button>
 					{/each}
 				</div>
-				{#if finitura === 'nessuna'}<p class="grp__hint">{t('configuratore.hint.senzaLamina')}</p>{/if}
+				{#if luceLamina && FINISHES.some((x) => x.id === 'nessuna')}
+					<p class="luce"><span aria-hidden="true">💡</span>{finitura === 'nessuna' ? t('configuratore.hint.senzaLaminaLuce') : t('configuratore.hint.conLaminaLuce')}</p>
+				{:else if finitura === 'nessuna'}<p class="grp__hint">{t('configuratore.hint.senzaLamina')}</p>{/if}
 				{#if finishNote}<p class="grp__hint">{finishNote}</p>{/if}
 			</div>
 		{/if}
@@ -628,6 +643,14 @@
 	.grp__t { font-family: var(--font-display); font-weight: 800; font-size: 19px; letter-spacing: -.02em; }
 	.grp__v { font-size: 14px; color: var(--muted); font-weight: 500; margin-left: auto; text-align: right; }
 	.grp__hint { font-size: 12.5px; color: var(--muted); margin: 8px 0 0; }
+	/* base di bianco e lampadine dei suggerimenti */
+	.bb { margin-top: 10px; display: inline-flex; align-items: center; gap: 9px; border: 2px solid var(--line); background: #fff; border-radius: 999px; padding: 8px 14px 8px 9px; font-family: inherit; font-weight: 700; font-size: 13px; line-height: 1.2; color: var(--ink); cursor: pointer; transition: border-color .12s, background .12s; }
+	.bb:hover { border-color: #c5c8dc; }
+	.bb.is-on { border-color: var(--blue); background: var(--sky); }
+	.bb__box { width: 18px; height: 18px; border-radius: 5px; border: 2px solid #c5c8dc; display: inline-grid; place-items: center; font-size: 12px; line-height: 1; color: #fff; background: #fff; flex: none; }
+	.bb.is-on .bb__box { background: var(--blue); border-color: var(--blue); }
+	.luce { display: flex; gap: 8px; align-items: flex-start; font-size: 12.5px; line-height: 1.45; color: var(--ink-soft); background: #fff8e1; border-radius: 10px; padding: 9px 12px; margin: 10px 0 0; }
+	.luce span { font-size: 15px; line-height: 1.2; flex: none; }
 	.grp__hint--box { background: var(--sky); border-radius: 10px; padding: 12px 14px; color: var(--ink-soft); margin: 0 0 10px; }
 	.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(86px, 1fr)); gap: 8px; }
 	.tile { position: relative; border: 2px solid var(--line); background: #fff; border-radius: 14px; padding: 8px 6px 9px; display: grid; justify-items: center; align-content: start; gap: 4px; text-align: center; font: inherit; color: var(--ink); cursor: pointer; transition: border-color .12s, background .12s; }
