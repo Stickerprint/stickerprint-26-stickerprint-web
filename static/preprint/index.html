@@ -6082,44 +6082,72 @@ function rilievoVettoriale(){
    RDG_WHITE: qui la sagoma di cio' che si stampa (la stessa grafica di 'print', abbondanza
    compresa) diventa contorni in millimetri, nel riquadro del taglio come pathD.
    `rientro` (mm): il bianco si stringe di tanto dentro il colore, cosi' guardando dal vetro non
-   esce un filo bianco sul bordo (Mattia: 0,1 mm). I tratti piu' sottili di due rientri restano
-   senza bianco. Lo specchio lo fa lo studio, insieme al taglio.
+   esce un filo bianco sul bordo (Mattia: 0,1 mm); i tratti troppo sottili per rientrare hanno il bianco
+   sotto la loro meta' centrale (mascheraBianco). Lo specchio lo fa lo studio, insieme al taglio.
    ========================================================================== */
+/* LA SAGOMA DEL BIANCO (27/11/2026, Mattia: "la stessa grafica, lo stesso dettaglio deve essere fatto di
+   bianco, non deve lasciare spazio a interpretazioni"). Il bianco nasce SOLO dal colore (alfa >= 50%): i
+   buchi delle lettere, i vuoti, il contorno trasparente restano senza bianco. Ogni punto del colore si
+   misura con lo SPESSORE del tratto in cui sta (il cerchio piu' grande che sta nel colore e lo contiene):
+   - tratto largo: il bianco rientra di `rientro` mm dal bordo del colore;
+   - tratto troppo sottile per rientrare (sotto 2 rientri): il bianco ne copre la meta' centrale, cosi'
+     anche un filetto da 0,05 mm o un puntino hanno il loro bianco sotto;
+   - il passaggio fra i due e' continuo: dove un filetto si attacca a una parte grossa non resta un vuoto.
+   Si toglie il punto q (distanza d dal fuori, sotto rientro) se un cerchio nel colore lo contiene ed e'
+   largo piu' del doppio di d: basta cercarne il centro entro 2d+1 pixel (lungo il raggio verso un centro
+   lontano ce n'e' sempre uno piu' vicino che lo contiene ancora). */
+function mascheraBianco(dd,W,H,ppm,rientro){
+  const N=W*H,M=new Uint8Array(N),fuori=new Uint8Array(N);
+  for(let i=0;i<N;i++){const on=dd[i*4+3]>=128;M[i]=on?1:0;fuori[i]=on?0:1;}
+  if(!(rientro>0))return M;
+  const d2=edt2d(fuori,W,H),r=rientro*ppm+0.5,r2=r*r;    /* + mezzo pixel: misurato sul PDF, il bordo cade a `rientro` */
+  const out=M.slice();
+  /* vicini in ordine di distanza: sui bordi dei tratti larghi il cerchio che toglie il punto e' vicino
+     e la ricerca finisce subito; si scorre tutta la finestra solo sui tratti sottili */
+  const Kmax=Math.ceil(2*r+1),off=[];
+  for(let dy=-Kmax;dy<=Kmax;dy++)for(let dx=-Kmax;dx<=Kmax;dx++){const t2=dx*dx+dy*dy;if(t2&&t2<=Kmax*Kmax)off.push([dx,dy,t2]);}
+  off.sort((a,b)=>a[2]-b[2]);
+  for(let y=0,i=0;y<H;y++)for(let x=0;x<W;x++,i++){
+    if(!M[i])continue;const v=d2[i];if(v>=r2)continue;
+    const v4=4*v,K=Math.ceil(2*Math.sqrt(v)+1),KK=K*K;
+    for(let k=0;k<off.length;k++){const o=off[k];if(o[2]>KK)break;
+      const xx=x+o[0],yy=y+o[1];if(xx<0||yy<0||xx>=W||yy>=H)continue;
+      const w=d2[yy*W+xx];if(w>v4&&o[2]<=w){out[i]=0;break;}}}
+  return out;}
 function biancoVettoriale(o){
   o=o||{};
   const rientro=Math.max(0,+o.rientro||0), b=S.bleed||0;
   const lato=Math.max(S.cutW,S.cutH)+2*b;
-  const ppm=Math.min(600/MM,5000/lato);               /* 600 dpi, al massimo 5000 px sul lato lungo */
+  /* 1200 dpi (a 600 il bianco delle scritte da 1 mm usciva dal tratto di qualche centesimo), al massimo
+     6000 px sul lato lungo */
+  const ppm=Math.min(1200/MM,6000/lato);
   const cv=renderTile(ppm,false);
   const W=cv.width,H=cv.height,N=W*H;
-  const bp=b>0.001?Math.max(1,Math.round(b*ppm)):0;   /* come in renderTile */
+  const bp=b>0.001?1:0;                                /* tela con l'abbondanza (come in renderTile) */
   const dd=cv.getContext('2d',{willReadFrequently:true}).getImageData(0,0,W,H).data;
-  const M=new Uint8Array(N),fuori=new Uint8Array(N);
-  for(let i=0;i<N;i++){const on=dd[i*4+3]>=128;M[i]=on?1:0;fuori[i]=on?0:1;}
-  /* rientro: resta solo cio' che dista dal fuori (centro a centro) almeno rientro + mezzo pixel:
-     in media il bordo dei pixel rimasti cade a `rientro` dal bordo del colore (misurato sul PDF) */
-  if(rientro>0){const d2=edt2d(fuori,W,H),r=rientro*ppm+0.5,r2=r*r;for(let i=0;i<N;i++)if(M[i]&&d2[i]<r2)M[i]=0;}
-  /* bordo morbido (mezzo pixel) e soglia al 50%: niente gradini, la misura non cambia */
-  const mc=document.createElement('canvas');mc.width=W;mc.height=H;
-  const g=mc.getContext('2d',{willReadFrequently:true});const id=g.createImageData(W,H);
-  for(let i=0;i<N;i++)id.data[i*4+3]=M[i]?255:0;
-  g.putImageData(id,0,0);sfocaAlfa(mc,0.5);
-  const q=g.getImageData(0,0,W,H).data;
-  for(let i=0;i<N;i++)M[i]=q[i*4+3]>=128?1:0;
+  /* niente sfocatura e niente pulizia dei puntini: un filetto da un pixel si perderebbe */
+  const M=mascheraBianco(dd,W,H,ppm,rientro);
   const loops=traceLoops(M,W,H);
   if(!loops.length)throw new Error('Nessuna grafica da coprire col bianco');
   /* scarto 0,025 mm: il bianco deve combaciare col colore, piu' preciso del rilievo */
-  const dev=Math.max(0.5,0.025*ppm), minA=Math.max(2,0.02*ppm*ppm);   /* via i puntini sotto 0,02 mm2 */
+  const dev=Math.max(0.5,0.025*ppm);
   const parts=[];
   for(const L of loops){
-    if(Math.abs(L.area)<minA)continue;
     /* lisciatura di un pixel solo (non tre come il taglio): le scritte piccole non si arrotondano */
-    const c=contourOne(L,{maxDevPx:dev,cornerDeg:50,smooth:0.7,preSmoothPx:1});
-    if(c)parts.push(c);}
+    let c=null;try{c=contourOne(L,{maxDevPx:dev,cornerDeg:50,smooth:0.7,preSmoothPx:1});}catch(e){}
+    /* un contorno minuscolo che non si liscia entra com'e' (bordo dei pixel): nessun dettaglio resta senza bianco */
+    parts.push(c||{raw:L,nodes:L.length});}
   if(!parts.length)throw new Error('Nessuna grafica da coprire col bianco');
-  const T=p=>[p[0]/ppm-bp/ppm, p[1]/ppm-bp/ppm];
-  const d=parts.map(p=>{const P2=p.P.map(T),ang=turnAngles(P2,Math.max(0.6,dev/ppm*2));
-    return pathOf(P2,ang,p.sm,p.cr);}).join(' ');
+  /* pixel -> mm come il PDF mette l'immagine della grafica: tutta la tela sul taglio piu' l'abbondanza
+     (cosi' gli arrotondamenti dei pixel non spostano il bianco rispetto al colore) */
+  const eb=bp?b:0, kx=(S.cutW+2*eb)/W, ky=(S.cutH+2*eb)/H;
+  const T=p=>[p[0]*kx-eb, p[1]*ky-eb];
+  const f3=v=>Math.round(v*1000)/1000;
+  const d=parts.map(p=>{
+    if(p.raw)return p.raw.map((q,k)=>{const t=T(q);return (k?'L':'M')+f3(t[0])+' '+f3(t[1]);}).join(' ')+' Z';
+    const P2=p.P.map(T),ang=turnAngles(P2,Math.max(0.6,dev/ppm*2));
+    const s1=pathOf(P2,ang,p.sm,p.cr);
+    return s1||(P2.map((t,k)=>(k?'L':'M')+f3(t[0])+' '+f3(t[1])).join(' ')+' Z');}).join(' ');
   return {whiteD:d, zone:parts.length, nodi:parts.reduce((a,p)=>a+p.nodes,0), rientro};}
 
 /* posizione del disegno dentro il pezzo, in mm (con zoom e spostamento del sagomato) */
@@ -6265,11 +6293,7 @@ function rilievoDettagli(c,ppm){
    resta vinile trasparente (si vede la vetrina dietro). */
 function vistaBianco(c,ppm){
   const W=c.width,H=c.height,N=W*H;
-  const d=c.getContext('2d',{willReadFrequently:true}).getImageData(0,0,W,H).data;
-  const M=new Uint8Array(N),fuori=new Uint8Array(N);
-  for(let i=0;i<N;i++){const on=d[i*4+3]>=128;M[i]=on?1:0;fuori[i]=on?0:1;}
-  const rientro=S.vistaRientro||0;
-  if(rientro>0){const d2=edt2d(fuori,W,H),r=rientro*ppm+0.5,r2=r*r;for(let i=0;i<N;i++)if(M[i]&&d2[i]<r2)M[i]=0;}
+  const M=mascheraBianco(c.getContext('2d',{willReadFrequently:true}).getImageData(0,0,W,H).data,W,H,ppm,S.vistaRientro||0);
   const out=document.createElement('canvas');out.width=W;out.height=H;
   const g=out.getContext('2d'),id=g.createImageData(W,H),q=id.data;
   for(let i=0,p=0;i<N;i++,p+=4)if(M[i]){q[p]=255;q[p+1]=255;q[p+2]=255;q[p+3]=255;}
@@ -6503,7 +6527,15 @@ function renderTile(ppm,withMat,bleedMM){
     const o2=document.createElement('canvas');o2.width=W;o2.height=H;
     const g2=o2.getContext('2d',{willReadFrequently:true});g2.drawImage(core,bp,bp);
     const od=g2.getImageData(0,0,W,H).data;
-    for(let p=3;p<d.length;p+=4)if(md[p]>=128){d[p-3]=od[p-3];d[p-2]=od[p-2];d[p-1]=od[p-1];d[p]=od[p];}}
+    for(let p=3;p<d.length;p+=4)if(md[p]>=128){d[p-3]=od[p-3];d[p-2]=od[p-2];d[p-1]=od[p-1];d[p]=od[p];}
+    /* fuori dal taglio l'abbondanza resta SOLO dove il disegno arriva al tracciato (entro 0,3 mm): il contorno
+       trasparente delle vetrofanie e' piu' stretto dell'abbondanza, e senza questo controllo il colore usciva
+       anche attorno al disegno lontano dal taglio (archi sullo sfrido, con il bianco sotto) */
+    const fuoriT=new Uint8Array(N);for(let i=0;i<N;i++)fuoriT[i]=md[i*4+3]>=128?0:1;
+    const dT=edt2d(fuoriT,W,H),tol=Math.max(1,0.3*ppm),tol2=tol*tol;
+    const tocca=new Uint8Array(N);for(let i=0;i<N;i++)if(!fuoriT[i]&&od[i*4+3]>8&&dT[i]<=tol2)tocca[i]=1;
+    const dTo=edt2d(tocca,W,H),rr2=(bp+1.5)*(bp+1.5);
+    for(let i=0;i<N;i++)if(fuoriT[i]&&d[i*4+3]&&dTo[i]>rr2)d[i*4+3]=0;}
   go.putImageData(id,0,0);return out;}
 function paintAlts(){
   const box=$('alts');box.innerHTML='';
