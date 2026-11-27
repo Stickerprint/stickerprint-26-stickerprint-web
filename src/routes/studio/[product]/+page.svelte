@@ -29,7 +29,7 @@
 	let dragging = $state(false);
 	let fileInput = $state<HTMLInputElement | undefined>();
 	let colInput = $state<HTMLInputElement | undefined>();
-	let engine = $state<{ post: (type: string, detail?: Record<string, unknown>) => void; studio: (what: 'mockup' | 'print' | 'geom' | 'applica' | 'stato' | 'soggetti' | 'rilievo', opts?: Record<string, unknown>) => Promise<{ blob?: Blob; stato?: Record<string, unknown>; glossD?: string; zone?: number; nodi?: number; soggetti?: { pathD: string; x: number; y: number; w: number; h: number; nodi: number }[]; foglio?: { w: number; h: number }; unione?: number; cutW?: number; cutH?: number; bleed?: number; pathD?: string; polys?: [number, number][][] | null; shape?: string; dpi?: number; border?: number }> }>();
+	let engine = $state<{ post: (type: string, detail?: Record<string, unknown>) => void; studio: (what: 'mockup' | 'print' | 'geom' | 'applica' | 'stato' | 'soggetti' | 'rilievo' | 'bianco', opts?: Record<string, unknown>) => Promise<{ blob?: Blob; stato?: Record<string, unknown>; glossD?: string; whiteD?: string; zone?: number; nodi?: number; soggetti?: { pathD: string; x: number; y: number; w: number; h: number; nodi: number }[]; foglio?: { w: number; h: number }; unione?: number; cutW?: number; cutH?: number; bleed?: number; pathD?: string; polys?: [number, number][][] | null; shape?: string; dpi?: number; border?: number }> }>();
 
 	/* kit: si lavora un adesivo del kit oppure il cavallotto */
 	let pezzo = $state<'adesivo' | 'cavallotto'>('adesivo');
@@ -647,6 +647,9 @@
 		return t;
 	}
 
+	/** vetrofanie: di quanto il bianco rientra dentro il colore (mm, Mattia 27/11/2026) */
+	const VETRO_RIENTRO = 0.1;
+
 	async function artwork() {
 		if (MULTI) return artworkFoglio();
 		if (fonte === 'pronto') {
@@ -657,7 +660,8 @@
 			return { pdfPage: { bytes: ready.cleaned, bboxPt: ready.bboxPt }, cutW: ready.cutW, cutH: ready.cutH, bleed: 1, pathD: dPronto };
 		}
 		const t = await traccia();
-		const r = await engine!.studio('print', { dpi, pathD: t.d });
+		/* vetrofanie: la grafica esce specchiata (si stampa al contrario sul trasparente) */
+		const r = await engine!.studio('print', { dpi, pathD: t.d, specchio: !!P.vetro });
 		if (!r.cutW || !r.cutH) throw new Error('Il motore non ha restituito le misure del taglio.');
 		traceInfo = `Tracciato: ${t.nodes} punti di ancoraggio · grafica a ${r.dpi ?? '?'} dpi`;
 		if (!r.blob) throw new Error('Il motore non ha restituito la grafica.');
@@ -667,7 +671,17 @@
 			const g = await engine!.studio('rilievo');
 			if (g.glossD) { glossD = g.glossD; traceInfo += ` · rilievo RDG_GLOSS: ${g.zone} zone, ${g.nodi} punti`; }
 		}
-		return { png: new Uint8Array(await r.blob.arrayBuffer()), cutW: r.cutW, cutH: r.cutH, bleed: r.bleed ?? 0, pathD: t.d, glossD };
+		const png = new Uint8Array(await r.blob.arrayBuffer());
+		if (P.vetro) {
+			/* vetrofanie (27/11/2026): base di bianco RDG_WHITE sotto tutta la grafica, 0,1 mm dentro il colore,
+			   e TUTTO specchiato insieme (grafica dal motore, qui bianco e taglio): il .xpf taglia la sagoma specchiata */
+			const { specchiaPath } = await import('$lib/studio/path');
+			const b = await engine!.studio('bianco', { pathD: t.d, rientro: VETRO_RIENTRO });
+			if (!b.whiteD) throw new Error('Il motore non ha restituito la base di bianco.');
+			traceInfo += ` · bianco RDG_WHITE: ${b.zone} zone, ${b.nodi} punti, ${String(VETRO_RIENTRO).replace('.', ',')} mm dentro il colore · specchiata`;
+			return { png, cutW: r.cutW, cutH: r.cutH, bleed: r.bleed ?? 0, pathD: specchiaPath(t.d, r.cutW), whiteD: specchiaPath(b.whiteD, r.cutW) };
+		}
+		return { png, cutW: r.cutW, cutH: r.cutH, bleed: r.bleed ?? 0, pathD: t.d, glossD };
 	}
 
 	const scaricaAnteprima = () => run('mockup', async () => {

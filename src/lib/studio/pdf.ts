@@ -65,6 +65,8 @@ export interface Artwork {
 	pathD: string;
 	/** adesivi in rilievo: le zone in rilievo, in tracciato, tinta RDG_GLOSS (mm, come pathD) */
 	glossD?: string;
+	/** vetrofanie: la base di bianco sotto la grafica, in tracciato, tinta RDG_WHITE (mm, come pathD) */
+	whiteD?: string;
 	/** tinta di taglio di QUESTO soggetto: serve quando sulla striscia ce n'e' piu' d'uno
 	    (un foglio di etichette mezzo-tagliate accanto a sagome passanti). Senza, vale quella del lavoro. */
 	pieceCut?: CutSpot;
@@ -169,6 +171,23 @@ function drawPage(page: PDFPage, job: PdfJob, strip: Strip, res: Res, pageIndex:
 		glossForm = ctx.register(ctx.formXObject(gOps, { BBox: [0, 0, W, H], Resources: { ColorSpace: { [GLOSS.name]: res.gloss } } }));
 	}
 
+	/* 1-ter. gruppo BIANCO (vetrofanie): la base di bianco sotto il disegno, tinta piatta RDG_WHITE vettoriale.
+	   Sta SOPRA la grafica IN SOVRASTAMPA: come ogni tinta RDG_ di VersaWorks non buca i colori, e l'ordine
+	   in macchina (prima il colore, poi il bianco) lo decide la modalita' di stampa, non la posizione nel file */
+	let whiteForm: PDFRef | null = null;
+	if (res.white && job.arts.some((a) => a.whiteD)) {
+		const wOps: PDFOperator[] = [mm(), op(Op.SetGraphicsStateParams, PDFName.of('GS')), op(Op.NonStrokingColorspace, PDFName.of(WHITE.name)), op(Op.NonStrokingColorN, 1)];
+		job.arts.forEach((art, i) => {
+			if (!art.whiteD) return;
+			const wsegs = parsePath(art.whiteD);
+			for (const p of perSoggetto[i]) {
+				wOps.push(op(Op.PushGraphicsState), op(Op.ConcatTransformationMatrix, ...pieceMatrix(p, art.cutW, art.cutH)));
+				wOps.push(...pathOps(wsegs), op(Op.FillEvenOdd), op(Op.PopGraphicsState));
+			}
+		});
+		whiteForm = ctx.register(ctx.formXObject(wOps, { BBox: [0, 0, W, H], Resources: { ColorSpace: { [WHITE.name]: res.white }, ExtGState: { GS: res.gs } } }));
+	}
+
 	// 2. gruppo TAGLIO, in sovrastampa: una passata per tinta, cosi' il file resta ordinato
 	const cs: Record<string, PDFRef> = {};
 	for (const n of Object.keys(res.cs) as CutSpot[]) cs[n] = res.cs[n];
@@ -243,6 +262,7 @@ function drawPage(page: PDFPage, job: PdfJob, strip: Strip, res: Res, pageIndex:
 	const nCut = node.newXObject('Taglio', cutForm);
 	if (nGloss) page.pushOperators(op(Op.PushGraphicsState), op(Op.DrawObject, nGloss), op(Op.PopGraphicsState));
 	page.pushOperators(op(Op.PushGraphicsState), op(Op.DrawObject, nArt), op(Op.PopGraphicsState));
+	if (whiteForm) page.pushOperators(op(Op.PushGraphicsState), op(Op.DrawObject, node.newXObject('Bianco', whiteForm)), op(Op.PopGraphicsState));
 	if (nMarks) page.pushOperators(op(Op.PushGraphicsState), op(Op.DrawObject, nMarks), op(Op.PopGraphicsState));
 	/* striscia con crocini Graphtec: il taglio va al plotter da Data Link Server, nel PDF da stampare
 	   restano solo grafica, crocini e codici a barre */
@@ -268,7 +288,8 @@ export async function buildPdf(job: PdfJob): Promise<Uint8Array> {
 			imgs.push(img.ref); vector.push(false);
 		}
 	}
-	const res = setupResources(pdf, imgs, vector, !!job.graphtecWhite && !!job.graphtecIds?.length && (job.graphtecMask ?? 0) > 0);
+	const biancoCrocini = !!job.graphtecWhite && !!job.graphtecIds?.length && (job.graphtecMask ?? 0) > 0;
+	const res = setupResources(pdf, imgs, vector, biancoCrocini || job.arts.some((a) => !!a.whiteD));
 	const font = await pdf.embedFont(StandardFonts.Helvetica);
 	job.pages.forEach((strip, i) => {
 		const page = pdf.addPage([strip.w * PT, strip.h * PT]);

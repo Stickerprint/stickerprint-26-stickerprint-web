@@ -6070,6 +6070,55 @@ function rilievoVettoriale(){
     return pathOf(P2,ang,p.sm,p.cr);}).join(' ');
   return {glossD:d, zone:parts.length, nodi:parts.reduce((a,p)=>a+p.nodes,0), frac:m.frac};}
 
+/* ==========================================================================
+   [studio] VETROFANIE — base di bianco RDG_WHITE (27/11/2026, regola di Mattia)
+   La vetrofania si stampa al contrario su vinile trasparente e si guarda attraverso il vetro:
+   sotto tutta la grafica serve una base di inchiostro bianco, ESATTAMENTE sotto il disegno.
+   Il contorno fra disegno e taglio resta trasparente (come nella vista del cliente), i buchi
+   veri del disegno pure. La Roland legge il bianco solo se e' un TRACCIATO in tinta piatta
+   RDG_WHITE: qui la sagoma di cio' che si stampa (la stessa grafica di 'print', abbondanza
+   compresa) diventa contorni in millimetri, nel riquadro del taglio come pathD.
+   `rientro` (mm): il bianco si stringe di tanto dentro il colore, cosi' guardando dal vetro non
+   esce un filo bianco sul bordo (Mattia: 0,1 mm). I tratti piu' sottili di due rientri restano
+   senza bianco. Lo specchio lo fa lo studio, insieme al taglio.
+   ========================================================================== */
+function biancoVettoriale(o){
+  o=o||{};
+  const rientro=Math.max(0,+o.rientro||0), b=S.bleed||0;
+  const lato=Math.max(S.cutW,S.cutH)+2*b;
+  const ppm=Math.min(600/MM,5000/lato);               /* 600 dpi, al massimo 5000 px sul lato lungo */
+  const cv=renderTile(ppm,false);
+  const W=cv.width,H=cv.height,N=W*H;
+  const bp=b>0.001?Math.max(1,Math.round(b*ppm)):0;   /* come in renderTile */
+  const dd=cv.getContext('2d',{willReadFrequently:true}).getImageData(0,0,W,H).data;
+  const M=new Uint8Array(N),fuori=new Uint8Array(N);
+  for(let i=0;i<N;i++){const on=dd[i*4+3]>=128;M[i]=on?1:0;fuori[i]=on?0:1;}
+  /* rientro: resta solo cio' che dista dal fuori (centro a centro) almeno rientro + mezzo pixel:
+     in media il bordo dei pixel rimasti cade a `rientro` dal bordo del colore (misurato sul PDF) */
+  if(rientro>0){const d2=edt2d(fuori,W,H),r=rientro*ppm+0.5,r2=r*r;for(let i=0;i<N;i++)if(M[i]&&d2[i]<r2)M[i]=0;}
+  /* bordo morbido (mezzo pixel) e soglia al 50%: niente gradini, la misura non cambia */
+  const mc=document.createElement('canvas');mc.width=W;mc.height=H;
+  const g=mc.getContext('2d',{willReadFrequently:true});const id=g.createImageData(W,H);
+  for(let i=0;i<N;i++)id.data[i*4+3]=M[i]?255:0;
+  g.putImageData(id,0,0);sfocaAlfa(mc,0.5);
+  const q=g.getImageData(0,0,W,H).data;
+  for(let i=0;i<N;i++)M[i]=q[i*4+3]>=128?1:0;
+  const loops=traceLoops(M,W,H);
+  if(!loops.length)throw new Error('Nessuna grafica da coprire col bianco');
+  /* scarto 0,025 mm: il bianco deve combaciare col colore, piu' preciso del rilievo */
+  const dev=Math.max(0.5,0.025*ppm), minA=Math.max(2,0.02*ppm*ppm);   /* via i puntini sotto 0,02 mm2 */
+  const parts=[];
+  for(const L of loops){
+    if(Math.abs(L.area)<minA)continue;
+    /* lisciatura di un pixel solo (non tre come il taglio): le scritte piccole non si arrotondano */
+    const c=contourOne(L,{maxDevPx:dev,cornerDeg:50,smooth:0.7,preSmoothPx:1});
+    if(c)parts.push(c);}
+  if(!parts.length)throw new Error('Nessuna grafica da coprire col bianco');
+  const T=p=>[p[0]/ppm-bp/ppm, p[1]/ppm-bp/ppm];
+  const d=parts.map(p=>{const P2=p.P.map(T),ang=turnAngles(P2,Math.max(0.6,dev/ppm*2));
+    return pathOf(P2,ang,p.sm,p.cr);}).join(' ');
+  return {whiteD:d, zone:parts.length, nodi:parts.reduce((a,p)=>a+p.nodes,0), rientro};}
+
 /* posizione del disegno dentro il pezzo, in mm (con zoom e spostamento del sagomato) */
 /* [sito] QUANTO SI PUO' SPOSTARE IL DISEGNO.
    Sagomato: il taglio segue il disegno, quindi al 100% il disegno e' gia' al suo posto e non si
@@ -6300,6 +6349,11 @@ const ABBONDANZA_DENTRO=0.35;   /* mm */
 function renderTile(ppm,withMat,bleedMM){
   const core=renderCore(ppm,withMat),b=(bleedMM===undefined?S.bleed:bleedMM);
   if(b<=0.001)return core;
+  /* [studio] vetrofanie (27/11/2026): l'alone chiaro attorno al disegno e' solo per la vista sulla
+     vetrina (withMat). Nel file di stampa il disegno resta com'e' dentro il taglio (il contorno e'
+     vinile trasparente, niente inchiostro) e l'abbondanza normale c'e' solo FUORI dal taglio,
+     dove il disegno arriva al tracciato: vedi la fine della funzione. */
+  const vetroVista=S.vetro&&withMat, vetroStampa=S.vetro&&!withMat;
   const bp=Math.max(1,Math.round(b*ppm)),W=core.width+bp*2,H=core.height+bp*2;
   const out=document.createElement('canvas');out.width=W;out.height=H;
   const go=out.getContext('2d',{willReadFrequently:true});
@@ -6332,7 +6386,7 @@ function renderTile(ppm,withMat,bleedMM){
     if(x===0||x===W-1||y===0||y===H-1||!pieno(i-1)||!pieno(i+1)||!pieno(i-W)||!pieno(i+W)){prof[i]=1;q.push(i);}}
   const sx=new Int16Array(N).fill(-1),sy=new Int16Array(N);
   const semina=i=>{sx[i]=i%W;sy[i]=(i/W)|0;};
-  if(!S.vetro)for(let k=1;q.length;k++){
+  if(!vetroVista)for(let k=1;q.length;k++){
     if(k>=dentro){for(const i of q)semina(i);break;}
     const diag=(k%2===0),q2=[];
     for(const i of q){const x=i%W,y=(i/W)|0;
@@ -6360,7 +6414,7 @@ function renderTile(ppm,withMat,bleedMM){
     if(bx===ax&&sy[i]===ay)return;
     if(bx<0||costo(x,y,ax,ay)<costo(x,y,bx,sy[i])){sx[i]=ax;sy[i]=ay;}};
   const fissa=new Uint8Array(N);for(let i=0;i<N;i++)if(sx[i]>=0)fissa[i]=1;
-  if(!S.vetro)for(let giro=0;giro<2;giro++){
+  if(!vetroVista)for(let giro=0;giro<2;giro++){
     for(let y=0,i=0;y<H;y++)for(let x=0;x<W;x++,i++){
       if(fissa[i]||!attivo(i))continue;
       if(x>0)prova(i,x,y,i-1);
@@ -6379,7 +6433,7 @@ function renderTile(ppm,withMat,bleedMM){
      colore e il fondo, e solo se subito dietro il colore e' gia' pieno: una sfumatura voluta,
      un filetto o un bordo vero non si toccano. */
   const fondo=hex2rgb(inkBase()),sottile=Math.max(2,dentro>>1);
-  if(!withMat&&!S.vetro)for(let i=0,p=0;i<N;i++,p+=4){
+  if(!withMat&&!vetroVista)for(let i=0,p=0;i<N;i++,p+=4){
     const k=prof[i];
     if(!k||k>sottile||fissa[i]||sx[i]<0||d[p+3]<250)continue;
     const s=(sy[i]*W+sx[i])*4,cr=d[s],cg=d[s+1],cb=d[s+2];
@@ -6400,7 +6454,7 @@ function renderTile(ppm,withMat,bleedMM){
     if(d[p+3]>=250)continue;
     const cov=Math.max(0,Math.min(1,bp+0.5-Math.sqrt(g[i])));
     if(cov<=0)continue;
-    if(S.vetro){ if(d[p+3]<8){d[p]=255;d[p+1]=255;d[p+2]=255;d[p+3]=34;} continue; }
+    if(vetroVista){ if(d[p+3]<8){d[p]=255;d[p+1]=255;d[p+2]=255;d[p+3]=34;} continue; }
     const a=d[p+3]/255;
     const ha=sx[i]>=0;let s=ha?(sy[i]*W+sx[i])*4:0;
     /* La sorgente sta un po' dentro il pezzo. Se da li' al bordo il disegno cambia poco e
@@ -6422,7 +6476,16 @@ function renderTile(ppm,withMat,bleedMM){
     d[p]  = a>0 ? d[p]  *a+br *(1-a) : br;
     d[p+1]= a>0 ? d[p+1]*a+bg2*(1-a) : bg2;
     d[p+2]= a>0 ? d[p+2]*a+bb2*(1-a) : bb2;
-    d[p+3]=Math.round((S.vetro?58:(clear?209:255))*(cov<1?Math.max(cov,a):1));}
+    d[p+3]=Math.round((vetroVista?58:(clear?209:255))*(cov<1?Math.max(cov,a):1));}
+  if(vetroStampa){
+    /* dentro il taglio torna il disegno originale (con i suoi trasparenti): l'abbondanza resta solo fuori */
+    const mc=document.createElement('canvas');mc.width=W;mc.height=H;
+    const gm=mc.getContext('2d',{willReadFrequently:true});gm.setTransform(ppm,0,0,ppm,bp,bp);gm.fill(new Path2D(S.pathD),'evenodd');
+    const md=gm.getImageData(0,0,W,H).data;
+    const o2=document.createElement('canvas');o2.width=W;o2.height=H;
+    const g2=o2.getContext('2d',{willReadFrequently:true});g2.drawImage(core,bp,bp);
+    const od=g2.getImageData(0,0,W,H).data;
+    for(let p=3;p<d.length;p+=4)if(md[p]>=128){d[p-3]=od[p-3];d[p-2]=od[p-2];d[p-1]=od[p-1];d[p]=od[p];}}
   go.putImageData(id,0,0);return out;}
 function paintAlts(){
   const box=$('alts');box.innerHTML='';
@@ -8129,6 +8192,8 @@ function ppGeoUI(){
         const pathSito=S.pathD; if(d.pathD)S.pathD=String(d.pathD);
         try{
         if(d.what==='mockup'){ send('studio',{id:d.id,ok:true,blob:await mockupBlob(+d.px||6000)}); return; }
+        /* 'bianco' = vetrofanie: la base di bianco sotto la grafica, in tracciato (tinta RDG_WHITE) */
+        if(d.what==='bianco'){ send('studio',{id:d.id,ok:true,...biancoVettoriale({rientro:d.rientro})}); return; }
         /* risoluzione: quella chiesta, oppure 'auto' = la piu' alta fra 600 dpi e quella vera
            del file del cliente (la grafica non si ricampiona mai verso il basso), con un tetto
            di 12000 px sul lato lungo per non bloccare il browser */
@@ -8137,7 +8202,10 @@ function ppGeoUI(){
           const nat=(A&&src&&A.w>0)?src.width/A.w:0; ppm=Math.max(600/MM,nat); }
         else ppm=(+d.dpi)/MM;
         const lato=Math.max(S.cutW,S.cutH)+2*(S.bleed||0); if(!d.preview)ppm=Math.min(ppm,12000/lato);
-        const cv=renderTile(ppm,false);
+        let cv=renderTile(ppm,false);
+        /* vetrofanie: si stampa al contrario, la grafica esce specchiata (il taglio lo specchia lo studio) */
+        if(d.specchio){const f=document.createElement('canvas');f.width=cv.width;f.height=cv.height;
+          const gf=f.getContext('2d');gf.setTransform(-1,0,0,1,cv.width,0);gf.drawImage(cv,0,0);cv=f;}
         const blob=await new Promise(r=>cv.toBlob(r,'image/png'));
         send('studio',{id:d.id,ok:true,blob,cutW:S.cutW,cutH:S.cutH,bleed:S.bleed||0,pathD:S.pathD,
           polys:S.polys||null,name:S.name||null,shape:CL.shape,pxW:cv.width,pxH:cv.height,dpi:Math.round(ppm*MM)});

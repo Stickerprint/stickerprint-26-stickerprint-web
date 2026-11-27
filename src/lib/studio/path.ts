@@ -120,6 +120,11 @@ export function trasformaPath(d: string, m: Matrice): string {
 	);
 }
 
+/** specchia un tracciato (mm) da sinistra a destra dentro un riquadro largo `w`: vetrofanie, che si stampano al contrario */
+export function specchiaPath(d: string, w: number): string {
+	return trasformaPath(d, [-1, 0, 0, 1, w, 0]);
+}
+
 /** matrice di un adesivo del foglio composto sul sito: riquadro w×h (mm) con il centro in (cx, cy), ruotato di `gradi` */
 export function matriceAdesivo(cx: number, cy: number, w: number, h: number, gradi: number): Matrice {
 	const r = (gradi * Math.PI) / 180, cos = Math.cos(r), sin = Math.sin(r);

@@ -45,6 +45,8 @@
 		stato: 'vuota' | 'attesa' | 'pronta' | 'errore';
 		err: string;
 		pathD: string;
+		/** vetrofanie: base di bianco RDG_WHITE (gia' specchiata come pathD) */
+		whiteD?: string;
 		png: Uint8Array | null;
 		cutW: number;
 		cutH: number;
@@ -112,9 +114,17 @@
 			const g = await engine!.studio('geom');
 			if (!g.pathD) throw new Error('Il motore non ha restituito il tracciato di taglio.');
 			const t = await fit(g.pathD, g.shape, g.border ?? 1);
-			const p = await engine!.studio('print', { dpi: 600, pathD: t.d });
+			/* vetrofanie: grafica, bianco e taglio specchiati insieme (come nello studio del prodotto) */
+			const vetro = !!pDi(r).vetro;
+			const p = await engine!.studio('print', { dpi: 600, pathD: t.d, specchio: vetro });
 			if (!p.blob || !p.cutW || !p.cutH) throw new Error('Il motore non ha restituito la grafica di stampa.');
-			r.pathD = t.d; r.nodi = t.nodes;
+			r.pathD = t.d; r.nodi = t.nodes; r.whiteD = undefined;
+			if (vetro) {
+				const { specchiaPath } = await import('$lib/studio/path');
+				const b = await engine!.studio('bianco', { pathD: t.d, rientro: 0.1 });
+				if (!b.whiteD) throw new Error('Il motore non ha restituito la base di bianco.');
+				r.pathD = specchiaPath(t.d, p.cutW); r.whiteD = specchiaPath(b.whiteD, p.cutW);
+			}
 			r.png = new Uint8Array(await p.blob.arrayBuffer());
 			r.cutW = p.cutW; r.cutH = p.cutH; r.bleed = p.bleed ?? 0;
 			const m = await engine!.studio('mockup', { px: 700, pathD: t.d });
@@ -184,7 +194,7 @@
 		try {
 			const { buildPdf } = await import('$lib/studio/pdf');
 			const arts = pronte.map((r) => ({
-				png: r.png!, cutW: r.cutW, cutH: r.cutH, bleed: r.bleed, pathD: r.pathD, pieceCut: pDi(r).pieceCut
+				png: r.png!, cutW: r.cutW, cutH: r.cutH, bleed: r.bleed, pathD: r.pathD, whiteD: r.whiteD, pieceCut: pDi(r).pieceCut
 			}));
 			const pages: Strip[] = monta.strips.map((s) => ({
 				w: s.w, h: s.h,
