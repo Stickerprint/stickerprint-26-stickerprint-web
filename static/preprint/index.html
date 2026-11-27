@@ -4462,14 +4462,22 @@ function matKind(){return $('mat')?$('mat').value:'white';}
    materiale. È la stessa regola per l'anteprima e per la stampa, perché è
    una regola di macchina, non un effetto grafico. */
 function inkBase(){return contourColor();}
+/* vetrofanie: la forma e' piena del fondo del file (forma geometrica + file con un fondo vero) */
+function vetroFondoPieno(){return !!(S.vetro&&CL.shape!=='diecut'&&S.bgOpaque);}
 function inkLayer(ppm){
   const W=Math.max(1,Math.round(S.cutW*ppm)),H=Math.max(1,Math.round(S.cutH*ppm));
   const c=document.createElement('canvas');c.width=W;c.height=H;
   const g=c.getContext('2d');g.setTransform(ppm,0,0,ppm,0,0);
   const p=new Path2D(S.pathD);
   /* [sito] vetrofanie: nessun colore di fondo sotto o attorno al disegno. Dentro il taglio
-     c'e' solo la grafica del cliente (con la sua trasparenza), il resto lascia vedere il vetro. */
+     c'e' solo la grafica del cliente (con la sua trasparenza), il resto lascia vedere il vetro.
+     ECCEZIONE (Mattia, 27/11/2026: "se un cliente carica una vetrofania rettangolare, il bianco deve essere
+     sotto tutto il rettangolo, anche i testi"): con una FORMA GEOMETRICA (rettangolo, quadrato, cerchio...)
+     e un file che ha davvero un fondo (bordi del file pieni, S.bgOpaque) il fondo fa parte del disegno:
+     tutta la forma si stampa col colore di fondo del file, come negli adesivi normali, e il bianco
+     RDG_WHITE va sotto tutta la forma. File trasparente = trasparente voluto; sagomato = solo il disegno. */
   if(S.vetro){
+    if(vetroFondoPieno()){g.fillStyle=inkBase();g.fill(p,'evenodd');}
     g.save(); g.clip(p,'evenodd');
     const A=artRect(); g.imageSmoothingQuality='high';
     g.drawImage(S.artHi||S.artCanvas||S.work.canvas,A.x,A.y,A.w,A.h);
