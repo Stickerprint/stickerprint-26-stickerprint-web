@@ -6149,22 +6149,17 @@ const BIANCO_CARTA=245;
 const eCarta=(d,p)=>{const mn=Math.min(d[p],d[p+1],d[p+2]);return mn>=BIANCO_CARTA||(mn>=228&&Math.max(d[p],d[p+1],d[p+2])-mn<=14);};
 const eColore=(d,p)=>d[p+3]>=128&&!eCarta(d,p);
 function biancoSoloColore(){return S.vetro?!vetroFondoPieno():true;}
-/* ECCEZIONE: SCRITTE BIANCHE DENTRO UNA PLACCA (Mattia, 27/11/2026: "gestiscila come eccezione").
-   Un'area bianca CHIUSA dentro il colore (non collegata al fondo del file) prende il bianco come fosse colore
-   se il colore che la racchiude e' una vera PLACCA: tocca il fuori del disegno, racchiude almeno 3 aree
-   bianche e quell'area e' piccola rispetto alla placca (non oltre il 15%). Cosi':
-   - scritte bianche in una placca scura: tante lettere, ognuna piccola -> bianco sotto;
-   - occhielli di una lettera nera: una lettera ha al massimo 2 buchi -> niente bianco;
-   - riquadro bianco incorniciato (numero verde SP00680): la cornice ha un buco solo -> niente bianco;
-   - campi bianchi grandi (tondo "Motocicli Pavone"): troppo grandi rispetto all'anello -> resta il materiale.
-   Solo nelle vetrofanie: sugli altri adesivi con la base di bianco gli occhielli restano sempre vuoti.
+/* ECCEZIONE: SCRITTE BIANCHE DENTRO UNA PLACCA. Un'area bianca CHIUSA dentro il colore (non collegata al fondo
+   del file) prende il bianco come fosse colore se il colore attorno e' una campitura spessa (vedi "PLACCA PER
+   SPESSORE" sotto): scritte e contorni bianchi in una placca piena si', occhielli delle lettere e campi bianchi
+   grandi no. Vale per tutti gli adesivi (vetrofanie e base di bianco).
    Ritorna 1 dove il pixel e' inchiostro (colore, o bianco di una placca). */
 function inchiostro(d,W,H,ppm){
   const N=W*H,K=new Uint8Array(N);              /* 0 fuori, 1 colore, 2 bianco del file */
   for(let i=0,p=0;i<N;i++,p+=4)K[i]=d[p+3]<128?0:(eColore(d,p)?1:2);
   const out=new Uint8Array(N);for(let i=0;i<N;i++)if(K[i]===1)out[i]=1;
   const L=new Int32Array(N),st=new Int32Array(N);  /* etichette: bianche > 0, colore < 0 */
-  const wA=[0],wF=[0],wC=[0],cA=[0],cF=[0],cH=[0];
+  const wA=[0],wF=[0],wC=[0],cA=[0],cF=[0],cH=[0],wX0=[0],wX1=[0],wY0=[0],wY1=[0];
   const giro=(s0,k,lab,ogni)=>{let top=0;st[top++]=s0;L[s0]=lab;
     while(top){const i=st[--top];const x=i%W,y=(i/W)|0;ogni(i,x,y);
       for(let dy=-1;dy<=1;dy++){const yy=y+dy;if(yy<0||yy>=H)continue;
@@ -6172,8 +6167,8 @@ function inchiostro(d,W,H,ppm){
           if(!L[j]&&K[j]===k){L[j]=lab;st[top++]=j;}}}}};
   /* 1. aree bianche: quanto sono grandi e se toccano il fuori (fondo del file) */
   let nw=0;
-  for(let s0=0;s0<N;s0++){if(K[s0]!==2||L[s0])continue;nw++;wA.push(0);wF.push(0);wC.push(0);const w=nw;
-    giro(s0,2,w,(i,x,y)=>{wA[w]++;if(!wF[w]){if(x===0||y===0||x===W-1||y===H-1||K[i-1]===0||K[i+1]===0||K[i-W]===0||K[i+W]===0)wF[w]=1;}});}
+  for(let s0=0;s0<N;s0++){if(K[s0]!==2||L[s0])continue;nw++;wA.push(0);wF.push(0);wC.push(0);wX0.push(W);wX1.push(0);wY0.push(H);wY1.push(0);const w=nw;
+    giro(s0,2,w,(i,x,y)=>{wA[w]++;if(x<wX0[w])wX0[w]=x;if(x>wX1[w])wX1[w]=x;if(y<wY0[w])wY0[w]=y;if(y>wY1[w])wY1[w]=y;if(!wF[w]){if(x===0||y===0||x===W-1||y===H-1||K[i-1]===0||K[i+1]===0||K[i-W]===0||K[i+W]===0)wF[w]=1;}});}
   /* 2. parti di colore: area e se toccano il fuori (direttamente o attraverso il fondo bianco del file) */
   let nc=0;
   for(let s0=0;s0<N;s0++){if(K[s0]!==1||L[s0])continue;nc++;cA.push(0);cF.push(0);cH.push(0);const c=nc;
@@ -6191,11 +6186,22 @@ function inchiostro(d,W,H,ppm){
      il materiale). Si riempiono solo i puntini bianchi microscopici, sotto 0,006 mm2 (meno di 0,09 mm):
      sporco della compressione dentro il colore, che lascerebbe un buco nel bianco. */
   const k2=(ppm||12)*(ppm||12),buchino=0.006*k2;
+  /* PLACCA PER SPESSORE (Mattia, 27/11/2026, logo SIMIN: "il bianco va messo sotto tutto il magenta"): l'area
+     bianca chiusa prende il bianco se il colore attorno e' una CAMPITURA SPESSA, molto piu' larga del bianco che
+     contiene: spessore locale del colore (mezza larghezza) almeno 2,5 volte quella dell'area bianca e almeno
+     0,6 mm. Scritte e contorni bianchi dentro il magenta pieno -> bianco; occhielli delle lettere (il colore
+     attorno e' un tratto sottile, largo come il buco: corsivo Tiramisu') e campi bianchi grandi (Pavone) -> vuoti. */
+  const noC=new Uint8Array(N),noW=new Uint8Array(N);for(let i=0;i<N;i++){noC[i]=K[i]===1?0:1;noW[i]=K[i]===2?0:1;}
+  const dC=edt2d(noC,W,H),dW=edt2d(noW,W,H),wMax=new Float64Array(nw+1);
+  for(let i=0;i<N;i++){const w=L[i];if(w>0&&dW[i]>wMax[w])wMax[w]=dW[i];}
+  const spessoMin=Math.pow(0.6*(ppm||12),2);
   const si=new Uint8Array(nw+1);let quanti=0;
   for(let w=1;w<=nw;w++){const c=wC[w];if(wF[w]||!c)continue;
-    /* l'eccezione della placca (scritte bianche in una placca scura) vale SOLO per le vetrofanie: sugli altri
-       adesivi con la base di bianco gli occhielli restano vuoti anche nelle scritte attaccate (corsivo) */
-    if((S.vetro&&cF[c]&&cH[c]>=3&&wA[w]<=0.15*cA[c])||wA[w]<buchino){si[w]=1;quanti++;}}
+    if(wA[w]<buchino){si[w]=1;quanti++;continue;}
+    if(!cF[c]||wA[w]>0.25*cA[c])continue;
+    const R=Math.ceil(3*Math.sqrt(wMax[w])+2),x0=Math.max(0,wX0[w]-R),x1=Math.min(W-1,wX1[w]+R),y0=Math.max(0,wY0[w]-R),y1=Math.min(H-1,wY1[w]+R);
+    let T=0;for(let y=y0;y<=y1;y++){const row=y*W;for(let x=x0;x<=x1;x++){const v=dC[row+x];if(v>T)T=v;}}
+    if(T>=spessoMin&&T>=6.25*wMax[w]){si[w]=1;quanti++;}}
   if(quanti)for(let i=0;i<N;i++){const w=L[i];if(w>0&&si[w])out[i]=1;}
   /* 4-bis. buchini TRASPARENTI chiusi dentro il colore: come i puntini bianchi, si riempiono solo se
      microscopici (sotto 0,006 mm2); quelli piu' grandi restano vuoti come gli occhielli */
@@ -6475,7 +6481,8 @@ function vistaBianco(c,ppm){
   const M=mascheraBianco(c.getContext('2d',{willReadFrequently:true}).getImageData(0,0,W,H).data,W,H,ppm,S.vistaRientro||0,biancoSoloColore());
   const out=document.createElement('canvas');out.width=W;out.height=H;
   const g=out.getContext('2d'),id=g.createImageData(W,H),q=id.data;
-  for(let i=0,p=0;i<N;i++,p+=4)if(M[i]){q[p]=255;q[p+1]=255;q[p+2]=255;q[p+3]=255;}
+  /* grigio (Mattia: "se me lo lasci bianco non si capisce niente") */
+  for(let i=0,p=0;i<N;i++,p+=4)if(M[i]){q[p]=128;q[p+1]=132;q[p+2]=140;q[p+3]=255;}
   g.putImageData(id,0,0);return out;}
 function renderCore(ppm,withMat){
   let c=renderCoreRaw(ppm,withMat);
@@ -7780,37 +7787,41 @@ function ridipingi(){
      in una tela di appoggio: le ombre sfumate del canvas costano decine di
      millisecondi e prima venivano rifatte a ogni fotogramma dell'animazione
      del tratteggio, saturando il processore e ritardando tutto il resto. */
-  if(!a.base||a.baseTile!==tile||a.base.width!==cv.width||a.base.height!==cv.height||a.baseRes!==(S.prod+'|'+!!S.senzaResina+'|'+!!S.vetro+'|'+!!NOOMBRA)){
+  /* con la vista "Stampa del bianco" niente ombra: si vede solo dove va il bianco */
+  const senzaOmbra=NOOMBRA||!!S.vistaBianco;
+  if(!a.base||a.baseTile!==tile||a.base.width!==cv.width||a.base.height!==cv.height||a.baseRes!==(S.prod+'|'+!!S.senzaResina+'|'+!!S.vetro+'|'+senzaOmbra)){
     const base=document.createElement('canvas');base.width=cv.width;base.height=cv.height;
     const gb=base.getContext('2d');
     if(S.prod==='resin'&&!S.senzaResina){
       /* mockup del resinato: foglio di carta bianco sotto l'adesivo, con la sua
          ombra morbida, e l'ombra della cupola sul foglio (come nei mockup) */
       disegnaFoglio(gb,cv.width,cv.height,pad*ppm,ppm);
+      if(S.vistaBianco){gb.drawImage(tile,pad*ppm,pad*ppm);}else{
       gb.save();gb.shadowColor='rgba(0,0,0,0.22)';gb.shadowBlur=0.9*ppm;gb.shadowOffsetX=0.18*ppm;gb.shadowOffsetY=0.32*ppm;
       gb.drawImage(tile,pad*ppm,pad*ppm);gb.restore();
       gb.save();gb.shadowColor='rgba(0,0,0,0.10)';gb.shadowBlur=0.22*ppm;gb.shadowOffsetY=0.08*ppm;
-      gb.drawImage(tile,pad*ppm,pad*ppm);gb.restore();
+      gb.drawImage(tile,pad*ppm,pad*ppm);gb.restore();}
     } else if(S.vetro){
       /* vetrina vista da fuori: infisso, interno sfocato, la vetrofania dietro il vetro (un po' piu' piccola
          e verso il centro, lontana dall'angolo) e i riflessi sopra */
       const x0=disegnaVetro(gb,cv.width,cv.height,pad*ppm);
       const k=0.92, ox=x0+(cv.width-x0-tile.width*k)*0.55, oy=x0+(cv.height-x0-tile.height*k)*0.56;
       a.vk=k; a.vox=ox; a.voy=oy;
+      if(S.vistaBianco)gb.drawImage(tile,ox,oy,tile.width*k,tile.height*k);else{
       gb.save();gb.shadowColor='rgba(0,0,0,0.35)';gb.shadowBlur=1.4*ppm;gb.shadowOffsetY=0.6*ppm;
-      gb.drawImage(tile,ox,oy,tile.width*k,tile.height*k);gb.restore();
+      gb.drawImage(tile,ox,oy,tile.width*k,tile.height*k);gb.restore();}
       riflessiVetro(gb,cv.width,cv.height);
-    } else if(NOOMBRA){
+    } else if(senzaOmbra){
       gb.drawImage(tile,pad*ppm,pad*ppm);
     } else {
       gb.save();gb.shadowColor='rgba(0,0,0,0.4)';gb.shadowBlur=3*ppm;gb.shadowOffsetY=1.5*ppm;
       gb.drawImage(tile,pad*ppm,pad*ppm);gb.restore();
     }
-    a.base=base;a.baseTile=tile;a.baseRes=S.prod+'|'+!!S.senzaResina+'|'+!!S.vetro+'|'+!!NOOMBRA;
+    a.base=base;a.baseTile=tile;a.baseRes=S.prod+'|'+!!S.senzaResina+'|'+!!S.vetro+'|'+senzaOmbra;
   }
   g.drawImage(a.base,0,0);
   try{
-    const f=((S.prod==='resin'&&!S.senzaResina)||S.rilievo||S.vetro)?99:fasBagliore();
+    const f=((S.prod==='resin'&&!S.senzaResina)||S.rilievo||S.vetro||S.vistaBianco)?99:fasBagliore();
     if(f<10){
       g.globalCompositeOperation='screen';
       g.drawImage(bagliore(tile,f),pad*ppm,pad*ppm);
@@ -8315,7 +8326,7 @@ function ppGeoUI(){
       bianco.title=S.vistaBianco?'Torna alla grafica':'Guarda dove si stampa il bianco RDG_WHITE';
       if(S.vistaBianco){bianco.style.background='#0b0b3b';bianco.style.color='#fff';bianco.style.borderColor='#0b0b3b';}else{bianco.style.background='#fff';bianco.style.color='#0b0b3b';bianco.style.borderColor='#dfe3ea';}
       biancoLeg.style.display=(onB&&S.vistaBianco)?'block':'none';
-      biancoLeg.innerHTML='In bianco: <b>RDG_WHITE</b>, '+String(S.vistaRientro).replace('.',',')+' mm dentro il colore'+(S.vetro?'':' · il resto e\' materiale');
+      biancoLeg.innerHTML='In grigio: <b>RDG_WHITE</b>, '+String(S.vistaRientro).replace('.',',')+' mm dentro il colore'+(S.vetro?'':' · il resto e\' materiale');
       if(!lente){
         lente=document.createElement('button'); lente.type='button'; lente.id='ppLente';
         lente.style.cssText='position:absolute;right:10px;top:10px;z-index:6;display:none;align-items:center;gap:7px;padding:9px 12px;border-radius:999px;border:1.5px solid #dfe3ea;background:#fff;color:#0b0b3b;font:700 12.5px Montserrat,system-ui,sans-serif;cursor:pointer;box-shadow:0 4px 14px rgba(11,11,59,.12)';
