@@ -6137,18 +6137,58 @@ function rilievoVettoriale(){
 const BIANCO_CARTA=245;
 const eColore=(d,p)=>d[p+3]>=128&&Math.min(d[p],d[p+1],d[p+2])<BIANCO_CARTA;
 function biancoSoloColore(){return S.vetro?!vetroFondoPieno():true;}
-/* copia della tela con trasparente dove non c'e' colore (per le anteprime: si vede quello che si stampa) */
+/* ECCEZIONE: SCRITTE BIANCHE DENTRO UNA PLACCA (Mattia, 27/11/2026: "gestiscila come eccezione").
+   Un'area bianca CHIUSA dentro il colore (non collegata al fondo del file) prende il bianco come fosse colore
+   se il colore che la racchiude e' una vera PLACCA: tocca il fuori del disegno, racchiude almeno 3 aree
+   bianche e quell'area e' piccola rispetto alla placca (non oltre il 15%). Cosi':
+   - scritte bianche in una placca scura: tante lettere, ognuna piccola -> bianco sotto;
+   - occhielli di una lettera nera: una lettera ha al massimo 2 buchi -> niente bianco;
+   - riquadro bianco incorniciato (numero verde SP00680): la cornice ha un buco solo -> niente bianco;
+   - campi bianchi grandi (tondo "Motocicli Pavone"): troppo grandi rispetto all'anello -> resta il materiale.
+   Ritorna 1 dove il pixel e' inchiostro (colore, o bianco di una placca). */
+function inchiostro(d,W,H){
+  const N=W*H,K=new Uint8Array(N);              /* 0 fuori, 1 colore, 2 bianco del file */
+  for(let i=0,p=0;i<N;i++,p+=4)K[i]=d[p+3]<128?0:(eColore(d,p)?1:2);
+  const out=new Uint8Array(N);for(let i=0;i<N;i++)if(K[i]===1)out[i]=1;
+  const L=new Int32Array(N),st=new Int32Array(N);  /* etichette: bianche > 0, colore < 0 */
+  const wA=[0],wF=[0],wC=[0],cA=[0],cF=[0],cH=[0];
+  const giro=(s0,k,lab,ogni)=>{let top=0;st[top++]=s0;L[s0]=lab;
+    while(top){const i=st[--top];const x=i%W,y=(i/W)|0;ogni(i,x,y);
+      for(let dy=-1;dy<=1;dy++){const yy=y+dy;if(yy<0||yy>=H)continue;
+        for(let dx=-1;dx<=1;dx++){if(!dx&&!dy)continue;const xx=x+dx;if(xx<0||xx>=W)continue;const j=yy*W+xx;
+          if(!L[j]&&K[j]===k){L[j]=lab;st[top++]=j;}}}}};
+  /* 1. aree bianche: quanto sono grandi e se toccano il fuori (fondo del file) */
+  let nw=0;
+  for(let s0=0;s0<N;s0++){if(K[s0]!==2||L[s0])continue;nw++;wA.push(0);wF.push(0);wC.push(0);const w=nw;
+    giro(s0,2,w,(i,x,y)=>{wA[w]++;if(!wF[w]){if(x===0||y===0||x===W-1||y===H-1||K[i-1]===0||K[i+1]===0||K[i-W]===0||K[i+W]===0)wF[w]=1;}});}
+  if(!nw)return out;
+  /* 2. parti di colore: area e se toccano il fuori (direttamente o attraverso il fondo bianco del file) */
+  let nc=0;
+  for(let s0=0;s0<N;s0++){if(K[s0]!==1||L[s0])continue;nc++;cA.push(0);cF.push(0);cH.push(0);const c=nc;
+    giro(s0,1,-c,(i,x,y)=>{cA[c]++;if(cF[c])return;
+      if(x===0||y===0||x===W-1||y===H-1){cF[c]=1;return;}
+      for(const j of [i-1,i+1,i-W,i+W]){if(K[j]===0||(K[j]===2&&wF[L[j]])){cF[c]=1;return;}}});}
+  /* 3. ogni area bianca chiusa: chi la racchiude */
+  for(let i=W;i<N-W;i++){const w=L[i];if(w<=0||wF[w]||wC[w])continue;
+    for(const j of [i-1,i+1,i-W,i+W]){if(L[j]<0){wC[w]=-L[j];cH[-L[j]]++;break;}}}
+  /* 4. bianco di una placca -> inchiostro */
+  const si=new Uint8Array(nw+1);let quanti=0;
+  for(let w=1;w<=nw;w++){const c=wC[w];if(wF[w]||!c)continue;
+    if(cF[c]&&cH[c]>=3&&wA[w]<=0.15*cA[c]){si[w]=1;quanti++;}}
+  if(quanti)for(let i=0;i<N;i++){const w=L[i];if(w>0&&si[w])out[i]=1;}
+  return out;}
+/* copia della tela con trasparente dove non c'e' inchiostro (per le anteprime: si vede quello che si stampa) */
 function soloColore(c){
   const o=document.createElement('canvas');o.width=c.width;o.height=c.height;
   const g=o.getContext('2d',{willReadFrequently:true});g.drawImage(c,0,0);
   const id=g.getImageData(0,0,o.width,o.height),d=id.data;
-  for(let p=0;p<d.length;p+=4)if(d[p+3]&&!eColore(d,p)){
-    /* il bordo sfumato verso la carta resta, con l'alfa di quanto colore porta */
-    const k=255-Math.min(d[p],d[p+1],d[p+2]);d[p+3]=d[p+3]>=128&&k>0?Math.min(d[p+3],Math.round(k*255/(255-BIANCO_CARTA+1))>>4):0;}
+  const I=inchiostro(d,o.width,o.height);
+  for(let i=0,p=3;i<I.length;i++,p+=4)if(!I[i]&&d[p]>=128)d[p]=0;
   g.putImageData(id,0,0);return o;}
 function mascheraBianco(dd,W,H,ppm,rientro,solo){
   const N=W*H,M=new Uint8Array(N),fuori=new Uint8Array(N);
-  for(let i=0;i<N;i++){const on=solo?eColore(dd,i*4):dd[i*4+3]>=128;M[i]=on?1:0;fuori[i]=on?0:1;}
+  const I=solo?inchiostro(dd,W,H):null;
+  for(let i=0;i<N;i++){const on=solo?I[i]===1:dd[i*4+3]>=128;M[i]=on?1:0;fuori[i]=on?0:1;}
   if(!(rientro>0))return M;
   const d2=edt2d(fuori,W,H),r=rientro*ppm+0.5,r2=r*r;    /* + mezzo pixel: misurato sul PDF, il bordo cade a `rientro` */
   const out=M.slice();
