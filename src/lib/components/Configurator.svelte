@@ -138,7 +138,7 @@
 	const BASE_METAL = new Set(['olografico', 'glitterato', 'argento', 'oro']);
 	/* la lampadina della lamina: su tutti tranne resinati e vetrofanie, quando fra le scelte c'e' "nessuna" */
 	const luceLamina = $derived(product !== 'adesivi_resinati' && product !== 'vetrofanie');
-	/* con la base di bianco (non sui resinati) la lamina opaca non c'e' e la lucida diventa "Vernice protettiva lucida" */
+	/* con la base di bianco (non sui resinati) la lamina opaca non c'e' e la lucida diventa "Vernice lucida" */
 	const vernice = $derived(conBase && baseBianco && product !== 'adesivi_resinati');
 	const FIN_VIS = $derived(vernice ? FINISHES.filter((f) => f.id !== 'opaca') : FINISHES);
 	const nomeFinitura = (f: { id: string; label: string }) => (vernice && f.id === 'lucida' ? t('configuratore.hint.vernice') : opz('finiture', f.id, 'label', f.label));

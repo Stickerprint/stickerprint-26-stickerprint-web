@@ -6198,7 +6198,11 @@ function inchiostro(d,W,H,ppm){
   const noC=new Uint8Array(N),noW=new Uint8Array(N);for(let i=0;i<N;i++){noC[i]=K[i]===1?0:1;noW[i]=K[i]===2?0:1;}
   const dC=edt2d(noC,W,H),dW=edt2d(noW,W,H),wMax=new Float64Array(nw+1);
   for(let i=0;i<N;i++){const w=L[i];if(w>0&&dW[i]>wMax[w])wMax[w]=dW[i];}
-  const spessoMin=Math.pow(0.6*(ppm||12),2);
+  const spessoMin=Math.pow(0.6*(ppm||12),2),GRAD_PLACCA=2;   /* mediana del cambio fra pixel vicini: SIMIN 0-1, oro della torta 3,5-5,5 */
+  /* PLACCA UNIFORME (Mattia, 27/11: "perche' vedo ancora del bianco in mezzo al logo della pasticceria?"): le
+     scritte e i contorni bianchi stanno in una placca di colore PIATTO (il magenta di SIMIN); i riflessi bianchi
+     di un disegno sfumato (la crema nell'oro della torta Tiramisu', metalli, foto) no. Si misura quanto varia la
+     luminosita' da un pixel al vicino sul colore pieno della placca (mediana): sopra 2 e' sfumata, il bianco resta vuoto. */
   const si=new Uint8Array(nw+1);let quanti=0;
   for(let w=1;w<=nw;w++){const c=wC[w];if(wF[w]||!c)continue;
     if(wA[w]<buchino){si[w]=1;quanti++;continue;}
@@ -6211,7 +6215,16 @@ function inchiostro(d,W,H,ppm){
        prima (3 volte il contorno) non arrivava mai agli 0,6 mm del magenta */
     const v=vic[w]||[],R=Math.ceil(Math.max(3*Math.sqrt(wMax[w]),1.0*(ppm||12))+2),x0=Math.max(0,wX0[w]-R),x1=Math.min(W-1,wX1[w]+R),y0=Math.max(0,wY0[w]-R),y1=Math.min(H-1,wY1[w]+R);
     let T=0;for(let y=y0;y<=y1;y++){const row=y*W;for(let x=x0;x<=x1;x++){const i=row+x,lc=L[i];if(lc>=0||v.indexOf(-lc)<0)continue;const dv=dC[i];if(dv>T)T=dv;}}
-    if(T>=spessoMin&&T>=6.25*wMax[w]){si[w]=1;quanti++;}}
+    if(!(T>=spessoMin&&T>=6.25*wMax[w]))continue;
+    /* quanto cambia il colore da un pixel al vicino, sul colore pieno della placca: un colore piatto (anche due
+       colori piatti attaccati, il magenta e il blu di SIMIN) resta fermo, un oro sfumato cambia di continuo */
+    let n0=0;const hist=new Uint32Array(64);const lum=i=>{const p=i*4;return 0.3*d[p]+0.59*d[p+1]+0.11*d[p+2];};
+    for(let y=y0;y<y1;y++){const row=y*W;for(let x=x0;x<x1;x++){const i=row+x;if(L[i]!==-cp||dC[i]<4||L[i+1]!==-cp||L[i+W]!==-cp)continue;
+      const l0=lum(i),gv=Math.min(63,Math.round((Math.abs(lum(i+1)-l0)+Math.abs(lum(i+W)-l0))*2));hist[gv]++;n0++;}}
+    /* mediana (in mezzi livelli): i bordi fra due colori e l'alone della compressione non la spostano */
+    let acc=0,med=0;for(let k=0;k<64;k++){acc+=hist[k];if(acc*2>=n0){med=k/2;break;}}
+    if(n0&&med>GRAD_PLACCA)continue;
+    si[w]=1;quanti++;}
   if(quanti)for(let i=0;i<N;i++){const w=L[i];if(w>0&&si[w])out[i]=1;}
   /* 4-bis. buchini TRASPARENTI chiusi dentro il colore: come i puntini bianchi, si riempiono solo se
      microscopici (sotto 0,006 mm2); quelli piu' grandi restano vuoti come gli occhielli */

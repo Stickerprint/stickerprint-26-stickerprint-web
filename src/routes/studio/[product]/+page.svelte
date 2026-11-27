@@ -41,7 +41,7 @@
 	/* base di bianco sotto la grafica (materiali speciali): la sceglie il cliente sul sito, arriva con l'ordine */
 	let baseBianco = $state(false);
 	const conBase = $derived(offreBaseBianco(materiale, P.engineSlug));
-	/* come sul sito: con la base di bianco (non sui resinati) niente lamina opaca, la lucida e' "Vernice protettiva lucida" */
+	/* come sul sito: con la base di bianco (non sui resinati) niente lamina opaca, la lucida e' "Vernice lucida" */
 	const vernice = $derived(conBase && baseBianco && P.engineSlug !== 'adesivi_resinati');
 	const FIN_VIS = $derived(vernice ? FINISHES.filter((f) => f.id !== 'opaca') : FINISHES);
 	let finitura = $state('');
@@ -1416,7 +1416,7 @@
 						<p class="st-label">{cfg.finishTitle ?? 'Finitura'}</p>
 						<div class="st-chips">
 							{#each FIN_VIS as f (f.id)}
-								<button type="button" class="st-chip" class:is-on={finitura === f.id} onclick={() => (finitura = f.id)}>{vernice && f.id === 'lucida' ? 'Vernice protettiva lucida' : f.label}</button>
+								<button type="button" class="st-chip" class:is-on={finitura === f.id} onclick={() => (finitura = f.id)}>{vernice && f.id === 'lucida' ? 'Vernice lucida' : f.label}</button>
 							{/each}
 						</div>
 					</div>
