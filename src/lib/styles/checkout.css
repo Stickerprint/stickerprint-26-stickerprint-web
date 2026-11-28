@@ -68,3 +68,6 @@
 .co-express__btn.is-on { background: var(--green); }
 .err { color: #b3261e; font-weight: 700; }
 @media (max-width: 900px) { .co { grid-template-columns: 1fr; } .co__right { order: -1; } .co-grid { grid-template-columns: 1fr; } }
+
+/* campo obbligatorio vuoto al momento dell'invio (missingFields in checkout/+page.svelte) */
+.co .is-missing { border-color: #e5484d !important; box-shadow: 0 0 0 3px rgba(229, 72, 77, .18) !important; background: #fff5f5 !important; }

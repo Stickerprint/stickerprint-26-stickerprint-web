@@ -298,6 +298,20 @@
 	/* controlli che il server farebbe comunque, ma prima di caricare i file: il codice fiscale non e' un campo `required` del browser */
 	function missingFields(): string {
 		if (!formEl) return t('checkout.errori.modulo');
+		/* campi obbligatori: il form e' `novalidate` perche' su iPhone (Safari) il controllo del browser bloccava l'invio
+		   senza mostrare nulla quando il campo vuoto (es. la Provincia) era fuori schermo: il bottone sembrava morto.
+		   Qui il campo vuoto si evidenzia, si porta in vista e il messaggio compare sopra il bottone. */
+		for (const el of Array.from(formEl.elements) as (HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement)[]) {
+			if (!('validity' in el) || el.disabled || el.type === 'hidden' || el.validity.valid) continue;
+			el.classList.add('is-missing');
+			const clear = () => { el.classList.remove('is-missing'); el.removeEventListener('input', clear); el.removeEventListener('change', clear); };
+			el.addEventListener('input', clear); el.addEventListener('change', clear);
+			el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+			el.focus({ preventScroll: true });
+			const lab = el.closest('label');
+			const campo = (lab?.childNodes[0]?.textContent ?? '').trim() || el.name;
+			return t('checkout.errori.campoMancante', { campo });
+		}
 		const fd = new FormData(formEl);
 		const g = (k: string) => String(fd.get(k) ?? '').trim();
 		if (country === 'IT' && !g('fiscal_code') && !g('vat')) return t('checkout.errori.codiceFiscale');
@@ -376,7 +390,7 @@
 			<a class="btn btn--green btn--lg" href={path('/prodotti')}>{t('checkout.vuoto.cta')}</a>
 		</div>
 	{:else}
-		<form class="co" method="POST" action="?/order" bind:this={formEl} onsubmit={onSubmit}>
+		<form class="co" method="POST" action="?/order" novalidate bind:this={formEl} onsubmit={onSubmit}>
 			<input type="hidden" name="same_billing" value={sameBilling ? 'on' : 'off'} />
 
 			<!-- SINISTRA: dati -->
