@@ -6157,6 +6157,15 @@ function biancoSoloColore(){return S.vetro?!vetroFondoPieno():true;}
 function inchiostro(d,W,H,ppm){
   const N=W*H,K=new Uint8Array(N);              /* 0 fuori, 1 colore, 2 bianco del file */
   for(let i=0,p=0;i<N;i++,p+=4)K[i]=d[p+3]<128?0:(eColore(d,p)?1:2);
+  /* I BUCHI TRASPARENTI CHIUSI NEL DISEGNO VALGONO COME IL BIANCO DEL FILE (Mattia, 28/11/2026, SIMIN ancora
+     sbagliato: nel suo file il contorno delle lettere e "GROUP SRL" sono buchi nel magenta, non bianco). Per il
+     cliente un PNG scontornato e un JPG su fondo bianco sono la stessa grafica: un'area trasparente che non arriva
+     al bordo della tela e' il "bianco" dentro il disegno e segue le stesse regole (placca -> bianco, occhielli ->
+     vuoti, puntini microscopici -> riempiti). Il fuori vero resta solo il trasparente collegato al bordo. */
+  {const v=new Uint8Array(N);for(let i=0;i<N;i++)v[i]=K[i]===0?1:0;
+   const t=etichette(v,W,H,false),bordo=new Uint8Array(t.n+1);
+   for(let x=0;x<W;x++){bordo[t.L[x]]=1;bordo[t.L[(H-1)*W+x]]=1;}for(let y=0;y<H;y++){bordo[t.L[y*W]]=1;bordo[t.L[y*W+W-1]]=1;}
+   for(let i=0;i<N;i++){const q=t.L[i];if(q&&!bordo[q])K[i]=2;}}
   const out=new Uint8Array(N);for(let i=0;i<N;i++)if(K[i]===1)out[i]=1;
   const L=new Int32Array(N),st=new Int32Array(N);  /* etichette: bianche > 0, colore < 0 */
   const wA=[0],wF=[0],wC=[0],cA=[0],cF=[0],cH=[0],wX0=[0],wX1=[0],wY0=[0],wY1=[0];
@@ -6226,16 +6235,8 @@ function inchiostro(d,W,H,ppm){
     if(n0&&med>GRAD_PLACCA)continue;
     si[w]=1;quanti++;}
   if(quanti)for(let i=0;i<N;i++){const w=L[i];if(w>0&&si[w])out[i]=1;}
-  /* 4-bis. buchini TRASPARENTI chiusi dentro il colore: come i puntini bianchi, si riempiono solo se
-     microscopici (sotto 0,006 mm2); quelli piu' grandi restano vuoti come gli occhielli */
-  {const v=new Uint8Array(N);for(let i=0;i<N;i++)v[i]=K[i]===0?1:0;
-   const t=etichette(v,W,H,true),bordo=new Uint8Array(t.n+1);
-   for(let x=0;x<W;x++){bordo[t.L[x]]=1;bordo[t.L[(H-1)*W+x]]=1;}for(let y=0;y<H;y++){bordo[t.L[y*W]]=1;bordo[t.L[y*W+W-1]]=1;}
-   /* solo se attorno c'e' colore: un buchino trasparente in mezzo alla carta fra due lettere resta fuori */
-   const nCol=new Float64Array(t.n+1),nTot=new Float64Array(t.n+1);
-   for(let i=W;i<N-W;i++){const q=t.L[i];if(!q||bordo[q]||t.A[q]>=buchino)continue;
-     for(const j of [i-1,i+1,i-W,i+W]){if(K[j]!==0){nTot[q]++;if(K[j]===1)nCol[q]++;}}}
-   for(let i=0;i<N;i++){const q=t.L[i];if(q&&!bordo[q]&&t.A[q]<buchino&&nTot[q]>0&&nCol[q]>=0.9*nTot[q])out[i]=1;}}
+  /* (i buchini trasparenti chiusi sono diventati bianco del file all'inizio: si riempiono qui sopra come i
+     puntini bianchi sotto 0,006 mm2) */
   /* 5. granelli di colore isolati piu' piccoli di un punto stampabile (0,006 mm2): sporco del file */
   const polvere=0.006*k2;let via=0;const piccolo=new Uint8Array(nc+1);
   for(let c=1;c<=nc;c++)if(cA[c]<polvere){piccolo[c]=1;via++;}
